@@ -1,0 +1,32 @@
+{
+  "name": "@teloi/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "test": "vitest",
+    "test:browser": "vitest --run --project browser"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.20.1",
+    "@tailwindcss/vite": "^4.1.7",
+    "@vitest/browser": "^3.2.4",
+    "@vitest/web-worker": "^3.2.4",
+    "solid-testing-library": "^0.5.1",
+    "tailwindcss": "^4.1.8",
+    "vite": "^7.1.7",
+    "vite-plugin-node-polyfills": "^0.24.0",
+    "vite-plugin-solid": "^2.11.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
+  }
+}

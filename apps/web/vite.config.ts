@@ -1,0 +1,22 @@
+import tailwindcss from "@tailwindcss/vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+import solidPlugin from "vite-plugin-solid";
+import viteTsconfigPaths from "vite-tsconfig-paths";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [
+    tailwindcss(),
+    solidPlugin(),
+    viteTsconfigPaths(),
+    nodePolyfills(),
+    // livestoreDevtoolsPlugin({ schemaPath: "./src/livestore/schema.ts" }),
+  ],
+  worker: { format: "es" },
+  optimizeDeps: {
+    // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
+    exclude: ["@livestore/wa-sqlite"],
+  },
+  server: { port: 3003 },
+  build: { target: "esnext", sourcemap: true },
+});

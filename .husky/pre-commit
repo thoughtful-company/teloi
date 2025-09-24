@@ -1,0 +1,11 @@
+echo "👽 Running lint-staged..."
+
+pnpm exec lint-staged 2>&1
+lint_status=$?
+
+if [ $lint_status -eq 0 ]; then
+  echo "✅ lint-staged passed!"
+else
+  echo "❌ lint-staged failed with status $lint_status"
+  exit $lint_status
+fi

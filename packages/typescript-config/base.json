@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Default",
+  "compilerOptions": {
+    "incremental": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["es2022", "DOM", "DOM.Iterable"],
+    "moduleDetection": "force",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+
+    "isolatedModules": true,
+    "noEmit": true,
+
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "noImplicitAny": true,
+    "allowUmdGlobalAccess": true,
+    "exactOptionalPropertyTypes": true
+  }
+}

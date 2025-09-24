@@ -1,0 +1,3 @@
+{
+  "extends": "@teloi/typescript-config/base.json"
+}
