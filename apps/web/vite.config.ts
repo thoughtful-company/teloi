@@ -17,6 +17,9 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ["@livestore/wa-sqlite"],
   },
-  server: { port: 3003 },
+  server: {
+    host: "0.0.0.0",
+    port: 3003,
+  },
   build: { target: "esnext", sourcemap: true },
 });
