@@ -1,23 +1,47 @@
+import "@/index.css";
 import { describe, it } from "@effect/vitest";
-import { render } from "solid-testing-library";
+import { Schedule, Stream } from "effect";
+import { render, screen, waitFor } from "solid-testing-library";
+import { expect } from "vitest";
 
-import { createSignal } from "solid-js";
+import { Table } from "@/Table";
 
 describe("Table", () => {
-  it("should display table with 3 elements", () => {
-    // there is a list with 3 nodes that only have names
-    //’there is a column that is called name
-    // all three nodes should have their titles in this column
+  it("should display table with 3 elements added asynchronously", async () => {
+    const rows = [
+      { name: "Concentration" },
+      { name: "Clarity" },
+      { name: "Equanimity" },
+    ];
 
-    // Given a table/database has no elements
-    // When new elements are added to database
-    // Then new elements are displayed in the table
+    const stream = Stream.make(...rows).pipe(
+      Stream.schedule(Schedule.spaced("50 millis")),
+      Stream.scan({ rows: [] as Array<{ name: string }> }, (acc, hero) => ({
+        rows: [...acc.rows, hero],
+      })),
+    );
 
-    interface Datum {
-      name: string;
-    }
+    render(() => <Table dataStream={stream} />);
 
-    const [data, setData] = createSignal<Datum[]>([]);
-    render(() => <div>hi</div>);
+    await waitFor(
+      () => {
+        expect(screen.getByText("Concentration")).toBeTruthy();
+      },
+      { timeout: 100 },
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("Clarity")).toBeTruthy();
+      },
+      { timeout: 100 },
+    );
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("Equanimity")).toBeTruthy();
+      },
+      { timeout: 100 },
+    );
   });
 });

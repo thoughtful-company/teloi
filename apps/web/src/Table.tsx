@@ -4,10 +4,17 @@ import {
   flexRender,
   getCoreRowModel,
 } from "@tanstack/solid-table";
-import { Component, createSignal, For } from "solid-js";
+import { Stream } from "effect";
+import { Component, For, onCleanup, onMount } from "solid-js";
+import { runtime } from "./runtime";
+import { bindStreamToStore } from "./utils/bindStreamToStore";
 
 type Datum = {
   name: string;
+};
+
+type TableData = {
+  rows: Datum[];
 };
 
 const defaultColumns: ColumnDef<Datum>[] = [
@@ -18,18 +25,39 @@ const defaultColumns: ColumnDef<Datum>[] = [
   },
 ];
 
-const Table: Component = () => {
-  const [data, setData] = createSignal([]);
+export const Table: Component<{
+  dataStream: Stream.Stream<TableData>;
+}> = ({ dataStream }) => {
+  const { store: data, start } = bindStreamToStore({
+    stream: dataStream,
+    project: (x) => ({
+      rows: x.rows,
+    }),
+    initial: {
+      rows: [],
+    },
+    log: (msg) => console.debug(msg),
+  });
+
+  let dispose: (() => void) | null = null;
+
+  onMount(() => {
+    dispose = start(runtime);
+  });
+
+  onCleanup(() => {
+    if (dispose) dispose();
+  });
 
   const table = createSolidTable({
     get data() {
-      return data();
+      return [...data.rows];
     },
     columns: defaultColumns,
     getCoreRowModel: getCoreRowModel(),
   });
 
-    return (
+  return (
     <div class="p-2">
       <table>
         <thead>
@@ -42,9 +70,9 @@ const Table: Component = () => {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
                     </th>
                   )}
                 </For>
@@ -70,28 +98,8 @@ const Table: Component = () => {
             )}
           </For>
         </tbody>
-        <tfoot>
-          <For each={table.getFooterGroups()}>
-            {(footerGroup) => (
-              <tr>
-                <For each={footerGroup.headers}>
-                  {(header) => (
-                    <th>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                          header.column.columnDef.footer,
-                          header.getContext(),
-                        )}
-                    </th>
-                  )}
-                </For>
-              </tr>
-            )}
-          </For>
-        </tfoot>
       </table>
       <div class="h-4" />
     </div>
-  )
-}
+  );
+};
