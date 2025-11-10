@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+.cm-editor .cm-content {
+  font-family: system-ui, Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+}
+
 html {
   font-family: sans-serif;
   font-size: 14px;
@@ -117,7 +122,6 @@ tfoot th {
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -194,3 +198,4 @@ tfoot th {
   body {
     @apply overscroll-none;
   }
+}
