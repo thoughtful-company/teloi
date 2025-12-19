@@ -129,6 +129,7 @@ App
 **Current state**: Basic editable document with single block working. Focus tracking and text persistence functional.
 
 **Next milestone**: Multi-block editing and block operations.
+- [ ] Add browser tests for buffer rendering (EditorBuffer, Block components)
 - [ ] Recursive block rendering (Block renders its childBlockIds)
 - [ ] Block splitting (Enter key creates new sibling block)
 - [ ] Block merging (Backspace at start merges with previous)

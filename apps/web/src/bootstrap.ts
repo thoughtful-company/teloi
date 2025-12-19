@@ -23,6 +23,10 @@ export const bootstrap = Effect.gen(function* () {
   const bufferId = Id.Buffer.make(nanoid());
   const nodeId = nanoid();
 
+  const childId1 = nanoid();
+  const childId2 = nanoid();
+  const grandchildId = nanoid();
+
   // Create root node with initial content
   yield* Store.commit(
     events.nodeCreated({
@@ -31,6 +35,45 @@ export const bootstrap = Effect.gen(function* () {
         nodeId,
         textContent:
           "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
+      },
+    }),
+  );
+
+  // Create first child
+  yield* Store.commit(
+    events.nodeCreated({
+      timestamp: Date.now(),
+      data: {
+        nodeId: childId1,
+        textContent: "Once or twice she had peeped into the book her sister was reading.",
+        parentId: nodeId,
+        position: "a0",
+      },
+    }),
+  );
+
+  // Create second child
+  yield* Store.commit(
+    events.nodeCreated({
+      timestamp: Date.now(),
+      data: {
+        nodeId: childId2,
+        textContent: "But it had no pictures or conversations in it.",
+        parentId: nodeId,
+        position: "a1",
+      },
+    }),
+  );
+
+  // Create grandchild (nested under first child)
+  yield* Store.commit(
+    events.nodeCreated({
+      timestamp: Date.now(),
+      data: {
+        nodeId: grandchildId,
+        textContent: "And what is the use of a book without pictures or conversations?",
+        parentId: childId1,
+        position: "a0",
       },
     }),
   );

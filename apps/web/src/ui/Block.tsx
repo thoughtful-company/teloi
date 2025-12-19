@@ -6,7 +6,7 @@ import { BlockT } from "@/services/ui/Block";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
-import { onCleanup, onMount, Show } from "solid-js";
+import { For, onCleanup, onMount, Show } from "solid-js";
 import TextEditor from "./TextEditor";
 
 interface BlockProps {
@@ -85,10 +85,17 @@ export default function Block({ blockId }: BlockProps) {
   };
 
   return (
-    <div onClick={handleFocus}>
-      <Show when={store.isActive} fallback={<p>{store.textContent}</p>}>
-        <TextEditor initialText={store.textContent} onChange={handleTextChange} />
-      </Show>
+    <div>
+      <div onClick={handleFocus}>
+        <Show when={store.isActive} fallback={<p>{store.textContent}</p>}>
+          <TextEditor initialText={store.textContent} onChange={handleTextChange} />
+        </Show>
+      </div>
+      <div class="pl-4">
+        <For each={store.childBlockIds}>
+          {(childId) => <Block blockId={childId} />}
+        </For>
+      </div>
     </div>
   );
 }
