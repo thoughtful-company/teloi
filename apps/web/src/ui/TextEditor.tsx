@@ -6,9 +6,10 @@ import { onCleanup, onMount } from "solid-js";
 interface TextEditorProps {
   initialText: string;
   onChange: (text: string) => void;
+  initialClickCoords?: { x: number; y: number } | null;
 }
 
-export default function TextEditor({ initialText, onChange }: TextEditorProps) {
+export default function TextEditor({ initialText, onChange, initialClickCoords }: TextEditorProps) {
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
 
@@ -30,6 +31,15 @@ export default function TextEditor({ initialText, onChange }: TextEditorProps) {
       state,
       parent: containerRef,
     });
+    view.focus();
+
+    // Position cursor at click location if available
+    if (initialClickCoords) {
+      const pos = view.posAtCoords(initialClickCoords);
+      if (pos !== null) {
+        view.dispatch({ selection: { anchor: pos } });
+      }
+    }
 
     onCleanup(() => view?.destroy());
   });

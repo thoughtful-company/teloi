@@ -63,7 +63,10 @@ export default function Block({ blockId }: BlockProps) {
     onCleanup(dispose);
   });
 
-  const handleFocus = () => {
+  let clickCoords: { x: number; y: number } | null = null;
+
+  const handleFocus = (e: MouseEvent) => {
+    clickCoords = { x: e.clientX, y: e.clientY };
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;
@@ -87,8 +90,17 @@ export default function Block({ blockId }: BlockProps) {
   return (
     <div>
       <div onClick={handleFocus}>
-        <Show when={store.isActive} fallback={<p>{store.textContent}</p>}>
-          <TextEditor initialText={store.textContent} onChange={handleTextChange} />
+        <Show
+          when={store.isActive}
+          fallback={
+            <p class="text-[16px] leading-[1.4]">{store.textContent}</p>
+          }
+        >
+          <TextEditor
+            initialText={store.textContent}
+            onChange={handleTextChange}
+            initialClickCoords={clickCoords}
+          />
         </Show>
       </div>
       <div class="pl-4">
