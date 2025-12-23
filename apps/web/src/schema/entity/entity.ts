@@ -26,7 +26,7 @@ export const Block = Schema.Struct({
 export type Block = typeof Block.Type;
 
 export const Title = Schema.Struct({
-  id: Schema.String,
+  bufferId: Id.Buffer,
   type: Schema.Literal("title"),
 });
 export type Title = typeof Title.Type;

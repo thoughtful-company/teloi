@@ -93,7 +93,7 @@ export default function Block({ blockId }: BlockProps) {
         <Show
           when={store.isActive}
           fallback={
-            <p class="text-[16px] leading-[1.4]">{store.textContent}</p>
+            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)]">{store.textContent}</p>
           }
         >
           <TextEditor
