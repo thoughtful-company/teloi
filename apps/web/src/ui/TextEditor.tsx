@@ -52,30 +52,66 @@ const variantThemes: Record<TextEditorVariant, Extension> = {
   title: createTheme(variantStyles.title),
 };
 
+export interface EnterKeyInfo {
+  /** Text before the cursor position */
+  textBefore: string;
+  /** Text after the cursor position */
+  textAfter: string;
+  /** Character position of cursor */
+  cursorPos: number;
+}
+
 interface TextEditorProps {
   initialText: string;
   onChange: (text: string) => void;
+  onEnter?: (info: EnterKeyInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   variant?: TextEditorVariant;
 }
 
-export default function TextEditor({ initialText, onChange, initialClickCoords, variant = "block" }: TextEditorProps) {
+export default function TextEditor({ initialText, onChange, onEnter, initialClickCoords, variant = "block" }: TextEditorProps) {
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
 
   onMount(() => {
+    const extensions: Extension[] = [
+      EditorView.lineWrapping,
+      variantThemes[variant],
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChange(update.state.doc.toString());
+        }
+      }),
+    ];
+
+    // Add Enter key handler if callback provided
+    if (onEnter) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Enter",
+            run: (view) => {
+              const state = view.state;
+              const cursorPos = state.selection.main.head;
+              const doc = state.doc.toString();
+              onEnter({
+                cursorPos,
+                textBefore: doc.slice(0, cursorPos),
+                textAfter: doc.slice(cursorPos),
+              });
+              return true; // Prevent default Enter behavior
+            },
+          },
+        ]),
+      );
+    }
+
+    // Default keymap comes after custom handlers
+    extensions.push(keymap.of(defaultKeymap));
+
     const state = EditorState.create({
       doc: initialText,
-      extensions: [
-        keymap.of(defaultKeymap),
-        EditorView.lineWrapping,
-        variantThemes[variant],
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onChange(update.state.doc.toString());
-          }
-        }),
-      ],
+      extensions,
     });
 
     view = new EditorView({
