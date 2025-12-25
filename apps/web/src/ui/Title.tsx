@@ -80,7 +80,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   };
 
   return (
-    <div onClick={handleFocus}>
+    <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus}>
       <Show
         when={store.isActive}
         fallback={

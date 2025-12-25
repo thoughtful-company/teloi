@@ -7,7 +7,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
-import TextEditor from "./TextEditor";
+import TextEditor, { EnterKeyInfo } from "./TextEditor";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -87,18 +87,58 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleEnter = (info: EnterKeyInfo) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Window = yield* WindowT;
+
+        // Get parent of current node
+        const parentId = yield* Node.getParent(nodeId);
+
+        // Create new sibling after current node with textAfter content
+        const newNodeId = yield* Node.insertNode({
+          parentId,
+          insert: "after",
+          siblingId: nodeId,
+          textContent: info.textAfter,
+        });
+
+        // Update current node text to textBefore
+        yield* Node.setNodeText(nodeId, info.textBefore);
+
+        // Focus the new block
+        const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: newBlockId }),
+        );
+      }).pipe(
+        Effect.catchTag(
+          "NodeHasNoParentError",
+          () =>
+            // Root nodes can't be split - do nothing
+            Effect.void,
+        ),
+      ),
+    );
+  };
+
   return (
-    <div>
+    <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
         <Show
           when={store.isActive}
           fallback={
-            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)]">{store.textContent}</p>
+            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)]">
+              {store.textContent}
+            </p>
           }
         >
           <TextEditor
             initialText={store.textContent}
             onChange={handleTextChange}
+            onEnter={handleEnter}
             initialClickCoords={clickCoords}
           />
         </Show>
