@@ -87,4 +87,34 @@ describe("Block Tab key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(7);
     }).pipe(runtime.runPromise);
   });
+
+  it("dedents block to become sibling of parent when Shift+Tab pressed", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First child" },
+          { text: "Second child" },
+        ]);
+
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_PRESSES("{Tab}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+      yield* Then.NODE_HAS_CHILDREN(childNodeIds[0], 1);
+
+      yield* When.USER_PRESSES("{Shift>}{Tab}{/Shift}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+      yield* Then.NODE_HAS_CHILDREN(childNodeIds[0], 0);
+
+      const Node = yield* NodeT;
+      const rootChildren = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(rootChildren[0]!, "First child");
+      yield* Then.NODE_HAS_TEXT(rootChildren[1]!, "Second child");
+    }).pipe(runtime.runPromise);
+  });
 });

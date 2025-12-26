@@ -217,6 +217,26 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleShiftTab = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+
+        const grandparentId = yield* Node.getParent(parentId);
+
+        yield* Node.insertNode({
+          nodeId,
+          parentId: grandparentId,
+          insert: "after",
+          siblingId: parentId,
+        });
+      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -233,6 +253,7 @@ export default function Block({ blockId }: BlockProps) {
             onChange={handleTextChange}
             onEnter={handleEnter}
             onTab={handleTab}
+            onShiftTab={handleShiftTab}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}

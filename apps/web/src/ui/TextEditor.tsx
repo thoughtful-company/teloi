@@ -71,6 +71,7 @@ interface TextEditorProps {
   onChange: (text: string) => void;
   onEnter?: (info: EnterKeyInfo) => void;
   onTab?: () => void;
+  onShiftTab?: () => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -84,6 +85,7 @@ export default function TextEditor(props: TextEditorProps) {
     onChange,
     onEnter,
     onTab,
+    onShiftTab,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -145,6 +147,20 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
+    if (onShiftTab) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Shift-Tab",
+            run: () => {
+              onShiftTab();
+              return true;
+            },
+          },
+        ]),
+      );
+    }
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
@@ -180,7 +196,10 @@ export default function TextEditor(props: TextEditorProps) {
     if (!view || !selection) return;
 
     const currentSel = view.state.selection.main;
-    if (currentSel.anchor === selection.anchor && currentSel.head === selection.head) {
+    if (
+      currentSel.anchor === selection.anchor &&
+      currentSel.head === selection.head
+    ) {
       return; // Already in sync
     }
 
