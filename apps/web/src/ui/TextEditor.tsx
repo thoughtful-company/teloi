@@ -74,6 +74,7 @@ interface TextEditorProps {
   onShiftTab?: () => void;
   onBackspaceAtStart?: () => void;
   onArrowLeftAtStart?: () => void;
+  onArrowRightAtEnd?: () => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -90,6 +91,7 @@ export default function TextEditor(props: TextEditorProps) {
     onShiftTab,
     onBackspaceAtStart,
     onArrowLeftAtStart,
+    onArrowRightAtEnd,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -202,6 +204,25 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
+    if (onArrowRightAtEnd) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "ArrowRight",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const docLen = view.state.doc.length;
+              if (sel.anchor === docLen && sel.head === docLen) {
+                onArrowRightAtEnd();
+                return true;
+              }
+              return false;
+            },
+          },
+        ]),
+      );
+    }
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
@@ -214,7 +235,6 @@ export default function TextEditor(props: TextEditorProps) {
       state,
       parent: containerRef,
     });
-    view.focus();
 
     // Priority: initialSelection (from click with existing selection) >
     // props.selection (from model) > initialClickCoords (from click position)
@@ -233,7 +253,11 @@ export default function TextEditor(props: TextEditorProps) {
       if (pos !== null) {
         view.dispatch({ selection: { anchor: pos } });
       }
+    } else {
+      view.dispatch({ selection: { anchor: 0 } });
     }
+
+    view.focus();
 
     onCleanup(() => view?.destroy());
   });

@@ -87,12 +87,17 @@ export const BLOCK_COUNT_IS = (count: number) =>
  * Asserts that the DOM selection is collapsed and at the expected offset.
  */
 export const SELECTION_IS_COLLAPSED_AT_OFFSET = (offset: number) =>
-  Effect.sync(() => {
-    const sel = window.getSelection();
-    expect(sel).not.toBeNull();
-    expect(sel!.isCollapsed).toBe(true);
-    expect(sel!.anchorOffset).toBe(offset);
-  }).pipe(Effect.withSpan("Then.SELECTION_IS_COLLAPSED_AT_OFFSET"));
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const sel = window.getSelection();
+        expect(sel).not.toBeNull();
+        expect(sel!.isCollapsed).toBe(true);
+        expect(sel!.anchorOffset).toBe(offset);
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.SELECTION_IS_COLLAPSED_AT_OFFSET"));
 
 /**
  * Asserts that the DOM selection is NOT in the specified block.

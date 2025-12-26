@@ -3,6 +3,7 @@ import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
+import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { deepEqual, queryDb } from "@livestore/livestore";
@@ -116,6 +117,35 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
+  const handleArrowRightAtEnd = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+        if (children.length === 0) return;
+
+        const firstChildId = children[0]!;
+        const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: targetBlockId,
+            anchorOffset: 0,
+            focusBlockId: targetBlockId,
+            focusOffset: 0,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
+    );
+  };
+
   return (
     <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus}>
       <Show
@@ -129,6 +159,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         <TextEditor
           initialText={store.textContent}
           onChange={handleTextChange}
+          onArrowRightAtEnd={handleArrowRightAtEnd}
           initialClickCoords={clickCoords}
           selection={store.selection}
           variant="title"

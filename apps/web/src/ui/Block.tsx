@@ -382,6 +382,76 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleArrowRightAtEnd = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+
+        if (children.length > 0) {
+          const firstChildId = children[0]!;
+          const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: targetBlockId,
+              anchorOffset: 0,
+              focusBlockId: targetBlockId,
+              focusOffset: 0,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+          return;
+        }
+
+        const findNextNode = (
+          currentId: Id.Node,
+        ): Effect.Effect<Id.Node | null, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const parentId = yield* Node.getParent(currentId).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed(null as Id.Node | null),
+              ),
+            );
+            if (!parentId) return null;
+
+            const siblings = yield* Node.getNodeChildren(parentId);
+            const idx = siblings.indexOf(currentId);
+
+            if (idx < siblings.length - 1) {
+              return siblings[idx + 1]!;
+            }
+
+            return yield* findNextNode(parentId);
+          });
+
+        const nextNodeId = yield* findNextNode(nodeId);
+        if (!nextNodeId) return;
+
+        const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: targetBlockId,
+            anchorOffset: 0,
+            focusBlockId: targetBlockId,
+            focusOffset: 0,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -401,6 +471,7 @@ export default function Block({ blockId }: BlockProps) {
             onShiftTab={handleShiftTab}
             onBackspaceAtStart={handleBackspaceAtStart}
             onArrowLeftAtStart={handleArrowLeftAtStart}
+            onArrowRightAtEnd={handleArrowRightAtEnd}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}
