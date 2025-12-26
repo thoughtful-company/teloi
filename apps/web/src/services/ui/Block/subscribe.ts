@@ -9,12 +9,18 @@ import { Effect, Either, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
 import { BlockGoneError, BlockNotFoundError } from "./errors";
 
+export interface BlockSelection {
+  anchor: number;
+  head: number;
+}
+
 export interface BlockView {
   nodeData: TeloiNode;
   childBlockIds: readonly Id.Block[];
   isActive: boolean;
   isSelected: boolean;
   isToggled: boolean;
+  selection: BlockSelection | null;
 }
 
 export const subscribe = (blockId: Id.Block) =>
@@ -29,6 +35,7 @@ export const subscribe = (blockId: Id.Block) =>
     const block$ = yield* makeBlockStreamEither(blockId);
     const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
+    const selection$ = yield* makeSelectionStream(bufferId, blockId);
 
     const activeElementStream = yield* Window.subscribeActiveElement();
     const isActiveStream = activeElementStream.pipe(
@@ -53,25 +60,29 @@ export const subscribe = (blockId: Id.Block) =>
       childrenBlockIds$,
       node$,
       isActiveStream,
+      selection$,
     ).pipe(
-      Stream.map(([blockEither, blockChildrenIds, nodeEither, isActive]) => {
-        if (Either.isLeft(blockEither)) {
-          return Either.left(new BlockGoneError({ blockId, nodeId }));
-        }
-        if (Either.isLeft(nodeEither)) {
-          return Either.left(new BlockGoneError({ blockId, nodeId }));
-        }
+      Stream.map(
+        ([blockEither, blockChildrenIds, nodeEither, isActive, selection]) => {
+          if (Either.isLeft(blockEither)) {
+            return Either.left(new BlockGoneError({ blockId, nodeId }));
+          }
+          if (Either.isLeft(nodeEither)) {
+            return Either.left(new BlockGoneError({ blockId, nodeId }));
+          }
 
-        const block = Either.getOrThrow(blockEither);
-        const nodeData = Either.getOrThrow(nodeEither);
+          const block = Either.getOrThrow(blockEither);
+          const nodeData = Either.getOrThrow(nodeEither);
 
-        return Either.right({
-          ...block,
-          isActive,
-          childBlockIds: blockChildrenIds,
-          nodeData,
-        } satisfies BlockView);
-      }),
+          return Either.right({
+            ...block,
+            isActive,
+            childBlockIds: blockChildrenIds,
+            nodeData,
+            selection,
+          } satisfies BlockView);
+        },
+      ),
       Stream.tap((either) =>
         Either.match(either, {
           onLeft: (error) =>
@@ -158,6 +169,41 @@ const makeChildrenIdsStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     return stream.pipe(
       Stream.map((nodeIds) =>
         nodeIds.map((id) => Id.makeBlockId(bufferId, Id.Node.make(id))),
+      ),
+    );
+  });
+
+const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const query = queryDb(
+      tables.buffer
+        .select("value")
+        .where("id", "=", bufferId)
+        .first({ fallback: () => null }),
+    );
+    const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+
+    return stream.pipe(
+      Stream.map((buffer): BlockSelection | null => {
+        if (!buffer?.selection) return null;
+
+        const sel = buffer.selection;
+        // Only return selection if both anchor and focus are in this block
+        if (sel.anchorBlockId !== blockId || sel.focusBlockId !== blockId) {
+          return null;
+        }
+
+        return {
+          anchor: sel.anchorOffset,
+          head: sel.focusOffset,
+        };
+      }),
+      Stream.changesWith(deepEqual),
+      Stream.tap((sel) =>
+        Effect.logTrace("[Block.Subscribe] Selection emitted").pipe(
+          Effect.annotateLogs({ blockId, selection: sel }),
+        ),
       ),
     );
   });

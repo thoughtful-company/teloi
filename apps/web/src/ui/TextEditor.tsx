@@ -1,7 +1,7 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { onCleanup, onMount } from "solid-js";
+import { createEffect, onCleanup, onMount } from "solid-js";
 
 export type TextEditorVariant = "block" | "title";
 
@@ -70,21 +70,26 @@ interface TextEditorProps {
   initialText: string;
   onChange: (text: string) => void;
   onEnter?: (info: EnterKeyInfo) => void;
+  onTab?: () => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
+  selection?: { anchor: number; head: number } | null;
   variant?: TextEditorVariant;
 }
 
-export default function TextEditor({
-  initialText,
-  onChange,
-  onEnter,
-  onSelectionChange,
-  initialClickCoords,
-  initialSelection,
-  variant = "block",
-}: TextEditorProps) {
+export default function TextEditor(props: TextEditorProps) {
+  const {
+    initialText,
+    onChange,
+    onEnter,
+    onTab,
+    onSelectionChange,
+    initialClickCoords,
+    initialSelection,
+    variant = "block",
+  } = props;
+
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
 
@@ -125,6 +130,21 @@ export default function TextEditor({
       );
     }
 
+    // Add Tab key handler if callback provided
+    if (onTab) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Tab",
+            run: () => {
+              onTab();
+              return true; // Prevent default Tab behavior
+            },
+          },
+        ]),
+      );
+    }
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
@@ -152,6 +172,22 @@ export default function TextEditor({
     }
 
     onCleanup(() => view?.destroy());
+  });
+
+  // Sync selection from model to CodeMirror
+  createEffect(() => {
+    const selection = props.selection;
+    if (!view || !selection) return;
+
+    const currentSel = view.state.selection.main;
+    if (currentSel.anchor === selection.anchor && currentSel.head === selection.head) {
+      return; // Already in sync
+    }
+
+    const docLen = view.state.doc.length;
+    const anchor = Math.min(selection.anchor, docLen);
+    const head = Math.min(selection.head, docLen);
+    view.dispatch({ selection: { anchor, head } });
   });
 
   return <div ref={containerRef} />;

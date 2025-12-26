@@ -51,11 +51,13 @@ export default function Block({ blockId }: BlockProps) {
       textContent: view.nodeData.textContent,
       isActive: view.isActive,
       childBlockIds: view.childBlockIds,
+      selection: view.selection,
     }),
     initial: {
       textContent: "",
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
+      selection: null as { anchor: number; head: number } | null,
     },
   });
 
@@ -178,6 +180,43 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleTab = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        // Get parent of current node
+        const parentId = yield* Node.getParent(nodeId);
+
+        // Get siblings
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't indent first sibling - no previous sibling to indent into
+        if (siblingIndex <= 0) {
+          return;
+        }
+
+        const prevSiblingId = siblings[siblingIndex - 1]!;
+
+        // Move this node to be a child of the previous sibling
+        yield* Node.insertNode({
+          nodeId, // Existing node - triggers move
+          parentId: prevSiblingId, // New parent is previous sibling
+          insert: "after", // Append at end of previous sibling's children
+        });
+      }).pipe(
+        Effect.catchTag(
+          "NodeHasNoParentError",
+          () =>
+            // Root nodes can't be indented - do nothing
+            Effect.void,
+        ),
+      ),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -193,9 +232,11 @@ export default function Block({ blockId }: BlockProps) {
             initialText={store.textContent}
             onChange={handleTextChange}
             onEnter={handleEnter}
+            onTab={handleTab}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}
+            selection={store.selection}
           />
         </Show>
       </div>
