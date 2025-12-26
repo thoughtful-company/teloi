@@ -61,15 +61,30 @@ export interface EnterKeyInfo {
   cursorPos: number;
 }
 
+export interface SelectionInfo {
+  anchor: number;
+  head: number;
+}
+
 interface TextEditorProps {
   initialText: string;
   onChange: (text: string) => void;
   onEnter?: (info: EnterKeyInfo) => void;
+  onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
+  initialSelection?: { anchor: number; head: number } | null;
   variant?: TextEditorVariant;
 }
 
-export default function TextEditor({ initialText, onChange, onEnter, initialClickCoords, variant = "block" }: TextEditorProps) {
+export default function TextEditor({
+  initialText,
+  onChange,
+  onEnter,
+  onSelectionChange,
+  initialClickCoords,
+  initialSelection,
+  variant = "block",
+}: TextEditorProps) {
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
 
@@ -80,6 +95,10 @@ export default function TextEditor({ initialText, onChange, onEnter, initialClic
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
+        }
+        if (update.selectionSet && onSelectionChange) {
+          const { anchor, head } = update.state.selection.main;
+          onSelectionChange({ anchor, head });
         }
       }),
     ];
@@ -120,8 +139,12 @@ export default function TextEditor({ initialText, onChange, onEnter, initialClic
     });
     view.focus();
 
-    // Position cursor at click location if available
-    if (initialClickCoords) {
+    if (initialSelection) {
+      const docLen = view.state.doc.length;
+      const anchor = Math.min(initialSelection.anchor, docLen);
+      const head = Math.min(initialSelection.head, docLen);
+      view.dispatch({ selection: { anchor, head } });
+    } else if (initialClickCoords) {
       const pos = view.posAtCoords(initialClickCoords);
       if (pos !== null) {
         view.dispatch({ selection: { anchor: pos } });

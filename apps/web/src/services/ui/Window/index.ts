@@ -4,7 +4,9 @@ import { StoreT } from "@/services/external/Store";
 import { queryDb } from "@livestore/livestore";
 import { Context, Data, Effect, Layer, Option, Stream } from "effect";
 
-export class WindowNotFoundError extends Data.TaggedError("WindowNotFoundError")<{
+export class WindowNotFoundError extends Data.TaggedError(
+  "WindowNotFoundError",
+)<{
   windowId: string;
 }> {}
 
@@ -41,9 +43,7 @@ export const WindowLive = Layer.effect(
         const stream = yield* Store.subscribeStream(query);
 
         return stream.pipe(
-          Stream.map((window) =>
-            Option.fromNullable(window?.activeElement),
-          ),
+          Stream.map((window) => Option.fromNullable(window?.activeElement)),
         );
       }).pipe(Effect.orDie);
 
@@ -61,7 +61,6 @@ export const WindowLive = Layer.effect(
         const currentWindow = windowDoc.value;
         const newActiveElement = Option.getOrNull(element);
 
-        // Skip if unchanged
         if (currentWindow.activeElement === newActiveElement) {
           return;
         }

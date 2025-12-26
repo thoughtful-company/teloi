@@ -54,6 +54,7 @@ export const A_BUFFER_WITH_TEXT = (textContent: string) =>
         assignedNodeId: nodeId,
         selectedNodes: [],
         toggledNodes: [],
+        selection: null,
       },
       bufferId,
     );
@@ -128,6 +129,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
         assignedNodeId: rootNodeId,
         selectedNodes: [],
         toggledNodes: [],
+        selection: null,
       },
       bufferId,
     );

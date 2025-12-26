@@ -24,6 +24,14 @@ export const Pane = Schema.Struct({
 });
 export type Pane = typeof Pane.Type;
 
+export const BufferSelection = Schema.Struct({
+  anchorBlockId: Id.Block,
+  anchorOffset: Schema.Number,
+  focusBlockId: Id.Block,
+  focusOffset: Schema.Number,
+});
+export type BufferSelection = typeof BufferSelection.Type;
+
 export const EditorBuffer = Schema.mutable(
   Schema.Struct({
     windowId: Id.Window,
@@ -31,6 +39,7 @@ export const EditorBuffer = Schema.mutable(
     assignedNodeId: Schema.NullOr(Schema.String),
     selectedNodes: Schema.mutable(Schema.Array(Schema.Array(Schema.Number))),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
+    selection: Schema.NullOr(BufferSelection),
   }),
 );
 export type EditorBuffer = typeof EditorBuffer.Type;

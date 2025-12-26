@@ -3,11 +3,12 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
+import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { EnterKeyInfo } from "./TextEditor";
+import TextEditor, { EnterKeyInfo, SelectionInfo } from "./TextEditor";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -64,9 +65,33 @@ export default function Block({ blockId }: BlockProps) {
   });
 
   let clickCoords: { x: number; y: number } | null = null;
+  let initialSelection: { anchor: number; head: number } | null = null;
 
   const handleFocus = (e: MouseEvent) => {
     clickCoords = { x: e.clientX, y: e.clientY };
+    initialSelection = null;
+
+    const domSelection = window.getSelection();
+    if (
+      domSelection &&
+      domSelection.rangeCount > 0 &&
+      !domSelection.isCollapsed
+    ) {
+      const target = e.currentTarget as HTMLElement;
+      const paragraph = target.querySelector("p");
+
+      if (
+        paragraph &&
+        paragraph.contains(domSelection.anchorNode) &&
+        paragraph.contains(domSelection.focusNode)
+      ) {
+        initialSelection = {
+          anchor: domSelection.anchorOffset,
+          head: domSelection.focusOffset,
+        };
+      }
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;
@@ -87,12 +112,31 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleSelectionChange = (selection: SelectionInfo) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Buffer = yield* BufferT;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: blockId,
+            anchorOffset: selection.anchor,
+            focusBlockId: blockId,
+            focusOffset: selection.head,
+          }),
+        );
+      }),
+    );
+  };
+
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Node = yield* NodeT;
         const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
 
         // Get parent of current node
         const parentId = yield* Node.getParent(nodeId);
@@ -108,8 +152,16 @@ export default function Block({ blockId }: BlockProps) {
         // Update current node text to textBefore
         yield* Node.setNodeText(nodeId, info.textBefore);
 
-        // Focus the new block
         const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: newBlockId,
+            anchorOffset: 0,
+            focusBlockId: newBlockId,
+            focusOffset: 0,
+          }),
+        );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
         );
@@ -139,7 +191,9 @@ export default function Block({ blockId }: BlockProps) {
             initialText={store.textContent}
             onChange={handleTextChange}
             onEnter={handleEnter}
+            onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
+            initialSelection={initialSelection}
           />
         </Show>
       </div>
