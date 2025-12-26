@@ -171,6 +171,7 @@ export const insertNode = (args: InsertNodeArgs) =>
             nodeId,
             newParentId: parentId,
             position,
+            isHidden: false,
           },
         }),
       );

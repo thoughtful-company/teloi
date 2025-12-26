@@ -141,16 +141,18 @@ export default function Block({ blockId }: BlockProps) {
         // Get parent of current node
         const parentId = yield* Node.getParent(nodeId);
 
-        // Create new sibling after current node with textAfter content
+        const isAtStart = info.cursorPos === 0 && info.textAfter.length > 0;
+
         const newNodeId = yield* Node.insertNode({
           parentId,
-          insert: "after",
+          insert: isAtStart ? "before" : "after",
           siblingId: nodeId,
-          textContent: info.textAfter,
+          textContent: isAtStart ? "" : info.textAfter,
         });
 
-        // Update current node text to textBefore
-        yield* Node.setNodeText(nodeId, info.textBefore);
+        if (!isAtStart) {
+          yield* Node.setNodeText(nodeId, info.textBefore);
+        }
 
         const newBlockId = Id.makeBlockId(bufferId, newNodeId);
         yield* Buffer.setSelection(
@@ -182,8 +184,8 @@ export default function Block({ blockId }: BlockProps) {
         <Show
           when={store.isActive}
           fallback={
-            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)]">
-              {store.textContent}
+            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)]">
+              {store.textContent || "\u00A0"}
             </p>
           }
         >

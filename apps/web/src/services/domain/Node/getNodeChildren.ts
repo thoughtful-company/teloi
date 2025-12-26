@@ -10,12 +10,13 @@ import { Effect } from "effect";
 export const getNodeChildren = (nodeId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const links = yield* Store.query(
+    // When selecting a single column, LiveStore returns an array of values
+    const childIds = yield* Store.query(
       tables.parentLinks
         .select("childId")
         .where("parentId", "=", nodeId)
         .orderBy("position", "asc"),
     );
 
-    return links.map((link) => link.childId as Id.Node);
+    return childIds as readonly Id.Node[];
   });

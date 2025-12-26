@@ -35,6 +35,8 @@ pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on comm
 
 Never create type aliases for backwards compatibility (e.g., type OldName = NewName). Either rename the original to the correct name, or update all usages to the correct name. Aliases obscure the codebase and add confusion.
 
+When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit).
+
 ## Project Structure
 
 This is a pnpm monorepo with:
@@ -84,6 +86,24 @@ Typed domain models using Effect Schema:
 ### Development Approach
 **TDD-first**: Write tests before implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
 
+### Test Writing Conventions
+Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__tests__/bdd/`.
+
+**Development workflow**:
+1. **Initial test writing**: Use existing BDD utilities or low-level ones (`userEvent.keyboard`, `waitFor`, direct Effect calls) to get the test working
+2. **Test refactoring**: Extract repetitive patterns into Given/When/Then helpers
+3. **Helpers location**: `src/__tests__/bdd/given.ts`, `when.ts`, `then.ts`
+
+**Naming conventions**:
+- `Given.*` - Setup state (buffers, nodes, initial conditions)
+- `When.*` - User actions (clicks, keyboard input, navigation)
+- `Then.*` - Assertions (model state, DOM state, selection)
+
+**Key principles**:
+- Test body should read like a specification, not implementation details
+- Hide Effect machinery and DOM queries inside helpers
+- Assertions check model state (LiveStore), not just DOM
+
 ## Tech Stack
 - **Framework**: SolidJS (not React)
 - **Styling**: Tailwind CSS v4
@@ -128,10 +148,20 @@ App
 
 **Current state**: Basic editable document with single block working. Focus tracking and text persistence functional.
 
-**Next milestone**: Multi-block editing and block operations.
-- [ ] Add browser tests for buffer rendering (EditorBuffer, Block components)
-- [ ] Recursive block rendering (Block renders its childBlockIds)
-- [ ] Block splitting (Enter key creates new sibling block)
-- [ ] Block merging (Backspace at start merges with previous)
-- [ ] Block indentation (Tab/Shift+Tab for nesting)
-- [ ] Keyboard navigation between blocks (Arrow keys)
+**Next milestone**: Block splitting (Enter key creates new sibling block).
+
+### Cases
+
+- [x] End of text → New empty sibling below, focus it
+- [x] Start (non-empty) → New empty sibling above, focus it
+- [x] Middle of text → Split: before stays, after goes to new sibling, focus it
+- [x] Empty block → New empty sibling below, focus it
+
+### Tasks
+- [ ] Refactor tests to only use Given When Then
+
+**Future milestones** (after block splitting):
+- Block merging (Backspace at start merges with previous)
+- Block indentation (Tab/Shift+Tab for nesting)
+- Keyboard navigation between blocks (Arrow keys)
+- [ ] Verify if selection syncs from livestore to codemirror properly
