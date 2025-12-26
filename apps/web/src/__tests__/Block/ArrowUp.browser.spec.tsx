@@ -1,0 +1,187 @@
+import "@/index.css";
+import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
+import EditorBuffer from "@/ui/EditorBuffer";
+import { Effect } from "effect";
+import { describe, it } from "vitest";
+import { Given, render, runtime, Then, When } from "../bdd";
+
+describe("Block ArrowUp key", () => {
+  it("moves to previous sibling's last line when ArrowUp pressed on first line", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "First" }, { text: "Second" }],
+      );
+
+      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child, cursor at position 3 ("Sec|ond")
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(3);
+
+      // Press ArrowUp
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should now be in the first block
+      yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+
+      // Cursor should preserve column - position 3 in "First" ("Fir|st")
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("preserves column when target block's last line is long enough", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "LongFirstBlock" }, { text: "Short" }],
+      );
+
+      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child at position 4 ("Shor|t")
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(4);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+      // Column 4 preserved in "LongFirstBlock" → "Long|FirstBlock"
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("clamps to end of line when target line is shorter than current column", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "Hi" }, { text: "LongerText" }],
+      );
+
+      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child at position 8 ("LongerTe|xt")
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(8);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+      // "Hi" only has 2 chars, so clamp to end (position 2)
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(2);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("moves to deepest last child of previous sibling when it has children", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Create: Root -> [First, Second]
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "First" }, { text: "Second" }],
+      );
+
+      // Add child to First: First -> [Nested]
+      const nestedChildId = yield* Node.insertNode({
+        parentId: childNodeIds[0],
+        insert: "after",
+        textContent: "Nested",
+      });
+
+      const nestedChildBlockId = Id.makeBlockId(bufferId, nestedChildId);
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child at column 3
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(3);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should now be in the nested child (deepest of previous sibling)
+      yield* Then.SELECTION_IS_ON_BLOCK(nestedChildBlockId);
+
+      // Column 3 in "Nested" → "Nes|ted"
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("moves to parent when at first child", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Create: Root -> [Parent]
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "Parent" }],
+      );
+
+      // Add child to Parent: Parent -> [Child]
+      const childId = yield* Node.insertNode({
+        parentId: childNodeIds[0],
+        insert: "after",
+        textContent: "Child",
+      });
+
+      const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const childBlockId = Id.makeBlockId(bufferId, childId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus the child (first child of Parent) at column 3
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(3);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should now be in the parent block
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+
+      // Column 3 in "Parent" → "Par|ent"
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+    }).pipe(runtime.runPromise);
+  });
+
+  it.todo(
+    "maintains goal X when traveling from sibling to previous block's nested child",
+  );
+
+  it.todo(
+    "maintains visual X position with non-monospace fonts (iii vs WWW)",
+  );
+
+  it("moves to title when at first block in document", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Document Title",
+        [{ text: "First block" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus first block at position 5 ("First| block")
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(5);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+      // Column 5 in "Document Title" → "Docum|ent Title"
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
+});

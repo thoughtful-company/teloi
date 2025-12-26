@@ -75,6 +75,7 @@ interface TextEditorProps {
   onBackspaceAtStart?: () => void;
   onArrowLeftAtStart?: () => void;
   onArrowRightAtEnd?: () => void;
+  onArrowUpOnFirstLine?: (column: number) => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -92,6 +93,7 @@ export default function TextEditor(props: TextEditorProps) {
     onBackspaceAtStart,
     onArrowLeftAtStart,
     onArrowRightAtEnd,
+    onArrowUpOnFirstLine,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -214,6 +216,27 @@ export default function TextEditor(props: TextEditorProps) {
               const docLen = view.state.doc.length;
               if (sel.anchor === docLen && sel.head === docLen) {
                 onArrowRightAtEnd();
+                return true;
+              }
+              return false;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onArrowUpOnFirstLine) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "ArrowUp",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const line = view.state.doc.lineAt(sel.head);
+              // Only intercept if on first line
+              if (line.number === 1) {
+                const column = sel.head - line.from;
+                onArrowUpOnFirstLine(column);
                 return true;
               }
               return false;

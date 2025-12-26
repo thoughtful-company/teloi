@@ -452,6 +452,79 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleArrowUpOnFirstLine = (column: number) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Store = yield* StoreT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        const rootNodeId = Option.isSome(bufferDoc)
+          ? bufferDoc.value.assignedNodeId
+          : null;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        const findDeepestLastChild = (
+          startNodeId: Id.Node,
+        ): Effect.Effect<Id.Node, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const children = yield* Node.getNodeChildren(startNodeId);
+            if (children.length === 0) {
+              return startNodeId;
+            }
+            const lastChild = children[children.length - 1]!;
+            return yield* findDeepestLastChild(lastChild);
+          });
+
+        if (siblingIndex > 0) {
+          const prevSiblingId = siblings[siblingIndex - 1]!;
+          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
+          const targetNode = yield* Node.get(targetNodeId);
+          const lastLineLength = targetNode.textContent.length;
+          const targetColumn = Math.min(column, lastLineLength);
+
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: targetBlockId,
+              anchorOffset: targetColumn,
+              focusBlockId: targetBlockId,
+              focusOffset: targetColumn,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        } else if (parentId === rootNodeId) {
+          const rootNode = yield* Node.get(parentId);
+          const titleLength = rootNode.textContent.length;
+          const targetColumn = Math.min(column, titleLength);
+
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: bufferId as unknown as Id.Block,
+              anchorOffset: targetColumn,
+              focusBlockId: bufferId as unknown as Id.Block,
+              focusOffset: targetColumn,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        }
+      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -472,6 +545,7 @@ export default function Block({ blockId }: BlockProps) {
             onBackspaceAtStart={handleBackspaceAtStart}
             onArrowLeftAtStart={handleArrowLeftAtStart}
             onArrowRightAtEnd={handleArrowRightAtEnd}
+            onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}
