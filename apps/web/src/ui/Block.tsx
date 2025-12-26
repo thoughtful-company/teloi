@@ -1,4 +1,5 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
+import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
@@ -237,6 +238,62 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleBackspaceAtStart = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Store = yield* StoreT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        // Get parent and siblings
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't merge if first sibling
+        if (siblingIndex <= 0) {
+          return;
+        }
+
+        const prevSiblingId = siblings[siblingIndex - 1]!;
+
+        // Get text from both nodes
+        const currentText = store.textContent;
+        const prevNode = yield* Node.get(prevSiblingId);
+        const prevText = prevNode.textContent;
+        const mergePoint = prevText.length;
+
+        // Update previous sibling with merged text
+        yield* Node.setNodeText(prevSiblingId, prevText + currentText);
+
+        // Delete current node
+        yield* Store.commit(
+          events.nodeDeleted({
+            timestamp: Date.now(),
+            data: { nodeId },
+          }),
+        );
+
+        // Move focus to previous block at merge point
+        const prevBlockId = Id.makeBlockId(bufferId, prevSiblingId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: prevBlockId,
+            anchorOffset: mergePoint,
+            focusBlockId: prevBlockId,
+            focusOffset: mergePoint,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: prevBlockId }),
+        );
+      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -254,6 +311,7 @@ export default function Block({ blockId }: BlockProps) {
             onEnter={handleEnter}
             onTab={handleTab}
             onShiftTab={handleShiftTab}
+            onBackspaceAtStart={handleBackspaceAtStart}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}

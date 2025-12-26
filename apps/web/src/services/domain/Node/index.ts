@@ -5,6 +5,7 @@ import { withContext } from "@/utils";
 import { Context, Effect, Either, Layer, Stream } from "effect";
 import { NodeHasNoParentError, NodeInsertError, NodeNotFoundError } from "../errors";
 import { attestExistence } from "./attestExistence";
+import { get } from "./get";
 import { getNodeChildren } from "./getNodeChildren";
 import { getParent } from "./getParent";
 import { insertNode, InsertNodeArgs } from "./insertNode";
@@ -46,6 +47,10 @@ export class NodeT extends Context.Tag("NodeT")<
      * Returns child node IDs in order by position.
      */
     getNodeChildren: (nodeId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
+    /**
+     * Gets a node by ID.
+     */
+    get: (nodeId: Id.Node) => Effect.Effect<TeloiNode, NodeNotFoundError>;
   }
 >() {}
 
@@ -64,6 +69,7 @@ export const NodeLive = Layer.effect(
       insertNode: withContext(insertNode)(context),
       getParent: withContext(getParent)(context),
       getNodeChildren: withContext(getNodeChildren)(context),
+      get: withContext(get)(context),
     };
   }),
 );

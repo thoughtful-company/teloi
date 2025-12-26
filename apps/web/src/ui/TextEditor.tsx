@@ -72,6 +72,7 @@ interface TextEditorProps {
   onEnter?: (info: EnterKeyInfo) => void;
   onTab?: () => void;
   onShiftTab?: () => void;
+  onBackspaceAtStart?: () => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -86,6 +87,7 @@ export default function TextEditor(props: TextEditorProps) {
     onEnter,
     onTab,
     onShiftTab,
+    onBackspaceAtStart,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -161,6 +163,25 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
+    if (onBackspaceAtStart) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Backspace",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              // Only intercept if cursor is at start and no selection
+              if (sel.anchor === 0 && sel.head === 0) {
+                onBackspaceAtStart();
+                return true;
+              }
+              return false; // Let default handle it
+            },
+          },
+        ]),
+      );
+    }
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
@@ -175,10 +196,17 @@ export default function TextEditor(props: TextEditorProps) {
     });
     view.focus();
 
+    // Priority: initialSelection (from click with existing selection) >
+    // props.selection (from model) > initialClickCoords (from click position)
     if (initialSelection) {
       const docLen = view.state.doc.length;
       const anchor = Math.min(initialSelection.anchor, docLen);
       const head = Math.min(initialSelection.head, docLen);
+      view.dispatch({ selection: { anchor, head } });
+    } else if (props.selection) {
+      const docLen = view.state.doc.length;
+      const anchor = Math.min(props.selection.anchor, docLen);
+      const head = Math.min(props.selection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
     } else if (initialClickCoords) {
       const pos = view.posAtCoords(initialClickCoords);
