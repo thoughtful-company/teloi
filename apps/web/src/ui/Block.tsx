@@ -58,7 +58,7 @@ export default function Block({ blockId }: BlockProps) {
       textContent: "",
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null } | null,
     },
   });
 
@@ -127,6 +127,7 @@ export default function Block({ blockId }: BlockProps) {
             anchorOffset: selection.anchor,
             focusBlockId: blockId,
             focusOffset: selection.head,
+            goalX: null,
           }),
         );
       }),
@@ -165,6 +166,7 @@ export default function Block({ blockId }: BlockProps) {
             anchorOffset: 0,
             focusBlockId: newBlockId,
             focusOffset: 0,
+            goalX: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -285,6 +287,7 @@ export default function Block({ blockId }: BlockProps) {
             anchorOffset: mergePoint,
             focusBlockId: prevBlockId,
             focusOffset: mergePoint,
+            goalX: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -339,6 +342,7 @@ export default function Block({ blockId }: BlockProps) {
               anchorOffset: endPos,
               focusBlockId: targetBlockId,
               focusOffset: endPos,
+              goalX: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -355,6 +359,7 @@ export default function Block({ blockId }: BlockProps) {
               anchorOffset: endPos,
               focusBlockId: bufferId as unknown as Id.Block,
               focusOffset: endPos,
+              goalX: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -372,6 +377,7 @@ export default function Block({ blockId }: BlockProps) {
               anchorOffset: endPos,
               focusBlockId: parentBlockId,
               focusOffset: endPos,
+              goalX: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -402,6 +408,7 @@ export default function Block({ blockId }: BlockProps) {
               anchorOffset: 0,
               focusBlockId: targetBlockId,
               focusOffset: 0,
+              goalX: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -443,6 +450,7 @@ export default function Block({ blockId }: BlockProps) {
             anchorOffset: 0,
             focusBlockId: targetBlockId,
             focusOffset: 0,
+            goalX: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -452,7 +460,7 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleArrowUpOnFirstLine = (column: number) => {
+  const handleArrowUpOnFirstLine = (goalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
@@ -486,35 +494,30 @@ export default function Block({ blockId }: BlockProps) {
         if (siblingIndex > 0) {
           const prevSiblingId = siblings[siblingIndex - 1]!;
           const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-          const targetNode = yield* Node.get(targetNodeId);
-          const lastLineLength = targetNode.textContent.length;
-          const targetColumn = Math.min(column, lastLineLength);
 
           const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
               anchorBlockId: targetBlockId,
-              anchorOffset: targetColumn,
+              anchorOffset: 0,
               focusBlockId: targetBlockId,
-              focusOffset: targetColumn,
+              focusOffset: 0,
+              goalX,
             }),
           );
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
         } else if (parentId === rootNodeId) {
-          const rootNode = yield* Node.get(parentId);
-          const titleLength = rootNode.textContent.length;
-          const targetColumn = Math.min(column, titleLength);
-
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
               anchorBlockId: bufferId as unknown as Id.Block,
-              anchorOffset: targetColumn,
+              anchorOffset: 0,
               focusBlockId: bufferId as unknown as Id.Block,
-              focusOffset: targetColumn,
+              focusOffset: 0,
+              goalX,
             }),
           );
           yield* Window.setActiveElement(

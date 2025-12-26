@@ -12,6 +12,7 @@ import { BlockGoneError, BlockNotFoundError } from "./errors";
 export interface BlockSelection {
   anchor: number;
   head: number;
+  goalX: number | null;
 }
 
 export interface BlockView {
@@ -197,6 +198,7 @@ const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
         return {
           anchor: sel.anchorOffset,
           head: sel.focusOffset,
+          goalX: sel.goalX ?? null,
         };
       }),
       Stream.changesWith(deepEqual),

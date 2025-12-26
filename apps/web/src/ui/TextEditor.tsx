@@ -75,11 +75,11 @@ interface TextEditorProps {
   onBackspaceAtStart?: () => void;
   onArrowLeftAtStart?: () => void;
   onArrowRightAtEnd?: () => void;
-  onArrowUpOnFirstLine?: (column: number) => void;
+  onArrowUpOnFirstLine?: (goalX: number) => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
-  selection?: { anchor: number; head: number } | null;
+  selection?: { anchor: number; head: number; goalX?: number | null } | null;
   variant?: TextEditorVariant;
 }
 
@@ -235,8 +235,10 @@ export default function TextEditor(props: TextEditorProps) {
               const line = view.state.doc.lineAt(sel.head);
               // Only intercept if on first line
               if (line.number === 1) {
-                const column = sel.head - line.from;
-                onArrowUpOnFirstLine(column);
+                const cursorCoords = view.coordsAtPos(sel.head);
+                const contentRect = view.contentDOM.getBoundingClientRect();
+                const goalX = cursorCoords ? cursorCoords.left - contentRect.left : 0;
+                onArrowUpOnFirstLine(goalX);
                 return true;
               }
               return false;
@@ -266,6 +268,18 @@ export default function TextEditor(props: TextEditorProps) {
       const anchor = Math.min(initialSelection.anchor, docLen);
       const head = Math.min(initialSelection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
+    } else if (props.selection?.goalX != null) {
+      // Use goalX to position cursor based on pixel X coordinate
+      const contentRect = view.contentDOM.getBoundingClientRect();
+      const targetX = contentRect.left + props.selection.goalX;
+      // Get the last line's Y coordinate for positioning
+      const lastLine = view.state.doc.line(view.state.doc.lines);
+      const lineCoords = view.coordsAtPos(lastLine.from);
+      const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
+      const pos = view.posAtCoords({ x: targetX, y: targetY });
+      if (pos !== null) {
+        view.dispatch({ selection: { anchor: pos } });
+      }
     } else if (props.selection) {
       const docLen = view.state.doc.length;
       const anchor = Math.min(props.selection.anchor, docLen);
@@ -289,6 +303,9 @@ export default function TextEditor(props: TextEditorProps) {
   createEffect(() => {
     const selection = props.selection;
     if (!view || !selection) return;
+
+    // Skip syncing when goalX is set - positioning is handled by mount/effect using posAtCoords
+    if (selection.goalX != null) return;
 
     const currentSel = view.state.selection.main;
     if (

@@ -50,7 +50,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       );
 
       const selectionStream = bufferStream.pipe(
-        Stream.map((buffer): { anchor: number; head: number } | null => {
+        Stream.map((buffer): { anchor: number; head: number; goalX: number | null } | null => {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
@@ -62,6 +62,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           return {
             anchor: sel.anchorOffset,
             head: sel.focusOffset,
+            goalX: sel.goalX ?? null,
           };
         }),
         Stream.changesWith(deepEqual),
@@ -85,7 +86,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     initial: {
       textContent: "",
       isActive: false,
-      selection: null as { anchor: number; head: number } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null } | null,
     },
   });
 
@@ -137,6 +138,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             anchorOffset: 0,
             focusBlockId: targetBlockId,
             focusOffset: 0,
+            goalX: null,
           }),
         );
         yield* Window.setActiveElement(

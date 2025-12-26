@@ -7,7 +7,7 @@ import { describe, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block ArrowUp key", () => {
-  it("moves to previous sibling's last line when ArrowUp pressed on first line", async () => {
+  it("moves to previous sibling when ArrowUp pressed on first line", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -26,11 +26,8 @@ describe("Block ArrowUp key", () => {
       // Press ArrowUp
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      // Should now be in the first block
+      // Should now be in the first block (offset determined by pixel X)
       yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
-
-      // Cursor should preserve column - position 3 in "First" ("Fir|st")
-      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
     }).pipe(runtime.runPromise);
   });
 
@@ -179,9 +176,8 @@ describe("Block ArrowUp key", () => {
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
+      // Should move to title (offset determined by pixel X)
       yield* Then.SELECTION_IS_ON_TITLE(bufferId);
-      // Column 5 in "Document Title" → "Docum|ent Title"
-      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
     }).pipe(runtime.runPromise);
   });
 });

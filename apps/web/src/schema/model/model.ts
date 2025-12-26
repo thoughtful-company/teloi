@@ -29,6 +29,7 @@ export const BufferSelection = Schema.Struct({
   anchorOffset: Schema.Number,
   focusBlockId: Id.Block,
   focusOffset: Schema.Number,
+  goalX: Schema.NullOr(Schema.Number),
 });
 export type BufferSelection = typeof BufferSelection.Type;
 

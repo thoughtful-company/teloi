@@ -30,6 +30,7 @@ describe("Selection sync", () => {
           anchorOffset: 5,
           focusBlockId: blockId,
           focusOffset: 5,
+          goalX: null,
         }),
       );
 
