@@ -9,7 +9,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { EnterKeyInfo, SelectionInfo } from "./TextEditor";
+import TextEditor, { type EnterKeyInfo, type SelectionInfo } from "./TextEditor";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -294,6 +294,94 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleArrowLeftAtStart = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Store = yield* StoreT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        const rootNodeId = Option.isSome(bufferDoc)
+          ? bufferDoc.value.assignedNodeId
+          : null;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        const findDeepestLastChild = (
+          startNodeId: Id.Node,
+        ): Effect.Effect<Id.Node, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const children = yield* Node.getNodeChildren(startNodeId);
+            if (children.length === 0) {
+              return startNodeId;
+            }
+            const lastChild = children[children.length - 1]!;
+            return yield* findDeepestLastChild(lastChild);
+          });
+
+        if (siblingIndex > 0) {
+          const prevSiblingId = siblings[siblingIndex - 1]!;
+          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
+          const targetNode = yield* Node.get(targetNodeId);
+          const endPos = targetNode.textContent.length;
+
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: targetBlockId,
+              anchorOffset: endPos,
+              focusBlockId: targetBlockId,
+              focusOffset: endPos,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        } else if (parentId === rootNodeId) {
+          const rootNode = yield* Node.get(parentId);
+          const endPos = rootNode.textContent.length;
+
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: bufferId as unknown as Id.Block, // Title uses bufferId
+              anchorOffset: endPos,
+              focusBlockId: bufferId as unknown as Id.Block,
+              focusOffset: endPos,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        } else {
+          const parentNode = yield* Node.get(parentId);
+          const endPos = parentNode.textContent.length;
+
+          const parentBlockId = Id.makeBlockId(bufferId, parentId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: parentBlockId,
+              anchorOffset: endPos,
+              focusBlockId: parentBlockId,
+              focusOffset: endPos,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: parentBlockId }),
+          );
+        }
+      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -312,6 +400,7 @@ export default function Block({ blockId }: BlockProps) {
             onTab={handleTab}
             onShiftTab={handleShiftTab}
             onBackspaceAtStart={handleBackspaceAtStart}
+            onArrowLeftAtStart={handleArrowLeftAtStart}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}

@@ -73,6 +73,7 @@ interface TextEditorProps {
   onTab?: () => void;
   onShiftTab?: () => void;
   onBackspaceAtStart?: () => void;
+  onArrowLeftAtStart?: () => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -88,6 +89,7 @@ export default function TextEditor(props: TextEditorProps) {
     onTab,
     onShiftTab,
     onBackspaceAtStart,
+    onArrowLeftAtStart,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -176,6 +178,24 @@ export default function TextEditor(props: TextEditorProps) {
                 return true;
               }
               return false; // Let default handle it
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onArrowLeftAtStart) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "ArrowLeft",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              if (sel.anchor === 0 && sel.head === 0) {
+                onArrowLeftAtStart();
+                return true;
+              }
+              return false;
             },
           },
         ]),

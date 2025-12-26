@@ -103,3 +103,40 @@ export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
     expect(currentBlockId).not.toBeNull();
     expect(currentBlockId).not.toBe(blockId);
   }).pipe(Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"));
+
+/**
+ * Asserts that the DOM selection IS in the specified block.
+ */
+export const SELECTION_IS_ON_BLOCK = (blockId: Id.Block) =>
+  Effect.sync(() => {
+    const currentBlockId = getSelectionBlockId();
+    expect(currentBlockId).toBe(blockId);
+  }).pipe(Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"));
+
+/**
+ * Gets the element ID of the title containing the current DOM selection.
+ */
+const getSelectionTitleId = (): string | null => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+
+  const anchorNode = sel.anchorNode;
+  if (!anchorNode) return null;
+
+  const element =
+    anchorNode.nodeType === Node.ELEMENT_NODE
+      ? (anchorNode as Element)
+      : anchorNode.parentElement;
+
+  const titleEl = element?.closest("[data-element-type='title']");
+  return titleEl?.getAttribute("data-element-id") ?? null;
+};
+
+/**
+ * Asserts that the DOM selection IS in the title for the specified buffer.
+ */
+export const SELECTION_IS_ON_TITLE = (bufferId: Id.Buffer) =>
+  Effect.sync(() => {
+    const currentTitleId = getSelectionTitleId();
+    expect(currentTitleId).toBe(bufferId);
+  }).pipe(Effect.withSpan("Then.SELECTION_IS_ON_TITLE"));
