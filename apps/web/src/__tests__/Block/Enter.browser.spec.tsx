@@ -112,4 +112,5 @@ describe("Block Enter key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
   });
+
 });

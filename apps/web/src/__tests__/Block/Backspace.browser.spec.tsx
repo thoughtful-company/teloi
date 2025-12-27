@@ -73,4 +73,92 @@ describe("Block Backspace key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
     }).pipe(runtime.runPromise);
   });
+
+  /**
+   * - A
+   *   - B
+   * - |C     <- cursor at start
+   *
+   * After Backspace, should merge with visually previous block (B):
+   * - A
+   *   - BC   <- cursor after "B"
+   */
+  it("merges with last descendant of previous sibling when it has children", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Create base structure: root with children A and C
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "A" },
+          { text: "C" },
+        ]);
+
+      const [nodeA, nodeC] = childNodeIds;
+
+      // Add child B to node A
+      const nodeB = yield* Node.insertNode({
+        parentId: nodeA,
+        insert: "after",
+        textContent: "B",
+      });
+
+      const blockC = Id.makeBlockId(bufferId, nodeC);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(blockC);
+      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* When.USER_PRESSES("{Backspace}");
+
+      // Should have 1 top-level child now (A only, C merged into B)
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // A should still have child B (now with merged text)
+      yield* Then.NODE_HAS_CHILDREN(nodeA, 1);
+      yield* Then.NODE_HAS_TEXT(nodeA, "A");
+
+      // B should have merged text "BC"
+      yield* Then.NODE_HAS_TEXT(nodeB, "BC");
+
+      // Cursor should be at merge point (after "B")
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(1);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * - Parent
+   *   - |FirstChild   <- cursor at start, first sibling
+   *
+   * After Backspace, should merge into parent:
+   * - ParentFirstChild   <- cursor after "Parent"
+   */
+  it("merges first child into parent when Backspace pressed at start", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [
+          { text: "FirstChild" },
+        ]);
+
+      const [firstChildId] = childNodeIds;
+      const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* When.USER_PRESSES("{Backspace}");
+
+      // Parent should now have no children (first child merged into it)
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
+
+      // Parent should have merged text
+      yield* Then.NODE_HAS_TEXT(rootNodeId, "ParentFirstChild");
+
+      // Cursor should be at merge point (after "Parent")
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
+    }).pipe(runtime.runPromise);
+  });
 });

@@ -253,28 +253,90 @@ export default function Block({ blockId }: BlockProps) {
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
-        // Get parent and siblings
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        const rootNodeId = Option.isSome(bufferDoc)
+          ? bufferDoc.value.assignedNodeId
+          : null;
+
         const parentId = yield* Node.getParent(nodeId);
         const siblings = yield* Node.getNodeChildren(parentId);
         const siblingIndex = siblings.indexOf(nodeId);
 
-        // Can't merge if first sibling
-        if (siblingIndex <= 0) {
+        // Find the deepest last child of a node (visually previous block)
+        const findDeepestLastChild = (
+          startNodeId: Id.Node,
+        ): Effect.Effect<Id.Node, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const children = yield* Node.getNodeChildren(startNodeId);
+            if (children.length === 0) {
+              return startNodeId;
+            }
+            const lastChild = children[children.length - 1]!;
+            return yield* findDeepestLastChild(lastChild);
+          });
+
+        // First sibling: merge into parent
+        if (siblingIndex === 0) {
+          const currentText = store.textContent;
+          const parentNode = yield* Node.get(parentId);
+          const parentText = parentNode.textContent;
+          const mergePoint = parentText.length;
+
+          yield* Node.setNodeText(parentId, parentText + currentText);
+          yield* Store.commit(
+            events.nodeDeleted({
+              timestamp: Date.now(),
+              data: { nodeId },
+            }),
+          );
+
+          // Move focus to parent (title if root, otherwise block)
+          if (parentId === rootNodeId) {
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { type: "title", bufferId },
+                anchorOffset: mergePoint,
+                focus: { type: "title", bufferId },
+                focusOffset: mergePoint,
+                goalX: null,
+                goalLine: null,
+                assoc: null,
+              }),
+            );
+            yield* Window.setActiveElement(
+              Option.some({ type: "title" as const, bufferId }),
+            );
+          } else {
+            const parentBlockId = Id.makeBlockId(bufferId, parentId);
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { type: "block", id: parentBlockId },
+                anchorOffset: mergePoint,
+                focus: { type: "block", id: parentBlockId },
+                focusOffset: mergePoint,
+                goalX: null,
+                goalLine: null,
+                assoc: null,
+              }),
+            );
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: parentBlockId }),
+            );
+          }
           return;
         }
 
         const prevSiblingId = siblings[siblingIndex - 1]!;
-
-        // Get text from both nodes
+        const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
         const currentText = store.textContent;
-        const prevNode = yield* Node.get(prevSiblingId);
-        const prevText = prevNode.textContent;
-        const mergePoint = prevText.length;
+        const targetNode = yield* Node.get(targetNodeId);
+        const targetText = targetNode.textContent;
+        const mergePoint = targetText.length;
 
-        // Update previous sibling with merged text
-        yield* Node.setNodeText(prevSiblingId, prevText + currentText);
-
-        // Delete current node
+        yield* Node.setNodeText(targetNodeId, targetText + currentText);
         yield* Store.commit(
           events.nodeDeleted({
             timestamp: Date.now(),
@@ -282,14 +344,13 @@ export default function Block({ blockId }: BlockProps) {
           }),
         );
 
-        // Move focus to previous block at merge point
-        const prevBlockId = Id.makeBlockId(bufferId, prevSiblingId);
+        const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: prevBlockId },
+            anchor: { type: "block", id: targetBlockId },
             anchorOffset: mergePoint,
-            focus: { type: "block", id: prevBlockId },
+            focus: { type: "block", id: targetBlockId },
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
@@ -297,7 +358,7 @@ export default function Block({ blockId }: BlockProps) {
           }),
         );
         yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: prevBlockId }),
+          Option.some({ type: "block" as const, id: targetBlockId }),
         );
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
     );
