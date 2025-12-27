@@ -162,6 +162,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         const children = yield* Node.getNodeChildren(nodeId);
         if (children.length === 0) return;
 
+        // Preserve existing goalX if set (for chained arrow navigation)
+        const existingSelection = yield* Buffer.getSelection(bufferId);
+        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
+          ? existingSelection.value.goalX
+          : cursorGoalX;
+
         const firstChildId = children[0]!;
         const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
 
@@ -172,7 +178,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             anchorOffset: 0,
             focus: { type: "block", id: targetBlockId },
             focusOffset: 0,
-            goalX: cursorGoalX,
+            goalX,
             goalLine: "first",
             assoc: null,
           }),

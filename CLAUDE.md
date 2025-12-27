@@ -142,7 +142,7 @@ App
 **Work items**:
 - [x] Render a document object in browser with editable content.
 - [x] Editable block with proper state management
-- [x] Block splitting (Enter key creates new sibling block). 
+- [x] Block splitting (Enter key creates new sibling block).
 - [x] Keyboard navigation between blocks (Arrow keys)
 - [ ] Block merging (Backspace at start merges with previous)
 - [x] Block indentation (Tab/Shift+Tab for nesting)
@@ -152,3 +152,4 @@ App
 - [x] Bug: ArrowUp sets cursor to first line instead of last line
 - [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
 - [x] Add visual comments for tests
+- [x] Bug: goalX not preserved when navigating DOWN from title to blocks

@@ -237,55 +237,81 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
-    if (onArrowUpOnFirstLine) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowUp",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-              const side = props.selection?.assoc ?? -1;
-              const currentY = view.coordsAtPos(sel.head, side)?.top;
-              const moved = view.moveVertically(sel, false);
-              const movedY = view.coordsAtPos(moved.head)?.top;
+    // ArrowUp handler - handles both inter-block navigation and goalX-aware intra-editor navigation
+    extensions.push(
+      keymap.of([
+        {
+          key: "ArrowUp",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
+            const side = props.selection?.assoc ?? -1;
+            const currentY = view.coordsAtPos(sel.head, side)?.top;
+            const moved = view.moveVertically(sel, false);
+            const movedY = view.coordsAtPos(moved.head)?.top;
 
-              if (currentY === movedY) {
-                const cursorCoords = view.coordsAtPos(sel.head, side);
-                onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
+            if (currentY === movedY && onArrowUpOnFirstLine) {
+              // On first visual line - delegate to parent
+              const cursorCoords = view.coordsAtPos(sel.head, side);
+              onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
+              return true;
+            }
+
+            // Moving between visual lines within editor
+            // If we have a goalX, use it instead of CodeMirror's goal column
+            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
+              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+              if (pos !== null) {
+                suppressSelectionChange = true;
+                view.dispatch({ selection: { anchor: pos } });
+                suppressSelectionChange = false;
                 return true;
               }
-              return false;
-            },
+            }
+
+            return false;
           },
-        ]),
-      );
-    }
+        },
+      ]),
+    );
 
-    if (onArrowDownOnLastLine) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowDown",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-              const side = props.selection?.assoc ?? -1;
-              const currentY = view.coordsAtPos(sel.head, side)?.top;
-              const moved = view.moveVertically(sel, true);
-              const movedY = view.coordsAtPos(moved.head)?.top;
+    // ArrowDown handler - handles both inter-block navigation and goalX-aware intra-editor navigation
+    extensions.push(
+      keymap.of([
+        {
+          key: "ArrowDown",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
+            const side = props.selection?.assoc ?? -1;
+            const currentY = view.coordsAtPos(sel.head, side)?.top;
+            const moved = view.moveVertically(sel, true);
+            const movedY = view.coordsAtPos(moved.head)?.top;
 
-              if (currentY === movedY) {
-                const cursorCoords = view.coordsAtPos(sel.head, side);
-                onArrowDownOnLastLine(cursorCoords?.left ?? 0);
+            if (currentY === movedY && onArrowDownOnLastLine) {
+              // On last visual line - delegate to parent
+              const cursorCoords = view.coordsAtPos(sel.head, side);
+              onArrowDownOnLastLine(cursorCoords?.left ?? 0);
+              return true;
+            }
+
+            // Moving between visual lines within editor
+            // If we have a goalX, use it instead of CodeMirror's goal column
+            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
+              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+              if (pos !== null) {
+                suppressSelectionChange = true;
+                view.dispatch({ selection: { anchor: pos } });
+                suppressSelectionChange = false;
                 return true;
               }
-              return false;
-            },
+            }
+
+            return false;
           },
-        ]),
-      );
-    }
+        },
+      ]),
+    );
 
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));

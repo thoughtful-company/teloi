@@ -1,8 +1,9 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
@@ -432,6 +433,129 @@ describe("Block ArrowUp key", () => {
 
       yield* When.USER_PRESSES("{ArrowUp}");
       yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("preserves goalX when title WRAPS to multiple visual lines", async () => {
+    // ******* GIVEN THE BUFFER (actual user bug) *******
+    // Buffer width: ~450px (forces title to wrap)
+    //
+    // - Once upon a midnight   ← first visual line of title
+    //   dreary                 ← second visual line (wrapped)
+    // ====
+    // ▶ While
+    // ▶ I pondered weak and|   ← cursor at END
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // ArrowUp from "I pondered..." should:
+    // 1. Go to "While" (landing on last visual line, using goalX)
+    // 2. Go to Title (landing on LAST visual line "dreary", using goalX)
+    //
+    // The cursor should land at the same viewport X position.
+    //
+    // ******* BUG *******
+    // Cursor lands at wrong position (e.g., position 4 instead of expected)
+    // because goalX isn't being applied correctly to wrapped title
+    await Effect.gen(function* () {
+      const Buffer = yield* BufferT;
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Once upon a midnight dreary",
+        [{ text: "While" }, { text: "I pondered weak and" }],
+      );
+
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // User reported buffer width ~450px
+      yield* Given.BUFFER_HAS_WIDTH(350);
+
+      // Focus second block at END ("I pondered weak and|")
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(19); // End of "I pondered weak and"
+
+      // Capture initial pixel X
+      const xInBlock = yield* Effect.sync(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return 0;
+        return sel.getRangeAt(0).getBoundingClientRect().left;
+      });
+      console.log("xInBlock:", xInBlock);
+
+      // Navigate up twice (Block2 -> While -> Title (last line) -> Title (first line))
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should be in title
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+
+      // Check model state
+      const selInTitle = yield* Buffer.getSelection(bufferId);
+      console.log(
+        "Selection in title:",
+        JSON.stringify(Option.getOrNull(selInTitle), null, 2),
+      );
+
+      // Capture final pixel X, offset, and Y position to check which visual line
+      const { xInTitle, yInTitle, offset, titleRect } = yield* Effect.promise(
+        () =>
+          waitFor(() => {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const titleEl = document.querySelector(
+              "[data-element-type='title']",
+            );
+            return {
+              xInTitle: rect.left,
+              yInTitle: rect.top,
+              offset: sel.anchorOffset,
+              titleRect: titleEl?.getBoundingClientRect(),
+            };
+          }),
+      );
+
+      // Check if title actually wraps by comparing Y of first char vs last char
+      const titleElement = yield* Effect.sync(() =>
+        document.querySelector("[data-element-type='title'] .cm-content"),
+      );
+      const titleLineInfo = yield* Effect.sync(() => {
+        if (!titleElement) return null;
+        const range = document.createRange();
+        const textNode = titleElement.querySelector(".cm-line")?.firstChild;
+        if (!textNode) return null;
+
+        // Get Y of first character
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 1);
+        const firstCharY = range.getBoundingClientRect().top;
+
+        // Get Y of last character
+        const textLength = (textNode as Text).length;
+        range.setStart(textNode, textLength - 1);
+        range.setEnd(textNode, textLength);
+        const lastCharY = range.getBoundingClientRect().top;
+
+        return { firstCharY, lastCharY, wraps: firstCharY !== lastCharY };
+      });
+
+      console.log(
+        "xInTitle:",
+        xInTitle,
+        "yInTitle:",
+        yInTitle,
+        "offset:",
+        offset,
+      );
+      console.log("Title wrapping info:", titleLineInfo);
+      console.log("Delta:", Math.abs(xInTitle - xInBlock));
+
+      // The key assertion: pixel X should be preserved
+      const delta = Math.abs(xInTitle - xInBlock);
+      expect(delta).toBeLessThan(10);
     }).pipe(runtime.runPromise);
   });
 

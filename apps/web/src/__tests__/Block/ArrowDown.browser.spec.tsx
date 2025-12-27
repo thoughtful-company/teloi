@@ -1,8 +1,9 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
@@ -434,6 +435,92 @@ describe("Block ArrowDown key", () => {
 
       // Should move to first block (offset determined by pixel X)
       yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("preserves goalX when navigating DOWN from wrapped title to block", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: ~350px (forces title to wrap)
+    //
+    // - Once upon a midnight   ← first visual line of title
+    //   dreary                 ← second visual line (wrapped)
+    // ====
+    // ▶ While I nodded nearly napping|  ← cursor starts AND ends here
+    // ▶ Second block text here
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // 1. ArrowUp from "While I nodded..." → Title (last visual line "dreary")
+    // 2. ArrowUp within title → first visual line ("Once upon...")
+    // 3. ArrowDown within title → back to "dreary" line
+    // 4. ArrowDown from title → "While I nodded..." block
+    //
+    // The cursor should land at the same viewport X position (goalX preserved)
+    await Effect.gen(function* () {
+      const Buffer = yield* BufferT;
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Once upon a midnight dreary",
+        [{ text: "While I nodded nearly napping" }, { text: "Second block text here" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* Given.BUFFER_HAS_WIDTH(350);
+
+      // Focus first block at END ("While I nodded nearly napping|")
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(29);
+
+      // Capture initial pixel X
+      const xInBlock = yield* Effect.sync(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return 0;
+        return sel.getRangeAt(0).getBoundingClientRect().left;
+      });
+      console.log("xInBlock:", xInBlock);
+
+      // Navigate: Block1 → Title (dreary) → Title (Once upon)
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+
+      // Verify goalX is set in model before going down
+      const selInTitle = yield* Buffer.getSelection(bufferId);
+      console.log(
+        "Selection in title (should have goalX):",
+        JSON.stringify(Option.getOrNull(selInTitle), null, 2),
+      );
+
+      // Now navigate back down: Title (Once upon) → Title (dreary) → Block1
+      yield* When.USER_PRESSES("{ArrowDown}");
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Should be back in first block
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+      // Check model state - goalX should be preserved from original position
+      const selInBlock = yield* Buffer.getSelection(bufferId);
+      console.log(
+        "Selection after navigating back:",
+        JSON.stringify(Option.getOrNull(selInBlock), null, 2),
+      );
+
+      // Capture final pixel X
+      const xAfter = yield* Effect.promise(() =>
+        waitFor(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+          return sel.getRangeAt(0).getBoundingClientRect().left;
+        }),
+      );
+      console.log("xAfter:", xAfter);
+
+      // Pixel X should be preserved within a reasonable tolerance
+      const delta = Math.abs(xAfter - xInBlock);
+      expect(delta).toBeLessThan(10);
     }).pipe(runtime.runPromise);
   });
 });
