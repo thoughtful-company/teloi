@@ -178,6 +178,8 @@ App
 - [x] Mod+. zooms into focused block (navigate to that node)
   - Used `Stream.flatMap` with `{ switch: true }` to switch inner streams when `assignedNodeId` changes
   - Added `keyed` to `<Show>` in EditorBuffer to force Title remount on nodeId change
+- [x] Bug: Pressing Enter in Title creates first child block
+- [ ] Bug: When title is empty, it is not clickable
 
 **Known failing tests** (pre-existing, unrelated to recent work):
 - `ArrowDown.browser.spec.tsx > moves cursor to end of block when at last block and pressing ArrowDown` - expects offset 12, gets 10

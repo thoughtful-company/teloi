@@ -9,7 +9,7 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Option, Stream } from "effect";
 import { onCleanup, onMount, Show } from "solid-js";
-import TextEditor from "./TextEditor";
+import TextEditor, { EnterKeyInfo } from "./TextEditor";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -190,6 +190,42 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
+  const handleEnter = (info: EnterKeyInfo) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        // Title keeps text before cursor, new block gets text after cursor
+        yield* Node.setNodeText(nodeId, info.textBefore);
+
+        const newNodeId = yield* Node.insertNode({
+          parentId: nodeId,
+          insert: "before",
+          textContent: info.textAfter,
+        });
+
+        const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { type: "block", id: newBlockId },
+            anchorOffset: 0,
+            focus: { type: "block", id: newBlockId },
+            focusOffset: 0,
+            goalX: null,
+            goalLine: null,
+            assoc: null,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: newBlockId }),
+        );
+      }),
+    );
+  };
+
   return (
     <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus}>
       <Show
@@ -203,6 +239,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         <TextEditor
           initialText={store.textContent}
           onChange={handleTextChange}
+          onEnter={handleEnter}
           onArrowRightAtEnd={handleArrowRightAtEnd}
           onArrowDownOnLastLine={handleArrowDownOnLastLine}
           initialClickCoords={clickCoords}
