@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block ArrowUp key", () => {
@@ -387,6 +387,51 @@ describe("Block ArrowUp key", () => {
 
       // Should move to title (offset determined by pixel X)
       yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("lands on last visual line of wrapping block when navigating up", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: 100px (forces wrapping)
+    // Title
+    // ==========
+    // ▶ AAAA BBBB     <- first visual line of wrapping block
+    //   CCCC DDDD     <- LAST visual line (cursor should land HERE)
+    //
+    // ▶ Second        <- cursor starts here
+    //
+    // ******* WHEN *******
+    // User presses ArrowUp
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor lands on LAST visual line of first block (CCCC DDDD row)
+    // Pressing ArrowUp again should stay in the same block (move to first visual line)
+    //
+    // ******* BUGGY BEHAVIOR *******
+    // Cursor lands on FIRST visual line (AAAA BBBB row)
+    // Pressing ArrowUp again would move to Title
+    await Effect.gen(function* () {
+      const wrappingText = "AAAA BBBB CCCC DDDD";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: wrappingText }, { text: "Second" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* Given.BUFFER_HAS_WIDTH(100);
+
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
     }).pipe(runtime.runPromise);
   });
 

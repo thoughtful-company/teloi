@@ -35,7 +35,7 @@ pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on comm
 
 Never create type aliases for backwards compatibility (e.g., type OldName = NewName). Either rename the original to the correct name, or update all usages to the correct name. Aliases obscure the codebase and add confusion.
 
-When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit).
+When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
 
 Only write comments that describe non-obvious things happening in code. Don't write comments for self-documenting code.
 
@@ -132,19 +132,18 @@ App
 - **TextEditor**: Thin wrapper around CodeMirror for in-block text editing. Block-level operations (splitting, creating blocks) handled by parent.
 - Advanced features (marks, decorators) via Lezer with custom grammar (future).
 
+**Cursor Navigation Mechanics**:
+- **Selection model**: `BufferSelection` in LiveStore stores anchor/focus offsets, `goalX` (pixel X for vertical nav), `goalLine` ("first"/"last" for target line), and `assoc` (-1/1 for wrap boundary side)
+- **Intra-block**: CodeMirror handles arrow keys. TextEditor intercepts at boundaries via `onArrowUpOnFirstLine`/`onArrowDownOnLastLine` callbacks
+- **Inter-block**: Block.tsx handlers (`handleArrowUpOnFirstLine`, etc.) find target block, set selection in model, and update `WindowT.activeElement`
+- **Wrap boundaries**: At soft wraps, same char position appears at two Y coords. `assoc` field tracks which side cursor is on. Detected via `coordsAtPos(pos, -1).top !== coordsAtPos(pos, 1).top`
+- **Visual line detection**: `view.moveVertically(sel, forward)` returns where cursor would land; compare Y coords to detect first/last visual line
+
 **Work items**:
 - [x] Render a document object in browser with editable content.
 - [x] Editable block with proper state management
 - [x] Block splitting (Enter key creates new sibling block). 
-- [ ] Keyboard navigation between blocks (Arrow keys)
-  - [x] ArrowLeft
-    - [x] At position 0 → focus previous sibling at end
-    - [x] Previous sibling has children → go to deepest last child
-    - [x] First sibling → go to parent
-    - [x] First block in document → go to title
-  - [x] ArrowRight
-  - [x] ArrowUp
-  - [x] ArrowDown
+- [x] Keyboard navigation between blocks (Arrow keys)
 - [ ] Block merging (Backspace at start merges with previous)
 - [ ] Block indentation (Tab/Shift+Tab for nesting)
 - [ ] Verify if selection syncs from livestore to codemirror properly
@@ -156,56 +155,11 @@ App
   - Update `BufferSelection.anchorBlockId`/`focusBlockId` to accept `Id.Block | Id.Title`
   - Update all places that set selection for title to use proper `Id.Title` type
   - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
-- [ ] Bug: ArrowUp/ArrowDown navigation issues
-  - [~] Partial fix: added visual line detection via DOM rects (incomplete, see below)
-    - Files changed: `TextEditor.tsx`, added `src/utils/visualLines.ts`
-    - Tests added: `ArrowUp.browser.spec.tsx` (multi-line with \n, wrapped line)
-  - [ ] Visual line detection fails at line wrap boundaries
-    - Example: "Alice was beginning... having nothing to do." wraps at "nothing |"
-    - Pressing ArrowDown from "nothing |" should go to "to do.|" but goes to next block
-    - Root cause: DOM text node rects don't match CodeMirror's internal wrap points
-    - Current impl in `src/utils/visualLines.ts` uses browser DOM rects - DELETE THIS
-    - **Fix approach**: Use CodeMirror's `moveVertically` + compare Y coordinates:
-      ```typescript
-      // In ArrowUp handler (TextEditor.tsx):
-      const sel = view.state.selection.main;
-      const currentY = view.coordsAtPos(sel.head)?.top;
-      const moved = view.moveVertically(sel, false); // false = up
-      const movedY = view.coordsAtPos(moved.head)?.top;
-
-      if (currentY === movedY) {
-        // Can't move up within block → navigate to previous block
-        onArrowUpOnFirstLine(goalX);
-        return true;
-      }
-      return false; // Let CodeMirror handle intra-block movement
-      ```
-    - Same pattern for ArrowDown with `moveVertically(sel, true)`
-    - This uses CodeMirror's internal layout knowledge, not DOM parsing
-    - Previous attempt compared `head` positions directly which failed; comparing Y should work
-  - [ ] ArrowUp sets cursor to first line instead of last line
-    - When navigating up to a multi-line block, cursor should land on the LAST line
-    - Currently lands on first line (goalLine: "last" not being respected?)
+- [x] Bug: ArrowUp/ArrowDown at wrap boundaries
+- [x] Bug: ArrowUp sets cursor to first line instead of last line
 - [ ] Bug: Multi-line blocks render as single line in view mode
   - Block with "a\na" (two lines) renders as "a a" when unfocused
   - When focused with CodeMirror, it expands to show proper line breaks
   - Issue is in the unfocused `<p>` fallback in Block.tsx - it just renders `{store.textContent}`
   - Need to either: render `\n` as `<br>`, use `white-space: pre-wrap`, or split into multiple elements
-- [ ] Add visual comments for tests
-    // ******* GIVEN THE BUFFER *******
-    // Title
-    // ==========
-    // ▶ Child 1
-    // ▶ Ch|ild 2
-    //     ^  ← CURSOR HERE (position 2)
-    //
-    // ******* WHEN *******
-    // User presses |↑| (arrow up)
-    //
-    // ******* EXPECTED BEHAVIOR *******
-    // Cursor moves one block up to the same place
-    // Title
-    // ==========
-    // ▶ Child 1
-    //     ^  ← CURSOR HERE (position 2)
-    // ▶ Ch|ild 2
+- [x] Add visual comments for tests

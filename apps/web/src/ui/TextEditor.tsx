@@ -309,10 +309,10 @@ export default function TextEditor(props: TextEditorProps) {
       view.dispatch({ selection: { anchor, head } });
     } else if (props.selection?.goalX != null && props.selection?.goalLine != null) {
       // Use goalX (absolute viewport X) to position cursor on the target line
-      const targetLine = props.selection.goalLine === "first"
-        ? view.state.doc.line(1)
-        : view.state.doc.line(view.state.doc.lines);
-      const lineCoords = view.coordsAtPos(targetLine.from);
+      // For "first": use position 0 (start of doc) to get Y of first visual line
+      // For "last": use doc.length (end of doc) to get Y of last visual line
+      const linePos = props.selection.goalLine === "first" ? 0 : view.state.doc.length;
+      const lineCoords = view.coordsAtPos(linePos);
       const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
       const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
