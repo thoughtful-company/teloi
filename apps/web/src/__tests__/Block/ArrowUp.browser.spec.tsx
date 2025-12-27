@@ -8,6 +8,83 @@ import { describe, it, expect } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block ArrowUp key", () => {
+  it("navigates within multi-line block (with newlines) before jumping to previous block", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Title
+    // ==========
+    // ▶ Line1
+    //   Line2
+    //   Li|ne3  ← CURSOR ON LAST LINE (position 14)
+    //
+    // ******* WHEN *******
+    // User presses ArrowUp
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves UP within the same block (to Line2)
+    // NOT to the previous block (Title)
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: "Line1\nLine2\nLine3" }],
+      );
+
+      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus the block and move to Line3 (position 14 = "Line1\nLine2\nLi|ne3")
+      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* When.USER_MOVES_CURSOR_TO(14);
+
+      // Press ArrowUp - should move to Line2, NOT to Title
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should still be in the same block
+      yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("navigates within wrapped line before jumping to previous block", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Title
+    // ==========
+    // ▶ This is a very long text that will definitely wrap to multiple
+    //   visual lines in the editor because it exceeds the container| width
+    //                                                               ^
+    //                                        CURSOR ON WRAPPED PORTION
+    //
+    // ******* WHEN *******
+    // User presses ArrowUp
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves UP within the same block (to previous visual line)
+    // NOT to the previous block (Title)
+    await Effect.gen(function* () {
+      // Text long enough to wrap (no \n - single logical line, multiple visual lines)
+      const longText =
+        "This is a very long text that will definitely wrap to multiple visual lines in the editor because it exceeds the container width and needs to flow onto subsequent rows";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: longText }],
+      );
+
+      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus the block and move to near the end (should be on wrapped line)
+      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* When.USER_MOVES_CURSOR_TO(longText.length - 10); // Near end
+
+      // Press ArrowUp - should move within block, NOT to Title
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should still be in the same block (on previous visual line)
+      yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+    }).pipe(runtime.runPromise);
+  });
+
   it("moves to previous sibling when ArrowUp pressed on first line", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(

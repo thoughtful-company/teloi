@@ -156,6 +156,22 @@ App
   - Update `BufferSelection.anchorBlockId`/`focusBlockId` to accept `Id.Block | Id.Title`
   - Update all places that set selection for title to use proper `Id.Title` type
   - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
+- [ ] Bug: ArrowUp/ArrowDown navigation issues
+  - [x] Fixed logical line detection (now uses visual lines via DOM rects)
+  - [ ] Visual line detection fails at line wrap boundaries
+    - Example: "Alice was beginning... having nothing to do." wraps at "nothing |"
+    - Pressing ArrowDown from "nothing |" should go to "to do.|" but goes to next block
+    - Root cause: DOM text node rects don't match CodeMirror's internal wrap points
+    - Need to use CodeMirror's `moveVertically` or `visualLineAt` instead of DOM parsing
+    - Current impl in `src/utils/visualLines.ts` uses browser DOM rects
+  - [ ] ArrowUp sets cursor to first line instead of last line
+    - When navigating up to a multi-line block, cursor should land on the LAST line
+    - Currently lands on first line (goalLine: "last" not being respected?)
+- [ ] Bug: Multi-line blocks render as single line in view mode
+  - Block with "a\na" (two lines) renders as "a a" when unfocused
+  - When focused with CodeMirror, it expands to show proper line breaks
+  - Issue is in the unfocused `<p>` fallback in Block.tsx - it just renders `{store.textContent}`
+  - Need to either: render `\n` as `<br>`, use `white-space: pre-wrap`, or split into multiple elements
 - [ ] Add visual comments for tests
     // ******* GIVEN THE BUFFER *******
     // Title

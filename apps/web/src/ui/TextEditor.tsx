@@ -1,6 +1,8 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { isOnFirstVisualLine, isOnLastVisualLine } from "@/utils/visualLines";
+import { Effect } from "effect";
 import { createEffect, onCleanup, onMount } from "solid-js";
 
 export type TextEditorVariant = "block" | "title";
@@ -236,13 +238,16 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowUp",
             run: (view) => {
               const sel = view.state.selection.main;
-              const line = view.state.doc.lineAt(sel.head);
-              // Only intercept if on first line
-              if (line.number === 1) {
-                const cursorCoords = view.coordsAtPos(sel.head);
-                // Store absolute viewport X to preserve position across indent levels
-                const goalX = cursorCoords ? cursorCoords.left : 0;
-                onArrowUpOnFirstLine(goalX);
+              const cursorCoords = view.coordsAtPos(sel.head);
+              if (!cursorCoords) {
+                onArrowUpOnFirstLine(0);
+                return true;
+              }
+              const isFirstLine = Effect.runSync(
+                isOnFirstVisualLine(view.contentDOM, cursorCoords.top),
+              );
+              if (isFirstLine) {
+                onArrowUpOnFirstLine(cursorCoords.left);
                 return true;
               }
               return false;
@@ -259,12 +264,16 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowDown",
             run: (view) => {
               const sel = view.state.selection.main;
-              const line = view.state.doc.lineAt(sel.head);
-              // Only intercept if on last line
-              if (line.number === view.state.doc.lines) {
-                const cursorCoords = view.coordsAtPos(sel.head);
-                const goalX = cursorCoords ? cursorCoords.left : 0;
-                onArrowDownOnLastLine(goalX);
+              const cursorCoords = view.coordsAtPos(sel.head);
+              if (!cursorCoords) {
+                onArrowDownOnLastLine(0);
+                return true;
+              }
+              const isLastLine = Effect.runSync(
+                isOnLastVisualLine(view.contentDOM, cursorCoords.top),
+              );
+              if (isLastLine) {
+                onArrowDownOnLastLine(cursorCoords.left);
                 return true;
               }
               return false;
