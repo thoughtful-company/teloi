@@ -75,6 +75,7 @@ interface TextEditorProps {
   onTab?: () => void;
   onShiftTab?: () => void;
   onBackspaceAtStart?: () => void;
+  onDeleteAtEnd?: () => void;
   onArrowLeftAtStart?: () => void;
   onArrowRightAtEnd?: () => void;
   onArrowUpOnFirstLine?: (goalX: number) => void;
@@ -83,6 +84,7 @@ interface TextEditorProps {
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
+  text?: string;
   variant?: TextEditorVariant;
 }
 
@@ -94,6 +96,7 @@ export default function TextEditor(props: TextEditorProps) {
     onTab,
     onShiftTab,
     onBackspaceAtStart,
+    onDeleteAtEnd,
     onArrowLeftAtStart,
     onArrowRightAtEnd,
     onArrowUpOnFirstLine,
@@ -108,13 +111,15 @@ export default function TextEditor(props: TextEditorProps) {
   let view: EditorView | undefined;
   // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
   let suppressSelectionChange = false;
+  // Suppress onChange for programmatic text updates (external sync)
+  let suppressOnChange = false;
 
   onMount(() => {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
       variantThemes[variant],
       EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
+        if (update.docChanged && !suppressOnChange) {
           onChange(update.state.doc.toString());
         }
         if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
@@ -191,6 +196,26 @@ export default function TextEditor(props: TextEditorProps) {
               // Only intercept if cursor is at start and no selection
               if (sel.anchor === 0 && sel.head === 0) {
                 onBackspaceAtStart();
+                return true;
+              }
+              return false; // Let default handle it
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onDeleteAtEnd) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Delete",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const docLen = view.state.doc.length;
+              // Only intercept if cursor is at end and no selection
+              if (sel.anchor === docLen && sel.head === docLen) {
+                onDeleteAtEnd();
                 return true;
               }
               return false; // Let default handle it
@@ -387,6 +412,26 @@ export default function TextEditor(props: TextEditorProps) {
     const anchor = Math.min(selection.anchor, docLen);
     const head = Math.min(selection.head, docLen);
     view.dispatch({ selection: { anchor, head } });
+  });
+
+  // Sync text from model to CodeMirror (for external updates like merges)
+  createEffect(() => {
+    const text = props.text;
+    if (!view || text === undefined) return;
+
+    const currentText = view.state.doc.toString();
+    if (currentText === text) return; // Already in sync
+
+    // Preserve cursor position during text replacement
+    const sel = view.state.selection.main;
+    const cursorPos = Math.min(sel.head, text.length);
+
+    suppressOnChange = true;
+    view.dispatch({
+      changes: { from: 0, to: currentText.length, insert: text },
+      selection: { anchor: cursorPos },
+    });
+    suppressOnChange = false;
   });
 
   return <div ref={containerRef} />;

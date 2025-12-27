@@ -37,7 +37,12 @@ Never create type aliases for backwards compatibility (e.g., type OldName = NewN
 
 When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
 
-Only write comments that describe non-obvious things happening in code. Don't write comments for self-documenting code.
+Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
+- Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
+- Workarounds for external limitations ("CodeMirror doesn't expose X, so we...")
+- Important constraints or invariants that aren't obvious from the code
+
+Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
 
 ## Project Structure
 
@@ -144,7 +149,7 @@ App
 - [x] Editable block with proper state management
 - [x] Block splitting (Enter key creates new sibling block).
 - [x] Keyboard navigation between blocks (Arrow keys)
-- [ ] Block merging (Backspace at start merges with previous)
+- [x] Block merging (Backspace at start, Delete at end)
 - [x] Block indentation (Tab/Shift+Tab for nesting)
 - [x] Verify if selection syncs from livestore to codemirror properly
 - [x] Fix Title ID typing in selection model (used discriminated union: `SelectionTarget = { type: "block", id } | { type: "title", bufferId }`)

@@ -364,6 +364,102 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleDeleteAtEnd = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Store = yield* StoreT;
+        const Buffer = yield* BufferT;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+
+        // If has children, merge with first child
+        if (children.length > 0) {
+          const firstChildId = children[0]!;
+          const currentText = store.textContent;
+          const mergePoint = currentText.length;
+          const firstChildNode = yield* Node.get(firstChildId);
+          const childText = firstChildNode.textContent;
+
+          yield* Node.setNodeText(nodeId, currentText + childText);
+          yield* Store.commit(
+            events.nodeDeleted({
+              timestamp: Date.now(),
+              data: { nodeId: firstChildId },
+            }),
+          );
+
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchor: { type: "block", id: blockId },
+              anchorOffset: mergePoint,
+              focus: { type: "block", id: blockId },
+              focusOffset: mergePoint,
+              goalX: null,
+              goalLine: null,
+              assoc: null,
+            }),
+          );
+          return;
+        }
+
+        // Find next node in document order (next sibling, or parent's next sibling, etc.)
+        const findNextNode = (
+          currentId: Id.Node,
+        ): Effect.Effect<Id.Node | null, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const parentId = yield* Node.getParent(currentId).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed(null as Id.Node | null),
+              ),
+            );
+            if (!parentId) return null;
+
+            const siblings = yield* Node.getNodeChildren(parentId);
+            const idx = siblings.indexOf(currentId);
+
+            if (idx < siblings.length - 1) {
+              return siblings[idx + 1]!;
+            }
+
+            return yield* findNextNode(parentId);
+          });
+
+        const nextNodeId = yield* findNextNode(nodeId);
+        if (!nextNodeId) return;
+
+        const currentText = store.textContent;
+        const mergePoint = currentText.length;
+        const nextNode = yield* Node.get(nextNodeId);
+        const nextText = nextNode.textContent;
+
+        yield* Node.setNodeText(nodeId, currentText + nextText);
+        yield* Store.commit(
+          events.nodeDeleted({
+            timestamp: Date.now(),
+            data: { nodeId: nextNodeId },
+          }),
+        );
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { type: "block", id: blockId },
+            anchorOffset: mergePoint,
+            focus: { type: "block", id: blockId },
+            focusOffset: mergePoint,
+            goalX: null,
+            goalLine: null,
+            assoc: null,
+          }),
+        );
+      }),
+    );
+  };
+
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -730,11 +826,13 @@ export default function Block({ blockId }: BlockProps) {
         >
           <TextEditor
             initialText={store.textContent}
+            text={store.textContent}
             onChange={handleTextChange}
             onEnter={handleEnter}
             onTab={handleTab}
             onShiftTab={handleShiftTab}
             onBackspaceAtStart={handleBackspaceAtStart}
+            onDeleteAtEnd={handleDeleteAtEnd}
             onArrowLeftAtStart={handleArrowLeftAtStart}
             onArrowRightAtEnd={handleArrowRightAtEnd}
             onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
