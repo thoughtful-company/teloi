@@ -662,7 +662,7 @@ export default function Block({ blockId }: BlockProps) {
         <Show
           when={store.isActive}
           fallback={
-            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)]">
+            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-pre-wrap">
               {store.textContent || "\u00A0"}
             </p>
           }

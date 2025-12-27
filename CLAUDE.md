@@ -157,9 +157,5 @@ App
   - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
 - [x] Bug: ArrowUp/ArrowDown at wrap boundaries
 - [x] Bug: ArrowUp sets cursor to first line instead of last line
-- [ ] Bug: Multi-line blocks render as single line in view mode
-  - Block with "a\na" (two lines) renders as "a a" when unfocused
-  - When focused with CodeMirror, it expands to show proper line breaks
-  - Issue is in the unfocused `<p>` fallback in Block.tsx - it just renders `{store.textContent}`
-  - Need to either: render `\n` as `<br>`, use `white-space: pre-wrap`, or split into multiple elements
+- [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
 - [x] Add visual comments for tests
