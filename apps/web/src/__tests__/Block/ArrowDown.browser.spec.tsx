@@ -383,6 +383,38 @@ describe("Block ArrowDown key", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("moves cursor to end of block when at last block and pressing ArrowDown", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Title
+    // ==========
+    // ▶ First block
+    // ▶ Last b|lock    <- cursor at position 5
+    //
+    // ******* WHEN *******
+    // User presses ArrowDown (no blocks below)
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves to end of "Last block" (position 10)
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: "First block" }, { text: "Last block" }],
+      );
+
+      const lastBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(lastBlockId);
+      yield* When.SELECTION_IS_SET_TO(bufferId, lastBlockId, 5);
+
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(lastBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(10);
+    }).pipe(runtime.runPromise);
+  });
+
   it("moves from title to first block when ArrowDown pressed", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(

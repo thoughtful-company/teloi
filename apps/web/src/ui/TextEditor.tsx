@@ -244,19 +244,18 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowUp",
             run: (view) => {
               const sel = view.state.selection.main;
-              const currentY = view.coordsAtPos(sel.head)?.top;
-              // Use CodeMirror's moveVertically to check if we can move up
-              const moved = view.moveVertically(sel, false); // false = up
+              // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
+              const side = props.selection?.assoc ?? -1;
+              const currentY = view.coordsAtPos(sel.head, side)?.top;
+              const moved = view.moveVertically(sel, false);
               const movedY = view.coordsAtPos(moved.head)?.top;
 
-              // If Y doesn't change, we're on the first visual line
-              // (moveVertically may change position within same line, so check Y not position)
               if (currentY === movedY) {
-                const cursorCoords = view.coordsAtPos(sel.head);
+                const cursorCoords = view.coordsAtPos(sel.head, side);
                 onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
                 return true;
               }
-              return false; // Let CodeMirror handle intra-block movement
+              return false;
             },
           },
         ]),
@@ -270,22 +269,18 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowDown",
             run: (view) => {
               const sel = view.state.selection.main;
-              // Use assoc from props if set (from model), otherwise default to -1
-              // assoc determines which side of wrap boundary the cursor is on:
-              // -1 = end of prev line, 1 = start of next line
+              // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
               const side = props.selection?.assoc ?? -1;
               const currentY = view.coordsAtPos(sel.head, side)?.top;
-              // Use CodeMirror's moveVertically to check if we can move down
-              const moved = view.moveVertically(sel, true); // true = down
+              const moved = view.moveVertically(sel, true);
               const movedY = view.coordsAtPos(moved.head)?.top;
 
-              // If Y doesn't change, we're on the last visual line
               if (currentY === movedY) {
                 const cursorCoords = view.coordsAtPos(sel.head, side);
                 onArrowDownOnLastLine(cursorCoords?.left ?? 0);
                 return true;
               }
-              return false; // Let CodeMirror handle intra-block movement
+              return false;
             },
           },
         ]),

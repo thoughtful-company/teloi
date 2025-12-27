@@ -318,6 +318,56 @@ describe("Block ArrowUp key", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("moves to prev block when cursor is at end of first visual line", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: 100px (forces wrapping)
+    // Title
+    // ==========
+    // ▶ First block
+    //
+    // ▶ AAAA BBBB|    <- cursor at END of first visual line (position 10, assoc=-1)
+    //   CCCC DDDD     <- second visual line (wrapped)
+    //
+    // ******* WHEN *******
+    // User presses ArrowUp
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves to "First block" because we're on the FIRST visual line
+    // NOT stay in current block (which happens if assoc isn't used)
+    await Effect.gen(function* () {
+      const wrappingText = "AAAA BBBB CCCC DDDD";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: "First block" }, { text: wrappingText }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Set narrow width to force wrapping
+      yield* Given.BUFFER_HAS_WIDTH(100);
+
+      // Focus the second block
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+
+      // Set selection to position 10 (wrap point - end of "BBBB ") via model
+      // This is where associativity matters: position 10 could be:
+      // - END of "AAAA BBBB " (line 1) - assoc=-1
+      // - START of "CCCC DDDD" (line 2) - assoc=+1
+      // We want it at END of line 1, so ArrowUp should go to prev block
+      yield* When.SELECTION_IS_SET_TO(bufferId, secondBlockId, 10, -1);
+
+      // Press ArrowUp
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should move to first block (since we're on the first visual line)
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
   it("moves to title when at first block in document", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
