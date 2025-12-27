@@ -76,10 +76,11 @@ interface TextEditorProps {
   onArrowLeftAtStart?: () => void;
   onArrowRightAtEnd?: () => void;
   onArrowUpOnFirstLine?: (goalX: number) => void;
+  onArrowDownOnLastLine?: (goalX: number) => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
-  selection?: { anchor: number; head: number; goalX?: number | null } | null;
+  selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null } | null;
   variant?: TextEditorVariant;
 }
 
@@ -94,6 +95,7 @@ export default function TextEditor(props: TextEditorProps) {
     onArrowLeftAtStart,
     onArrowRightAtEnd,
     onArrowUpOnFirstLine,
+    onArrowDownOnLastLine,
     onSelectionChange,
     initialClickCoords,
     initialSelection,
@@ -250,6 +252,28 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
+    if (onArrowDownOnLastLine) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "ArrowDown",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const line = view.state.doc.lineAt(sel.head);
+              // Only intercept if on last line
+              if (line.number === view.state.doc.lines) {
+                const cursorCoords = view.coordsAtPos(sel.head);
+                const goalX = cursorCoords ? cursorCoords.left : 0;
+                onArrowDownOnLastLine(goalX);
+                return true;
+              }
+              return false;
+            },
+          },
+        ]),
+      );
+    }
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
@@ -270,11 +294,12 @@ export default function TextEditor(props: TextEditorProps) {
       const anchor = Math.min(initialSelection.anchor, docLen);
       const head = Math.min(initialSelection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
-    } else if (props.selection?.goalX != null) {
-      // Use goalX (absolute viewport X) to position cursor
-      // Get the last line's Y coordinate for positioning
-      const lastLine = view.state.doc.line(view.state.doc.lines);
-      const lineCoords = view.coordsAtPos(lastLine.from);
+    } else if (props.selection?.goalX != null && props.selection?.goalLine != null) {
+      // Use goalX (absolute viewport X) to position cursor on the target line
+      const targetLine = props.selection.goalLine === "first"
+        ? view.state.doc.line(1)
+        : view.state.doc.line(view.state.doc.lines);
+      const lineCoords = view.coordsAtPos(targetLine.from);
       const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
       const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
@@ -308,8 +333,8 @@ export default function TextEditor(props: TextEditorProps) {
     const selection = props.selection;
     if (!view || !selection) return;
 
-    // Skip syncing when goalX is set - positioning is handled by mount/effect using posAtCoords
-    if (selection.goalX != null) return;
+    // Skip syncing when goalX and goalLine are set - positioning is handled by mount using posAtCoords
+    if (selection.goalX != null && selection.goalLine != null) return;
 
     const currentSel = view.state.selection.main;
     if (

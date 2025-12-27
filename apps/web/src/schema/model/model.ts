@@ -30,6 +30,7 @@ export const BufferSelection = Schema.Struct({
   focusBlockId: Id.Block,
   focusOffset: Schema.Number,
   goalX: Schema.NullOr(Schema.Number),
+  goalLine: Schema.NullOr(Schema.Literal("first", "last")),
 });
 export type BufferSelection = typeof BufferSelection.Type;
 

@@ -58,7 +58,7 @@ export default function Block({ blockId }: BlockProps) {
       textContent: "",
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number; goalX: number | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null,
     },
   });
 
@@ -128,6 +128,7 @@ export default function Block({ blockId }: BlockProps) {
             focusBlockId: blockId,
             focusOffset: selection.head,
             goalX: null,
+            goalLine: null,
           }),
         );
       }),
@@ -167,6 +168,7 @@ export default function Block({ blockId }: BlockProps) {
             focusBlockId: newBlockId,
             focusOffset: 0,
             goalX: null,
+            goalLine: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -288,6 +290,7 @@ export default function Block({ blockId }: BlockProps) {
             focusBlockId: prevBlockId,
             focusOffset: mergePoint,
             goalX: null,
+            goalLine: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -343,6 +346,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: targetBlockId,
               focusOffset: endPos,
               goalX: null,
+              goalLine: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -360,6 +364,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: bufferId as unknown as Id.Block,
               focusOffset: endPos,
               goalX: null,
+              goalLine: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -378,6 +383,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: parentBlockId,
               focusOffset: endPos,
               goalX: null,
+              goalLine: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -409,6 +415,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: targetBlockId,
               focusOffset: 0,
               goalX: null,
+              goalLine: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -451,6 +458,7 @@ export default function Block({ blockId }: BlockProps) {
             focusBlockId: targetBlockId,
             focusOffset: 0,
             goalX: null,
+            goalLine: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -510,6 +518,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: targetBlockId,
               focusOffset: 0,
               goalX,
+              goalLine: "last",
             }),
           );
           yield* Window.setActiveElement(
@@ -524,6 +533,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: bufferId as unknown as Id.Block,
               focusOffset: 0,
               goalX,
+              goalLine: "last",
             }),
           );
           yield* Window.setActiveElement(
@@ -540,6 +550,7 @@ export default function Block({ blockId }: BlockProps) {
               focusBlockId: parentBlockId,
               focusOffset: 0,
               goalX,
+              goalLine: "last",
             }),
           );
           yield* Window.setActiveElement(
@@ -547,6 +558,88 @@ export default function Block({ blockId }: BlockProps) {
           );
         }
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
+  const handleArrowDownOnLastLine = (cursorGoalX: number) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        // Preserve existing goalX if set (for chained arrow navigation)
+        const existingSelection = yield* Buffer.getSelection(bufferId);
+        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
+          ? existingSelection.value.goalX
+          : cursorGoalX;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+
+        // If has children, go to first child
+        if (children.length > 0) {
+          const firstChildId = children[0]!;
+          const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: targetBlockId,
+              anchorOffset: 0,
+              focusBlockId: targetBlockId,
+              focusOffset: 0,
+              goalX,
+              goalLine: "first",
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+          return;
+        }
+
+        // Find next node in document order (next sibling, or parent's next sibling, etc.)
+        const findNextNode = (
+          currentId: Id.Node,
+        ): Effect.Effect<Id.Node | null, never, NodeT> =>
+          Effect.gen(function* () {
+            const Node = yield* NodeT;
+            const parentId = yield* Node.getParent(currentId).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed(null as Id.Node | null),
+              ),
+            );
+            if (!parentId) return null;
+
+            const siblings = yield* Node.getNodeChildren(parentId);
+            const idx = siblings.indexOf(currentId);
+
+            if (idx < siblings.length - 1) {
+              return siblings[idx + 1]!;
+            }
+
+            return yield* findNextNode(parentId);
+          });
+
+        const nextNodeId = yield* findNextNode(nodeId);
+        if (!nextNodeId) return;
+
+        const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: targetBlockId,
+            anchorOffset: 0,
+            focusBlockId: targetBlockId,
+            focusOffset: 0,
+            goalX,
+            goalLine: "first",
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
     );
   };
 
@@ -571,6 +664,7 @@ export default function Block({ blockId }: BlockProps) {
             onArrowLeftAtStart={handleArrowLeftAtStart}
             onArrowRightAtEnd={handleArrowRightAtEnd}
             onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
+            onArrowDownOnLastLine={handleArrowDownOnLastLine}
             onSelectionChange={handleSelectionChange}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}

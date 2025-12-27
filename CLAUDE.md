@@ -144,10 +144,18 @@ App
     - [x] First block in document → go to title
   - [x] ArrowRight
   - [x] ArrowUp
-  - [ ] ArrowDown
+  - [x] ArrowDown
 - [ ] Block merging (Backspace at start merges with previous)
 - [ ] Block indentation (Tab/Shift+Tab for nesting)
 - [ ] Verify if selection syncs from livestore to codemirror properly
+- [ ] Fix Title ID typing in selection model
+  - Currently uses `bufferId as unknown as Id.Block` hack when title is selected
+  - Title ID should follow the pattern `bufferId:bufferId` (e.g., `abc123:abc123`)
+  - Add `Id.Title` branded type to schema (similar to `Id.Block`)
+  - Add `Id.makeTitleId(bufferId)` helper that creates `${bufferId}:${bufferId}`
+  - Update `BufferSelection.anchorBlockId`/`focusBlockId` to accept `Id.Block | Id.Title`
+  - Update all places that set selection for title to use proper `Id.Title` type
+  - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
 - [ ] Add visual comments for tests
     // ******* GIVEN THE BUFFER *******
     // Title

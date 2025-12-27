@@ -31,6 +31,7 @@ describe("Selection sync", () => {
           focusBlockId: blockId,
           focusOffset: 5,
           goalX: null,
+          goalLine: null,
         }),
       );
 

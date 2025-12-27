@@ -50,7 +50,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       );
 
       const selectionStream = bufferStream.pipe(
-        Stream.map((buffer): { anchor: number; head: number; goalX: number | null } | null => {
+        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null => {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
@@ -63,6 +63,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             anchor: sel.anchorOffset,
             head: sel.focusOffset,
             goalX: sel.goalX ?? null,
+            goalLine: sel.goalLine ?? null,
           };
         }),
         Stream.changesWith(deepEqual),
@@ -86,7 +87,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     initial: {
       textContent: "",
       isActive: false,
-      selection: null as { anchor: number; head: number; goalX: number | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null,
     },
   });
 
@@ -139,6 +140,38 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusBlockId: targetBlockId,
             focusOffset: 0,
             goalX: null,
+            goalLine: null,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
+    );
+  };
+
+  const handleArrowDownOnLastLine = (cursorGoalX: number) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+        if (children.length === 0) return;
+
+        const firstChildId = children[0]!;
+        const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchorBlockId: targetBlockId,
+            anchorOffset: 0,
+            focusBlockId: targetBlockId,
+            focusOffset: 0,
+            goalX: cursorGoalX,
+            goalLine: "first",
           }),
         );
         yield* Window.setActiveElement(
@@ -162,6 +195,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           initialText={store.textContent}
           onChange={handleTextChange}
           onArrowRightAtEnd={handleArrowRightAtEnd}
+          onArrowDownOnLastLine={handleArrowDownOnLastLine}
           initialClickCoords={clickCoords}
           selection={store.selection}
           variant="title"
