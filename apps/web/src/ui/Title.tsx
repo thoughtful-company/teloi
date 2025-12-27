@@ -54,8 +54,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
-          // Title uses bufferId as anchorBlockId (hack)
-          if (sel.anchorBlockId !== (bufferId as unknown as Id.Block)) {
+          // Only return selection if anchor is on title
+          if (sel.anchor.type !== "title" || sel.anchor.bufferId !== bufferId) {
             return null;
           }
 
@@ -136,9 +136,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: targetBlockId,
+            anchor: { type: "block", id: targetBlockId },
             anchorOffset: 0,
-            focusBlockId: targetBlockId,
+            focus: { type: "block", id: targetBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -168,9 +168,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: targetBlockId,
+            anchor: { type: "block", id: targetBlockId },
             anchorOffset: 0,
-            focusBlockId: targetBlockId,
+            focus: { type: "block", id: targetBlockId },
             focusOffset: 0,
             goalX: cursorGoalX,
             goalLine: "first",

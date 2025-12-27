@@ -145,16 +145,9 @@ App
 - [x] Block splitting (Enter key creates new sibling block). 
 - [x] Keyboard navigation between blocks (Arrow keys)
 - [ ] Block merging (Backspace at start merges with previous)
-- [ ] Block indentation (Tab/Shift+Tab for nesting)
-- [ ] Verify if selection syncs from livestore to codemirror properly
-- [ ] Fix Title ID typing in selection model
-  - Currently uses `bufferId as unknown as Id.Block` hack when title is selected
-  - Title ID should follow the pattern `bufferId:bufferId` (e.g., `abc123:abc123`)
-  - Add `Id.Title` branded type to schema (similar to `Id.Block`)
-  - Add `Id.makeTitleId(bufferId)` helper that creates `${bufferId}:${bufferId}`
-  - Update `BufferSelection.anchorBlockId`/`focusBlockId` to accept `Id.Block | Id.Title`
-  - Update all places that set selection for title to use proper `Id.Title` type
-  - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
+- [x] Block indentation (Tab/Shift+Tab for nesting)
+- [x] Verify if selection syncs from livestore to codemirror properly
+- [x] Fix Title ID typing in selection model (used discriminated union: `SelectionTarget = { type: "block", id } | { type: "title", bufferId }`)
 - [x] Bug: ArrowUp/ArrowDown at wrap boundaries
 - [x] Bug: ArrowUp sets cursor to first line instead of last line
 - [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)

@@ -24,10 +24,17 @@ export const Pane = Schema.Struct({
 });
 export type Pane = typeof Pane.Type;
 
+/** Target of a selection point - either a block or the title */
+export const SelectionTarget = Schema.Union(
+  Schema.Struct({ type: Schema.Literal("block"), id: Id.Block }),
+  Schema.Struct({ type: Schema.Literal("title"), bufferId: Id.Buffer }),
+);
+export type SelectionTarget = typeof SelectionTarget.Type;
+
 export const BufferSelection = Schema.Struct({
-  anchorBlockId: Id.Block,
+  anchor: SelectionTarget,
   anchorOffset: Schema.Number,
-  focusBlockId: Id.Block,
+  focus: SelectionTarget,
   focusOffset: Schema.Number,
   goalX: Schema.NullOr(Schema.Number),
   goalLine: Schema.NullOr(Schema.Literal("first", "last")),

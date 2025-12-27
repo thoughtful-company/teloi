@@ -34,7 +34,11 @@ export const setSelection = (
         bufferId,
         selection: Option.match(selection, {
           onNone: () => null,
-          onSome: (s) => `${s.anchorBlockId}:${s.anchorOffset}-${s.focusBlockId}:${s.focusOffset}`,
+          onSome: (s) => {
+            const anchorId = s.anchor.type === "block" ? s.anchor.id : `title:${s.anchor.bufferId}`;
+            const focusId = s.focus.type === "block" ? s.focus.id : `title:${s.focus.bufferId}`;
+            return `${anchorId}:${s.anchorOffset}-${focusId}:${s.focusOffset}`;
+          },
         }),
       }),
     );

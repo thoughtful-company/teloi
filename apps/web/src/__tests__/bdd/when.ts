@@ -80,9 +80,9 @@ export const SELECTION_IS_SET_TO = (
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchorBlockId: blockId,
+        anchor: { type: "block", id: blockId },
         anchorOffset: offset,
-        focusBlockId: blockId,
+        focus: { type: "block", id: blockId },
         focusOffset: offset,
         goalX: null,
         goalLine: null,

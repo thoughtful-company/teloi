@@ -123,9 +123,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: blockId,
+            anchor: { type: "block", id: blockId },
             anchorOffset: selection.anchor,
-            focusBlockId: blockId,
+            focus: { type: "block", id: blockId },
             focusOffset: selection.head,
             goalX: null,
             goalLine: null,
@@ -164,9 +164,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: newBlockId,
+            anchor: { type: "block", id: newBlockId },
             anchorOffset: 0,
-            focusBlockId: newBlockId,
+            focus: { type: "block", id: newBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -287,9 +287,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: prevBlockId,
+            anchor: { type: "block", id: prevBlockId },
             anchorOffset: mergePoint,
-            focusBlockId: prevBlockId,
+            focus: { type: "block", id: prevBlockId },
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
@@ -344,9 +344,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: targetBlockId,
+              anchor: { type: "block", id: targetBlockId },
               anchorOffset: endPos,
-              focusBlockId: targetBlockId,
+              focus: { type: "block", id: targetBlockId },
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
@@ -363,9 +363,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: bufferId as unknown as Id.Block, // Title uses bufferId
+              anchor: { type: "title", bufferId },
               anchorOffset: endPos,
-              focusBlockId: bufferId as unknown as Id.Block,
+              focus: { type: "title", bufferId },
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
@@ -383,9 +383,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: parentBlockId,
+              anchor: { type: "block", id: parentBlockId },
               anchorOffset: endPos,
-              focusBlockId: parentBlockId,
+              focus: { type: "block", id: parentBlockId },
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
@@ -416,9 +416,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: targetBlockId,
+              anchor: { type: "block", id: targetBlockId },
               anchorOffset: 0,
-              focusBlockId: targetBlockId,
+              focus: { type: "block", id: targetBlockId },
               focusOffset: 0,
               goalX: null,
               goalLine: null,
@@ -460,9 +460,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: targetBlockId,
+            anchor: { type: "block", id: targetBlockId },
             anchorOffset: 0,
-            focusBlockId: targetBlockId,
+            focus: { type: "block", id: targetBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -521,9 +521,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: targetBlockId,
+              anchor: { type: "block", id: targetBlockId },
               anchorOffset: 0,
-              focusBlockId: targetBlockId,
+              focus: { type: "block", id: targetBlockId },
               focusOffset: 0,
               goalX,
               goalLine: "last",
@@ -537,9 +537,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: bufferId as unknown as Id.Block,
+              anchor: { type: "title", bufferId },
               anchorOffset: 0,
-              focusBlockId: bufferId as unknown as Id.Block,
+              focus: { type: "title", bufferId },
               focusOffset: 0,
               goalX,
               goalLine: "last",
@@ -555,9 +555,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: parentBlockId,
+              anchor: { type: "block", id: parentBlockId },
               anchorOffset: 0,
-              focusBlockId: parentBlockId,
+              focus: { type: "block", id: parentBlockId },
               focusOffset: 0,
               goalX,
               goalLine: "last",
@@ -595,9 +595,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchorBlockId: targetBlockId,
+              anchor: { type: "block", id: targetBlockId },
               anchorOffset: 0,
-              focusBlockId: targetBlockId,
+              focus: { type: "block", id: targetBlockId },
               focusOffset: 0,
               goalX,
               goalLine: "first",
@@ -640,9 +640,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchorBlockId: targetBlockId,
+            anchor: { type: "block", id: targetBlockId },
             anchorOffset: 0,
-            focusBlockId: targetBlockId,
+            focus: { type: "block", id: targetBlockId },
             focusOffset: 0,
             goalX,
             goalLine: "first",

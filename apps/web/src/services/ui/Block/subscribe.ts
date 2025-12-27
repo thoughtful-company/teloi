@@ -193,7 +193,12 @@ const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
 
         const sel = buffer.selection;
         // Only return selection if both anchor and focus are in this block
-        if (sel.anchorBlockId !== blockId || sel.focusBlockId !== blockId) {
+        if (
+          sel.anchor.type !== "block" ||
+          sel.anchor.id !== blockId ||
+          sel.focus.type !== "block" ||
+          sel.focus.id !== blockId
+        ) {
           return null;
         }
 

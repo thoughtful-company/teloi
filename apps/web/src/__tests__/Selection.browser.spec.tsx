@@ -26,9 +26,9 @@ describe("Selection sync", () => {
       yield* Buffer.setSelection(
         bufferId,
         Option.some({
-          anchorBlockId: blockId,
+          anchor: { type: "block", id: blockId },
           anchorOffset: 5,
-          focusBlockId: blockId,
+          focus: { type: "block", id: blockId },
           focusOffset: 5,
           goalX: null,
           goalLine: null,
