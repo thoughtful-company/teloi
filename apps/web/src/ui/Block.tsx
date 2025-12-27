@@ -5,6 +5,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
+import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
@@ -717,6 +718,16 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleZoomIn = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Navigation = yield* NavigationT;
+        yield* Navigation.navigateTo(nodeId);
+      }),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus}>
@@ -740,6 +751,7 @@ export default function Block({ blockId }: BlockProps) {
             onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
             onArrowDownOnLastLine={handleArrowDownOnLastLine}
             onSelectionChange={handleSelectionChange}
+            onZoomIn={handleZoomIn}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}
             selection={store.selection}

@@ -80,6 +80,7 @@ interface TextEditorProps {
   onArrowUpOnFirstLine?: (goalX: number) => void;
   onArrowDownOnLastLine?: (goalX: number) => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
+  onZoomIn?: () => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
@@ -99,6 +100,7 @@ export default function TextEditor(props: TextEditorProps) {
     onArrowUpOnFirstLine,
     onArrowDownOnLastLine,
     onSelectionChange,
+    onZoomIn,
     initialClickCoords,
     initialSelection,
     variant = "block",
@@ -231,6 +233,20 @@ export default function TextEditor(props: TextEditorProps) {
                 return true;
               }
               return false;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onZoomIn) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Mod-.",
+            run: () => {
+              onZoomIn();
+              return true;
             },
           },
         ]),

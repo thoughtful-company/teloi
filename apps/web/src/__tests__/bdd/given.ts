@@ -238,3 +238,97 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       textContent,
     } satisfies FullHierarchyResult;
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_TEXT"));
+
+export interface FullHierarchyWithChildrenResult<
+  T extends readonly ChildSpec[] = readonly ChildSpec[],
+> {
+  bufferId: Id.Buffer;
+  rootNodeId: Id.Node;
+  childNodeIds: ToNodeIds<T>;
+  paneId: Id.Pane;
+  windowId: Id.Window;
+}
+
+/**
+ * Creates the full window → pane → buffer → node hierarchy with child nodes.
+ * Required for NavigationT tests which look up buffer via window.panes[0].
+ */
+export const A_FULL_HIERARCHY_WITH_CHILDREN = <
+  const T extends readonly ChildSpec[],
+>(
+  rootText: string,
+  children: T,
+) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Node = yield* NodeT;
+
+    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const paneId = Id.Pane.make(nanoid());
+    const bufferId = Id.Buffer.make(nanoid());
+    const rootNodeId = Id.Node.make(nanoid());
+
+    // Create root node
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: {
+          nodeId: rootNodeId,
+          textContent: rootText,
+        },
+      }),
+    );
+
+    // Create window document with pane reference
+    yield* Store.setDocument(
+      "window",
+      {
+        panes: [paneId],
+        activeElement: null,
+      },
+      windowId,
+    );
+
+    // Create pane document with buffer reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        buffers: [bufferId],
+      },
+      paneId,
+    );
+
+    // Create buffer document
+    yield* Store.setDocument(
+      "buffer",
+      {
+        windowId,
+        parent: { id: paneId, type: "pane" },
+        assignedNodeId: rootNodeId,
+        selectedNodes: [],
+        toggledNodes: [],
+        selection: null,
+      },
+      bufferId,
+    );
+
+    // Create child nodes using NodeT.insertNode
+    const childNodeIds: Id.Node[] = [];
+    for (const child of children) {
+      const childId = yield* Node.insertNode({
+        parentId: rootNodeId,
+        insert: "after",
+        textContent: child.text,
+      });
+      childNodeIds.push(childId);
+    }
+
+    return {
+      bufferId,
+      rootNodeId,
+      childNodeIds: childNodeIds as ToNodeIds<T>,
+      paneId,
+      windowId,
+    };
+  }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_CHILDREN"));

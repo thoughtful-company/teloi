@@ -42,11 +42,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
   return (
     <div data-testid="editor-buffer">
-      <Show when={store.nodeId}>
+      <Show when={store.nodeId} keyed>
         {(nodeId) => (
           <>
             <header class="mx-auto max-w-[var(--max-line-width)] border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-              <Title bufferId={bufferId} nodeId={nodeId()} />
+              <Title bufferId={bufferId} nodeId={nodeId} />
             </header>
             <div class="mx-auto max-w-[var(--max-line-width)] flex flex-col pt-4">
               <For each={store.childBlockIds}>

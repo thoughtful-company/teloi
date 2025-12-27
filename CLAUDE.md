@@ -175,3 +175,9 @@ App
 - [x] Bug: goalX not preserved when navigating DOWN from title to blocks
 - [ ] Block merging with Delete key
 - [x] URL-based navigation (URL ↔ active buffer's assignedNodeId sync)
+- [x] Mod+. zooms into focused block (navigate to that node)
+  - Used `Stream.flatMap` with `{ switch: true }` to switch inner streams when `assignedNodeId` changes
+  - Added `keyed` to `<Show>` in EditorBuffer to force Title remount on nodeId change
+
+**Known failing tests** (pre-existing, unrelated to recent work):
+- `ArrowDown.browser.spec.tsx > moves cursor to end of block when at last block and pressing ArrowDown` - expects offset 12, gets 10
