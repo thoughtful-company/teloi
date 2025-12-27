@@ -1,8 +1,6 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { isOnFirstVisualLine, isOnLastVisualLine } from "@/utils/visualLines";
-import { Effect } from "effect";
 import { createEffect, onCleanup, onMount } from "solid-js";
 
 export type TextEditorVariant = "block" | "title";
@@ -66,6 +64,8 @@ export interface EnterKeyInfo {
 export interface SelectionInfo {
   anchor: number;
   head: number;
+  /** Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line */
+  assoc: -1 | 1 | null;
 }
 
 interface TextEditorProps {
@@ -82,7 +82,7 @@ interface TextEditorProps {
   onSelectionChange?: (selection: SelectionInfo) => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
-  selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null } | null;
+  selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
   variant?: TextEditorVariant;
 }
 
@@ -118,8 +118,14 @@ export default function TextEditor(props: TextEditorProps) {
           onChange(update.state.doc.toString());
         }
         if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
-          const { anchor, head } = update.state.selection.main;
-          onSelectionChange({ anchor, head });
+          const sel = update.state.selection.main;
+          // Detect if we're at a wrap boundary by comparing Y coords with different sides
+          const coordsBefore = update.view.coordsAtPos(sel.head, -1);
+          const coordsAfter = update.view.coordsAtPos(sel.head, 1);
+          const isAtWrapBoundary = coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+          // If at wrap boundary, use CodeMirror's assoc; otherwise null
+          const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : null;
+          onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
         }
       }),
     ];
@@ -238,19 +244,19 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowUp",
             run: (view) => {
               const sel = view.state.selection.main;
-              const cursorCoords = view.coordsAtPos(sel.head);
-              if (!cursorCoords) {
-                onArrowUpOnFirstLine(0);
+              const currentY = view.coordsAtPos(sel.head)?.top;
+              // Use CodeMirror's moveVertically to check if we can move up
+              const moved = view.moveVertically(sel, false); // false = up
+              const movedY = view.coordsAtPos(moved.head)?.top;
+
+              // If Y doesn't change, we're on the first visual line
+              // (moveVertically may change position within same line, so check Y not position)
+              if (currentY === movedY) {
+                const cursorCoords = view.coordsAtPos(sel.head);
+                onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
                 return true;
               }
-              const isFirstLine = Effect.runSync(
-                isOnFirstVisualLine(view.contentDOM, cursorCoords.top),
-              );
-              if (isFirstLine) {
-                onArrowUpOnFirstLine(cursorCoords.left);
-                return true;
-              }
-              return false;
+              return false; // Let CodeMirror handle intra-block movement
             },
           },
         ]),
@@ -264,19 +270,22 @@ export default function TextEditor(props: TextEditorProps) {
             key: "ArrowDown",
             run: (view) => {
               const sel = view.state.selection.main;
-              const cursorCoords = view.coordsAtPos(sel.head);
-              if (!cursorCoords) {
-                onArrowDownOnLastLine(0);
+              // Use assoc from props if set (from model), otherwise default to -1
+              // assoc determines which side of wrap boundary the cursor is on:
+              // -1 = end of prev line, 1 = start of next line
+              const side = props.selection?.assoc ?? -1;
+              const currentY = view.coordsAtPos(sel.head, side)?.top;
+              // Use CodeMirror's moveVertically to check if we can move down
+              const moved = view.moveVertically(sel, true); // true = down
+              const movedY = view.coordsAtPos(moved.head)?.top;
+
+              // If Y doesn't change, we're on the last visual line
+              if (currentY === movedY) {
+                const cursorCoords = view.coordsAtPos(sel.head, side);
+                onArrowDownOnLastLine(cursorCoords?.left ?? 0);
                 return true;
               }
-              const isLastLine = Effect.runSync(
-                isOnLastVisualLine(view.contentDOM, cursorCoords.top),
-              );
-              if (isLastLine) {
-                onArrowDownOnLastLine(cursorCoords.left);
-                return true;
-              }
-              return false;
+              return false; // Let CodeMirror handle intra-block movement
             },
           },
         ]),

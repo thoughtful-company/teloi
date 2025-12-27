@@ -4,6 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
+import { screen } from "@testing-library/dom";
 
 export interface BufferWithNodeResult {
   bufferId: Id.Buffer;
@@ -152,3 +153,13 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       windowId,
     };
   }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_CHILDREN"));
+
+/**
+ * Sets the buffer container to a specific width.
+ * Useful for testing line wrapping behavior.
+ */
+export const BUFFER_HAS_WIDTH = (width: number) =>
+  Effect.promise(async () => {
+    const buffer = await screen.findByTestId("editor-buffer");
+    buffer.style.width = `${width}px`;
+  }).pipe(Effect.withSpan("Given.BUFFER_HAS_WIDTH"));

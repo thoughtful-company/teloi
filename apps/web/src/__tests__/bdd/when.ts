@@ -1,6 +1,7 @@
 import { Id } from "@/schema";
+import { BufferT } from "@/services/ui/Buffer";
 import { userEvent } from "@vitest/browser/context";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 
 /**
@@ -51,6 +52,7 @@ export const USER_PRESSES = (keys: string) =>
   );
 
 /**
+ * TODO: Fix, it's not working
  * Moves cursor to a specific offset from the start of the text.
  * Uses Home to go to start, then ArrowRight to reach position.
  */
@@ -61,3 +63,30 @@ export const USER_MOVES_CURSOR_TO = (offset: number) =>
       yield* Effect.promise(() => userEvent.keyboard("{ArrowRight}"));
     }
   }).pipe(Effect.withSpan("When.USER_MOVES_CURSOR_TO"));
+
+/**
+ * Sets selection to a specific position in a block via the model.
+ * This is more reliable than keyboard navigation for positioning.
+ * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line
+ */
+export const SELECTION_IS_SET_TO = (
+  bufferId: Id.Buffer,
+  blockId: Id.Block,
+  offset: number,
+  assoc: -1 | 1 | null = null,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchorBlockId: blockId,
+        anchorOffset: offset,
+        focusBlockId: blockId,
+        focusOffset: offset,
+        goalX: null,
+        goalLine: null,
+        assoc,
+      }),
+    );
+  }).pipe(Effect.withSpan("When.SELECTION_IS_SET_TO"));

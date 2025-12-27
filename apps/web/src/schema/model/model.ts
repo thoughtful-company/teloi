@@ -31,6 +31,8 @@ export const BufferSelection = Schema.Struct({
   focusOffset: Schema.Number,
   goalX: Schema.NullOr(Schema.Number),
   goalLine: Schema.NullOr(Schema.Literal("first", "last")),
+  /** Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line */
+  assoc: Schema.optionalWith(Schema.NullOr(Schema.Literal(-1, 1)), { default: () => null }),
 });
 export type BufferSelection = typeof BufferSelection.Type;
 

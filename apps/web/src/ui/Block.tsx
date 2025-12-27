@@ -58,7 +58,7 @@ export default function Block({ blockId }: BlockProps) {
       textContent: "",
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
     },
   });
 
@@ -129,6 +129,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: selection.head,
             goalX: null,
             goalLine: null,
+            assoc: selection.assoc,
           }),
         );
       }),
@@ -169,6 +170,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -291,6 +293,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -347,6 +350,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -365,6 +369,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -384,6 +389,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -416,6 +422,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX: null,
               goalLine: null,
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -459,6 +466,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -519,6 +527,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -534,6 +543,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -551,6 +561,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -590,6 +601,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "first",
+              assoc: null,
             }),
           );
           yield* Window.setActiveElement(
@@ -634,6 +646,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX,
             goalLine: "first",
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(

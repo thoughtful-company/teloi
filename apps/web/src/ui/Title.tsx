@@ -50,7 +50,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       );
 
       const selectionStream = bufferStream.pipe(
-        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null => {
+        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null => {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
@@ -64,6 +64,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             head: sel.focusOffset,
             goalX: sel.goalX ?? null,
             goalLine: sel.goalLine ?? null,
+            assoc: sel.assoc ?? null,
           };
         }),
         Stream.changesWith(deepEqual),
@@ -87,7 +88,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     initial: {
       textContent: "",
       isActive: false,
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
     },
   });
 
@@ -141,6 +142,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(
@@ -172,6 +174,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusOffset: 0,
             goalX: cursorGoalX,
             goalLine: "first",
+            assoc: null,
           }),
         );
         yield* Window.setActiveElement(

@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block ArrowDown key", () => {
@@ -238,6 +238,148 @@ describe("Block ArrowDown key", () => {
       // Pixel X should be preserved within a small tolerance (e.g., 5px)
       const delta = Math.abs(xAfter - xBefore);
       expect(delta).toBeLessThan(5);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("navigates within wrapped line before jumping to next block", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: 100px (forces wrapping)
+    // Title
+    // ==========
+    // ▶ AAAA BBBB|    <- cursor at END of first visual line (via {End})
+    //   CCCC DDDD     <- second visual line (wrapped)
+    //   EEEE          <- third visual line
+    //
+    // ▶ Second block
+    //
+    // ******* WHEN *******
+    // User presses ArrowDown from end of first visual line
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves DOWN to second visual line within the same block
+    // NOT to "Second block"
+    await Effect.gen(function* () {
+      const wrappingText = "AAAA BBBB CCCC DDDD EEEE";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: wrappingText }, { text: "Second block" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Set narrow width to force wrapping
+      yield* Given.BUFFER_HAS_WIDTH(100);
+
+      // This is hacky. Selection should be set through Selection in model
+      // the problem is that user_clicks_block within a narrow buffer set's selection somewhere in the middle
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* When.USER_PRESSES("{Home}");
+      yield* When.USER_PRESSES("{ArrowLeft}");
+      yield* When.USER_PRESSES("{Home}");
+      yield* When.USER_PRESSES("{End}");
+
+      // ArrowDown from end of first visual line
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Should still be in the same block (moved to next visual line)
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("navigates within wrapped line from START of first visual line", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: 100px (forces wrapping)
+    // Title
+    // ==========
+    // ▶ |AAAA BBBB    <- cursor at START of first visual line (position 0)
+    //   CCCC DDDD     <- second visual line (wrapped)
+    //   EEEE          <- third visual line
+    //
+    // ▶ Second block
+    //
+    // ******* WHEN *******
+    // User presses ArrowDown from start of first visual line
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves DOWN to second visual line within the same block
+    // NOT to "Second block"
+    await Effect.gen(function* () {
+      const wrappingText = "AAAA BBBB CCCC DDDD EEEE";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: wrappingText }, { text: "Second block" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Set narrow width to force wrapping
+      yield* Given.BUFFER_HAS_WIDTH(100);
+
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      // Set selection to position 0 via model
+      yield* When.SELECTION_IS_SET_TO(bufferId, firstBlockId, 0);
+
+      // ArrowDown from start of first visual line (position 0)
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Should still be in the same block (moved to next visual line)
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("moves to next block when cursor is at start of last visual line", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Buffer width: 100px (forces wrapping)
+    // Title
+    // ==========
+    // ▶ AAAA BBBB     <- first visual line
+    //   |CCCC DDDD    <- cursor at START of second visual line (position 10)
+    //
+    // ▶ Second block
+    //
+    // ******* WHEN *******
+    // User presses ArrowDown
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves to "Second block" because we're on the LAST visual line
+    // NOT stay in current block (which happens if assoc isn't tracked)
+    await Effect.gen(function* () {
+      const wrappingText = "AAAA BBBB CCCC DDDD";
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Title",
+        [{ text: wrappingText }, { text: "Second block" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Set narrow width to force wrapping
+      yield* Given.BUFFER_HAS_WIDTH(100);
+
+      // Focus the first block
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+
+      // Set selection to position 10 (wrap point - start of "CCCC") via model
+      // This is where associativity matters: position 10 could be:
+      // - END of "AAAA BBBB " (line 1) - assoc=-1
+      // - START of "CCCC DDDD" (line 2) - assoc=+1
+      // We want it at START of line 2, so ArrowDown should go to next block
+      yield* When.SELECTION_IS_SET_TO(bufferId, firstBlockId, 10, 1);
+
+      // Press ArrowDown
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Should move to second block (since we're on the last visual line)
+      yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
     }).pipe(runtime.runPromise);
   });
 
