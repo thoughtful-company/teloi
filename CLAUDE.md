@@ -157,13 +157,32 @@ App
   - Update all places that set selection for title to use proper `Id.Title` type
   - Affected files: `Block.tsx` (handleArrowLeftAtStart, handleArrowUpOnFirstLine), `Title.tsx`
 - [ ] Bug: ArrowUp/ArrowDown navigation issues
-  - [x] Fixed logical line detection (now uses visual lines via DOM rects)
+  - [~] Partial fix: added visual line detection via DOM rects (incomplete, see below)
+    - Files changed: `TextEditor.tsx`, added `src/utils/visualLines.ts`
+    - Tests added: `ArrowUp.browser.spec.tsx` (multi-line with \n, wrapped line)
   - [ ] Visual line detection fails at line wrap boundaries
     - Example: "Alice was beginning... having nothing to do." wraps at "nothing |"
     - Pressing ArrowDown from "nothing |" should go to "to do.|" but goes to next block
     - Root cause: DOM text node rects don't match CodeMirror's internal wrap points
-    - Need to use CodeMirror's `moveVertically` or `visualLineAt` instead of DOM parsing
-    - Current impl in `src/utils/visualLines.ts` uses browser DOM rects
+    - Current impl in `src/utils/visualLines.ts` uses browser DOM rects - DELETE THIS
+    - **Fix approach**: Use CodeMirror's `moveVertically` + compare Y coordinates:
+      ```typescript
+      // In ArrowUp handler (TextEditor.tsx):
+      const sel = view.state.selection.main;
+      const currentY = view.coordsAtPos(sel.head)?.top;
+      const moved = view.moveVertically(sel, false); // false = up
+      const movedY = view.coordsAtPos(moved.head)?.top;
+
+      if (currentY === movedY) {
+        // Can't move up within block → navigate to previous block
+        onArrowUpOnFirstLine(goalX);
+        return true;
+      }
+      return false; // Let CodeMirror handle intra-block movement
+      ```
+    - Same pattern for ArrowDown with `moveVertically(sel, true)`
+    - This uses CodeMirror's internal layout knowledge, not DOM parsing
+    - Previous attempt compared `head` positions directly which failed; comparing Y should work
   - [ ] ArrowUp sets cursor to first line instead of last line
     - When navigating up to a multi-line block, cursor should land on the LAST line
     - Currently lands on first line (goalLine: "last" not being respected?)
