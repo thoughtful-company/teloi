@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Stream } from "effect";
 import { UnknownException } from "effect/Cause";
 
 export class URLServiceB extends Context.Tag("URLServiceB")<
@@ -9,10 +9,13 @@ export class URLServiceB extends Context.Tag("URLServiceB")<
      */
     getPath: () => Effect.Effect<string, never, never>;
     /**
-     *
      * @param path starting with "/"
      */
     setPath: (path: string) => Effect.Effect<void, UnknownException, never>;
+    /**
+     * Stream that emits pathname on popstate events (back/forward navigation)
+     */
+    popstate: () => Effect.Effect<Stream.Stream<string>>;
   }
 >() {}
 
@@ -36,9 +39,23 @@ export const makeURLServiceLive = (window: Window) => {
         return Effect.try(() => history.pushState({}, "", path));
       };
 
+      const popstate = () =>
+        Effect.sync(() =>
+          Stream.async<string>((emit) => {
+            const handler = () => {
+              emit.single(window.location.pathname);
+            };
+            window.addEventListener("popstate", handler);
+            return Effect.sync(() =>
+              window.removeEventListener("popstate", handler),
+            );
+          }),
+        );
+
       return {
         getPath,
         setPath,
+        popstate,
       };
     }),
   );

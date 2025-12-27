@@ -1,10 +1,12 @@
 import { shouldNeverHappen } from "@/error";
 import { store } from "@/livestore/store";
 import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
+import { makeURLServiceLive } from "./services/browser/URLService";
 import { NodeLive } from "./services/domain/Node";
 import { getStoreLayer } from "./services/external/Store";
 import { BlockLive } from "./services/ui/Block";
 import { BufferLive } from "./services/ui/Buffer";
+import { NavigationLive } from "./services/ui/Navigation";
 import { WindowLive } from "./services/ui/Window";
 
 const getStoreOrThrow = () => {
@@ -35,10 +37,12 @@ const getLoggerLayer = (): Layer.Layer<never> => {
 };
 
 const BrowserLayer = pipe(
-  BlockLive,
+  NavigationLive,
+  Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),
   Layer.provideMerge(NodeLive),
+  Layer.provideMerge(makeURLServiceLive(window)),
   Layer.provideMerge(getStoreLayer(getStoreOrThrow())),
   Layer.provideMerge(Logger.minimumLogLevel(LogLevel.Trace)),
   Layer.provideMerge(getLoggerLayer()),

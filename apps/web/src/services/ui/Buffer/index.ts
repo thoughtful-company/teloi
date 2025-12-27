@@ -7,6 +7,7 @@ import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { get } from "./get";
+import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setSelection } from "./setSelection";
 import { BufferView, subscribe } from "./subscribe";
 
@@ -25,6 +26,10 @@ export class BufferT extends Context.Tag("BufferT")<
     setSelection: (
       bufferId: Id.Buffer,
       selection: Option.Option<Model.BufferSelection>,
+    ) => Effect.Effect<void, BufferNotFoundError>;
+    setAssignedNodeId: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node | null,
     ) => Effect.Effect<void, BufferNotFoundError>;
   }
 >() {}
@@ -47,6 +52,10 @@ export const BufferLive = Layer.effect(
           Effect.provideService(StoreT, Store),
         ),
       setSelection: withContext(setSelection)(context),
+      setAssignedNodeId: (bufferId: Id.Buffer, nodeId: Id.Node | null) =>
+        setAssignedNodeId(bufferId, nodeId).pipe(
+          Effect.provideService(StoreT, Store),
+        ),
     };
   }),
 );

@@ -163,3 +163,78 @@ export const BUFFER_HAS_WIDTH = (width: number) =>
     const buffer = await screen.findByTestId("editor-buffer");
     buffer.style.width = `${width}px`;
   }).pipe(Effect.withSpan("Given.BUFFER_HAS_WIDTH"));
+
+export interface FullHierarchyResult {
+  bufferId: Id.Buffer;
+  nodeId: Id.Node;
+  paneId: Id.Pane;
+  windowId: Id.Window;
+  textContent: string;
+}
+
+/**
+ * Creates the full window → pane → buffer → node hierarchy.
+ * Required for NavigationT tests which look up buffer via window.panes[0].
+ */
+export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+
+    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const paneId = Id.Pane.make(nanoid());
+    const bufferId = Id.Buffer.make(nanoid());
+    const nodeId = Id.Node.make(nanoid());
+
+    // Create node
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: {
+          nodeId,
+          textContent,
+        },
+      }),
+    );
+
+    // Create window document with pane reference
+    yield* Store.setDocument(
+      "window",
+      {
+        panes: [paneId],
+        activeElement: null,
+      },
+      windowId,
+    );
+
+    // Create pane document with buffer reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        buffers: [bufferId],
+      },
+      paneId,
+    );
+
+    // Create buffer document (assignedNodeId starts as null for navigation tests)
+    yield* Store.setDocument(
+      "buffer",
+      {
+        windowId,
+        parent: { id: paneId, type: "pane" },
+        assignedNodeId: null,
+        selectedNodes: [],
+        toggledNodes: [],
+        selection: null,
+      },
+      bufferId,
+    );
+
+    return {
+      bufferId,
+      nodeId,
+      paneId,
+      windowId,
+      textContent,
+    } satisfies FullHierarchyResult;
+  }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_TEXT"));

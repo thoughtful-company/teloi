@@ -85,6 +85,26 @@ Typed domain models using Effect Schema:
 - LiveStore initialized from `livestore/store.ts`
 - Exported as `BrowserRuntime` and provided via SolidJS context
 
+### URL-Based Navigation
+URL format: `/workspace/<nodeId>` (workspace name hardcoded for now)
+
+**Bidirectional sync between URL and active buffer's `assignedNodeId`:**
+- **Browser → Model** (on page load or back/forward): Parse URL, update active buffer's `assignedNodeId`
+- **Model → Browser** (on programmatic change): Update URL via `history.pushState`
+
+**Key services:**
+- `URLServiceB` (`services/browser/URLService.ts`) - Low-level URL access with `getPath()`, `setPath()`, and popstate stream
+- `NavigationT` (`services/ui/Navigation/`) - Orchestrates URL ↔ buffer sync
+
+**Trigger conditions:**
+- Page load (including reload from typing URL + Enter): URL → Buffer
+- Back/forward buttons (popstate events): URL → Buffer
+- Programmatic `assignedNodeId` changes: Buffer → URL
+
+**Edge cases:**
+- No nodeId in URL → show empty buffer (nothing rendered)
+- Invalid nodeId → show empty buffer (node doesn't exist)
+
 ### Development Approach
 **TDD-first**: With all other things being equal, start by write tests **before** implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
 
@@ -144,7 +164,7 @@ App
 - [x] Editable block with proper state management
 - [x] Block splitting (Enter key creates new sibling block).
 - [x] Keyboard navigation between blocks (Arrow keys)
-- [ ] Block merging (Backspace at start merges with previous)
+- [x] Block merging (Backspace at start merges with previous)
 - [x] Block indentation (Tab/Shift+Tab for nesting)
 - [x] Verify if selection syncs from livestore to codemirror properly
 - [x] Fix Title ID typing in selection model (used discriminated union: `SelectionTarget = { type: "block", id } | { type: "title", bufferId }`)
@@ -153,3 +173,5 @@ App
 - [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
 - [x] Add visual comments for tests
 - [x] Bug: goalX not preserved when navigating DOWN from title to blocks
+- [ ] Block merging with Delete key
+- [x] URL-based navigation (URL ↔ active buffer's assignedNodeId sync)
