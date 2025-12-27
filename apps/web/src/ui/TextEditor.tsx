@@ -102,6 +102,8 @@ export default function TextEditor(props: TextEditorProps) {
 
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
+  // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
+  let suppressSelectionChange = false;
 
   onMount(() => {
     const extensions: Extension[] = [
@@ -111,7 +113,7 @@ export default function TextEditor(props: TextEditorProps) {
         if (update.docChanged) {
           onChange(update.state.doc.toString());
         }
-        if (update.selectionSet && onSelectionChange) {
+        if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
           const { anchor, head } = update.state.selection.main;
           onSelectionChange({ anchor, head });
         }
@@ -277,7 +279,10 @@ export default function TextEditor(props: TextEditorProps) {
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
       const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
       if (pos !== null) {
+        // Suppress onSelectionChange - this is programmatic positioning for arrow navigation
+        suppressSelectionChange = true;
         view.dispatch({ selection: { anchor: pos } });
+        suppressSelectionChange = false;
       }
     } else if (props.selection) {
       const docLen = view.state.doc.length;

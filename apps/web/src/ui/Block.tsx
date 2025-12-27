@@ -460,7 +460,7 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleArrowUpOnFirstLine = (goalX: number) => {
+  const handleArrowUpOnFirstLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
@@ -468,6 +468,12 @@ export default function Block({ blockId }: BlockProps) {
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
+
+        // Preserve existing goalX if set (for chained arrow navigation)
+        const existingSelection = yield* Buffer.getSelection(bufferId);
+        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
+          ? existingSelection.value.goalX
+          : cursorGoalX;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)

@@ -262,4 +262,71 @@ describe("Block ArrowUp key", () => {
       yield* Then.SELECTION_IS_ON_TITLE(bufferId);
     }).pipe(runtime.runPromise);
   });
+
+  it("preserves goalX across multiple ArrowUp presses through shorter blocks", async () => {
+    // ******* GIVEN THE BUFFER *******
+    // Long paragraph   (14 chars)
+    // Short            (5 chars)
+    // Long paragraph|  ← CURSOR AT END (position 14)
+    //
+    // ******* WHEN *******
+    // User presses ArrowUp twice
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor should end up at position 14 in first block (same pixel X as start)
+    // Long paragraph|
+    //               ^ CURSOR HERE
+    // NOT at position 5 like:
+    // Long |paragraph
+    //      ^ WRONG - this happens if goalX resets after first navigation
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [
+          { text: "Long paragraph" },
+          { text: "Short" },
+          { text: "Long paragraph" },
+        ],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const thirdBlockId = Id.makeBlockId(bufferId, childNodeIds[2]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus third block at end (position 14)
+      yield* When.USER_CLICKS_BLOCK(thirdBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(14);
+
+      // Capture initial pixel X
+      const xInitial = yield* Effect.sync(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return 0;
+        return sel.getRangeAt(0).getBoundingClientRect().left;
+      });
+
+      // Press ArrowUp twice
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Should be in first block
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+      // Capture final pixel X
+      const xFinal = yield* Effect.promise(() =>
+        waitFor(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+          return sel.getRangeAt(0).getBoundingClientRect().left;
+        }),
+      );
+
+      // Pixel X should be preserved - cursor should be at position 14, not 5
+      const delta = Math.abs(xFinal - xInitial);
+      expect(delta).toBeLessThan(5);
+
+      // Also verify the offset is 14, not 5
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(14);
+    }).pipe(runtime.runPromise);
+  });
 });

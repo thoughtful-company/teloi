@@ -37,6 +37,8 @@ Never create type aliases for backwards compatibility (e.g., type OldName = NewN
 
 When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit).
 
+Only write comments that describe non-obvious things happening in code. Don't write comments for self-documenting code.
+
 ## Project Structure
 
 This is a pnpm monorepo with:
@@ -84,10 +86,10 @@ Typed domain models using Effect Schema:
 - Exported as `BrowserRuntime` and provided via SolidJS context
 
 ### Development Approach
-**TDD-first**: Write tests before implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
+**TDD-first**: With all other things being equal, start by write tests **before** implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
 
 ### Test Writing Conventions
-Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__tests__/bdd/`.
+Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__tests__/bdd/*.ts`.
 
 **Development workflow**:
 1. **Initial test writing**: Use existing BDD utilities or low-level ones (`userEvent.keyboard`, `waitFor`, direct Effect calls) to get the test working
@@ -130,38 +132,37 @@ App
 - **TextEditor**: Thin wrapper around CodeMirror for in-block text editing. Block-level operations (splitting, creating blocks) handled by parent.
 - Advanced features (marks, decorators) via Lezer with custom grammar (future).
 
-**First milestone**: Render a document object in browser with editable content.
-- ✓ Services: BufferT (subscribe), NodeT (subscribe, subscribeChildren, attestExistence, setNodeText), StoreT
-- ✓ Schema: Entity.*, Model.*, Id.*, DocumentSchemas
-- ✓ Runtime: Layer composition, LiveStore init
-- ✓ Component: EditorBuffer.tsx (subscribes to buffer, renders data)
-- ✓ Bootstrap: App-level initialization (window → pane → buffer → node)
-- ✓ TextEditor component (CodeMirror wrapper)
-
-**Second milestone**: Editable blocks with proper state management.
-- ✓ BlockId utilities: `makeBlockId(bufferId, nodeId)`, `parseBlockId(blockId)` with typed errors
-- ✓ WindowT service: `subscribeActiveElement()`, `setActiveElement(element)`
-- ✓ BlockT service: `subscribe(blockId)` → Stream<BlockView>, `attestExistence(blockId)`
-- ✓ Block component: Subscribes to BlockT, renders TextEditor when focused, handles focus/text changes
-- ✓ EditorBuffer updated to render Block components
-- ✓ Runtime layer composition: BlockLive → BufferLive → WindowLive → NodeLive → StoreLive
-
-**Current state**: Basic editable document with single block working. Focus tracking and text persistence functional.
-
-**Next milestone**: Block splitting (Enter key creates new sibling block).
-
-### Cases
-
-- [x] End of text → New empty sibling below, focus it
-- [x] Start (non-empty) → New empty sibling above, focus it
-- [x] Middle of text → Split: before stays, after goes to new sibling, focus it
-- [x] Empty block → New empty sibling below, focus it
-
-### Tasks
-- [ ] Refactor tests to only use Given When Then
-
-**Future milestones** (after block splitting):
-- Block merging (Backspace at start merges with previous)
-- Block indentation (Tab/Shift+Tab for nesting)
-- Keyboard navigation between blocks (Arrow keys)
+**Work items**:
+- [x] Render a document object in browser with editable content.
+- [x] Editable block with proper state management
+- [x] Block splitting (Enter key creates new sibling block). 
+- [ ] Keyboard navigation between blocks (Arrow keys)
+  - [x] ArrowLeft
+    - [x] At position 0 → focus previous sibling at end
+    - [x] Previous sibling has children → go to deepest last child
+    - [x] First sibling → go to parent
+    - [x] First block in document → go to title
+  - [x] ArrowRight
+  - [x] ArrowUp
+  - [ ] ArrowDown
+- [ ] Block merging (Backspace at start merges with previous)
+- [ ] Block indentation (Tab/Shift+Tab for nesting)
 - [ ] Verify if selection syncs from livestore to codemirror properly
+- [ ] Add visual comments for tests
+    // ******* GIVEN THE BUFFER *******
+    // Title
+    // ==========
+    // ▶ Child 1
+    // ▶ Ch|ild 2
+    //     ^  ← CURSOR HERE (position 2)
+    //
+    // ******* WHEN *******
+    // User presses |↑| (arrow up)
+    //
+    // ******* EXPECTED BEHAVIOR *******
+    // Cursor moves one block up to the same place
+    // Title
+    // ==========
+    // ▶ Child 1
+    //     ^  ← CURSOR HERE (position 2)
+    // ▶ Ch|ild 2
