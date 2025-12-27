@@ -523,6 +523,22 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "title" as const, bufferId }),
           );
+        } else {
+          // First child of non-root parent → go to parent
+          const parentBlockId = Id.makeBlockId(bufferId, parentId);
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchorBlockId: parentBlockId,
+              anchorOffset: 0,
+              focusBlockId: parentBlockId,
+              focusOffset: 0,
+              goalX,
+            }),
+          );
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: parentBlockId }),
+          );
         }
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
     );

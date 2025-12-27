@@ -236,8 +236,8 @@ export default function TextEditor(props: TextEditorProps) {
               // Only intercept if on first line
               if (line.number === 1) {
                 const cursorCoords = view.coordsAtPos(sel.head);
-                const contentRect = view.contentDOM.getBoundingClientRect();
-                const goalX = cursorCoords ? cursorCoords.left - contentRect.left : 0;
+                // Store absolute viewport X to preserve position across indent levels
+                const goalX = cursorCoords ? cursorCoords.left : 0;
                 onArrowUpOnFirstLine(goalX);
                 return true;
               }
@@ -269,14 +269,13 @@ export default function TextEditor(props: TextEditorProps) {
       const head = Math.min(initialSelection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
     } else if (props.selection?.goalX != null) {
-      // Use goalX to position cursor based on pixel X coordinate
-      const contentRect = view.contentDOM.getBoundingClientRect();
-      const targetX = contentRect.left + props.selection.goalX;
+      // Use goalX (absolute viewport X) to position cursor
       // Get the last line's Y coordinate for positioning
       const lastLine = view.state.doc.line(view.state.doc.lines);
       const lineCoords = view.coordsAtPos(lastLine.from);
+      const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
-      const pos = view.posAtCoords({ x: targetX, y: targetY });
+      const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
       if (pos !== null) {
         view.dispatch({ selection: { anchor: pos } });
       }

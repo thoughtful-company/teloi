@@ -3,7 +3,8 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, it } from "vitest";
+import { waitFor } from "solid-testing-library";
+import { describe, it, expect } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block ArrowUp key", () => {
@@ -109,9 +110,6 @@ describe("Block ArrowUp key", () => {
 
       // Should now be in the nested child (deepest of previous sibling)
       yield* Then.SELECTION_IS_ON_BLOCK(nestedChildBlockId);
-
-      // Column 3 in "Nested" → "Nes|ted"
-      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
     }).pipe(runtime.runPromise);
   });
 
@@ -145,19 +143,103 @@ describe("Block ArrowUp key", () => {
 
       // Should now be in the parent block
       yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
-
-      // Column 3 in "Parent" → "Par|ent"
-      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
     }).pipe(runtime.runPromise);
   });
 
-  it.todo(
-    "maintains goal X when traveling from sibling to previous block's nested child",
-  );
+  it("maintains goal X when traveling from sibling to previous block's nested child", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
 
-  it.todo(
-    "maintains visual X position with non-monospace fonts (iii vs WWW)",
-  );
+      // Structure: Root -> [First, Second]
+      //            First -> [Nested] (indented by 16px)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "First" }, { text: "Second block here" }],
+      );
+
+      // Add nested child to First
+      yield* Node.insertNode({
+        parentId: childNodeIds[0],
+        insert: "after",
+        textContent: "Nested child content",
+      });
+
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child at position 5
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(5);
+
+      // Capture pixel X before navigation
+      const xBefore = yield* Effect.sync(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return 0;
+        const range = sel.getRangeAt(0);
+        return range.getBoundingClientRect().left;
+      });
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Capture pixel X after navigation (now in Nested, which is indented)
+      const xAfter = yield* Effect.promise(() =>
+        waitFor(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+          const range = sel.getRangeAt(0);
+          return range.getBoundingClientRect().left;
+        }),
+      );
+
+      // Pixel X should be preserved despite the 16px indent difference
+      const delta = Math.abs(xAfter - xBefore);
+      expect(delta).toBeLessThan(5);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("maintains visual X position with non-monospace fonts (iii vs WWW)", async () => {
+    await Effect.gen(function* () {
+      // "W" is wider than "i" in non-monospace fonts
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "iiiiiiiiii" }, { text: "WW" }],
+      );
+
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second child at end (position 2, after "WW")
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(2);
+
+      // Capture pixel X before navigation
+      const xBefore = yield* Effect.sync(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return 0;
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        return rect.left;
+      });
+
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Capture pixel X after navigation
+      const xAfter = yield* Effect.promise(() =>
+        waitFor(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+          const range = sel.getRangeAt(0);
+          return range.getBoundingClientRect().left;
+        }),
+      );
+
+      // Pixel X should be preserved within a small tolerance (e.g., 5px)
+      const delta = Math.abs(xAfter - xBefore);
+      expect(delta).toBeLessThan(5);
+    }).pipe(runtime.runPromise);
+  });
 
   it("moves to title when at first block in document", async () => {
     await Effect.gen(function* () {
