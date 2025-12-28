@@ -8,7 +8,7 @@ export function existence<T>(
   }
 }
 
-export function isDefined<T>(value: T | undefined): asserts value is T {
+export function isDefined<T>(value: T | null | undefined): asserts value is NonNullable<T> {
   if (value === undefined || value === null) {
     throw new Error("Value is not defined");
   }
