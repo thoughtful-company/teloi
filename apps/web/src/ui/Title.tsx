@@ -126,7 +126,27 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
-  // Text changes are now handled directly by Yjs via yCollab extension
+  const handleBlur = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Window = yield* WindowT;
+        const Store = yield* StoreT;
+
+        // Only clear if activeElement still points to this title.
+        // If navigating to a block, activeElement already points there - don't clear.
+        const sessionId = yield* Store.getSessionId();
+        const windowId = Id.Window.make(sessionId);
+        const windowDoc = yield* Store.getDocument("window", windowId);
+
+        if (Option.isNone(windowDoc)) return;
+
+        const active = windowDoc.value.activeElement;
+        if (active && active.type === "title" && active.bufferId === bufferId) {
+          yield* Window.setActiveElement(Option.none());
+        }
+      }),
+    );
+  };
 
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
@@ -250,6 +270,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           ytext={ytext}
           undoManager={undoManager}
           onEnter={handleEnter}
+          onBlur={handleBlur}
           onArrowRightAtEnd={handleArrowRightAtEnd}
           onArrowDownOnLastLine={handleArrowDownOnLastLine}
           initialClickCoords={clickCoords}

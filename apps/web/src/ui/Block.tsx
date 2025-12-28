@@ -152,13 +152,15 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const [bufferId] = yield* Id.parseBlockId(blockId);
         const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
 
-        // Only clear selection if it still points to this block.
-        // If navigating to another block, selection already points there - don't clear.
+        // Only clear selection and activeElement if still pointing to this block.
+        // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
         if (sel && sel.anchor.type === "block" && sel.anchor.id === blockId) {
           yield* Buffer.setSelection(bufferId, Option.none());
+          yield* Window.setActiveElement(Option.none());
         }
       }),
     );
