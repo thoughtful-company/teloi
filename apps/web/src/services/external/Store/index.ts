@@ -119,15 +119,11 @@ export const getStoreLayer = (
 
       const query: <TResult>(
         ...args: QueryParams<TResult>
-      ) => Effect.Effect<TResult> = (query) => {
-        try {
-          var result = Store.query(query);
-        } catch (e) {
-          console.error("Store query unsuccessful", query, e);
-          throw new Error("Store query unsuccessful", { cause: e });
-        }
-        return Effect.succeed(result);
-      };
+      ) => Effect.Effect<TResult> = (queryDef) =>
+        Effect.try({
+          try: () => Store.query(queryDef),
+          catch: (err) => new LiveStoreError({ cause: err }),
+        }).pipe(Effect.orDie);
 
       const subscribeStream = <TResult>(
         query$: LiveQueryDef<TResult>,
