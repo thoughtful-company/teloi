@@ -185,8 +185,10 @@ App
 - [x] Bug: Undo (Cmd+Z) doesn't work reliably
   - [x] Add failing test that captures the undo behavior (`Undo.browser.spec.tsx`)
   - [x] Implemented Yjs CRDT for text content (fixes undo via `y-codemirror.next`)
+- [x] Bug: Pressing Enter in Title creates first child block
 - [ ] Implement block-level undo
 - [ ] Implement undo when you edit block A, switch to block B and then go back to block A
+- [ ] Bug: When title is empty, it is not clickable
 
 **Text Content Architecture (Yjs)**
 

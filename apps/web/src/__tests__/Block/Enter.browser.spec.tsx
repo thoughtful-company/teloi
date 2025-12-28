@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Block Enter key", () => {
@@ -112,5 +112,117 @@ describe("Block Enter key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
   });
+});
 
+describe("Title Enter key", () => {
+  // Document structure:
+  // Title: "Document Title" (no children yet)
+  //
+  // Expected after Enter:
+  // Title: "Document Title"
+  // └─ Block: "" (new first child, cursor here)
+
+  it("creates first child block when Enter pressed at end of title", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with only a title (root node has no children)
+      const { bufferId, nodeId: rootNodeId } =
+        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // When: User clicks title and presses Enter (cursor at end by default)
+      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_PRESSES("{Enter}");
+
+      // Then: A new child block should be created
+      yield* Then.BLOCK_COUNT_IS(1);
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // And: The new block should be empty, title unchanged
+      yield* Then.NODE_HAS_TEXT(rootNodeId, "Document Title");
+      const Node = yield* NodeT;
+      const children = yield* Node.getNodeChildren(rootNodeId);
+      expect(children.length).toBe(1);
+      yield* Then.NODE_HAS_TEXT(children[0]!, "");
+
+      // And: Cursor should be in the new block at position 0
+      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+    }).pipe(runtime.runPromise);
+  });
+
+  // Document structure:
+  // Title: "Document Title" with cursor at start
+  //
+  // Expected after Enter:
+  // Title: "" (all content moved)
+  // └─ Block: "Document Title" (gets all the text, cursor here)
+
+  it("moves all content to first block when Enter pressed at start of title", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with a title
+      const { bufferId, nodeId: rootNodeId } =
+        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // When: User clicks title, moves to start, and presses Enter
+      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* When.USER_PRESSES("{Enter}");
+
+      // Then: A new child block should be created
+      yield* Then.BLOCK_COUNT_IS(1);
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // And: Title should be empty, new block has all the text
+      yield* Then.NODE_HAS_TEXT(rootNodeId, "");
+      const Node = yield* NodeT;
+      const children = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(children[0]!, "Document Title");
+
+      // And: Cursor should be in the new block at position 0
+      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+    }).pipe(runtime.runPromise);
+  });
+
+  // Document structure:
+  // Title: "Document Title" with cursor at position 8 ("Document| Title")
+  //
+  // Expected after Enter:
+  // Title: "Document" (text before cursor)
+  // └─ Block: " Title" (text after cursor, cursor at start)
+
+  it("splits title text when Enter pressed in middle", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with a title
+      const { bufferId, nodeId: rootNodeId } =
+        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // When: User clicks title, moves to position 8, and presses Enter
+      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_MOVES_CURSOR_TO(8); // "Document|" Title"
+      yield* When.USER_PRESSES("{Enter}");
+
+      // Then: A new child block should be created
+      yield* Then.BLOCK_COUNT_IS(1);
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // And: Title should have text before cursor, new block has text after
+      yield* Then.NODE_HAS_TEXT(rootNodeId, "Document");
+      const Node = yield* NodeT;
+      const children = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(children[0]!, " Title");
+
+      // And: Cursor should be in the new block at position 0
+      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+    }).pipe(runtime.runPromise);
+  });
 });
