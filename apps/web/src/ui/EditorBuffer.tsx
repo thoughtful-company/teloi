@@ -11,6 +11,15 @@ interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
 
+/**
+ * Render the editor UI for a single buffer.
+ *
+ * Subscribes to the buffer identified by `bufferId`, binds its updates to local state, and renders
+ * the buffer header (Title) and a list of child Block components when a root node is present.
+ *
+ * @param bufferId - Identifier of the buffer to subscribe to and render
+ * @returns The component's JSX element; an outer container that conditionally renders a header with a Title and a column of Block components for the buffer's child blocks when the buffer's root node is available
+ */
 export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   const runtime = useBrowserRuntime();
 

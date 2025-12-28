@@ -1,5 +1,11 @@
 import { deepEqual } from "./deep-equal";
 
+/**
+ * Asserts that a value is neither `null` nor `undefined`.
+ *
+ * @param value - The value to verify is present
+ * @throws Error if `value` is `null` or `undefined`
+ */
 export function existence<T>(
   value: T | null | undefined,
 ): asserts value is NonNullable<T> {
@@ -8,6 +14,12 @@ export function existence<T>(
   }
 }
 
+/**
+ * Asserts that a value is neither `undefined` nor `null`.
+ *
+ * @param value - The value to validate is defined (not `undefined` or `null`)
+ * @throws Error if `value` is `undefined` or `null` (message: "Value is not defined")
+ */
 export function isDefined<T>(value: T | undefined): asserts value is T {
   if (value === undefined || value === null) {
     throw new Error("Value is not defined");
@@ -15,6 +27,13 @@ export function isDefined<T>(value: T | undefined): asserts value is T {
 }
 
 export function isEqual<T>(value: T, equalTo: T): asserts value is T;
+/**
+ * Asserts that a value is deeply equal to a given reference.
+ *
+ * @param value - The value to verify.
+ * @param equalTo - The expected value to compare against.
+ * @throws Error if `value` is not deeply equal to `equalTo`.
+ */
 export function isEqual<T>(value: unknown, equalTo: T): asserts value is T {
   if (!deepEqual(value, equalTo)) {
     throw new Error(
@@ -24,6 +43,13 @@ export function isEqual<T>(value: unknown, equalTo: T): asserts value is T {
 }
 
 export function notEqual<T>(value: T, notEqualTo: T): void;
+/**
+ * Asserts that `value` is not deeply equal to `notEqualTo`.
+ *
+ * @param value - The value to check against `notEqualTo`.
+ * @param notEqualTo - The value that `value` must not be deeply equal to.
+ * @throws Error if `value` and `notEqualTo` are deeply equal; the error message includes their JSON representations.
+ */
 export function notEqual<T>(value: unknown, notEqualTo: T): void {
   if (deepEqual(value, notEqualTo)) {
     throw new Error(

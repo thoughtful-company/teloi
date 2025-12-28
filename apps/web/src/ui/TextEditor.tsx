@@ -92,6 +92,19 @@ interface TextEditorProps {
   variant?: TextEditorVariant;
 }
 
+/**
+ * A collaborative CodeMirror-based text editor component with rich keyboard and selection handling.
+ *
+ * Renders a CodeMirror editor synchronized with a Yjs `Y.Text` and exposes hooks for navigation,
+ * editing, and selection events. Supports two visual variants ("block" and "title"), line-wrapping,
+ * yCollab synchronization with an UndoManager, custom handlers for Enter/Tab/Shift-Tab/Backspace/Delete,
+ * edge arrow navigation delegation (left/right/up/down), goalX-based vertical cursor positioning, and
+ * programmatic initial selection/positioning logic.
+ *
+ * @param props - Configuration and callbacks for collaboration, keyboard handlers, initial positioning,
+ *   and visual variant (see `TextEditorProps`).
+ * @returns A div element that contains and hosts the CodeMirror EditorView.
+ */
 export default function TextEditor(props: TextEditorProps) {
   const {
     ytext,
