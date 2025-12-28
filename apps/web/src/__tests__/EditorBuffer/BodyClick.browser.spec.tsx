@@ -43,8 +43,8 @@ describe("Body click creates block", () => {
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
 
       // And: The new block should be empty
-      const Node = yield* NodeT;
-      const children = yield* Node.getNodeChildren(rootNodeId);
+      const NodeService = yield* NodeT;
+      const children = yield* NodeService.getNodeChildren(rootNodeId);
       expect(children.length).toBe(1);
       yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
@@ -114,8 +114,8 @@ describe("Body click creates block", () => {
       yield* Then.NODE_HAS_TEXT(childNodeIds[0], "Existing block");
 
       // And: New block should be empty and at the end
-      const Node = yield* NodeT;
-      const children = yield* Node.getNodeChildren(rootNodeId);
+      const NodeService = yield* NodeT;
+      const children = yield* NodeService.getNodeChildren(rootNodeId);
       expect(children.length).toBe(2);
       yield* Then.NODE_HAS_TEXT(children[1]!, "");
 

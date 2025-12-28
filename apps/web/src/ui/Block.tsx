@@ -150,7 +150,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleBlur = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
@@ -158,7 +158,7 @@ export default function Block({ blockId }: BlockProps) {
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
-        if (sel && sel.anchor.type === "block" && sel.anchor.id === blockId) {
+        if (sel && sel.anchor.nodeId === nodeId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
         }

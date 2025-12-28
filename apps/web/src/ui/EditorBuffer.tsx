@@ -1,6 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -49,41 +50,42 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Node = yield* NodeT;
+        const Yjs = yield* YjsT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
         const children = yield* Node.getNodeChildren(nodeId);
         const lastChildId = children.length > 0 ? children[children.length - 1] : null;
 
+        let targetNodeId: Id.Node;
         let targetBlockId: Id.Block;
 
         if (lastChildId) {
-          const lastChild = yield* Node.get(lastChildId);
-          if (lastChild.textContent === "") {
+          const lastChildText = Yjs.getText(lastChildId).toString();
+          if (lastChildText === "") {
+            targetNodeId = lastChildId;
             targetBlockId = Id.makeBlockId(bufferId, lastChildId);
           } else {
-            const newNodeId = yield* Node.insertNode({
+            targetNodeId = yield* Node.insertNode({
               parentId: nodeId,
               insert: "after",
-              textContent: "",
             });
-            targetBlockId = Id.makeBlockId(bufferId, newNodeId);
+            targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           }
         } else {
-          const newNodeId = yield* Node.insertNode({
+          targetNodeId = yield* Node.insertNode({
             parentId: nodeId,
             insert: "after",
-            textContent: "",
           });
-          targetBlockId = Id.makeBlockId(bufferId, newNodeId);
+          targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
         }
 
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: targetNodeId },
             anchorOffset: 0,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: targetNodeId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
