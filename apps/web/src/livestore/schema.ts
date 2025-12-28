@@ -193,6 +193,14 @@ const materializers = State.SQLite.materializers(events, {
   // it's instances as hidden or dislpays [in_trash] icon
   // there
   "v1.NodeDeleted": ({ data }, ctx) => {
+    /**
+     * Collects all descendant node IDs for the given node.
+     *
+     * Recursively traverses child links and returns every descendant's `childId` (excluding the given `nodeId`) in depth-first pre-order: each direct child appears before its descendants.
+     *
+     * @param nodeId - The id of the node whose descendants should be collected
+     * @returns An array of descendant node ids (may be empty)
+     */
     function getAllDescendants(nodeId: string): string[] {
       const children = ctx.query(
         tables.parentLinks.select().where("parentId", "=", nodeId),

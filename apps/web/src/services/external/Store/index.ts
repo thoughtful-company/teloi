@@ -76,6 +76,14 @@ export const getStoreLayer = (
 
       const getSessionId = () => Effect.succeed(Store.clientSession.sessionId);
 
+      /**
+       * Replaces the document of the specified type and id with `value`, skipping the update if the current document is deeply equal.
+       *
+       * @param docType - The name of the document type to set
+       * @param value - The new document value
+       * @param id - Optional id of the document; omit for singleton documents
+       * @returns `void` on success; fails with `LiveStoreError` if the underlying commit fails
+       */
       function setDocument<K extends Model.DocumentName>(
         docType: K,
         value: ClientDocumentModel<K>,
@@ -103,6 +111,12 @@ export const getStoreLayer = (
         );
       }
 
+      /**
+       * Fetches the document for the given document type and optional id from the underlying store.
+       *
+       * @param id - Optional branded id of the document to retrieve
+       * @returns An `Option` containing the `ClientDocumentModel<K>` if found, `None` otherwise
+       */
       function getDocument<K extends Model.DocumentName>(
         docType: K,
         id?: BrandedId<K>,
