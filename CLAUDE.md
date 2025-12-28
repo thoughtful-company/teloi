@@ -158,3 +158,14 @@ App
 - [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
 - [x] Add visual comments for tests
 - [x] Bug: goalX not preserved when navigating DOWN from title to blocks
+- [ ] Bug: Undo (Cmd+Z) doesn't work reliably
+  - [x] Add failing test that captures the undo behavior (`Undo.browser.spec.tsx`)
+
+**Known Bug: Undo breaks due to model→editor data flow**
+
+CodeMirror maintains its own undo history, but our architecture syncs text from LiveStore→CodeMirror via the `text` prop. When text changes flow from the model (e.g., after a merge operation), CodeMirror's `dispatch` with the new content likely clobbers or confuses its internal history stack. This makes Cmd+Z either do nothing or produce unexpected results.
+
+Possible approaches:
+1. **Disable CM undo, implement at model level**: LiveStore events are already a log—could replay backwards
+2. **Coordinate undo stacks**: Track which changes came from user vs model sync, only undo user changes in CM
+3. **Use CM as source of truth for text**: Let CM own text state, sync TO model instead of FROM model (big architectural shift)
