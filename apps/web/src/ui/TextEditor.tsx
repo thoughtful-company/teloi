@@ -358,8 +358,11 @@ export default function TextEditor(props: TextEditorProps) {
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
 
-    // Default keymap comes after custom handlers
-    extensions.push(keymap.of(defaultKeymap));
+    // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
+    const filteredDefaultKeymap = defaultKeymap.filter(
+      (binding) => binding.key !== "Mod-[" && binding.key !== "Mod-]",
+    );
+    extensions.push(keymap.of(filteredDefaultKeymap));
 
     const state = EditorState.create({
       doc: ytext.toString(),
