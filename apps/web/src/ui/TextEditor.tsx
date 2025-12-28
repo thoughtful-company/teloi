@@ -85,6 +85,7 @@ interface TextEditorProps {
   onArrowUpOnFirstLine?: (goalX: number) => void;
   onArrowDownOnLastLine?: (goalX: number) => void;
   onSelectionChange?: (selection: SelectionInfo) => void;
+  onBlur?: () => void;
   onZoomIn?: () => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
@@ -106,6 +107,7 @@ export default function TextEditor(props: TextEditorProps) {
     onArrowUpOnFirstLine,
     onArrowDownOnLastLine,
     onSelectionChange,
+    onBlur,
     onZoomIn,
     initialClickCoords,
     initialSelection,
@@ -134,6 +136,9 @@ export default function TextEditor(props: TextEditorProps) {
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
           const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : null;
           onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
+        }
+        if (update.focusChanged && !update.view.hasFocus && onBlur) {
+          onBlur();
         }
       }),
     ];
@@ -424,17 +429,21 @@ export default function TextEditor(props: TextEditorProps) {
     if (selection.goalX != null && selection.goalLine != null) return;
 
     const currentSel = view.state.selection.main;
-    if (
-      currentSel.anchor === selection.anchor &&
-      currentSel.head === selection.head
-    ) {
-      return; // Already in sync
+    const needsUpdate =
+      currentSel.anchor !== selection.anchor ||
+      currentSel.head !== selection.head;
+
+    if (needsUpdate) {
+      const docLen = view.state.doc.length;
+      const anchor = Math.min(selection.anchor, docLen);
+      const head = Math.min(selection.head, docLen);
+      view.dispatch({ selection: { anchor, head } });
     }
 
-    const docLen = view.state.doc.length;
-    const anchor = Math.min(selection.anchor, docLen);
-    const head = Math.min(selection.head, docLen);
-    view.dispatch({ selection: { anchor, head } });
+    // Always ensure focus when selection prop is set (e.g., after body click)
+    if (!view.hasFocus) {
+      view.focus();
+    }
   });
 
   // Text sync is now handled by Yjs via yCollab extension

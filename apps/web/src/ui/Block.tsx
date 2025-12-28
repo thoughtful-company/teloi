@@ -147,6 +147,25 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleBlur = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        // Only clear selection and activeElement if still pointing to this block.
+        // If navigating to another block, they already point there - don't clear.
+        const selectionOpt = yield* Buffer.getSelection(bufferId);
+        const sel = Option.getOrNull(selectionOpt);
+        if (sel && sel.anchor.nodeId === nodeId) {
+          yield* Buffer.setSelection(bufferId, Option.none());
+          yield* Window.setActiveElement(Option.none());
+        }
+      }),
+    );
+  };
+
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -872,6 +891,7 @@ export default function Block({ blockId }: BlockProps) {
             onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
             onArrowDownOnLastLine={handleArrowDownOnLastLine}
             onSelectionChange={handleSelectionChange}
+            onBlur={handleBlur}
             onZoomIn={handleZoomIn}
             initialClickCoords={clickCoords}
             initialSelection={initialSelection}
