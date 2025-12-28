@@ -37,7 +37,12 @@ Never create type aliases for backwards compatibility (e.g., type OldName = NewN
 
 When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
 
-Only write comments that describe non-obvious things happening in code. Don't write comments for self-documenting code.
+Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
+- Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
+- Workarounds for external limitations ("CodeMirror doesn't expose X, so we...")
+- Important constraints or invariants that aren't obvious from the code
+
+Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
 
 ## Project Structure
 
@@ -164,7 +169,7 @@ App
 - [x] Editable block with proper state management
 - [x] Block splitting (Enter key creates new sibling block).
 - [x] Keyboard navigation between blocks (Arrow keys)
-- [x] Block merging (Backspace at start merges with previous)
+- [x] Block merging (Backspace at start, Delete at end)
 - [x] Block indentation (Tab/Shift+Tab for nesting)
 - [x] Verify if selection syncs from livestore to codemirror properly
 - [x] Fix Title ID typing in selection model (used discriminated union: `SelectionTarget = { type: "block", id } | { type: "title", bufferId }`)
@@ -173,11 +178,21 @@ App
 - [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
 - [x] Add visual comments for tests
 - [x] Bug: goalX not preserved when navigating DOWN from title to blocks
-- [ ] Block merging with Delete key
 - [x] URL-based navigation (URL ↔ active buffer's assignedNodeId sync)
 - [x] Mod+. zooms into focused block (navigate to that node)
   - Used `Stream.flatMap` with `{ switch: true }` to switch inner streams when `assignedNodeId` changes
   - Added `keyed` to `<Show>` in EditorBuffer to force Title remount on nodeId change
+- [ ] Bug: Undo (Cmd+Z) doesn't work reliably
+  - [x] Add failing test that captures the undo behavior (`Undo.browser.spec.tsx`)
+
+**Known Bug: Undo breaks due to model→editor data flow**
+
+CodeMirror maintains its own undo history, but our architecture syncs text from LiveStore→CodeMirror via the `text` prop. When text changes flow from the model (e.g., after a merge operation), CodeMirror's `dispatch` with the new content likely clobbers or confuses its internal history stack. This makes Cmd+Z either do nothing or produce unexpected results.
+
+Possible approaches:
+1. **Disable CM undo, implement at model level**: LiveStore events are already a log—could replay backwards
+2. **Coordinate undo stacks**: Track which changes came from user vs model sync, only undo user changes in CM
+3. **Use CM as source of truth for text**: Let CM own text state, sync TO model instead of FROM model (big architectural shift)
 
 **Known failing tests** (pre-existing, unrelated to recent work):
 - `ArrowDown.browser.spec.tsx > moves cursor to end of block when at last block and pressing ArrowDown` - expects offset 12, gets 10
