@@ -8,13 +8,8 @@
  */
 
 import { cleanup } from "solid-testing-library";
-import { afterEach } from "vitest";
+import { beforeEach } from "vitest";
 
-// Unmount Solid components and clean the DOM after each test
-afterEach(() => {
+beforeEach(() => {
   cleanup();
 });
-
-// Export an empty object to treat this file as a module.
-export { };
-

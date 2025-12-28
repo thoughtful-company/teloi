@@ -28,10 +28,15 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron"
+      "@tailwindcss/oxide",
+      "fsevents"
     ],
     "ignoredBuiltDependencies": [
-      "esbuild"
+      "@parcel/watcher",
+      "@tailwindcss/oxide",
+      "core-js",
+      "esbuild",
+      "msgpackr-extract"
     ]
   }
 }
