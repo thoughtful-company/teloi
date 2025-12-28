@@ -4,6 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { BufferT } from "../Buffer";
+import { WindowT } from "../Window";
 
 const parseNodeIdFromPath = (path: string): Option.Option<Id.Node> => {
   const match = path.match(/^\/workspace\/(.+)$/);
@@ -29,6 +30,7 @@ export const NavigationLive = Layer.effect(
     const Store = yield* StoreT;
     const Buffer = yield* BufferT;
     const Node = yield* NodeT;
+    const Window = yield* WindowT;
 
     const getActiveBufferId = Effect.gen(function* () {
       const sessionId = yield* Store.getSessionId();
@@ -101,10 +103,32 @@ export const NavigationLive = Layer.effect(
               const maybeBufferId = yield* getActiveBufferId;
               if (Option.isNone(maybeBufferId)) return;
 
-              yield* Buffer.setAssignedNodeId(
-                maybeBufferId.value as Id.Buffer,
-                validatedNodeId,
+              const bufferId = maybeBufferId.value as Id.Buffer;
+
+              yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
+
+              // Restore activeElement based on current selection
+              const selection = yield* Buffer.getSelection(bufferId).pipe(
+                Effect.catchTag("BufferNotFoundError", () =>
+                  Effect.succeed(Option.none<never>()),
+                ),
               );
+
+              if (Option.isSome(selection)) {
+                const selNodeId = selection.value.anchor.nodeId;
+                if (selNodeId === validatedNodeId) {
+                  // Selection is on the title node
+                  yield* Window.setActiveElement(
+                    Option.some({ type: "title" as const, bufferId }),
+                  );
+                } else {
+                  // Selection is on a block
+                  const blockId = Id.makeBlockId(bufferId, selNodeId);
+                  yield* Window.setActiveElement(
+                    Option.some({ type: "block" as const, id: blockId }),
+                  );
+                }
+              }
 
               yield* Effect.logDebug(
                 "[Navigation.popstate] Updated buffer from popstate",

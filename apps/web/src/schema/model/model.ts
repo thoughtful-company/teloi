@@ -24,11 +24,10 @@ export const Pane = Schema.Struct({
 });
 export type Pane = typeof Pane.Type;
 
-/** Target of a selection point - either a block or the title */
-export const SelectionTarget = Schema.Union(
-  Schema.Struct({ type: Schema.Literal("block"), id: Id.Block }),
-  Schema.Struct({ type: Schema.Literal("title"), bufferId: Id.Buffer }),
-);
+/** Target of a selection point - identified by nodeId (renders as title or block based on context) */
+export const SelectionTarget = Schema.Struct({
+  nodeId: Id.Node,
+});
 export type SelectionTarget = typeof SelectionTarget.Type;
 
 export const BufferSelection = Schema.Struct({

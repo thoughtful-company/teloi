@@ -317,7 +317,7 @@ describe("Block ArrowDown key", () => {
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
       // Set selection to position 0 via model
-      yield* When.SELECTION_IS_SET_TO(bufferId, firstBlockId, 0);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 0);
 
       // ArrowDown from start of first visual line (position 0)
       yield* When.USER_PRESSES("{ArrowDown}");
@@ -367,7 +367,7 @@ describe("Block ArrowDown key", () => {
       // - END of "AAAA BBBB " (line 1) - assoc=-1
       // - START of "CCCC DDDD" (line 2) - assoc=+1
       // We want it at START of line 2, so ArrowDown should go to next block
-      yield* When.SELECTION_IS_SET_TO(bufferId, firstBlockId, 10, 1);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 10, 1);
 
       // Press ArrowDown
       yield* When.USER_PRESSES("{ArrowDown}");
@@ -400,7 +400,7 @@ describe("Block ArrowDown key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(lastBlockId);
-      yield* When.SELECTION_IS_SET_TO(bufferId, lastBlockId, 5);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[1], 5);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 

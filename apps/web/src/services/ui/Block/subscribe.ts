@@ -38,7 +38,7 @@ export const subscribe = (blockId: Id.Block) =>
     const block$ = yield* makeBlockStreamEither(blockId);
     const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
-    const selection$ = yield* makeSelectionStream(bufferId, blockId);
+    const selection$ = yield* makeSelectionStream(bufferId, nodeId);
 
     const activeElementStream = yield* Window.subscribeActiveElement();
     const isActiveStream = activeElementStream.pipe(
@@ -176,7 +176,7 @@ const makeChildrenIdsStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     );
   });
 
-const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
+const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const query = queryDb(
@@ -192,12 +192,10 @@ const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
         if (!buffer?.selection) return null;
 
         const sel = buffer.selection;
-        // Only return selection if both anchor and focus are in this block
+        // Only return selection if both anchor and focus are on this node
         if (
-          sel.anchor.type !== "block" ||
-          sel.anchor.id !== blockId ||
-          sel.focus.type !== "block" ||
-          sel.focus.id !== blockId
+          sel.anchor.nodeId !== nodeId ||
+          sel.focus.nodeId !== nodeId
         ) {
           return null;
         }
@@ -213,7 +211,7 @@ const makeSelectionStream = (bufferId: Id.Buffer, blockId: Id.Block) =>
       Stream.changesWith(deepEqual),
       Stream.tap((sel) =>
         Effect.logTrace("[Block.Subscribe] Selection emitted").pipe(
-          Effect.annotateLogs({ blockId, selection: sel }),
+          Effect.annotateLogs({ nodeId, selection: sel }),
         ),
       ),
     );

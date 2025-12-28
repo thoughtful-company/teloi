@@ -63,8 +63,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
-          // Only return selection if anchor is on title
-          if (sel.anchor.type !== "title" || sel.anchor.bufferId !== bufferId) {
+          // Only return selection if anchor is on this node (the title's node)
+          if (sel.anchor.nodeId !== nodeId) {
             return null;
           }
 
@@ -144,9 +144,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: firstChildId },
             anchorOffset: 0,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: firstChildId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -182,9 +182,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: firstChildId },
             anchorOffset: 0,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: firstChildId },
             focusOffset: 0,
             goalX,
             goalLine: "first",
@@ -220,9 +220,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: newBlockId },
+            anchor: { nodeId: newNodeId },
             anchorOffset: 0,
-            focus: { type: "block", id: newBlockId },
+            focus: { nodeId: newNodeId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,

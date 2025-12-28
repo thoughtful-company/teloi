@@ -187,8 +187,11 @@ App
   - [x] Implemented Yjs CRDT for text content (fixes undo via `y-codemirror.next`)
 - [x] Bug: Pressing Enter in Title creates first child block
 - [ ] Implement block-level undo
-- [ ] Implement undo when you edit block A, switch to block B and then go back to block A
+- [x] Implement undo when you edit block A, switch to block B and then go back to block A
 - [ ] Bug: When title is empty, it is not clickable
+- [ ] Feature: Breadcrumps (needs designing)
+- [ ] Feature: Sidebar
+- [ ] Util: make a dev script with ccusage to calculate usage for directories ~/.claude and ~/.clancy and display them uniformly
 
 **Text Content Architecture (Yjs)**
 
@@ -202,7 +205,7 @@ Key files:
 - `ui/TextEditor.tsx` - Uses `yCollab` extension for CM↔Yjs sync
 - `ui/Block.tsx`, `ui/Title.tsx` - Get Y.Text from YjsT, handle split/merge
 
-Note: IndexedDB persistence disabled in dev mode due to Vite worker issues.
+IndexedDB persistence enabled via `y-indexeddb` for data survival across page refreshes.
 
 **Future: Automerge Migration**
 

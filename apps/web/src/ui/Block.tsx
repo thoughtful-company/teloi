@@ -134,9 +134,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: blockId },
+            anchor: { nodeId },
             anchorOffset: selection.anchor,
-            focus: { type: "block", id: blockId },
+            focus: { nodeId },
             focusOffset: selection.head,
             goalX: null,
             goalLine: null,
@@ -185,9 +185,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: newBlockId },
+            anchor: { nodeId: newNodeId },
             anchorOffset: 0,
-            focus: { type: "block", id: newBlockId },
+            focus: { nodeId: newNodeId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -319,36 +319,24 @@ export default function Block({ blockId }: BlockProps) {
           Yjs.deleteText(nodeId);
 
           // Move focus to parent (title if root, otherwise block)
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchor: { nodeId: parentId },
+              anchorOffset: mergePoint,
+              focus: { nodeId: parentId },
+              focusOffset: mergePoint,
+              goalX: null,
+              goalLine: null,
+              assoc: null,
+            }),
+          );
           if (parentId === rootNodeId) {
-            yield* Buffer.setSelection(
-              bufferId,
-              Option.some({
-                anchor: { type: "title", bufferId },
-                anchorOffset: mergePoint,
-                focus: { type: "title", bufferId },
-                focusOffset: mergePoint,
-                goalX: null,
-                goalLine: null,
-                assoc: null,
-              }),
-            );
             yield* Window.setActiveElement(
               Option.some({ type: "title" as const, bufferId }),
             );
           } else {
             const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Buffer.setSelection(
-              bufferId,
-              Option.some({
-                anchor: { type: "block", id: parentBlockId },
-                anchorOffset: mergePoint,
-                focus: { type: "block", id: parentBlockId },
-                focusOffset: mergePoint,
-                goalX: null,
-                goalLine: null,
-                assoc: null,
-              }),
-            );
             yield* Window.setActiveElement(
               Option.some({ type: "block" as const, id: parentBlockId }),
             );
@@ -377,9 +365,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: targetNodeId },
             anchorOffset: mergePoint,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: targetNodeId },
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
@@ -426,9 +414,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: blockId },
+              anchor: { nodeId },
               anchorOffset: mergePoint,
-              focus: { type: "block", id: blockId },
+              focus: { nodeId },
               focusOffset: mergePoint,
               goalX: null,
               goalLine: null,
@@ -483,9 +471,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: blockId },
+            anchor: { nodeId },
             anchorOffset: mergePoint,
-            focus: { type: "block", id: blockId },
+            focus: { nodeId },
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
@@ -539,9 +527,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: targetBlockId },
+              anchor: { nodeId: targetNodeId },
               anchorOffset: endPos,
-              focus: { type: "block", id: targetBlockId },
+              focus: { nodeId: targetNodeId },
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
@@ -551,45 +539,33 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else if (parentId === rootNodeId) {
-          const rootYtext = Yjs.getText(parentId);
-          const endPos = rootYtext.length;
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { type: "title", bufferId },
-              anchorOffset: endPos,
-              focus: { type: "title", bufferId },
-              focusOffset: endPos,
-              goalX: null,
-              goalLine: null,
-              assoc: null,
-            }),
-          );
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
         } else {
+          // Move to parent (title if root, otherwise block)
           const parentYtext = Yjs.getText(parentId);
           const endPos = parentYtext.length;
 
-          const parentBlockId = Id.makeBlockId(bufferId, parentId);
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: parentBlockId },
+              anchor: { nodeId: parentId },
               anchorOffset: endPos,
-              focus: { type: "block", id: parentBlockId },
+              focus: { nodeId: parentId },
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
               assoc: null,
             }),
           );
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: parentBlockId }),
-          );
+          if (parentId === rootNodeId) {
+            yield* Window.setActiveElement(
+              Option.some({ type: "title" as const, bufferId }),
+            );
+          } else {
+            const parentBlockId = Id.makeBlockId(bufferId, parentId);
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: parentBlockId }),
+            );
+          }
         }
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
     );
@@ -611,9 +587,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: targetBlockId },
+              anchor: { nodeId: firstChildId },
               anchorOffset: 0,
-              focus: { type: "block", id: targetBlockId },
+              focus: { nodeId: firstChildId },
               focusOffset: 0,
               goalX: null,
               goalLine: null,
@@ -655,9 +631,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: nextNodeId },
             anchorOffset: 0,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: nextNodeId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -716,9 +692,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: targetBlockId },
+              anchor: { nodeId: targetNodeId },
               anchorOffset: 0,
-              focus: { type: "block", id: targetBlockId },
+              focus: { nodeId: targetNodeId },
               focusOffset: 0,
               goalX,
               goalLine: "last",
@@ -728,40 +704,30 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else if (parentId === rootNodeId) {
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { type: "title", bufferId },
-              anchorOffset: 0,
-              focus: { type: "title", bufferId },
-              focusOffset: 0,
-              goalX,
-              goalLine: "last",
-              assoc: null,
-            }),
-          );
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
         } else {
-          // First child of non-root parent → go to parent
-          const parentBlockId = Id.makeBlockId(bufferId, parentId);
+          // First child → go to parent (title if root, otherwise block)
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: parentBlockId },
+              anchor: { nodeId: parentId },
               anchorOffset: 0,
-              focus: { type: "block", id: parentBlockId },
+              focus: { nodeId: parentId },
               focusOffset: 0,
               goalX,
               goalLine: "last",
               assoc: null,
             }),
           );
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: parentBlockId }),
-          );
+          if (parentId === rootNodeId) {
+            yield* Window.setActiveElement(
+              Option.some({ type: "title" as const, bufferId }),
+            );
+          } else {
+            const parentBlockId = Id.makeBlockId(bufferId, parentId);
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: parentBlockId }),
+            );
+          }
         }
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
     );
@@ -790,9 +756,9 @@ export default function Block({ blockId }: BlockProps) {
           yield* Buffer.setSelection(
             bufferId,
             Option.some({
-              anchor: { type: "block", id: targetBlockId },
+              anchor: { nodeId: firstChildId },
               anchorOffset: 0,
-              focus: { type: "block", id: targetBlockId },
+              focus: { nodeId: firstChildId },
               focusOffset: 0,
               goalX,
               goalLine: "first",
@@ -835,9 +801,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { type: "block", id: targetBlockId },
+            anchor: { nodeId: nextNodeId },
             anchorOffset: 0,
-            focus: { type: "block", id: targetBlockId },
+            focus: { nodeId: nextNodeId },
             focusOffset: 0,
             goalX,
             goalLine: "first",
@@ -854,9 +820,13 @@ export default function Block({ blockId }: BlockProps) {
   const handleZoomIn = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Navigation = yield* NavigationT;
+        const Window = yield* WindowT;
         yield* Navigation.navigateTo(nodeId);
+        yield* Window.setActiveElement(
+          Option.some({ type: "title" as const, bufferId }),
+        );
       }),
     );
   };

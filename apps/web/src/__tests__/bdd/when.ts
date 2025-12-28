@@ -65,13 +65,13 @@ export const USER_MOVES_CURSOR_TO = (offset: number) =>
   }).pipe(Effect.withSpan("When.USER_MOVES_CURSOR_TO"));
 
 /**
- * Sets selection to a specific position in a block via the model.
+ * Sets selection to a specific position in a node via the model.
  * This is more reliable than keyboard navigation for positioning.
  * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line
  */
 export const SELECTION_IS_SET_TO = (
   bufferId: Id.Buffer,
-  blockId: Id.Block,
+  nodeId: Id.Node,
   offset: number,
   assoc: -1 | 1 | null = null,
 ) =>
@@ -80,9 +80,9 @@ export const SELECTION_IS_SET_TO = (
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchor: { type: "block", id: blockId },
+        anchor: { nodeId },
         anchorOffset: offset,
-        focus: { type: "block", id: blockId },
+        focus: { nodeId },
         focusOffset: offset,
         goalX: null,
         goalLine: null,

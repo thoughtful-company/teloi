@@ -352,7 +352,7 @@ describe("Block ArrowUp key", () => {
       // - END of "AAAA BBBB " (line 1) - assoc=-1
       // - START of "CCCC DDDD" (line 2) - assoc=+1
       // We want it at END of line 1, so ArrowUp should go to prev block
-      yield* When.SELECTION_IS_SET_TO(bufferId, secondBlockId, 10, -1);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[1], 10, -1);
 
       // Press ArrowUp
       yield* When.USER_PRESSES("{ArrowUp}");
@@ -492,21 +492,16 @@ describe("Block ArrowUp key", () => {
       );
 
       // Capture final pixel X, offset, and Y position to check which visual line
-      const { xInTitle, yInTitle, offset, titleRect } = yield* Effect.promise(
-        () =>
-          waitFor(() => {
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-            const range = sel.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const titleEl = document.querySelector(
-              "[data-element-type='title']",
-            );
-            return {
-              xInTitle: rect.left,
-              yInTitle: rect.top,
-              offset: sel.anchorOffset,
-              titleRect: titleEl?.getBoundingClientRect(),
+      const { xInTitle, yInTitle, offset } = yield* Effect.promise(() =>
+        waitFor(() => {
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          return {
+            xInTitle: rect.left,
+            yInTitle: rect.top,
+            offset: sel.anchorOffset,
             };
           }),
       );
