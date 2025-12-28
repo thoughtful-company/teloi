@@ -93,20 +93,30 @@ export const SELECTION_IS_COLLAPSED_AT_OFFSET = (offset: number) =>
  * Asserts that the DOM selection is NOT in the specified block.
  */
 export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
-  Effect.sync(() => {
-    const currentBlockId = getSelectionBlockId();
-    expect(currentBlockId).not.toBeNull();
-    expect(currentBlockId).not.toBe(blockId);
-  }).pipe(Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"));
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const currentBlockId = getSelectionBlockId();
+        expect(currentBlockId).not.toBeNull();
+        expect(currentBlockId).not.toBe(blockId);
+      },
+      { timeout: 1000 },
+    ),
+  ).pipe(Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"));
 
 /**
  * Asserts that the DOM selection IS in the specified block.
  */
 export const SELECTION_IS_ON_BLOCK = (blockId: Id.Block) =>
-  Effect.sync(() => {
-    const currentBlockId = getSelectionBlockId();
-    expect(currentBlockId).toBe(blockId);
-  }).pipe(Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"));
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const currentBlockId = getSelectionBlockId();
+        expect(currentBlockId).toBe(blockId);
+      },
+      { timeout: 1000 },
+    ),
+  ).pipe(Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"));
 
 /**
  * Gets the element ID of the title containing the current DOM selection.
