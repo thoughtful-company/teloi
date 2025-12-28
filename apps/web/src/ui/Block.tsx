@@ -795,7 +795,24 @@ export default function Block({ blockId }: BlockProps) {
           });
 
         const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) return;
+        if (!nextNodeId) {
+          // No next block - move cursor to end of current block
+          const Yjs = yield* YjsT;
+          const textLength = Yjs.getText(nodeId).length;
+          yield* Buffer.setSelection(
+            bufferId,
+            Option.some({
+              anchor: { nodeId },
+              anchorOffset: textLength,
+              focus: { nodeId },
+              focusOffset: textLength,
+              goalX: null,
+              goalLine: null,
+              assoc: null,
+            }),
+          );
+          return;
+        }
 
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
