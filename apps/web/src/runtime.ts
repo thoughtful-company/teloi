@@ -4,6 +4,7 @@ import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
 import { makeURLServiceLive } from "./services/browser/URLService";
 import { NodeLive } from "./services/domain/Node";
 import { getStoreLayer } from "./services/external/Store";
+import { makeYjsLive } from "./services/external/Yjs";
 import { BlockLive } from "./services/ui/Block";
 import { BufferLive } from "./services/ui/Buffer";
 import { NavigationLive } from "./services/ui/Navigation";
@@ -36,12 +37,17 @@ const getLoggerLayer = (): Layer.Layer<never> => {
   return Logger.pretty;
 };
 
+// Disable Yjs IndexedDB persistence in dev mode due to Vite worker issues
+// See: https://github.com/vitejs/vite/issues/16214
+const yjsPersist = !import.meta.env.DEV;
+
 const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),
   Layer.provideMerge(NodeLive),
+  Layer.provideMerge(makeYjsLive({ roomName: "teloi-workspace", persist: yjsPersist })),
   Layer.provideMerge(makeURLServiceLive(window)),
   Layer.provideMerge(getStoreLayer(getStoreOrThrow())),
   Layer.provideMerge(Logger.minimumLogLevel(LogLevel.Trace)),

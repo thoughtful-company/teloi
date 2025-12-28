@@ -3,13 +3,14 @@ import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
-import { For, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import TextEditor, { type EnterKeyInfo, type SelectionInfo } from "./TextEditor";
 
 interface BlockProps {
@@ -50,22 +51,52 @@ export default function Block({ blockId }: BlockProps) {
   const { store, start } = bindStreamToStore({
     stream: blockStream,
     project: (view) => ({
-      textContent: view.nodeData.textContent,
       isActive: view.isActive,
       childBlockIds: view.childBlockIds,
       selection: view.selection,
     }),
     initial: {
-      textContent: "",
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
       selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
     },
   });
 
+  // Get Y.Text and UndoManager for this block's node
+  const [, nodeId] = Id.parseBlockId(blockId).pipe(
+    Effect.runSync,
+  );
+  const Yjs = runtime.runSync(YjsT);
+  const ytext = Yjs.getText(nodeId);
+  const undoManager = Yjs.getUndoManager(nodeId);
+
+  // Migration: If Y.Text is empty, populate from LiveStore
+  if (ytext.length === 0) {
+    const nodeData = runtime.runSync(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        return yield* Node.get(nodeId);
+      }).pipe(Effect.catchAll(() => Effect.succeed(null))),
+    );
+    if (nodeData?.textContent) {
+      ytext.insert(0, nodeData.textContent);
+    }
+  }
+
+  // Reactive text content signal for unfocused view (observes Y.Text changes)
+  const [textContent, setTextContent] = createSignal(ytext.toString());
+
   onMount(() => {
     const dispose = start(runtime);
-    onCleanup(dispose);
+
+    // Observe Y.Text changes for unfocused view
+    const observer = () => setTextContent(ytext.toString());
+    ytext.observe(observer);
+
+    onCleanup(() => {
+      dispose();
+      ytext.unobserve(observer);
+    });
   });
 
   let clickCoords: { x: number; y: number } | null = null;
@@ -106,15 +137,7 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleTextChange = (text: string) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-        yield* Node.setNodeText(nodeId, text);
-      }),
-    );
-  };
+  // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
     runtime.runPromise(
@@ -144,21 +167,32 @@ export default function Block({ blockId }: BlockProps) {
         const Node = yield* NodeT;
         const Window = yield* WindowT;
         const Buffer = yield* BufferT;
+        const Yjs = yield* YjsT;
 
         // Get parent of current node
         const parentId = yield* Node.getParent(nodeId);
 
         const isAtStart = info.cursorPos === 0 && info.textAfter.length > 0;
 
+        // Create new node (textContent is empty - we'll set Y.Text content after)
         const newNodeId = yield* Node.insertNode({
           parentId,
           insert: isAtStart ? "before" : "after",
           siblingId: nodeId,
-          textContent: isAtStart ? "" : info.textAfter,
+          textContent: "",
         });
 
-        if (!isAtStart) {
-          yield* Node.setNodeText(nodeId, info.textBefore);
+        // Update Y.Text content for split
+        if (isAtStart) {
+          // Cursor at start: new block gets empty, current block keeps content
+          // No Y.Text changes needed - current block already has the text
+        } else {
+          // Normal case: current block keeps text before cursor, new block gets text after
+          // 1. Delete text after cursor from current Y.Text
+          ytext.delete(info.cursorPos, ytext.length - info.cursorPos);
+          // 2. Insert text into new node's Y.Text
+          const newYtext = Yjs.getText(newNodeId);
+          newYtext.insert(0, info.textAfter);
         }
 
         const newBlockId = Id.makeBlockId(bufferId, newNodeId);
@@ -253,6 +287,7 @@ export default function Block({ blockId }: BlockProps) {
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
+        const Yjs = yield* YjsT;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
@@ -277,20 +312,25 @@ export default function Block({ blockId }: BlockProps) {
             return yield* findDeepestLastChild(lastChild);
           });
 
+        // Get current text from Y.Text
+        const currentText = ytext.toString();
+
         // First sibling: merge into parent
         if (siblingIndex === 0) {
-          const currentText = store.textContent;
-          const parentNode = yield* Node.get(parentId);
-          const parentText = parentNode.textContent;
-          const mergePoint = parentText.length;
+          const parentYtext = Yjs.getText(parentId);
+          const mergePoint = parentYtext.length;
 
-          yield* Node.setNodeText(parentId, parentText + currentText);
+          // Append current text to parent's Y.Text
+          parentYtext.insert(mergePoint, currentText);
+
+          // Delete current node and cleanup Y.Text
           yield* Store.commit(
             events.nodeDeleted({
               timestamp: Date.now(),
               data: { nodeId },
             }),
           );
+          Yjs.deleteText(nodeId);
 
           // Move focus to parent (title if root, otherwise block)
           if (parentId === rootNodeId) {
@@ -332,18 +372,20 @@ export default function Block({ blockId }: BlockProps) {
 
         const prevSiblingId = siblings[siblingIndex - 1]!;
         const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-        const currentText = store.textContent;
-        const targetNode = yield* Node.get(targetNodeId);
-        const targetText = targetNode.textContent;
-        const mergePoint = targetText.length;
+        const targetYtext = Yjs.getText(targetNodeId);
+        const mergePoint = targetYtext.length;
 
-        yield* Node.setNodeText(targetNodeId, targetText + currentText);
+        // Append current text to target's Y.Text
+        targetYtext.insert(mergePoint, currentText);
+
+        // Delete current node and cleanup Y.Text
         yield* Store.commit(
           events.nodeDeleted({
             timestamp: Date.now(),
             data: { nodeId },
           }),
         );
+        Yjs.deleteText(nodeId);
 
         const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
         yield* Buffer.setSelection(
@@ -372,24 +414,28 @@ export default function Block({ blockId }: BlockProps) {
         const Node = yield* NodeT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
+        const Yjs = yield* YjsT;
 
         const children = yield* Node.getNodeChildren(nodeId);
 
         // If has children, merge with first child
         if (children.length > 0) {
           const firstChildId = children[0]!;
-          const currentText = store.textContent;
-          const mergePoint = currentText.length;
-          const firstChildNode = yield* Node.get(firstChildId);
-          const childText = firstChildNode.textContent;
+          const mergePoint = ytext.length;
+          const childYtext = Yjs.getText(firstChildId);
+          const childText = childYtext.toString();
 
-          yield* Node.setNodeText(nodeId, currentText + childText);
+          // Append child text to current Y.Text
+          ytext.insert(mergePoint, childText);
+
+          // Delete child node and cleanup Y.Text
           yield* Store.commit(
             events.nodeDeleted({
               timestamp: Date.now(),
               data: { nodeId: firstChildId },
             }),
           );
+          Yjs.deleteText(firstChildId);
 
           yield* Buffer.setSelection(
             bufferId,
@@ -432,18 +478,21 @@ export default function Block({ blockId }: BlockProps) {
         const nextNodeId = yield* findNextNode(nodeId);
         if (!nextNodeId) return;
 
-        const currentText = store.textContent;
-        const mergePoint = currentText.length;
-        const nextNode = yield* Node.get(nextNodeId);
-        const nextText = nextNode.textContent;
+        const mergePoint = ytext.length;
+        const nextYtext = Yjs.getText(nextNodeId);
+        const nextText = nextYtext.toString();
 
-        yield* Node.setNodeText(nodeId, currentText + nextText);
+        // Append next text to current Y.Text
+        ytext.insert(mergePoint, nextText);
+
+        // Delete next node and cleanup Y.Text
         yield* Store.commit(
           events.nodeDeleted({
             timestamp: Date.now(),
             data: { nodeId: nextNodeId },
           }),
         );
+        Yjs.deleteText(nextNodeId);
 
         yield* Buffer.setSelection(
           bufferId,
@@ -831,14 +880,13 @@ export default function Block({ blockId }: BlockProps) {
           when={store.isActive}
           fallback={
             <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-pre-wrap">
-              {store.textContent || "\u00A0"}
+              {textContent() || "\u00A0"}
             </p>
           }
         >
           <TextEditor
-            initialText={store.textContent}
-            text={store.textContent}
-            onChange={handleTextChange}
+            ytext={ytext}
+            undoManager={undoManager}
             onEnter={handleEnter}
             onTab={handleTab}
             onShiftTab={handleShiftTab}

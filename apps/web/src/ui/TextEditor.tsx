@@ -2,6 +2,8 @@ import { defaultKeymap } from "@codemirror/commands";
 import { EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { createEffect, onCleanup, onMount } from "solid-js";
+import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import * as Y from "yjs";
 
 export type TextEditorVariant = "block" | "title";
 
@@ -69,8 +71,10 @@ export interface SelectionInfo {
 }
 
 interface TextEditorProps {
-  initialText: string;
-  onChange: (text: string) => void;
+  /** Yjs Y.Text instance for collaborative text */
+  ytext: Y.Text;
+  /** Yjs UndoManager for undo/redo */
+  undoManager: Y.UndoManager;
   onEnter?: (info: EnterKeyInfo) => void;
   onTab?: () => void;
   onShiftTab?: () => void;
@@ -85,14 +89,13 @@ interface TextEditorProps {
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
-  text?: string;
   variant?: TextEditorVariant;
 }
 
 export default function TextEditor(props: TextEditorProps) {
   const {
-    initialText,
-    onChange,
+    ytext,
+    undoManager,
     onEnter,
     onTab,
     onShiftTab,
@@ -113,17 +116,15 @@ export default function TextEditor(props: TextEditorProps) {
   let view: EditorView | undefined;
   // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
   let suppressSelectionChange = false;
-  // Suppress onChange for programmatic text updates (external sync)
-  let suppressOnChange = false;
 
   onMount(() => {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
       variantThemes[variant],
+      // Yjs collaborative editing extension - syncs Y.Text with CodeMirror
+      yCollab(ytext, null, { undoManager }),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged && !suppressOnChange) {
-          onChange(update.state.doc.toString());
-        }
+        // Text changes are handled by Yjs, only track selection
         if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
           const sel = update.state.selection.main;
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
@@ -354,11 +355,14 @@ export default function TextEditor(props: TextEditorProps) {
       ]),
     );
 
+    // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
+    extensions.push(keymap.of(yUndoManagerKeymap));
+
     // Default keymap comes after custom handlers
     extensions.push(keymap.of(defaultKeymap));
 
     const state = EditorState.create({
-      doc: initialText,
+      doc: ytext.toString(),
       extensions,
     });
 
@@ -430,25 +434,7 @@ export default function TextEditor(props: TextEditorProps) {
     view.dispatch({ selection: { anchor, head } });
   });
 
-  // Sync text from model to CodeMirror (for external updates like merges)
-  createEffect(() => {
-    const text = props.text;
-    if (!view || text === undefined) return;
-
-    const currentText = view.state.doc.toString();
-    if (currentText === text) return; // Already in sync
-
-    // Preserve cursor position during text replacement
-    const sel = view.state.selection.main;
-    const cursorPos = Math.min(sel.head, text.length);
-
-    suppressOnChange = true;
-    view.dispatch({
-      changes: { from: 0, to: currentText.length, insert: text },
-      selection: { anchor: cursorPos },
-    });
-    suppressOnChange = false;
-  });
+  // Text sync is now handled by Yjs via yCollab extension
 
   return <div ref={containerRef} />;
 }

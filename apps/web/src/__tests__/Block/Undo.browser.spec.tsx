@@ -11,11 +11,8 @@ describe("Block Undo (Cmd+Z)", () => {
    *
    * After Backspace: empty block
    * After Undo: should restore "Hello"
-   *
-   * KNOWN BUG: Undo doesn't restore deleted text.
-   * See CLAUDE.md "Known Bug: Undo breaks due to model→editor data flow"
    */
-  it.fails("restores deleted text after select-all and Backspace", async () => {
+  it("restores deleted text after select-all and Backspace", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root",
@@ -53,11 +50,8 @@ describe("Block Undo (Cmd+Z)", () => {
    * - First
    * - Second   <- should restore the merged block
    *
-   * This tests undo after model->editor sync (merge updates model,
-   * which then syncs merged text back to CodeMirror).
-   *
-   * KNOWN BUG: CodeMirror's undo can't reverse model-level operations.
-   * See CLAUDE.md "Known Bug: Undo breaks due to model→editor data flow"
+   * KNOWN LIMITATION: Yjs handles per-node text undo, but can't restore
+   * deleted nodes. Block-level undo requires a separate undo stack.
    */
   it.fails("undoes block merge after Delete", async () => {
     await Effect.gen(function* () {

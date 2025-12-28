@@ -1,0 +1,69 @@
+import { Id } from "@/schema";
+import { Context, Layer } from "effect";
+import * as Y from "yjs";
+
+export class YjsT extends Context.Tag("YjsT")<
+  YjsT,
+  {
+    /** Get or create a Y.Text for the given node ID */
+    getText: (nodeId: Id.Node) => Y.Text;
+    /** Delete the Y.Text for the given node ID (cleanup) */
+    deleteText: (nodeId: Id.Node) => void;
+    /** Get or create an UndoManager for the given node ID */
+    getUndoManager: (nodeId: Id.Node) => Y.UndoManager;
+    /** The underlying Y.Doc instance */
+    readonly doc: Y.Doc;
+  }
+>() {}
+
+export interface YjsConfig {
+  /** Room name for persistence (e.g., workspace ID) */
+  roomName: string;
+  /** Whether to enable IndexedDB persistence (disable in tests/dev) */
+  persist?: boolean;
+}
+
+export const makeYjsLive = (config: YjsConfig) =>
+  Layer.sync(YjsT, () => {
+    const doc = new Y.Doc();
+    const undoManagers = new Map<string, Y.UndoManager>();
+
+    // Conditionally load IndexedDB persistence to avoid Vite worker issues in dev
+    if (config.persist === true) {
+      import("y-indexeddb").then(({ IndexeddbPersistence }) => {
+        new IndexeddbPersistence(config.roomName, doc);
+      });
+    }
+
+    const getText = (nodeId: Id.Node): Y.Text => {
+      return doc.getText(nodeId);
+    };
+
+    const deleteText = (nodeId: Id.Node): void => {
+      const ytext = doc.getText(nodeId);
+      ytext.delete(0, ytext.length);
+
+      const undoManager = undoManagers.get(nodeId);
+      if (undoManager) {
+        undoManager.destroy();
+        undoManagers.delete(nodeId);
+      }
+    };
+
+    const getUndoManager = (nodeId: Id.Node): Y.UndoManager => {
+      let undoManager = undoManagers.get(nodeId);
+      if (!undoManager) {
+        const ytext = doc.getText(nodeId);
+        undoManager = new Y.UndoManager(ytext);
+        undoManagers.set(nodeId, undoManager);
+      }
+      return undoManager;
+    };
+
+    return {
+      getText,
+      deleteText,
+      getUndoManager,
+      doc,
+    };
+  });

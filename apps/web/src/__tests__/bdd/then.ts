@@ -1,7 +1,6 @@
-import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
 import { Effect } from "effect";
 import { screen, waitFor } from "solid-testing-library";
 import { expect } from "vitest";
@@ -50,22 +49,13 @@ export const NODE_HAS_CHILDREN = Effect.fn("Then.NODE_HAS_CHILDREN")(
 );
 
 /**
- * Asserts that a node has the expected text content.
+ * Asserts that a node has the expected text content (checks Yjs, not LiveStore).
  */
 export const NODE_HAS_TEXT = Effect.fn("Then.NODE_HAS_TEXT")(
   function* (nodeId: Id.Node, expectedText: string) {
-    const Store = yield* StoreT;
-    // When selecting a single column, LiveStore returns the value directly
-    const textContent = yield* Store.query(
-      tables.nodes
-        .select("textContent")
-        .where({ id: nodeId })
-        .first({ fallback: () => null }),
-    );
-    if (textContent === null) {
-      throw new Error(`Node ${nodeId} not found`);
-    }
-    expect(textContent).toBe(expectedText);
+    const Yjs = yield* YjsT;
+    const ytext = Yjs.getText(nodeId);
+    expect(ytext.toString()).toBe(expectedText);
   },
 );
 

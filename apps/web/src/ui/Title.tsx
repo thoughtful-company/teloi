@@ -3,12 +3,13 @@ import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Option, Stream } from "effect";
-import { onCleanup, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import TextEditor from "./TextEditor";
 
 interface TitleProps {
@@ -18,6 +19,27 @@ interface TitleProps {
 
 export default function Title({ bufferId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
+
+  // Get Y.Text and UndoManager for the title node
+  const Yjs = runtime.runSync(YjsT);
+  const ytext = Yjs.getText(nodeId);
+  const undoManager = Yjs.getUndoManager(nodeId);
+
+  // Migration: If Y.Text is empty, populate from LiveStore
+  if (ytext.length === 0) {
+    const nodeData = runtime.runSync(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        return yield* Node.get(nodeId);
+      }).pipe(Effect.catchAll(() => Effect.succeed(null))),
+    );
+    if (nodeData?.textContent) {
+      ytext.insert(0, nodeData.textContent);
+    }
+  }
+
+  // Reactive text content signal for unfocused view
+  const [textContent, setTextContent] = createSignal(ytext.toString());
 
   const titleStream = Stream.unwrap(
     Effect.gen(function* () {
@@ -73,8 +95,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       return Stream.zipLatestWith(
         Stream.zipLatest(nodeStream, isActiveStream),
         selectionStream,
-        ([nodeData, isActive], selection) => ({
-          textContent: nodeData.textContent,
+        ([, isActive], selection) => ({
           isActive,
           selection,
         }),
@@ -86,7 +107,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     stream: titleStream,
     project: (v) => v,
     initial: {
-      textContent: "",
       isActive: false,
       selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
     },
@@ -94,7 +114,15 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
   onMount(() => {
     const dispose = start(runtime);
-    onCleanup(dispose);
+
+    // Observe Y.Text changes for unfocused view
+    const observer = () => setTextContent(ytext.toString());
+    ytext.observe(observer);
+
+    onCleanup(() => {
+      dispose();
+      ytext.unobserve(observer);
+    });
   });
 
   let clickCoords: { x: number; y: number } | null = null;
@@ -111,14 +139,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
-  const handleTextChange = (text: string) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Node = yield* NodeT;
-        yield* Node.setNodeText(nodeId, text);
-      }),
-    );
-  };
+  // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
@@ -196,13 +217,13 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         when={store.isActive}
         fallback={
           <h1 class="text-title leading-[var(--text-title--line-height)] font-semibold">
-            {store.textContent}
+            {textContent()}
           </h1>
         }
       >
         <TextEditor
-          initialText={store.textContent}
-          onChange={handleTextChange}
+          ytext={ytext}
+          undoManager={undoManager}
           onArrowRightAtEnd={handleArrowRightAtEnd}
           onArrowDownOnLastLine={handleArrowDownOnLastLine}
           initialClickCoords={clickCoords}

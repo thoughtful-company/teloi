@@ -24,8 +24,8 @@ pnpm dev:web              # Start web app dev server (localhost:3003)
 pnpm -F @teloi/web test   # Run all tests (vitest)
 pnpm -F @teloi/web test:browser  # Run browser tests only (headless)
 
-# Type checking
-pnpm tsc --noEmit         # Check all TypeScript errors
+# Type checking (must run from apps/web due to monorepo path aliases)
+cd apps/web && pnpm tsc --noEmit
 
 # Linting
 pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on commit)
@@ -182,17 +182,32 @@ App
 - [x] Mod+. zooms into focused block (navigate to that node)
   - Used `Stream.flatMap` with `{ switch: true }` to switch inner streams when `assignedNodeId` changes
   - Added `keyed` to `<Show>` in EditorBuffer to force Title remount on nodeId change
-- [ ] Bug: Undo (Cmd+Z) doesn't work reliably
+- [x] Bug: Undo (Cmd+Z) doesn't work reliably
   - [x] Add failing test that captures the undo behavior (`Undo.browser.spec.tsx`)
+  - [x] Implemented Yjs CRDT for text content (fixes undo via `y-codemirror.next`)
+- [ ] Implement block-level undo
+- [ ] Implement undo when you edit block A, switch to block B and then go back to block A
 
-**Known Bug: Undo breaks due to model→editor data flow**
+**Text Content Architecture (Yjs)**
 
-CodeMirror maintains its own undo history, but our architecture syncs text from LiveStore→CodeMirror via the `text` prop. When text changes flow from the model (e.g., after a merge operation), CodeMirror's `dispatch` with the new content likely clobbers or confuses its internal history stack. This makes Cmd+Z either do nothing or produce unexpected results.
+Text content is now managed by Yjs CRDT, separate from LiveStore:
+- **LiveStore**: Node structure, parent_links, ordering, selection state, UI state
+- **Yjs**: Text content within nodes (via `YjsT` service)
+- **Coordination**: Split/merge operations update both systems; typing only touches Yjs
 
-Possible approaches:
-1. **Disable CM undo, implement at model level**: LiveStore events are already a log—could replay backwards
-2. **Coordinate undo stacks**: Track which changes came from user vs model sync, only undo user changes in CM
-3. **Use CM as source of truth for text**: Let CM own text state, sync TO model instead of FROM model (big architectural shift)
+Key files:
+- `services/external/Yjs/index.ts` - YjsT service with Y.Doc, Y.Text per node
+- `ui/TextEditor.tsx` - Uses `yCollab` extension for CM↔Yjs sync
+- `ui/Block.tsx`, `ui/Title.tsx` - Get Y.Text from YjsT, handle split/merge
+
+Note: IndexedDB persistence disabled in dev mode due to Vite worker issues.
+
+**Future: Automerge Migration**
+
+Plan to transition from Yjs to Automerge for richer version history capabilities:
+- Automerge stores complete DAG of editing history (every keystroke)
+- Enables time-travel, branching, and detailed change attribution
+- Current YjsT interface designed for easy swap (minimal abstraction now, refactor on migration)
 
 **Known failing tests** (pre-existing, unrelated to recent work):
 - `ArrowDown.browser.spec.tsx > moves cursor to end of block when at last block and pressing ArrowDown` - expects offset 12, gets 10
