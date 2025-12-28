@@ -237,7 +237,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   };
 
   return (
-    <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus}>
+    <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus} class="min-h-[var(--text-title--line-height)]">
       <Show
         when={store.isActive}
         fallback={
