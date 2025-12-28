@@ -29,7 +29,7 @@ You'll need **Node.js 20+** and **pnpm 10+** installed on your machine.
 
 1. **Clone the repository** (download the code)
    ```bash
-   git clone https://github.com/YOUR_USERNAME/teloi-clancy.git
+   git clone https://github.com/YOUR_USERNAME/teloi.git
    cd teloi-clancy
    ```
 
