@@ -70,19 +70,6 @@ export default function Block({ blockId }: BlockProps) {
   const ytext = Yjs.getText(nodeId);
   const undoManager = Yjs.getUndoManager(nodeId);
 
-  // Migration: If Y.Text is empty, populate from LiveStore
-  if (ytext.length === 0) {
-    const nodeData = runtime.runSync(
-      Effect.gen(function* () {
-        const Node = yield* NodeT;
-        return yield* Node.get(nodeId);
-      }).pipe(Effect.catchAll(() => Effect.succeed(null))),
-    );
-    if (nodeData?.textContent) {
-      ytext.insert(0, nodeData.textContent);
-    }
-  }
-
   // Reactive text content signal for unfocused view (observes Y.Text changes)
   const [textContent, setTextContent] = createSignal(ytext.toString());
 
@@ -174,12 +161,11 @@ export default function Block({ blockId }: BlockProps) {
 
         const isAtStart = info.cursorPos === 0 && info.textAfter.length > 0;
 
-        // Create new node (textContent is empty - we'll set Y.Text content after)
+        // Create new node
         const newNodeId = yield* Node.insertNode({
           parentId,
           insert: isAtStart ? "before" : "after",
           siblingId: nodeId,
-          textContent: "",
         });
 
         // Update Y.Text content for split
@@ -541,11 +527,13 @@ export default function Block({ blockId }: BlockProps) {
             return yield* findDeepestLastChild(lastChild);
           });
 
+        const Yjs = yield* YjsT;
+
         if (siblingIndex > 0) {
           const prevSiblingId = siblings[siblingIndex - 1]!;
           const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-          const targetNode = yield* Node.get(targetNodeId);
-          const endPos = targetNode.textContent.length;
+          const targetYtext = Yjs.getText(targetNodeId);
+          const endPos = targetYtext.length;
 
           const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Buffer.setSelection(
@@ -564,8 +552,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
         } else if (parentId === rootNodeId) {
-          const rootNode = yield* Node.get(parentId);
-          const endPos = rootNode.textContent.length;
+          const rootYtext = Yjs.getText(parentId);
+          const endPos = rootYtext.length;
 
           yield* Buffer.setSelection(
             bufferId,
@@ -583,8 +571,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "title" as const, bufferId }),
           );
         } else {
-          const parentNode = yield* Node.get(parentId);
-          const endPos = parentNode.textContent.length;
+          const parentYtext = Yjs.getText(parentId);
+          const endPos = parentYtext.length;
 
           const parentBlockId = Id.makeBlockId(bufferId, parentId);
           yield* Buffer.setSelection(

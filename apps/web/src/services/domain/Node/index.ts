@@ -9,7 +9,6 @@ import { get } from "./get";
 import { getNodeChildren } from "./getNodeChildren";
 import { getParent } from "./getParent";
 import { insertNode, InsertNodeArgs } from "./insertNode";
-import { setNodeText } from "./setNodeText";
 import { subscribe } from "./subscribe";
 import { subscribeChildren } from "./subscribeChildren";
 import { subscribeEither } from "./subscribeEither";
@@ -27,10 +26,6 @@ export class NodeT extends Context.Tag("NodeT")<
       nodeId: Id.Node,
     ) => Effect.Effect<Stream.Stream<readonly string[]>>;
     attestExistence: (nodeId: Id.Node) => Effect.Effect<void, NodeNotFoundError>;
-    setNodeText: (
-      nodeId: Id.Node,
-      textContent: string,
-    ) => Effect.Effect<void, NodeNotFoundError>;
     /**
      * Inserts a new node or moves an existing node in the tree structure.
      * If nodeId exists, the node is moved; otherwise, a new node is created.
@@ -65,7 +60,6 @@ export const NodeLive = Layer.effect(
       subscribeEither: withContext(subscribeEither)(context),
       subscribeChildren: withContext(subscribeChildren)(context),
       attestExistence: withContext(attestExistence)(context),
-      setNodeText: withContext(setNodeText)(context),
       insertNode: withContext(insertNode)(context),
       getParent: withContext(getParent)(context),
       getNodeChildren: withContext(getNodeChildren)(context),

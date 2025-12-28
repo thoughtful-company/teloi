@@ -155,7 +155,7 @@ const makeNodeStreamEither = (nodeId: Id.Node) =>
           onRight: (n) =>
             Effect.logTrace("[Block.Subscribe] Node value emitted").pipe(
               Effect.annotateLogs({
-                nodeText: n.textContent,
+                nodeId: n.id,
                 modifiedAt: n.modifiedAt,
               }),
             ),

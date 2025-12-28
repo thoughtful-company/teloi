@@ -25,19 +25,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   const ytext = Yjs.getText(nodeId);
   const undoManager = Yjs.getUndoManager(nodeId);
 
-  // Migration: If Y.Text is empty, populate from LiveStore
-  if (ytext.length === 0) {
-    const nodeData = runtime.runSync(
-      Effect.gen(function* () {
-        const Node = yield* NodeT;
-        return yield* Node.get(nodeId);
-      }).pipe(Effect.catchAll(() => Effect.succeed(null))),
-    );
-    if (nodeData?.textContent) {
-      ytext.insert(0, nodeData.textContent);
-    }
-  }
-
   // Reactive text content signal for unfocused view
   const [textContent, setTextContent] = createSignal(ytext.toString());
 

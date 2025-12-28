@@ -56,8 +56,6 @@ describe("Block Delete key", () => {
    */
   it("merges with first child when Delete pressed at end of parent", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create root with one child "Parent"
       const { bufferId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
@@ -65,10 +63,10 @@ describe("Block Delete key", () => {
       const [parentNodeId] = childNodeIds;
 
       // Add child "FirstChild" to Parent
-      yield* Node.insertNode({
+      yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
         insert: "after",
-        textContent: "FirstChild",
+        text: "FirstChild",
       });
 
       const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
@@ -101,8 +99,6 @@ describe("Block Delete key", () => {
    */
   it("merges with parent's next sibling when Delete pressed at end of last child", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create base structure: root with children A and C
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -113,10 +109,10 @@ describe("Block Delete key", () => {
       const [nodeA] = childNodeIds;
 
       // Add child B to node A
-      const nodeB = yield* Node.insertNode({
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
         insert: "after",
-        textContent: "B",
+        text: "B",
       });
 
       const blockB = Id.makeBlockId(bufferId, nodeB);

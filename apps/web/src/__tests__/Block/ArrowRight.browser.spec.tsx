@@ -1,6 +1,5 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { describe, it } from "vitest";
@@ -30,17 +29,15 @@ describe("Block ArrowRight key", () => {
 
   it("moves to first child when block has children", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
         [{ text: "Parent" }],
       );
 
-      const childId = yield* Node.insertNode({
+      const childId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Child",
+        text: "Child",
       });
 
       const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
@@ -59,8 +56,6 @@ describe("Block ArrowRight key", () => {
 
   it("moves to parent's next sibling when last child", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Root -> [First, Second]
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -68,10 +63,10 @@ describe("Block ArrowRight key", () => {
       );
 
       // First -> [Nested]
-      const nestedId = yield* Node.insertNode({
+      const nestedId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Nested",
+        text: "Nested",
       });
 
       const nestedBlockId = Id.makeBlockId(bufferId, nestedId);

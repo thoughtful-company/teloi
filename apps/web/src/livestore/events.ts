@@ -16,27 +16,14 @@ export const nodeCreated = Events.synced({
     timestamp: Schema.Number,
     data: Schema.Union(
       Schema.Struct({
-        textContent: Schema.String,
         nodeId: Schema.String,
         parentId: Schema.optional(Schema.String),
         position: Schema.optional(Schema.String),
       }),
       Schema.Struct({
-        textContent: Schema.String,
         nodeId: Schema.String,
       }),
     ),
-  }),
-});
-
-export const nodeTextUpdated = Events.synced({
-  name: "v1.NodeTextContentUdated",
-  schema: Schema.Struct({
-    timestamp: Schema.Number,
-    data: Schema.Struct({
-      textContent: Schema.String,
-      nodeId: Schema.String,
-    }),
   }),
 });
 

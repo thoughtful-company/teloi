@@ -37,9 +37,9 @@ const getLoggerLayer = (): Layer.Layer<never> => {
   return Logger.pretty;
 };
 
-// Disable Yjs IndexedDB persistence in dev mode due to Vite worker issues
-// See: https://github.com/vitejs/vite/issues/16214
-const yjsPersist = !import.meta.env.DEV;
+// Yjs persistence via y-indexeddb. Safe now that migration is removed
+// and Yjs is the sole source of truth for text content.
+const yjsPersist = true;
 
 const BrowserLayer = pipe(
   NavigationLive,

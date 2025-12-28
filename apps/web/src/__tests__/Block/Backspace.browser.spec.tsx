@@ -85,8 +85,6 @@ describe("Block Backspace key", () => {
    */
   it("merges with last descendant of previous sibling when it has children", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create base structure: root with children A and C
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -97,10 +95,10 @@ describe("Block Backspace key", () => {
       const [nodeA, nodeC] = childNodeIds;
 
       // Add child B to node A
-      const nodeB = yield* Node.insertNode({
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
         insert: "after",
-        textContent: "B",
+        text: "B",
       });
 
       const blockC = Id.makeBlockId(bufferId, nodeC);
@@ -135,8 +133,6 @@ describe("Block Backspace key", () => {
    */
   it("merges first child into parent when Backspace pressed at start", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [
           { text: "FirstChild" },

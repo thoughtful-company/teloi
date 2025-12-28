@@ -1,6 +1,7 @@
 import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 
@@ -11,6 +12,7 @@ import { nanoid } from "nanoid";
  */
 export const bootstrap = Effect.gen(function* () {
   const Store = yield* StoreT;
+  const Yjs = yield* YjsT;
   const windowId = Id.Window.make(yield* Store.getSessionId());
 
   const windowDoc = yield* Store.getDocument("window", windowId);
@@ -32,22 +34,21 @@ export const bootstrap = Effect.gen(function* () {
 
   const paneId = Id.Pane.make(nanoid());
   const bufferId = Id.Buffer.make(nanoid());
-  const nodeId = nanoid();
+  const nodeId = Id.Node.make(nanoid());
 
-  const childId1 = nanoid();
-  const childId2 = nanoid();
-  const grandchildId = nanoid();
+  const childId1 = Id.Node.make(nanoid());
+  const childId2 = Id.Node.make(nanoid());
+  const grandchildId = Id.Node.make(nanoid());
 
-  // Create root node with initial content
+  // Create root node
   yield* Store.commit(
     events.nodeCreated({
       timestamp: Date.now(),
-      data: {
-        nodeId,
-        textContent:
-          "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
-      },
+      data: { nodeId },
     }),
+  );
+  Yjs.getText(nodeId).insert(0,
+    "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
   );
 
   // Create first child
@@ -56,11 +57,13 @@ export const bootstrap = Effect.gen(function* () {
       timestamp: Date.now(),
       data: {
         nodeId: childId1,
-        textContent: "Once or twice she had peeped into the book her sister was reading.",
         parentId: nodeId,
         position: "a0",
       },
     }),
+  );
+  Yjs.getText(childId1).insert(0,
+    "Once or twice she had peeped into the book her sister was reading.",
   );
 
   // Create second child
@@ -69,11 +72,13 @@ export const bootstrap = Effect.gen(function* () {
       timestamp: Date.now(),
       data: {
         nodeId: childId2,
-        textContent: "But it had no pictures or conversations in it.",
         parentId: nodeId,
         position: "a1",
       },
     }),
+  );
+  Yjs.getText(childId2).insert(0,
+    "But it had no pictures or conversations in it.",
   );
 
   // Create grandchild (nested under first child)
@@ -82,11 +87,13 @@ export const bootstrap = Effect.gen(function* () {
       timestamp: Date.now(),
       data: {
         nodeId: grandchildId,
-        textContent: "And what is the use of a book without pictures or conversations?",
         parentId: childId1,
         position: "a0",
       },
     }),
+  );
+  Yjs.getText(grandchildId).insert(0,
+    "And what is the use of a book without pictures or conversations?",
   );
 
   // Create window document

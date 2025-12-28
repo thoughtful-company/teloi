@@ -11,7 +11,6 @@ export type InsertNodeArgs = {
   parentId: Id.Node;
   insert: "before" | "after";
   siblingId?: Id.Node;
-  textContent?: string;
 };
 
 /**
@@ -153,7 +152,7 @@ const nodeExists = (nodeId: Id.Node) =>
 export const insertNode = (args: InsertNodeArgs) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const { parentId, insert, siblingId, textContent = "" } = args;
+    const { parentId, insert, siblingId } = args;
     const nodeId = args.nodeId ?? (nanoid() as Id.Node);
 
     // Resolve the position for insertion
@@ -182,7 +181,6 @@ export const insertNode = (args: InsertNodeArgs) =>
           timestamp: Date.now(),
           data: {
             nodeId,
-            textContent,
             parentId,
             position,
           },

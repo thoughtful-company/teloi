@@ -1,6 +1,5 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { describe, it } from "vitest";
@@ -36,8 +35,6 @@ describe("Block ArrowLeft key", () => {
 
   it("moves to deepest visible child of previous sibling when it has children", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create: Root -> [First, Second]
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -45,10 +42,10 @@ describe("Block ArrowLeft key", () => {
       );
 
       // Add child to First: First -> [Nested]
-      const nestedChildId = yield* Node.insertNode({
+      const nestedChildId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Nested",
+        text: "Nested",
       });
 
       const nestedChildBlockId = Id.makeBlockId(bufferId, nestedChildId);
@@ -73,8 +70,6 @@ describe("Block ArrowLeft key", () => {
 
   it("moves to parent when at first sibling", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create: Root -> [Parent]
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -82,10 +77,10 @@ describe("Block ArrowLeft key", () => {
       );
 
       // Add child to Parent: Parent -> [Child]
-      const childId = yield* Node.insertNode({
+      const childId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Child",
+        text: "Child",
       });
 
       const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);

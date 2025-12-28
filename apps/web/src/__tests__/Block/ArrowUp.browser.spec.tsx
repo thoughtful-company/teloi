@@ -1,6 +1,5 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
@@ -160,8 +159,6 @@ describe("Block ArrowUp key", () => {
 
   it("moves to deepest last child of previous sibling when it has children", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create: Root -> [First, Second]
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -169,10 +166,10 @@ describe("Block ArrowUp key", () => {
       );
 
       // Add child to First: First -> [Nested]
-      const nestedChildId = yield* Node.insertNode({
+      const nestedChildId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Nested",
+        text: "Nested",
       });
 
       const nestedChildBlockId = Id.makeBlockId(bufferId, nestedChildId);
@@ -193,8 +190,6 @@ describe("Block ArrowUp key", () => {
 
   it("moves to parent when at first child", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Create: Root -> [Parent]
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root node",
@@ -202,10 +197,10 @@ describe("Block ArrowUp key", () => {
       );
 
       // Add child to Parent: Parent -> [Child]
-      const childId = yield* Node.insertNode({
+      const childId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Child",
+        text: "Child",
       });
 
       const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
@@ -226,8 +221,6 @@ describe("Block ArrowUp key", () => {
 
   it("maintains goal X when traveling from sibling to previous block's nested child", async () => {
     await Effect.gen(function* () {
-      const Node = yield* NodeT;
-
       // Structure: Root -> [First, Second]
       //            First -> [Nested] (indented by 16px)
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -236,10 +229,10 @@ describe("Block ArrowUp key", () => {
       );
 
       // Add nested child to First
-      yield* Node.insertNode({
+      yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: childNodeIds[0],
         insert: "after",
-        textContent: "Nested child content",
+        text: "Nested child content",
       });
 
       const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);

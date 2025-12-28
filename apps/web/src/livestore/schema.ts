@@ -9,7 +9,6 @@ const nodes = State.SQLite.table({
   name: "nodes",
   columns: {
     id: State.SQLite.text({ primaryKey: true }),
-    textContent: State.SQLite.text({ nullable: false, default: "" }),
     createdAt: State.SQLite.integer(),
     modifiedAt: State.SQLite.integer(),
   },
@@ -147,7 +146,6 @@ const materializers = State.SQLite.materializers(events, {
   "v1.NodeCreated": ({ timestamp, data }) => {
     const insertNodeOp = tables.nodes.insert({
       id: data.nodeId,
-      textContent: data.textContent,
       createdAt: timestamp,
       modifiedAt: timestamp,
     });
@@ -163,14 +161,6 @@ const materializers = State.SQLite.materializers(events, {
     }
 
     return insertNodeOp;
-  },
-  "v1.NodeTextContentUdated": ({ timestamp, data }) => {
-    return nodes
-      .update({
-        textContent: data.textContent,
-        modifiedAt: timestamp,
-      })
-      .where({ id: data.nodeId });
   },
   "v1.NodeMoved": ({ data }, ctx) => {
     const link = ctx.query(
