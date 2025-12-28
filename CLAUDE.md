@@ -188,9 +188,11 @@ App
 - [x] Bug: Pressing Enter in Title creates first child block
 - [ ] Implement block-level undo
 - [x] Implement undo when you edit block A, switch to block B and then go back to block A
-- [ ] Bug: When title is empty, it is not clickable
+- [x] Bug: When title is empty, it is not clickable
 - [ ] Feature: Breadcrumps (needs designing)
-- [ ] Feature: Sidebar
+- [ ] Implement: Block selection
+- [ ] Feature: Sidebar (require designing)
+- [ ] Write a Readme that includes basic info about the project and how to use it
 - [ ] Util: make a dev script with ccusage to calculate usage for directories ~/.claude and ~/.clancy and display them uniformly
 
 **Text Content Architecture (Yjs)**
@@ -214,5 +216,3 @@ Plan to transition from Yjs to Automerge for richer version history capabilities
 - Enables time-travel, branching, and detailed change attribution
 - Current YjsT interface designed for easy swap (minimal abstraction now, refactor on migration)
 
-**Known failing tests** (pre-existing, unrelated to recent work):
-- `ArrowDown.browser.spec.tsx > moves cursor to end of block when at last block and pressing ArrowDown` - expects offset 12, gets 10
