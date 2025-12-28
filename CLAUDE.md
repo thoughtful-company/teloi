@@ -189,7 +189,7 @@ App
 - [ ] Implement block-level undo
 - [x] Implement undo when you edit block A, switch to block B and then go back to block A
 - [x] Bug: When title is empty, it is not clickable
-- [ ] Feature: Breadcrumps (needs designing)
+- [ ] Feature: Breadcrumbs (needs designing)
 - [ ] Implement: Block selection
 - [ ] Feature: Sidebar (require designing)
 - [ ] Write a Readme that includes basic info about the project and how to use it
