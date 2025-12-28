@@ -1,8 +1,10 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { BufferT } from "@/services/ui/Buffer";
+import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
 import Title from "./Title";
@@ -40,18 +42,79 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     onCleanup(dispose);
   });
 
+  const handleBodyClick = (e: MouseEvent, nodeId: Id.Node) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-element-type='block']")) return;
+
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+
+        const children = yield* Node.getNodeChildren(nodeId);
+        const lastChildId = children.length > 0 ? children[children.length - 1] : null;
+
+        let targetBlockId: Id.Block;
+
+        if (lastChildId) {
+          const lastChild = yield* Node.get(lastChildId);
+          if (lastChild.textContent === "") {
+            targetBlockId = Id.makeBlockId(bufferId, lastChildId);
+          } else {
+            const newNodeId = yield* Node.insertNode({
+              parentId: nodeId,
+              insert: "after",
+              textContent: "",
+            });
+            targetBlockId = Id.makeBlockId(bufferId, newNodeId);
+          }
+        } else {
+          const newNodeId = yield* Node.insertNode({
+            parentId: nodeId,
+            insert: "after",
+            textContent: "",
+          });
+          targetBlockId = Id.makeBlockId(bufferId, newNodeId);
+        }
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { type: "block", id: targetBlockId },
+            anchorOffset: 0,
+            focus: { type: "block", id: targetBlockId },
+            focusOffset: 0,
+            goalX: null,
+            goalLine: null,
+            assoc: null,
+          }),
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
+    );
+  };
+
   return (
-    <div data-testid="editor-buffer">
+    <div data-testid="editor-buffer" class="h-full flex flex-col">
       <Show when={store.nodeId} keyed>
         {(nodeId) => (
           <>
-            <header class="mx-auto max-w-[var(--max-line-width)] border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+            <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
               <Title bufferId={bufferId} nodeId={nodeId} />
             </header>
-            <div class="mx-auto max-w-[var(--max-line-width)] flex flex-col pt-4">
-              <For each={store.childBlockIds}>
-                {(childId) => <Block blockId={childId} />}
-              </For>
+            <div
+              data-testid="editor-body"
+              class="flex-1 flex flex-col pt-4 cursor-text"
+              onClick={(e) => handleBodyClick(e, nodeId)}
+            >
+              <div class="mx-auto max-w-[var(--max-line-width)] w-full">
+                <For each={store.childBlockIds}>
+                  {(childId) => <Block blockId={childId} />}
+                </For>
+              </div>
             </div>
           </>
         )}

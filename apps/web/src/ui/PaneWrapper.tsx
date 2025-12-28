@@ -16,8 +16,10 @@ const contentVariants = cva("mx-auto px-[var(--spacing-panel-x)]", {
 
 export default function PaneWrapper({ children }: { children: JSX.Element }) {
   return (
-    <section class="flex-1 shadow-daiichi bg-white rounded-lg pt-10 overflow-y-visible overflow-x-hidden">
-      <div class={cn(contentVariants({ spacing: "narrow" }))}>{children}</div>
+    <section class="flex-1 flex flex-col shadow-daiichi bg-white rounded-lg pt-10 overflow-y-auto overflow-x-hidden">
+      <div class={cn(contentVariants({ spacing: "wide" }), "flex-1 flex flex-col")}>
+        {children}
+      </div>
     </section>
   );
 }
