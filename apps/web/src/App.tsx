@@ -5,6 +5,7 @@ import { Effect, Option } from "effect";
 import { Component, For, Show } from "solid-js";
 import EditorBuffer from "./ui/EditorBuffer";
 import PaneWrapper from "./ui/PaneWrapper";
+import { Sidebar } from "./ui/Sidebar";
 
 const App: Component = () => {
   const runtime = useBrowserRuntime();
@@ -31,20 +32,23 @@ const App: Component = () => {
   );
 
   return (
-    <div class="flex h-full w-full p-2.5">
-      <For each={panes}>
-        {(paneId) => (
-          <PaneWrapper>
-            <Show when={buffersByPane.get(paneId)}>
-              {(buffers) => (
-                <For each={[...buffers()]}>
-                  {(bufferId) => <EditorBuffer bufferId={bufferId} />}
-                </For>
-              )}
-            </Show>
-          </PaneWrapper>
-        )}
-      </For>
+    <div class="flex h-full w-full">
+      <Sidebar />
+      <main class="flex-1 flex p-2.5 overflow-hidden">
+        <For each={panes}>
+          {(paneId) => (
+            <PaneWrapper>
+              <Show when={buffersByPane.get(paneId)}>
+                {(buffers) => (
+                  <For each={[...buffers()]}>
+                    {(bufferId) => <EditorBuffer bufferId={bufferId} />}
+                  </For>
+                )}
+              </Show>
+            </PaneWrapper>
+          )}
+        </For>
+      </main>
     </div>
   );
 };
