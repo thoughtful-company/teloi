@@ -46,7 +46,7 @@ function PageItem(props: PageItemProps) {
   return (
     <button
       onClick={handleClick}
-      class="w-full text-left px-2 py-1.5 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm truncate flex items-center gap-2"
+      class="w-full text-left px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm truncate flex items-center gap-2"
     >
       <span class="w-4 h-4 flex items-center justify-center opacity-60">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
@@ -84,8 +84,8 @@ export default function SidebarPages() {
   });
 
   return (
-    <div class="flex-1 overflow-y-auto px-2">
-      <h3 class="px-2 py-1 text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide">
+    <div class="flex-1 overflow-y-auto px-1">
+      <h3 class="px-1.5 py-0.5 text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide">
         Pages
       </h3>
       <For each={store.nodeIds}>

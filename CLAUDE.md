@@ -141,78 +141,34 @@ Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__t
 
 ## Space for thinking
 
-**Goal**: Text editor with CodeMirror. Previously used EditContext API, but selection sync between DOM and model proved too limiting. CodeMirror's monospace assumption is acceptable—vertical cursor jump is barely noticeable, and Obsidian proves it's solvable.
-
 **Component Hierarchy**:
 ```
 App
+├─ Sidebar (navigation, page list)
 └─ EditorBuffer (subscribes to buffer, renders document tree)
-     └─ Block (one per node in document)
+     ├─ Title (editable node title, CodeMirror)
+     └─ Block (one per child node)
           ├─ focused: TextEditor (CodeMirror instance)
           └─ unfocused: plain text render
 ```
 
 - **EditorBuffer**: Subscribes to buffer, gets root node and children, renders Block components
 - **Block**: Represents a single node. Only the focused block mounts CodeMirror.
-- **TextEditor**: Thin wrapper around CodeMirror for in-block text editing. Block-level operations (splitting, creating blocks) handled by parent.
-- Advanced features (marks, decorators) via Lezer with custom grammar (future).
+- **TextEditor**: Thin wrapper around CodeMirror. Block-level operations (split, merge, indent) handled by Block.
 
-**Cursor Navigation Mechanics**:
-- **Selection model**: `BufferSelection` in LiveStore stores anchor/focus offsets, `goalX` (pixel X for vertical nav), `goalLine` ("first"/"last" for target line), and `assoc` (-1/1 for wrap boundary side)
-- **Intra-block**: CodeMirror handles arrow keys. TextEditor intercepts at boundaries via `onArrowUpOnFirstLine`/`onArrowDownOnLastLine` callbacks
-- **Inter-block**: Block.tsx handlers (`handleArrowUpOnFirstLine`, etc.) find target block, set selection in model, and update `WindowT.activeElement`
-- **Wrap boundaries**: At soft wraps, same char position appears at two Y coords. `assoc` field tracks which side cursor is on. Detected via `coordsAtPos(pos, -1).top !== coordsAtPos(pos, 1).top`
-- **Visual line detection**: `view.moveVertically(sel, forward)` returns where cursor would land; compare Y coords to detect first/last visual line
+**Completed foundations**: Block editing (split/merge/indent), keyboard navigation between blocks, cursor navigation across soft-wrap boundaries, URL-based navigation (`/workspace/<nodeId>`), Mod+. to zoom into block, Yjs-powered undo with cross-block persistence.
 
-**Work items**:
-- [x] Render a document object in browser with editable content.
-- [x] Editable block with proper state management
-- [x] Block splitting (Enter key creates new sibling block).
-- [x] Keyboard navigation between blocks (Arrow keys)
-- [x] Block merging (Backspace at start, Delete at end)
-- [x] Block indentation (Tab/Shift+Tab for nesting)
-- [x] Verify if selection syncs from livestore to codemirror properly
-- [x] Fix Title ID typing in selection model (used discriminated union: `SelectionTarget = { type: "block", id } | { type: "title", bufferId }`)
-- [x] Bug: ArrowUp/ArrowDown at wrap boundaries
-- [x] Bug: ArrowUp sets cursor to first line instead of last line
-- [x] Bug: Multi-line blocks render as single line in view mode (fixed with `whitespace-pre-wrap` on unfocused block)
-- [x] Add visual comments for tests
-- [x] Bug: goalX not preserved when navigating DOWN from title to blocks
-- [x] URL-based navigation (URL ↔ active buffer's assignedNodeId sync)
-- [x] Mod+. zooms into focused block (navigate to that node)
-  - Used `Stream.flatMap` with `{ switch: true }` to switch inner streams when `assignedNodeId` changes
-  - Added `keyed` to `<Show>` in EditorBuffer to force Title remount on nodeId change
-- [x] Bug: Undo (Cmd+Z) doesn't work reliably
-  - [x] Add failing test that captures the undo behavior (`Undo.browser.spec.tsx`)
-  - [x] Implemented Yjs CRDT for text content (fixes undo via `y-codemirror.next`)
-- [x] Bug: Pressing Enter in Title creates first child block
-- [ ] Implement block-level undo
-- [x] Implement undo when you edit block A, switch to block B and then go back to block A
-- [x] Bug: When title is empty, it is not clickable
-- [ ] Feature: Breadcrumbs (needs designing)
-- [ ] Implement: Block selection
-- [ ] Feature: Sidebar (require designing)
-- [ ] Write a Readme that includes basic info about the project and how to use it
-- [ ] Util: make a dev script with ccusage to calculate usage for directories ~/.claude and ~/.clancy and display them uniformly
+**Active work**:
+- [ ] Block-level undo (structural changes, not just text)
+- [ ] Breadcrumbs (needs design)
+- [ ] Block selection (multi-block select)
+- [ ] Sidebar (in progress on `feature/sidebar`)
+- [ ] README with project overview
+- [ ] Dev script: ccusage for ~/.claude and ~/.clancy
 
-**Text Content Architecture (Yjs)**
-
-Text content is now managed by Yjs CRDT, separate from LiveStore:
-- **LiveStore**: Node structure, parent_links, ordering, selection state, UI state
-- **Yjs**: Text content within nodes (via `YjsT` service)
-- **Coordination**: Split/merge operations update both systems; typing only touches Yjs
-
-Key files:
-- `services/external/Yjs/index.ts` - YjsT service with Y.Doc, Y.Text per node
-- `ui/TextEditor.tsx` - Uses `yCollab` extension for CM↔Yjs sync
-- `ui/Block.tsx`, `ui/Title.tsx` - Get Y.Text from YjsT, handle split/merge
-
-IndexedDB persistence enabled via `y-indexeddb` for data survival across page refreshes.
-
-**Future: Automerge Migration**
-
-Plan to transition from Yjs to Automerge for richer version history capabilities:
-- Automerge stores complete DAG of editing history (every keystroke)
-- Enables time-travel, branching, and detailed change attribution
-- Current YjsT interface designed for easy swap (minimal abstraction now, refactor on migration)
+**Text Content Architecture**:
+- **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
+- **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
+- Split/merge update both; typing only touches Yjs
+- Future: Automerge migration for richer version history (time-travel, branching)
 
