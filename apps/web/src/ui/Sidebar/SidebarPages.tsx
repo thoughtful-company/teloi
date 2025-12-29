@@ -83,6 +83,17 @@ export default function SidebarPages() {
     onCleanup(dispose);
   });
 
+  const handleNewPage = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Navigation = yield* NavigationT;
+        const nodeId = yield* Node.createRootNode();
+        yield* Navigation.navigateTo(nodeId, { focusTitle: true });
+      }),
+    );
+  };
+
   return (
     <div class="flex-1 overflow-y-auto px-1">
       <h3 class="px-1.5 py-0.5 text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide">
@@ -91,6 +102,18 @@ export default function SidebarPages() {
       <For each={store.nodeIds}>
         {(nodeId) => <PageItem nodeId={nodeId} />}
       </For>
+      <button
+        onClick={handleNewPage}
+        class="w-full text-left px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm flex items-center gap-2"
+      >
+        <span class="w-4 h-4 flex items-center justify-center opacity-60">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </span>
+        <span class="opacity-60">New page</span>
+      </button>
     </div>
   );
 }

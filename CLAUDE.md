@@ -23,6 +23,7 @@ pnpm dev:web              # Start web app dev server (localhost:3003)
 # Testing
 pnpm -F @teloi/web test   # Run all tests (vitest)
 pnpm -F @teloi/web test:browser  # Run browser tests only (headless)
+pnpm -F @teloi/web test:browser -- -t "pattern"  # Filter by test name
 
 # Type checking (must run from apps/web due to monorepo path aliases)
 cd apps/web && pnpm tsc --noEmit
@@ -163,12 +164,13 @@ App
 - [ ] Breadcrumbs (needs design)
 - [ ] Block selection (multi-block select)
 - [ ] Sidebar (in progress on `feature/sidebar`)
-- [ ] README with project overview
+  - [ ] Implement shortcut for hiding sidebar
 - [ ] Dev script: ccusage for ~/.claude and ~/.clancy
+- [ ] Fix failing tests
+- [ ] Implement move block below and move block above
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
 - **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
 - Split/merge update both; typing only touches Yjs
 - Future: Automerge migration for richer version history (time-travel, branching)
-

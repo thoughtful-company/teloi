@@ -55,7 +55,7 @@ const App: Component = () => {
       {/* Main area */}
       <div class="flex-1 flex flex-col overflow-hidden">
         {/* Header - always visible, button only when sidebar closed */}
-        <header class="flex items-center h-8 px-2 shrink-0">
+        <header class="flex items-center h-12 px-2 shrink-0">
           <Show when={sidebarCollapsed()}>
             <button
               onClick={toggleSidebar}
