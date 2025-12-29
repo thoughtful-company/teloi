@@ -150,17 +150,15 @@ const materializers = State.SQLite.materializers(events, {
       modifiedAt: timestamp,
     });
 
-    if ("parentId" in data && data.parentId && data.position) {
-      const insertChildOp = tables.parentLinks.insert({
-        childId: data.nodeId,
-        parentId: data.parentId,
-        position: data.position,
-        createdAt: timestamp,
-      });
-      return [insertNodeOp, insertChildOp];
-    }
+    // Always create parent_links row (parentId is null for root nodes)
+    const insertLinkOp = tables.parentLinks.insert({
+      childId: data.nodeId,
+      parentId: "parentId" in data ? (data.parentId ?? null) : null,
+      position: "position" in data ? (data.position ?? "") : "",
+      createdAt: timestamp,
+    });
 
-    return insertNodeOp;
+    return [insertNodeOp, insertLinkOp];
   },
   "v1.NodeMoved": ({ data }, ctx) => {
     const link = ctx.query(
