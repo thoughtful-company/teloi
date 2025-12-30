@@ -20,4 +20,8 @@ Review all staged and modified files before commit. For each changed file:
    - [ ] No debug code left behind (console.log, debugger, etc.)
    - [ ] Changes match what was requested (not over-engineered)
 
-Show me a summary of findings and recommendations.
+If any issues are found in steps 1-4, show findings and ask for confirmation before proceeding.
+
+If everything passes (or after issues are resolved), proceed to commit:
+5. Stage all relevant changes
+6. Create a commit with a properly formatted message following the repo's commit style (check `git log -5 --format=full` for reference)
