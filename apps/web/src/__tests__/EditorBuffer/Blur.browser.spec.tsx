@@ -13,10 +13,10 @@ describe("Block blur clears activeElement", () => {
 
   it("clears activeElement when clicking outside focused block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
-          { text: "Some text" },
-        ]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Document Title",
+        [{ text: "Some text" }],
+      );
 
       const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
@@ -29,7 +29,9 @@ describe("Block blur clears activeElement", () => {
       yield* Effect.promise(() =>
         waitFor(
           () => {
-            const blockEl = document.querySelector(`[data-element-id="${blockId}"]`);
+            const blockEl = document.querySelector(
+              `[data-element-id="${blockId}"]`,
+            );
             const cm = blockEl?.querySelector(".cm-content");
             if (!cm) throw new Error("Block CodeMirror not found");
             if (
@@ -55,10 +57,15 @@ describe("Block blur clears activeElement", () => {
       expect((elementValue1 as { id: string }).id).toBe(blockId);
 
       // When: User blurs the CodeMirror (clicks outside the editor)
+      // Note: Dispatch focusout event because CodeMirror's internal focus
+      // tracking doesn't always detect programmatic .blur() in watch mode
       yield* Effect.promise(async () => {
-        const blockEl = document.querySelector(`[data-element-id="${blockId}"]`);
+        const blockEl = document.querySelector(
+          `[data-element-id="${blockId}"]`,
+        );
         const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
         if (!cm) throw new Error("Block CodeMirror not found");
+        cm.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
         cm.blur();
       });
 

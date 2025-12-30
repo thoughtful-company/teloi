@@ -138,6 +138,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   };
 
   const handleBlur = () => {
+    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;

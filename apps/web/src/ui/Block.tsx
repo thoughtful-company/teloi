@@ -156,6 +156,12 @@ export default function Block({ blockId }: BlockProps) {
   };
 
   const handleBlur = () => {
+    // Don't clear selection when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
