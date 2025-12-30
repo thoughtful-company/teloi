@@ -50,60 +50,49 @@ export const DataPortLive = Layer.effect(
 
     const importData = (data: ExportData): Effect.Effect<void> =>
       Effect.gen(function* () {
-        // 1. Get all existing nodes to clean up Yjs
+        // 1. Get existing node IDs to check for conflicts
         const existingNodes = yield* Store.query(
           queryDb(tables.nodes.select()),
         );
+        const existingNodeIds = new Set(existingNodes.map((n) => n.id));
 
-        // 2. Clear Yjs text for existing nodes
-        for (const node of existingNodes) {
-          Yjs.deleteText(node.id as Id.Node);
-        }
+        // Track which nodes we skip vs add
+        const skippedNodeIds: string[] = [];
+        const addedNodeIds: string[] = [];
 
-        // 3. Find and delete root nodes (nodes without parents or with null parent)
-        // The nodeDeleted event cascades to delete all descendants
-        const existingLinks = yield* Store.query(
-          queryDb(tables.parentLinks.select()),
-        );
-        const nodesWithParents = new Set(existingLinks.map((l) => l.childId));
-
-        for (const node of existingNodes) {
-          // If node has no parent link or has a null parent, it's a root
-          const link = existingLinks.find((l) => l.childId === node.id);
-          if (!nodesWithParents.has(node.id) || link?.parentId === null) {
-            yield* Store.commit(
-              events.nodeDeleted({
-                timestamp: Date.now(),
-                data: { nodeId: node.id },
-              }),
-            );
-          }
-        }
-
-        // 4. Create a map for quick lookup of parent links
+        // 2. Create a map for quick lookup of parent links
         const parentLinkMap = new Map(
           data.data.parentLinks.map((l) => [l.childId, l]),
         );
 
-        // 5. Identify root nodes (no parent link or parentId is null)
+        // 3. Identify root nodes (no parent link or parentId is null)
         const rootNodes = data.data.nodes.filter((n) => {
           const link = parentLinkMap.get(n.id);
           return !link || link.parentId === null;
         });
 
-        // 6. Insert root nodes first (without parent)
+        // 4. Insert root nodes first (only if they don't exist)
         for (const node of rootNodes) {
+          if (existingNodeIds.has(node.id)) {
+            skippedNodeIds.push(node.id);
+            continue;
+          }
           yield* Store.commit(
             events.nodeCreated({
               timestamp: node.createdAt,
               data: { nodeId: node.id },
             }),
           );
+          addedNodeIds.push(node.id);
         }
 
-        // 7. Insert child nodes (with parent links)
+        // 5. Insert child nodes (only if they don't exist)
         for (const link of data.data.parentLinks) {
           if (link.parentId !== null) {
+            if (existingNodeIds.has(link.childId)) {
+              skippedNodeIds.push(link.childId);
+              continue;
+            }
             yield* Store.commit(
               events.nodeCreated({
                 timestamp: link.createdAt,
@@ -114,14 +103,31 @@ export const DataPortLive = Layer.effect(
                 },
               }),
             );
+            addedNodeIds.push(link.childId);
           }
         }
 
-        // 8. Populate Yjs text content
+        // 6. Populate Yjs text content only for newly added nodes
+        // Future: could optionally update text if modifiedAt is newer
+        const addedNodeIdSet = new Set(addedNodeIds);
         for (const [nodeId, text] of Object.entries(data.data.textContent)) {
+          if (!addedNodeIdSet.has(nodeId)) {
+            continue;
+          }
           const ytext = Yjs.getText(nodeId as Id.Node);
           ytext.insert(0, text);
         }
+
+        // 7. Log import summary
+        if (skippedNodeIds.length > 0) {
+          console.warn(
+            `Import: skipped ${skippedNodeIds.length} existing nodes:`,
+            skippedNodeIds,
+          );
+        }
+        console.log(
+          `Import complete: added ${addedNodeIds.length} nodes, skipped ${skippedNodeIds.length}`,
+        );
       });
 
     return {

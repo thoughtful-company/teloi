@@ -44,10 +44,11 @@ describe("DataPort", () => {
 
     it("exports parent-child relationships", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root",
-          [{ text: "Child 1" }, { text: "Child 2" }],
-        );
+        const { rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+            { text: "Child 1" },
+            { text: "Child 2" },
+          ]);
 
         const DataPort = yield* DataPortT;
         const exported = yield* DataPort.exportData();
@@ -73,10 +74,12 @@ describe("DataPort", () => {
 
     it("exports fractional index positions correctly", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root",
-          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
-        );
+        const { rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+            { text: "First" },
+            { text: "Second" },
+            { text: "Third" },
+          ]);
 
         const DataPort = yield* DataPortT;
         const exported = yield* DataPort.exportData();
@@ -150,54 +153,109 @@ describe("DataPort", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("clears existing data before import", async () => {
+    it("skips existing nodes and only adds new ones", async () => {
       await Effect.gen(function* () {
-        // Create some existing data
-        const { nodeId: existingNodeId } = yield* Given.A_BUFFER_WITH_TEXT(
-          "Existing content",
-        );
-
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
         const DataPort = yield* DataPortT;
 
-        // Import new data
+        const { nodeId: existingNodeId } = yield* Given.A_BUFFER_WITH_TEXT(
+          "Original content - should be preserved",
+        );
+
+        // Import data with same node ID (should be skipped) + new node (should be added)
         const importData: ExportData = {
           version: 1,
           exportedAt: Date.now(),
           data: {
-            nodes: [{ id: "new-node", createdAt: 1000, modifiedAt: 1000 }],
+            nodes: [
+              { id: existingNodeId, createdAt: 1000, modifiedAt: 1000 },
+              { id: "brand-new-node", createdAt: 1001, modifiedAt: 1001 },
+            ],
             parentLinks: [],
             textContent: {
-              "new-node": "New content",
+              [existingNodeId]: "Imported content - should NOT overwrite",
+              "brand-new-node": "New node content",
             },
           },
         };
 
         yield* DataPort.importData(importData);
 
-        // Old node should be gone
+        // Existing node should still exist with ORIGINAL text
         const nodes = yield* Store.query(queryDb(tables.nodes.select()));
-        const oldNode = nodes.find((n) => n.id === existingNodeId);
-        expect(oldNode).toBeUndefined();
+        const existingNode = nodes.find((n) => n.id === existingNodeId);
+        expect(existingNode).toBeDefined();
+        const existingText = Yjs.getText(existingNodeId).toString();
+        expect(existingText).toBe("Original content - should be preserved");
 
-        // Old text should be cleared
-        const oldText = Yjs.getText(existingNodeId).toString();
-        expect(oldText).toBe("");
-
-        // New node should exist
-        const newNode = nodes.find((n) => n.id === "new-node");
+        // New node should be added
+        const newNode = nodes.find((n) => n.id === "brand-new-node");
         expect(newNode).toBeDefined();
+        const newText = Yjs.getText("brand-new-node" as Id.Node).toString();
+        expect(newText).toBe("New node content");
+      }).pipe(runtime.runPromise);
+    });
+
+    it("adds child nodes when parent exists locally", async () => {
+      await Effect.gen(function* () {
+        const Store = yield* StoreT;
+        const Yjs = yield* YjsT;
+        const DataPort = yield* DataPortT;
+
+        // Create existing parent node
+        const { nodeId: existingParentId } =
+          yield* Given.A_BUFFER_WITH_TEXT("Existing parent");
+
+        // Import: existing parent (skip) + new child under it (add)
+        const importData: ExportData = {
+          version: 1,
+          exportedAt: Date.now(),
+          data: {
+            nodes: [
+              { id: existingParentId, createdAt: 1000, modifiedAt: 1000 },
+              { id: "new-child", createdAt: 1001, modifiedAt: 1001 },
+            ],
+            parentLinks: [
+              {
+                childId: "new-child",
+                parentId: existingParentId,
+                position: "a0",
+                isHidden: false,
+                createdAt: 1001,
+              },
+            ],
+            textContent: {
+              "new-child": "New child text",
+            },
+          },
+        };
+
+        yield* DataPort.importData(importData);
+
+        // Parent should still have original text
+        expect(Yjs.getText(existingParentId).toString()).toBe(
+          "Existing parent",
+        );
+
+        // Child should be created under existing parent
+        const links = yield* Store.query(queryDb(tables.parentLinks.select()));
+        const childLink = links.find((l) => l.childId === "new-child");
+        expect(childLink?.parentId).toBe(existingParentId);
+        expect(Yjs.getText("new-child" as Id.Node).toString()).toBe(
+          "New child text",
+        );
       }).pipe(runtime.runPromise);
     });
 
     it("round-trips data correctly", async () => {
       await Effect.gen(function* () {
         // Create a complex tree structure
-        const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root node",
-          [{ text: "Child 1" }, { text: "Child 2" }],
-        );
+        const { rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "Child 1" },
+            { text: "Child 2" },
+          ]);
 
         const DataPort = yield* DataPortT;
 
