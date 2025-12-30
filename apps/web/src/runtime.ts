@@ -1,6 +1,7 @@
 import { shouldNeverHappen } from "@/error";
 import { store } from "@/livestore/store";
 import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
+import { makeKeyboardLive } from "./services/browser/KeyboardService";
 import { makeURLServiceLive } from "./services/browser/URLService";
 import { DataPortLive, DataPortT, ExportData } from "./services/domain/DataPort";
 import { NodeLive } from "./services/domain/Node";
@@ -50,6 +51,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(WindowLive),
   Layer.provideMerge(NodeLive),
   Layer.provideMerge(makeYjsLive({ roomName: "teloi-workspace", persist: yjsPersist })),
+  Layer.provideMerge(makeKeyboardLive(window)),
   Layer.provideMerge(makeURLServiceLive(window)),
   Layer.provideMerge(getStoreLayer(getStoreOrThrow())),
   Layer.provideMerge(Logger.minimumLogLevel(LogLevel.Trace)),

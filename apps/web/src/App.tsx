@@ -1,8 +1,9 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import { KeyboardB } from "@/services/browser/KeyboardService";
 import { StoreT } from "@/services/external/Store";
-import { Effect, Option } from "effect";
-import { Component, createSignal, For, onMount, Show } from "solid-js";
+import { Effect, Fiber, Option, Stream } from "effect";
+import { Component, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import EditorBuffer from "./ui/EditorBuffer";
 import PaneWrapper from "./ui/PaneWrapper";
 import { Sidebar } from "./ui/Sidebar";
@@ -16,6 +17,27 @@ const App: Component = () => {
   onMount(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "true") setSidebarCollapsed(true);
+
+    // Subscribe to app-level keyboard shortcuts
+    const fiber = runtime.runFork(
+      Effect.gen(function* () {
+        const Keyboard = yield* KeyboardB;
+        const stream = yield* Keyboard.shortcuts();
+        yield* Stream.runForEach(stream, (shortcut) =>
+          Effect.sync(() => {
+            switch (shortcut._tag) {
+              case "ToggleSidebar":
+                toggleSidebar();
+                break;
+            }
+          }),
+        );
+      }),
+    );
+
+    onCleanup(() => {
+      runtime.runFork(Fiber.interrupt(fiber));
+    });
   });
 
   const toggleSidebar = () => {
