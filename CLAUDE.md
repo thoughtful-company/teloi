@@ -169,6 +169,9 @@ App
 - [ ] Fix failing tests
 - [ ] Implement move block below and move block above
 
+**Known bugs**:
+- [ ] DataPort import duplicates text on re-import: `importData` clears Yjs for existing node IDs but doesn't clear the INCOMING node IDs before inserting. Since y-indexeddb persists, re-importing the same backup causes text to double (insert(0, text) prepends to existing content instead of replacing)
+
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
 - **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
