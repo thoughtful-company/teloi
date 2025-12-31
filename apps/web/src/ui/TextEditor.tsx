@@ -139,8 +139,23 @@ export default function TextEditor(props: TextEditorProps) {
       // Yjs collaborative editing extension - syncs Y.Text with CodeMirror
       yCollab(ytext, null, { undoManager }),
       EditorView.updateListener.of((update) => {
+        // When doc transitions from empty to non-empty (Yjs synced), apply pending selection
+        if (update.docChanged && update.startState.doc.length === 0 && update.state.doc.length > 0) {
+          const sel = props.selection;
+          if (sel && sel.anchor > 0) {
+            const docLen = update.state.doc.length;
+            const anchor = Math.min(sel.anchor, docLen);
+            const head = Math.min(sel.head, docLen);
+            // Use setTimeout to avoid dispatch during update
+            setTimeout(() => update.view.dispatch({ selection: { anchor, head } }), 0);
+          }
+        }
+
         // Text changes are handled by Yjs, only track selection
         if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
+          // Don't save selection when doc is empty - Yjs hasn't synced yet
+          if (update.state.doc.length === 0) return;
+
           const sel = update.state.selection.main;
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
@@ -416,9 +431,12 @@ export default function TextEditor(props: TextEditorProps) {
       }
     } else if (props.selection) {
       const docLen = view.state.doc.length;
-      const anchor = Math.min(props.selection.anchor, docLen);
-      const head = Math.min(props.selection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
+      // If doc is empty (Yjs hasn't synced yet), don't set selection now - createEffect will handle it
+      if (docLen > 0) {
+        const anchor = Math.min(props.selection.anchor, docLen);
+        const head = Math.min(props.selection.head, docLen);
+        view.dispatch({ selection: { anchor, head } });
+      }
     } else if (initialClickCoords) {
       const pos = view.posAtCoords(initialClickCoords);
       if (pos !== null) {
