@@ -142,8 +142,15 @@ export default function TextEditor(props: TextEditorProps) {
       // Yjs collaborative editing extension - syncs Y.Text with CodeMirror
       yCollab(ytext, null, { undoManager }),
       EditorView.updateListener.of((update) => {
-        // When doc transitions from empty to non-empty (Yjs synced), apply pending selection
-        if (update.docChanged && update.startState.doc.length === 0 && update.state.doc.length > 0) {
+        // When doc transitions from empty to non-empty (Yjs synced), apply pending selection.
+        // BUT only if we're not already focused - if focused, user is actively typing and
+        // we shouldn't reset their selection (this would cause first char to move to end).
+        if (
+          update.docChanged &&
+          update.startState.doc.length === 0 &&
+          update.state.doc.length > 0 &&
+          !update.view.hasFocus
+        ) {
           const sel = props.selection;
           if (sel) {
             const docLen = update.state.doc.length;
@@ -467,11 +474,24 @@ export default function TextEditor(props: TextEditorProps) {
       view.dispatch({ selection: { anchor: 0 } });
     }
 
-    // Only focus if doc has content - otherwise updateListener will focus
-    // after Yjs syncs and selection is set (avoids cursor flash at position 0)
-    if (view.state.doc.length > 0) {
+    // Focus logic: balance cursor flash prevention with immediate focus for new blocks
+    const docLen = view.state.doc.length;
+
+    if (docLen > 0) {
+      // Content already loaded - focus immediately
       setIsSelectionReady(true);
       view.focus();
+    } else {
+      // Doc is empty - check if we're expecting content from Yjs
+      // If saved selection is beyond position 0, there must be content waiting to sync
+      const expectingContent = props.selection && props.selection.anchor > 0;
+
+      if (!expectingContent) {
+        // New empty block or empty block at position 0 - focus immediately
+        setIsSelectionReady(true);
+        view.focus();
+      }
+      // else: wait for updateListener to focus after Yjs syncs
     }
 
     onCleanup(() => view?.destroy());
@@ -487,26 +507,28 @@ export default function TextEditor(props: TextEditorProps) {
       return;
     }
 
-    // Skip syncing when doc is empty - Yjs hasn't synced yet
-    // The updateListener will handle selection and focus when Yjs syncs
     const docLen = view.state.doc.length;
-    if (docLen === 0) {
-      return;
+
+    // Only sync selection when doc has content - empty doc means Yjs hasn't synced yet
+    // (The updateListener will handle selection when Yjs syncs)
+    if (docLen > 0) {
+      const currentSel = view.state.selection.main;
+      const needsUpdate =
+        currentSel.anchor !== selection.anchor ||
+        currentSel.head !== selection.head;
+
+      if (needsUpdate) {
+        const anchor = Math.min(selection.anchor, docLen);
+        const head = Math.min(selection.head, docLen);
+        view.dispatch({ selection: { anchor, head } });
+      }
     }
 
-    const currentSel = view.state.selection.main;
-    const needsUpdate =
-      currentSel.anchor !== selection.anchor ||
-      currentSel.head !== selection.head;
-
-    if (needsUpdate) {
-      const anchor = Math.min(selection.anchor, docLen);
-      const head = Math.min(selection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
-    }
-
-    // Always ensure focus when selection prop is set (e.g., after body click)
-    if (!view.hasFocus) {
+    // Ensure focus when selection prop is set (e.g., after body click)
+    // BUT: if doc is empty and selection > 0, we're waiting for Yjs to sync.
+    // In that case, updateListener will handle focus after sync.
+    const expectingContent = docLen === 0 && selection.anchor > 0;
+    if (!view.hasFocus && !expectingContent) {
       view.focus();
     }
   });
