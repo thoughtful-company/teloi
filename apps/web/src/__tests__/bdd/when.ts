@@ -67,13 +67,13 @@ export const USER_MOVES_CURSOR_TO = (offset: number) =>
 /**
  * Sets selection to a specific position in a node via the model.
  * This is more reliable than keyboard navigation for positioning.
- * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line
+ * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
  */
 export const SELECTION_IS_SET_TO = (
   bufferId: Id.Buffer,
   nodeId: Id.Node,
   offset: number,
-  assoc: -1 | 1 | null = null,
+  assoc: -1 | 0 | 1 = 0,
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;

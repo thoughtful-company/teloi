@@ -98,7 +98,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(

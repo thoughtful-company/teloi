@@ -33,7 +33,7 @@ describe("Selection sync", () => {
           focusOffset: 5,
           goalX: null,
           goalLine: null,
-          assoc: null,
+          assoc: 0,
         }),
       );
 

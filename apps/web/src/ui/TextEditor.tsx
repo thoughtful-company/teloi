@@ -1,5 +1,5 @@
 import { defaultKeymap } from "@codemirror/commands";
-import { EditorState, Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
@@ -66,8 +66,8 @@ export interface EnterKeyInfo {
 export interface SelectionInfo {
   anchor: number;
   head: number;
-  /** Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line */
-  assoc: -1 | 1 | null;
+  /** Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line */
+  assoc: -1 | 0 | 1;
 }
 
 interface TextEditorProps {
@@ -89,7 +89,13 @@ interface TextEditorProps {
   onZoomIn?: () => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
-  selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
+  selection?: {
+    anchor: number;
+    head: number;
+    goalX?: number | null;
+    goalLine?: "first" | "last" | null;
+    assoc?: -1 | 0 | 1;
+  } | null;
   variant?: TextEditorVariant;
 }
 
@@ -164,7 +170,11 @@ export default function TextEditor(props: TextEditorProps) {
         }
 
         // Text changes are handled by Yjs, only track selection
-        if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
+        if (
+          update.selectionSet &&
+          onSelectionChange &&
+          !suppressSelectionChange
+        ) {
           // Don't save selection when doc is empty - Yjs hasn't synced yet
           if (update.state.doc.length === 0) return;
 
@@ -172,9 +182,10 @@ export default function TextEditor(props: TextEditorProps) {
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
           const coordsAfter = update.view.coordsAtPos(sel.head, 1);
-          const isAtWrapBoundary = coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+          const isAtWrapBoundary =
+            coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
-          const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : null;
+          const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
           onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
         }
         if (update.focusChanged && !update.view.hasFocus && onBlur) {
@@ -332,7 +343,8 @@ export default function TextEditor(props: TextEditorProps) {
           run: (view) => {
             const sel = view.state.selection.main;
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            const side = props.selection?.assoc ?? -1;
+            // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
+            const side = props.selection?.assoc === 1 ? 1 : -1;
             const currentY = view.coordsAtPos(sel.head, side)?.top;
             const moved = view.moveVertically(sel, false);
             const movedY = view.coordsAtPos(moved.head)?.top;
@@ -346,8 +358,15 @@ export default function TextEditor(props: TextEditorProps) {
 
             // Moving between visual lines within editor
             // If we have a goalX, use it instead of CodeMirror's goal column
-            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
-              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+            if (
+              props.selection?.goalX != null &&
+              movedY != null &&
+              currentY !== movedY
+            ) {
+              const pos = view.posAtCoords({
+                x: props.selection.goalX,
+                y: movedY + 1,
+              });
               if (pos !== null) {
                 suppressSelectionChange = true;
                 view.dispatch({ selection: { anchor: pos } });
@@ -370,7 +389,7 @@ export default function TextEditor(props: TextEditorProps) {
           run: (view) => {
             const sel = view.state.selection.main;
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            const side = props.selection?.assoc ?? -1;
+            const side = props.selection?.assoc === 1 ? 1 : -1;
             const currentY = view.coordsAtPos(sel.head, side)?.top;
             const moved = view.moveVertically(sel, true);
             const movedY = view.coordsAtPos(moved.head)?.top;
@@ -384,8 +403,15 @@ export default function TextEditor(props: TextEditorProps) {
 
             // Moving between visual lines within editor
             // If we have a goalX, use it instead of CodeMirror's goal column
-            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
-              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+            if (
+              props.selection?.goalX != null &&
+              movedY != null &&
+              currentY !== movedY
+            ) {
+              const pos = view.posAtCoords({
+                x: props.selection.goalX,
+                y: movedY + 1,
+              });
               if (pos !== null) {
                 suppressSelectionChange = true;
                 view.dispatch({ selection: { anchor: pos } });
@@ -426,11 +452,15 @@ export default function TextEditor(props: TextEditorProps) {
       const anchor = Math.min(initialSelection.anchor, docLen);
       const head = Math.min(initialSelection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
-    } else if (props.selection?.goalX != null && props.selection?.goalLine != null) {
+    } else if (
+      props.selection?.goalX != null &&
+      props.selection?.goalLine != null
+    ) {
       // Use goalX (absolute viewport X) to position cursor on the target line
       // For "first": use position 0 (start of doc) to get Y of first visual line
       // For "last": use doc.length (end of doc) to get Y of last visual line
-      const linePos = props.selection.goalLine === "first" ? 0 : view.state.doc.length;
+      const linePos =
+        props.selection.goalLine === "first" ? 0 : view.state.doc.length;
       const lineCoords = view.coordsAtPos(linePos);
       const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;

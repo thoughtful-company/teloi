@@ -66,7 +66,7 @@ export default function Block({ blockId }: BlockProps) {
     initial: {
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null,
     },
   });
 
@@ -224,7 +224,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -361,7 +361,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: mergePoint,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -404,7 +404,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -453,7 +453,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: mergePoint,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           return;
@@ -510,7 +510,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
       }),
@@ -566,7 +566,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -586,7 +586,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -626,7 +626,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -670,7 +670,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -731,7 +731,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -748,7 +748,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -795,7 +795,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "first",
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -841,7 +841,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: textLength,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           return;
@@ -857,7 +857,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX,
             goalLine: "first",
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
