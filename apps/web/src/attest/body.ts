@@ -8,12 +8,6 @@ function safeStringify(value: unknown): string {
   }
 }
 
-/**
- * Asserts that a value is neither `null` nor `undefined`.
- *
- * @param value - The value to verify is present
- * @throws Error if `value` is `null` or `undefined`
- */
 export function existence<T>(
   value: T | null | undefined,
 ): asserts value is NonNullable<T> {
@@ -22,14 +16,8 @@ export function existence<T>(
   }
 }
 
-/**
- * Asserts that a value is neither `undefined` nor `null`.
- *
- * @param value - The value to validate is defined (not `undefined` or `null`)
- * @throws Error if `value` is `undefined` or `null` (message: "Value is not defined")
- */
-export function isDefined<T>(value: T | null | undefined): asserts value is NonNullable<T> {
-  if (value === undefined || value === null) {
+export function isDefined<T>(value: T | undefined): asserts value is T {
+  if (value === undefined) {
     throw new Error("Value is not defined");
   }
 }

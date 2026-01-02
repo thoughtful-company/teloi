@@ -3,7 +3,7 @@ import { For } from "solid-js";
 interface NavItem {
   label: string;
   path: string;
-  icon: string;
+  icon: "inbox" | "box" | "calendar";
 }
 
 const navItems: NavItem[] = [

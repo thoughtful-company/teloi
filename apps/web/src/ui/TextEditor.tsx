@@ -94,17 +94,8 @@ interface TextEditorProps {
 }
 
 /**
- * A collaborative CodeMirror-based text editor component with rich keyboard and selection handling.
- *
- * Renders a CodeMirror editor synchronized with a Yjs `Y.Text` and exposes hooks for navigation,
- * editing, and selection events. Supports two visual variants ("block" and "title"), line-wrapping,
- * yCollab synchronization with an UndoManager, custom handlers for Enter/Tab/Shift-Tab/Backspace/Delete,
- * edge arrow navigation delegation (left/right/up/down), goalX-based vertical cursor positioning, and
- * programmatic initial selection/positioning logic.
- *
- * @param props - Configuration and callbacks for collaboration, keyboard handlers, initial positioning,
- *   and visual variant (see `TextEditorProps`).
- * @returns A div element that contains and hosts the CodeMirror EditorView.
+ * CodeMirror editor synced with Yjs. Selection is deferred until Yjs syncs
+ * (doc transitions from empty to non-empty) to prevent cursor flash at position 0.
  */
 export default function TextEditor(props: TextEditorProps) {
   const {
@@ -452,7 +443,7 @@ export default function TextEditor(props: TextEditorProps) {
       }
     } else if (props.selection) {
       const docLen = view.state.doc.length;
-      // If doc is empty (Yjs hasn't synced yet), don't set selection now - createEffect will handle it
+      // If doc is empty (Yjs hasn't synced yet), the updateListener will apply selection when content arrives
       if (docLen > 0) {
         const anchor = Math.min(props.selection.anchor, docLen);
         const head = Math.min(props.selection.head, docLen);

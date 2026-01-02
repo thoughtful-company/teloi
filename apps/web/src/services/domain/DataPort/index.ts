@@ -120,12 +120,12 @@ export const DataPortLive = Layer.effect(
 
         // 7. Log import summary
         if (skippedNodeIds.length > 0) {
-          console.warn(
-            `Import: skipped ${skippedNodeIds.length} existing nodes:`,
-            skippedNodeIds,
+          yield* Effect.logWarning(
+            `Import: skipped ${skippedNodeIds.length} existing nodes`,
+            { skippedNodeIds },
           );
         }
-        console.log(
+        yield* Effect.logInfo(
           `Import complete: added ${addedNodeIds.length} nodes, skipped ${skippedNodeIds.length}`,
         );
       });

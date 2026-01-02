@@ -1,4 +1,3 @@
-// bindEffectStreamToStore.ts
 import { Effect, Fiber, Scope, Stream } from "effect";
 
 import { createStore, reconcile } from "solid-js/store";
@@ -12,34 +11,19 @@ type ShareConfig =
       readonly replay?: number;
     };
 
-/**
- * Bind an Effect Stream to a Solid.js store, applying projected emissions to the store and optionally deduplicating and sharing the stream.
- *
- * @param args.stream - The source Effect `Stream` whose emissions drive the store updates.
- * @param args.project - Projection that maps each stream emission to the store shape.
- * @param args.initial - Initial value used to create the Solid.js store.
- * @param args.equals - Optional comparator that prevents store updates when `equals(current, next)` is `true`.
- * @param args.share - Optional sharing configuration; defaults to an unbounded share that replays the last value.
- * @param args.log - Optional logging hook called with lifecycle messages (e.g., update, skip, dispose).
- * @returns An object with `store` (the Solid.js store) and `start(runtime)` — a function that starts the binding against a `BrowserRuntime` and returns a `dispose` function that stops it.
- */
 export function bindStreamToStore<
   S,
   U extends object,
   E,
   R extends BrowserRequirements | Scope.Scope,
 >(args: {
-  /** Effect that yields the Stream */
   stream: Stream.Stream<S, E, R>;
-  /** Map each emission to the UI store shape */
   project: (s: S) => U;
-  /** Initial store value */
   initial: U;
-  /** Optional top-level dedup */
   equals?: (a: U, b: U) => boolean;
-  /** Optional share config; default replays last value so late subscribers get it */
+  /** Replays last value so late subscribers get it immediately */
   share?: ShareConfig;
-  /** Optional log hook (e.g., msg => console.debug(msg)) */
+  /** @example msg => console.debug(msg) */
   log?: (msg: string) => void;
 }) {
   const {
