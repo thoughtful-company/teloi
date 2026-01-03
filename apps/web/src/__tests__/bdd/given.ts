@@ -1,9 +1,11 @@
 import { events } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Entity, Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
-import { Effect } from "effect";
+import { BufferT } from "@/services/ui/Buffer";
+import { WindowT } from "@/services/ui/Window";
+import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import { screen } from "@testing-library/dom";
 
@@ -371,3 +373,66 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       windowId,
     };
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_CHILDREN"));
+
+/**
+ * Sets buffer cursor (collapsed selection) to a specific position in a node.
+ * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
+ */
+export const BUFFER_HAS_CURSOR = (
+  bufferId: Id.Buffer,
+  nodeId: Id.Node,
+  offset: number,
+  assoc: -1 | 0 | 1 = 0,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { nodeId },
+        anchorOffset: offset,
+        focus: { nodeId },
+        focusOffset: offset,
+        goalX: null,
+        goalLine: null,
+        assoc,
+      }),
+    );
+  }).pipe(Effect.withSpan("Given.BUFFER_HAS_CURSOR"));
+
+/**
+ * Sets buffer selection to a range (anchor ≠ focus).
+ * Can span across nodes for multi-block selection.
+ */
+export const BUFFER_HAS_SELECTION = (
+  bufferId: Id.Buffer,
+  anchor: { nodeId: Id.Node; offset: number },
+  focus: { nodeId: Id.Node; offset: number },
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { nodeId: anchor.nodeId },
+        anchorOffset: anchor.offset,
+        focus: { nodeId: focus.nodeId },
+        focusOffset: focus.offset,
+        goalX: null,
+        goalLine: null,
+        assoc: 0,
+      }),
+    );
+  }).pipe(Effect.withSpan("Given.BUFFER_HAS_SELECTION"));
+
+/**
+ * Sets the window's active element.
+ * Use Entity helpers to construct the element:
+ * - Block: { id: blockId, type: "block" }
+ * - Title: { bufferId, type: "title" }
+ */
+export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
+  Effect.gen(function* () {
+    const Window = yield* WindowT;
+    yield* Window.setActiveElement(Option.some(element));
+  }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));

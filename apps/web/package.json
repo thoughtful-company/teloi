@@ -16,7 +16,7 @@
   "dependencies": {
     "@codemirror/commands": "^6.10.0",
     "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.38.6",
+    "@codemirror/view": "^6.39.8",
     "@livestore/adapter-web": "^0.3.1",
     "@livestore/livestore": "^0.3.1",
     "@livestore/solid": "^0.3.1",

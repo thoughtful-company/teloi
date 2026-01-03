@@ -153,13 +153,26 @@ export default function TextEditor(props: TextEditorProps) {
             const docLen = update.state.doc.length;
             const anchor = Math.min(sel.anchor, docLen);
             const head = Math.min(sel.head, docLen);
-            // Use setTimeout to avoid dispatch during update
-            // Set selection ready BEFORE focus to avoid cursor flash
-            setTimeout(() => {
-              update.view.dispatch({ selection: { anchor, head } });
-              setIsSelectionReady(true);
-              update.view.focus();
-            }, 0);
+
+            if (anchor === head) {
+              setTimeout(() => {
+                update.view.dispatch({
+                  selection: EditorSelection.create([
+                    EditorSelection.cursor(anchor, sel.assoc),
+                  ]),
+                });
+                setIsSelectionReady(true);
+                update.view.focus();
+              }, 0);
+            } else {
+              // Use setTimeout to avoid dispatch during update
+              // Set selection ready BEFORE focus to avoid cursor flash
+              setTimeout(() => {
+                update.view.dispatch({ selection: { anchor, head } });
+                setIsSelectionReady(true);
+                update.view.focus();
+              }, 0);
+            }
           } else {
             // No saved selection, just focus now that doc has content
             setTimeout(() => {
@@ -477,16 +490,33 @@ export default function TextEditor(props: TextEditorProps) {
       if (docLen > 0) {
         const anchor = Math.min(props.selection.anchor, docLen);
         const head = Math.min(props.selection.head, docLen);
-        view.dispatch({ selection: { anchor, head } });
+
+        if (anchor === head) {
+          view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(anchor, props.selection.assoc),
+            ]),
+          });
+        } else {
+          view.dispatch({ selection: { anchor, head } });
+        }
       }
     } else if (initialClickCoords) {
       // Only use click coords if doc has content - clicking on empty doc is meaningless
       // and the saved selection will be restored when Yjs syncs
       const docLen = view.state.doc.length;
+
       if (docLen > 0) {
-        const pos = view.posAtCoords(initialClickCoords);
+        const { pos, assoc } = view.posAndSideAtCoords(initialClickCoords) || {
+          pos: null,
+          assoc: 0,
+        };
         if (pos !== null) {
-          view.dispatch({ selection: { anchor: pos } });
+          view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(pos, assoc),
+            ]),
+          });
         }
       }
     } else if (view.state.doc.length > 0) {
@@ -536,12 +566,21 @@ export default function TextEditor(props: TextEditorProps) {
       const currentSel = view.state.selection.main;
       const needsUpdate =
         currentSel.anchor !== selection.anchor ||
-        currentSel.head !== selection.head;
+        currentSel.head !== selection.head ||
+        currentSel.assoc !== selection.assoc;
 
       if (needsUpdate) {
         const anchor = Math.min(selection.anchor, docLen);
         const head = Math.min(selection.head, docLen);
-        view.dispatch({ selection: { anchor, head } });
+        // Use EditorSelection.cursor to preserve assoc for collapsed selections
+        const newSel =
+          anchor === head
+            ? EditorSelection.cursor(head, selection.assoc)
+            : EditorSelection.range(anchor, head);
+        // Suppress onSelectionChange - this is syncing FROM model, not user input
+        suppressSelectionChange = true;
+        view.dispatch({ selection: EditorSelection.create([newSel]) });
+        suppressSelectionChange = false;
       }
     }
 

@@ -1,5 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { makeBlockId } from "@/schema/id/id";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
@@ -36,9 +37,6 @@ describe("Selection sync", () => {
           assoc: 0,
         }),
       );
-
-      // Give time for the effect to sync
-      yield* Effect.sleep("50 millis");
 
       // Verify CodeMirror cursor is at position 5
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
@@ -138,6 +136,34 @@ describe("Selection sync", () => {
           throw new Error("Cursor should be visible after Yjs sync");
         }
       });
+    }).pipe(runtime.runPromise);
+  });
+
+  it("arrow down from start of wrapped line maintains column 0", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with text long enough to wrap into 4 visual lines
+      const longText =
+        "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq";
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: longText }],
+      );
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* Given.BUFFER_HAS_WIDTH(200);
+
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 20, 1);
+
+      yield* Given.ACTIVE_ELEMENT_IS({
+        type: "block",
+        id: makeBlockId(bufferId, childNodeIds[0]),
+      });
+
+      // // Press ArrowDown
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      yield* Then.CM_CURSOR_IS_AT(50, 1);
     }).pipe(runtime.runPromise);
   });
 

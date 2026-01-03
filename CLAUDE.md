@@ -132,6 +132,12 @@ Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__t
 - Hide Effect machinery and DOM queries inside helpers
 - Assertions check model state (LiveStore), not just DOM
 
+**Testing Anti-Patterns** (DO NOT USE):
+- `yield* Effect.sleep("50 millis")` or any arbitrary sleep duration - These make tests slow and flaky. Total test time explodes when every test adds random delays. Instead:
+  - Use `waitFor()` to poll for expected state changes
+  - Use proper async patterns that wait for specific conditions
+  - If you must wait, wait for a specific event/condition, not arbitrary time
+
 ## Tech Stack
 - **Framework**: SolidJS (not React)
 - **Styling**: Tailwind CSS v4
@@ -163,14 +169,19 @@ App
 - [ ] Block-level undo (structural changes, not just text)
 - [ ] Breadcrumbs (needs design)
 - [ ] Block selection (multi-block select)
-- [ ] Sidebar (in progress on `feature/sidebar`)
-  - [ ] Implement shortcut for hiding sidebar
+- [x] Sidebar (in progress on `feature/sidebar`)
+  - [x] Implement shortcut for hiding sidebar
 - [ ] Dev script: ccusage for ~/.claude and ~/.clancy
 - [ ] Fix failing tests
 - [ ] Implement move block below and move block above
-
-**Known bugs**:
-- [ ] DataPort import duplicates text on re-import: `importData` clears Yjs for existing node IDs but doesn't clear the INCOMING node IDs before inserting. Since y-indexeddb persists, re-importing the same backup causes text to double (insert(0, text) prepends to existing content instead of replacing)
+- [ ] Implement different document types
+- [ ] Remove new node creation upon buffer initialization
+- [ ] Remove all `Effect.sleep` with arbitrary durations from tests (see Testing Anti-Patterns below)
+- [ ] Create test for "arrow down from start of wrapped line"
+  - [x] Creat Given util for selection
+  - [x] Creat given util for active element
+  - [ ] Access code mirror intstance
+- [ ] When selection is set to wrap place with assoc 0, it causes problems
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
