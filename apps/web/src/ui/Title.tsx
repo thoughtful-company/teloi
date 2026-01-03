@@ -17,6 +17,17 @@ interface TitleProps {
   nodeId: Id.Node;
 }
 
+/**
+ * Render and manage an editable title for a buffer node.
+ *
+ * Synchronizes the displayed text with a Yjs text object, switches between a read-only heading
+ * and an interactive TextEditor when the title becomes active, and handles focus and keyboard
+ * navigation (ArrowRight at end, ArrowDown on last line, Enter to split/create a child node).
+ *
+ * @param bufferId - Identifier of the buffer that contains the node
+ * @param nodeId - Identifier of the node whose title is rendered and edited
+ * @returns A JSX element that shows the title as an editable TextEditor when active, or as a static <h1> otherwise
+ */
 export default function Title({ bufferId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
 
@@ -127,6 +138,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   };
 
   const handleBlur = () => {
+    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;

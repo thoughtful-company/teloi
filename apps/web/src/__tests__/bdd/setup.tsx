@@ -7,9 +7,6 @@ import { render as solidRender, waitFor } from "solid-testing-library";
 export { runtime };
 export type { BrowserRuntime };
 
-/**
- * Wraps a component with the BrowserRuntimeContext provider for testing.
- */
 export function withRuntime(component: () => JSX.Element) {
   return () => (
     <BrowserRuntimeContext.Provider value={runtime}>
@@ -18,9 +15,6 @@ export function withRuntime(component: () => JSX.Element) {
   );
 }
 
-/**
- * Renders a component with the runtime context provider.
- */
 export function render(component: () => JSX.Element) {
   solidRender(withRuntime(component));
 

@@ -19,7 +19,10 @@ export class NavigationT extends Context.Tag("NavigationT")<
   {
     syncUrlToModel: (fallbackNodeId?: Id.Node) => Effect.Effect<void>;
     startPopstateListener: () => Effect.Effect<Stream.Stream<void>>;
-    navigateTo: (nodeId: Id.Node | null) => Effect.Effect<void>;
+    navigateTo: (
+      nodeId: Id.Node | null,
+      options?: { focusTitle?: boolean },
+    ) => Effect.Effect<void>;
   }
 >() {}
 
@@ -138,20 +141,27 @@ export const NavigationLive = Layer.effect(
         );
       });
 
-    const navigateTo = (nodeId: Id.Node | null) =>
+    const navigateTo = (
+      nodeId: Id.Node | null,
+      options?: { focusTitle?: boolean },
+    ) =>
       Effect.gen(function* () {
         const maybeBufferId = yield* getActiveBufferId;
         if (Option.isNone(maybeBufferId)) return;
 
+        const bufferId = maybeBufferId.value as Id.Buffer;
         const validatedNodeId = nodeId
           ? yield* validateNodeId(nodeId)
           : null;
 
-        yield* Buffer.setAssignedNodeId(
-          maybeBufferId.value as Id.Buffer,
-          validatedNodeId,
-        );
+        yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
         yield* URL.setPath(makePathFromNodeId(validatedNodeId));
+
+        if (options?.focusTitle) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        }
 
         yield* Effect.logDebug("[Navigation.navigateTo] Navigated").pipe(
           Effect.annotateLogs({ nodeId: validatedNodeId }),

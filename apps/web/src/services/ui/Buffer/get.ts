@@ -10,6 +10,7 @@ export function get<K extends keyof Model.EditorBuffer>(
   bufferId: Id.Buffer,
   property: K,
 ): Effect.Effect<Model.EditorBuffer[K], BufferNotFoundError, StoreT>;
+
 export function get(bufferId: Id.Buffer, property?: keyof Model.EditorBuffer) {
   return StoreT.pipe(
     Effect.flatMap((Store) => Store.getDocument("buffer", bufferId)),

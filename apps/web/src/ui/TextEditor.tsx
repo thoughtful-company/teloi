@@ -1,7 +1,7 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
 
@@ -93,6 +93,10 @@ interface TextEditorProps {
   variant?: TextEditorVariant;
 }
 
+/**
+ * CodeMirror editor synced with Yjs. Selection is deferred until Yjs syncs
+ * (doc transitions from empty to non-empty) to prevent cursor flash at position 0.
+ */
 export default function TextEditor(props: TextEditorProps) {
   const {
     ytext,
@@ -118,6 +122,9 @@ export default function TextEditor(props: TextEditorProps) {
   let view: EditorView | undefined;
   // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
   let suppressSelectionChange = false;
+  // Track whether selection is ready (doc has content and selection is set)
+  // Used to hide cursor until we can position it correctly
+  const [isSelectionReady, setIsSelectionReady] = createSignal(false);
 
   onMount(() => {
     const extensions: Extension[] = [
@@ -126,8 +133,41 @@ export default function TextEditor(props: TextEditorProps) {
       // Yjs collaborative editing extension - syncs Y.Text with CodeMirror
       yCollab(ytext, null, { undoManager }),
       EditorView.updateListener.of((update) => {
+        // When doc transitions from empty to non-empty (Yjs synced), apply pending selection.
+        // BUT only if we're not already focused - if focused, user is actively typing and
+        // we shouldn't reset their selection (this would cause first char to move to end).
+        if (
+          update.docChanged &&
+          update.startState.doc.length === 0 &&
+          update.state.doc.length > 0 &&
+          !update.view.hasFocus
+        ) {
+          const sel = props.selection;
+          if (sel) {
+            const docLen = update.state.doc.length;
+            const anchor = Math.min(sel.anchor, docLen);
+            const head = Math.min(sel.head, docLen);
+            // Use setTimeout to avoid dispatch during update
+            // Set selection ready BEFORE focus to avoid cursor flash
+            setTimeout(() => {
+              update.view.dispatch({ selection: { anchor, head } });
+              setIsSelectionReady(true);
+              update.view.focus();
+            }, 0);
+          } else {
+            // No saved selection, just focus now that doc has content
+            setTimeout(() => {
+              setIsSelectionReady(true);
+              update.view.focus();
+            }, 0);
+          }
+        }
+
         // Text changes are handled by Yjs, only track selection
         if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
+          // Don't save selection when doc is empty - Yjs hasn't synced yet
+          if (update.state.doc.length === 0) return;
+
           const sel = update.state.selection.main;
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
@@ -403,19 +443,47 @@ export default function TextEditor(props: TextEditorProps) {
       }
     } else if (props.selection) {
       const docLen = view.state.doc.length;
-      const anchor = Math.min(props.selection.anchor, docLen);
-      const head = Math.min(props.selection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
-    } else if (initialClickCoords) {
-      const pos = view.posAtCoords(initialClickCoords);
-      if (pos !== null) {
-        view.dispatch({ selection: { anchor: pos } });
+      // If doc is empty (Yjs hasn't synced yet), the updateListener will apply selection when content arrives
+      if (docLen > 0) {
+        const anchor = Math.min(props.selection.anchor, docLen);
+        const head = Math.min(props.selection.head, docLen);
+        view.dispatch({ selection: { anchor, head } });
       }
-    } else {
+    } else if (initialClickCoords) {
+      // Only use click coords if doc has content - clicking on empty doc is meaningless
+      // and the saved selection will be restored when Yjs syncs
+      const docLen = view.state.doc.length;
+      if (docLen > 0) {
+        const pos = view.posAtCoords(initialClickCoords);
+        if (pos !== null) {
+          view.dispatch({ selection: { anchor: pos } });
+        }
+      }
+    } else if (view.state.doc.length > 0) {
+      // Only default to position 0 if doc has content
+      // Otherwise, let updateListener set selection when Yjs syncs
       view.dispatch({ selection: { anchor: 0 } });
     }
 
-    view.focus();
+    // Focus logic: balance cursor flash prevention with immediate focus for new blocks
+    const docLen = view.state.doc.length;
+
+    if (docLen > 0) {
+      // Content already loaded - focus immediately
+      setIsSelectionReady(true);
+      view.focus();
+    } else {
+      // Doc is empty - check if we're expecting content from Yjs
+      // If saved selection is beyond position 0, there must be content waiting to sync
+      const expectingContent = props.selection && props.selection.anchor > 0;
+
+      if (!expectingContent) {
+        // New empty block or empty block at position 0 - focus immediately
+        setIsSelectionReady(true);
+        view.focus();
+      }
+      // else: wait for updateListener to focus after Yjs syncs
+    }
 
     onCleanup(() => view?.destroy());
   });
@@ -426,27 +494,45 @@ export default function TextEditor(props: TextEditorProps) {
     if (!view || !selection) return;
 
     // Skip syncing when goalX and goalLine are set - positioning is handled by mount using posAtCoords
-    if (selection.goalX != null && selection.goalLine != null) return;
-
-    const currentSel = view.state.selection.main;
-    const needsUpdate =
-      currentSel.anchor !== selection.anchor ||
-      currentSel.head !== selection.head;
-
-    if (needsUpdate) {
-      const docLen = view.state.doc.length;
-      const anchor = Math.min(selection.anchor, docLen);
-      const head = Math.min(selection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
+    if (selection.goalX != null && selection.goalLine != null) {
+      return;
     }
 
-    // Always ensure focus when selection prop is set (e.g., after body click)
-    if (!view.hasFocus) {
+    const docLen = view.state.doc.length;
+
+    // Only sync selection when doc has content - empty doc means Yjs hasn't synced yet
+    // (The updateListener will handle selection when Yjs syncs)
+    if (docLen > 0) {
+      const currentSel = view.state.selection.main;
+      const needsUpdate =
+        currentSel.anchor !== selection.anchor ||
+        currentSel.head !== selection.head;
+
+      if (needsUpdate) {
+        const anchor = Math.min(selection.anchor, docLen);
+        const head = Math.min(selection.head, docLen);
+        view.dispatch({ selection: { anchor, head } });
+      }
+    }
+
+    // Ensure focus when selection prop is set (e.g., after body click)
+    // BUT: if doc is empty and selection > 0, we're waiting for Yjs to sync.
+    // In that case, updateListener will handle focus after sync.
+    const expectingContent = docLen === 0 && selection.anchor > 0;
+    if (!view.hasFocus && !expectingContent) {
       view.focus();
     }
   });
 
   // Text sync is now handled by Yjs via yCollab extension
 
-  return <div ref={containerRef} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        // Hide cursor until selection is ready to avoid flash at position 0
+        "caret-color": isSelectionReady() ? undefined : "transparent",
+      }}
+    />
+  );
 }

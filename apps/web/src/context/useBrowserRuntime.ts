@@ -4,7 +4,7 @@ import { BrowserRuntimeContext } from "./browserRuntime";
 
 export const useBrowserRuntime = () => {
   const runtime = useContext(BrowserRuntimeContext);
-  Attest.isDefined(runtime);
+  Attest.existence(runtime);
 
   return runtime;
 };

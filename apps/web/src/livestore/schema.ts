@@ -150,17 +150,15 @@ const materializers = State.SQLite.materializers(events, {
       modifiedAt: timestamp,
     });
 
-    if ("parentId" in data && data.parentId && data.position) {
-      const insertChildOp = tables.parentLinks.insert({
-        childId: data.nodeId,
-        parentId: data.parentId,
-        position: data.position,
-        createdAt: timestamp,
-      });
-      return [insertNodeOp, insertChildOp];
-    }
+    // Always create parent_links row (parentId is null for root nodes)
+    const insertLinkOp = tables.parentLinks.insert({
+      childId: data.nodeId,
+      parentId: "parentId" in data ? (data.parentId ?? null) : null,
+      position: "position" in data ? (data.position ?? "") : "",
+      createdAt: timestamp,
+    });
 
-    return insertNodeOp;
+    return [insertNodeOp, insertLinkOp];
   },
   "v1.NodeMoved": ({ data }, ctx) => {
     const link = ctx.query(
@@ -193,6 +191,14 @@ const materializers = State.SQLite.materializers(events, {
   // it's instances as hidden or dislpays [in_trash] icon
   // there
   "v1.NodeDeleted": ({ data }, ctx) => {
+    /**
+     * Collects all descendant node IDs for the given node.
+     *
+     * Recursively traverses child links and returns every descendant's `childId` (excluding the given `nodeId`) in depth-first pre-order: each direct child appears before its descendants.
+     *
+     * @param nodeId - The id of the node whose descendants should be collected
+     * @returns An array of descendant node ids (may be empty)
+     */
     function getAllDescendants(nodeId: string): string[] {
       const children = ctx.query(
         tables.parentLinks.select().where("parentId", "=", nodeId),

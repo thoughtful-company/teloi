@@ -17,6 +17,14 @@ interface BlockProps {
   blockId: Id.Block;
 }
 
+/**
+ * Renders an editable hierarchical block and keeps it synchronized with the application runtime and Yjs document state.
+ *
+ * The component displays read-only text when inactive and a rich text editor when active; it manages focus, selection, document stream subscription, Y.Text observation, and user editing/navigation behaviors (split/merge, indent/outdent, arrow navigation, zoom) for the given block.
+ *
+ * @param blockId - The block identifier to render and synchronize (Id.Block)
+ * @returns The block's rendered TSX element containing the editor or read-only view and its child blocks
+ */
 export default function Block({ blockId }: BlockProps) {
   const runtime = useBrowserRuntime();
 
@@ -148,6 +156,12 @@ export default function Block({ blockId }: BlockProps) {
   };
 
   const handleBlur = () => {
+    // Don't clear selection when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);

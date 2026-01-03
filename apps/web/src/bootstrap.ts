@@ -13,7 +13,8 @@ import { nanoid } from "nanoid";
 export const bootstrap = Effect.gen(function* () {
   const Store = yield* StoreT;
   const Yjs = yield* YjsT;
-  const windowId = Id.Window.make(yield* Store.getSessionId());
+  const sessionId = yield* Store.getSessionId();
+  const windowId = Id.Window.make(sessionId);
 
   const windowDoc = yield* Store.getDocument("window", windowId);
 
