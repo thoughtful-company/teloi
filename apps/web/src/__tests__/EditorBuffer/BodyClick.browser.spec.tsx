@@ -25,17 +25,17 @@ describe("Body click creates block", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // When: User clicks on the empty body area
+      // When: User clicks on the click zone below blocks
       yield* Effect.promise(async () => {
-        const bodyArea = await waitFor(
+        const clickZone = await waitFor(
           () => {
-            const el = document.querySelector("[data-testid='editor-body']");
-            if (!el) throw new Error("Body area not found");
+            const el = document.querySelector("[data-testid='editor-click-zone']");
+            if (!el) throw new Error("Click zone not found");
             return el as HTMLElement;
           },
           { timeout: 2000 },
         );
-        bodyArea.click();
+        clickZone.click();
       });
 
       // Then: A new child block should be created
@@ -93,17 +93,17 @@ describe("Body click creates block", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // When: User clicks on the body area below existing blocks
+      // When: User clicks on the click zone below existing blocks
       yield* Effect.promise(async () => {
-        const bodyArea = await waitFor(
+        const clickZone = await waitFor(
           () => {
-            const el = document.querySelector("[data-testid='editor-body']");
-            if (!el) throw new Error("Body area not found");
+            const el = document.querySelector("[data-testid='editor-click-zone']");
+            if (!el) throw new Error("Click zone not found");
             return el as HTMLElement;
           },
           { timeout: 2000 },
         );
-        bodyArea.click();
+        clickZone.click();
       });
 
       // Then: A new child block should be created (total 2)
@@ -168,17 +168,17 @@ describe("Body click creates block", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // When: User clicks on the body area
+      // When: User clicks on the click zone
       yield* Effect.promise(async () => {
-        const bodyArea = await waitFor(
+        const clickZone = await waitFor(
           () => {
-            const el = document.querySelector("[data-testid='editor-body']");
-            if (!el) throw new Error("Body area not found");
+            const el = document.querySelector("[data-testid='editor-click-zone']");
+            if (!el) throw new Error("Click zone not found");
             return el as HTMLElement;
           },
           { timeout: 2000 },
         );
-        bodyArea.click();
+        clickZone.click();
       });
 
       // Then: No new block should be created (still 2 blocks)
@@ -264,10 +264,10 @@ describe("Body click creates block", () => {
         ),
       );
 
-      // Step 2: Click on the body area below the block
+      // Step 2: Click on the click zone below the block
       yield* Effect.promise(async () => {
-        const bodyArea = document.querySelector("[data-testid='editor-body']") as HTMLElement;
-        bodyArea.click();
+        const clickZone = document.querySelector("[data-testid='editor-click-zone']") as HTMLElement;
+        clickZone.click();
       });
 
       // Step 3: Try to type - this is the REAL test
@@ -334,13 +334,13 @@ describe("Body click creates block", () => {
         ),
       );
 
-      // Step 2: Click on the body area below the block
+      // Step 2: Click on the click zone below the block
       yield* Effect.promise(async () => {
-        const bodyArea = document.querySelector("[data-testid='editor-body']") as HTMLElement;
-        bodyArea.click();
+        const clickZone = document.querySelector("[data-testid='editor-click-zone']") as HTMLElement;
+        clickZone.click();
       });
 
-      // Step 3: Wait for CodeMirror to be re-focused after body click
+      // Step 3: Wait for CodeMirror to be re-focused after click zone click
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -357,6 +357,71 @@ describe("Body click creates block", () => {
       // Then: Selection should be on this block at offset 0
       yield* Then.SELECTION_IS_ON_BLOCK(blockId);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+    }).pipe(runtime.runPromise);
+  });
+
+  // BUG: Clicking beside a block (not below it) incorrectly triggers focus/create
+  //
+  // Current behavior:
+  // - Click anywhere on body that's not inside a block → creates/focuses last block
+  //
+  // Expected behavior:
+  // - Click BELOW all blocks → creates/focuses last block
+  // - Click beside a block (to the right, in padding) → does nothing
+  //
+  // Document structure:
+  // Title: "Document Title"
+  // └─ Block: "some text"
+
+  it("clicking beside a block does NOT create or focus last block", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with one block
+      const { bufferId, rootNodeId } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          { text: "some text" },
+        ]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for block to render
+      const blockElement = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const block = document.querySelector("[data-element-type='block']");
+            if (!block) throw new Error("Block not found");
+            return block as HTMLElement;
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User clicks to the RIGHT of the block (beside it, not below)
+      // We click on the body area but at the same Y level as the block
+      const blockRect = blockElement.getBoundingClientRect();
+      const bodyArea = document.querySelector("[data-testid='editor-body']") as HTMLElement;
+      const bodyRect = bodyArea.getBoundingClientRect();
+
+      // Click at the right edge of body, vertically centered on the block
+      const clickX = bodyRect.right - 10;
+      const clickY = blockRect.top + blockRect.height / 2;
+
+      yield* Effect.promise(async () => {
+        const clickEvent = new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: clickX,
+          clientY: clickY,
+        });
+        bodyArea.dispatchEvent(clickEvent);
+      });
+
+      // Then: No new block should be created (still 1 block)
+      yield* Then.BLOCK_COUNT_IS(1);
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // And: No CodeMirror should be mounted (block not focused)
+      const cm = document.querySelector(".cm-content");
+      expect(cm).toBeNull();
     }).pipe(runtime.runPromise);
   });
 });
