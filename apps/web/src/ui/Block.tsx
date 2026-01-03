@@ -887,7 +887,7 @@ export default function Block({ blockId }: BlockProps) {
         <Show
           when={store.isActive}
           fallback={
-            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-pre-wrap">
+            <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
               {textContent() || "\u00A0"}
             </p>
           }
