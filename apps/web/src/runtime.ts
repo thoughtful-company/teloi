@@ -3,8 +3,10 @@ import { store } from "@/livestore/store";
 import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
 import { makeKeyboardLive } from "./services/browser/KeyboardService";
 import { makeURLServiceLive } from "./services/browser/URLService";
+import { BootstrapLive } from "./services/domain/Bootstrap";
 import { DataPortLive, DataPortT, ExportData } from "./services/domain/DataPort";
 import { NodeLive } from "./services/domain/Node";
+import { TypeLive } from "./services/domain/Type";
 import { getStoreLayer } from "./services/external/Store";
 import { makeYjsLive } from "./services/external/Yjs";
 import { BlockLive } from "./services/ui/Block";
@@ -46,9 +48,11 @@ const yjsPersist = true;
 const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(DataPortLive),
+  Layer.provideMerge(BootstrapLive),
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),
+  Layer.provideMerge(TypeLive),
   Layer.provideMerge(NodeLive),
   Layer.provideMerge(makeYjsLive({ roomName: "teloi-workspace", persist: yjsPersist })),
   Layer.provideMerge(makeKeyboardLive(window)),

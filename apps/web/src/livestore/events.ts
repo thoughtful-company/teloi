@@ -60,3 +60,28 @@ export const nodeDeleted = Events.synced({
 });
 
 export type NodeDeleted = typeof nodeDeleted;
+
+export const typeAddedToNode = Events.synced({
+  name: "v1.TypeAddedToNode",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      nodeId: Schema.String,
+      typeId: Schema.String,
+      position: Schema.String,
+    }),
+  }),
+});
+
+export type TypeAddedToNode = typeof typeAddedToNode;
+
+export const typeRemovedFromNode = Events.synced({
+  name: "v1.TypeRemovedFromNode",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      nodeId: Schema.String,
+      typeId: Schema.String,
+    }),
+  }),
+});

@@ -87,6 +87,8 @@ interface TextEditorProps {
   onSelectionChange?: (selection: SelectionInfo) => void;
   onBlur?: () => void;
   onZoomIn?: () => void;
+  /** Called when user types "- " at start of line (list trigger) */
+  onListTrigger?: () => void;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: {
@@ -119,6 +121,7 @@ export default function TextEditor(props: TextEditorProps) {
     onSelectionChange,
     onBlur,
     onZoomIn,
+    onListTrigger,
     initialClickCoords,
     initialSelection,
     variant = "block",
@@ -441,6 +444,26 @@ export default function TextEditor(props: TextEditorProps) {
 
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
+
+    if (onListTrigger) {
+      extensions.push(
+        EditorView.inputHandler.of((view, from, to, text) => {
+          if (text === " " && from === 1 && to === 1) {
+            const doc = view.state.doc.toString();
+            if (doc === "-") {
+              // Returning true prevents the space from being inserted
+              view.dispatch({
+                changes: { from: 0, to: 1, insert: "" },
+                selection: { anchor: 0 },
+              });
+              onListTrigger();
+              return true;
+            }
+          }
+          return false;
+        }),
+      );
+    }
 
     // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
     const filteredDefaultKeymap = defaultKeymap.filter(

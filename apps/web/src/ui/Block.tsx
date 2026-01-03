@@ -1,7 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { events } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
@@ -9,7 +10,7 @@ import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Option, Stream } from "effect";
+import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import TextEditor, { type EnterKeyInfo, type SelectionInfo } from "./TextEditor";
 
@@ -78,19 +79,31 @@ export default function Block({ blockId }: BlockProps) {
   const ytext = Yjs.getText(nodeId);
   const undoManager = Yjs.getUndoManager(nodeId);
 
-  // Reactive text content signal for unfocused view (observes Y.Text changes)
   const [textContent, setTextContent] = createSignal(ytext.toString());
+  const [isListElement, setIsListElement] = createSignal(false);
 
   onMount(() => {
     const dispose = start(runtime);
 
-    // Observe Y.Text changes for unfocused view
     const observer = () => setTextContent(ytext.toString());
     ytext.observe(observer);
+
+    const typesFiber = runtime.runFork(
+      Effect.gen(function* () {
+        const Type = yield* TypeT;
+        const stream = yield* Type.subscribeTypes(nodeId);
+        yield* Stream.runForEach(stream, (types) =>
+          Effect.sync(() => {
+            setIsListElement(types.includes(System.LIST_ELEMENT));
+          }),
+        );
+      }),
+    );
 
     onCleanup(() => {
       dispose();
       ytext.unobserve(observer);
+      runtime.runFork(Fiber.interrupt(typesFiber));
     });
   });
 
@@ -881,37 +894,54 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleListTrigger = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Type = yield* TypeT;
+        yield* Type.addType(nodeId, System.LIST_ELEMENT);
+      }),
+    );
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
-      <div onClick={handleFocus}>
-        <Show
-          when={store.isActive}
-          fallback={
-            <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
-              {textContent() || "\u00A0"}
-            </p>
-          }
-        >
-          <TextEditor
-            ytext={ytext}
-            undoManager={undoManager}
-            onEnter={handleEnter}
-            onTab={handleTab}
-            onShiftTab={handleShiftTab}
-            onBackspaceAtStart={handleBackspaceAtStart}
-            onDeleteAtEnd={handleDeleteAtEnd}
-            onArrowLeftAtStart={handleArrowLeftAtStart}
-            onArrowRightAtEnd={handleArrowRightAtEnd}
-            onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
-            onArrowDownOnLastLine={handleArrowDownOnLastLine}
-            onSelectionChange={handleSelectionChange}
-            onBlur={handleBlur}
-            onZoomIn={handleZoomIn}
-            initialClickCoords={clickCoords}
-            initialSelection={initialSelection}
-            selection={store.selection}
-          />
+      <div onClick={handleFocus} class="flex">
+        <Show when={isListElement()}>
+          <span class="w-5 shrink-0 text-[length:var(--text-block)] leading-[var(--text-block--line-height)] select-none">
+            •
+          </span>
         </Show>
+        <div class="flex-1 min-w-0">
+          <Show
+            when={store.isActive}
+            fallback={
+              <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
+                {textContent() || "\u00A0"}
+              </p>
+            }
+          >
+            <TextEditor
+              ytext={ytext}
+              undoManager={undoManager}
+              onEnter={handleEnter}
+              onTab={handleTab}
+              onShiftTab={handleShiftTab}
+              onBackspaceAtStart={handleBackspaceAtStart}
+              onDeleteAtEnd={handleDeleteAtEnd}
+              onArrowLeftAtStart={handleArrowLeftAtStart}
+              onArrowRightAtEnd={handleArrowRightAtEnd}
+              onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
+              onArrowDownOnLastLine={handleArrowDownOnLastLine}
+              onSelectionChange={handleSelectionChange}
+              onBlur={handleBlur}
+              onZoomIn={handleZoomIn}
+              onListTrigger={handleListTrigger}
+              initialClickCoords={clickCoords}
+              initialSelection={initialSelection}
+              selection={store.selection}
+            />
+          </Show>
+        </div>
       </div>
       <div class="pl-4">
         <For each={store.childBlockIds}>

@@ -32,6 +32,28 @@ const parentLinks = State.SQLite.table({
   ],
 });
 
+const nodeTypes = State.SQLite.table({
+  name: "node_types",
+  columns: {
+    nodeId: State.SQLite.text(),
+    typeId: State.SQLite.text(),
+    position: State.SQLite.text(),
+    createdAt: State.SQLite.integer(),
+  },
+  indexes: [
+    {
+      name: "nodeTypes_nodeId",
+      columns: ["nodeId", "position"],
+      isUnique: false,
+    },
+    {
+      name: "nodeTypes_typeId",
+      columns: ["typeId"],
+      isUnique: false,
+    },
+  ],
+});
+
 const window = State.SQLite.clientDocument({
   name: Model.DocumentName.Window,
   schema: Model.DocumentSchemas[Model.DocumentName.Window].schema,
@@ -131,10 +153,12 @@ export const events = {
 
 export type TeloiNode = State.SQLite.FromTable.RowDecoded<typeof nodes>;
 export type ParentLink = State.SQLite.FromTable.RowDecoded<typeof parentLinks>;
+export type NodeType = State.SQLite.FromTable.RowDecoded<typeof nodeTypes>;
 
 export const tables = {
   nodes,
   parentLinks,
+  nodeTypes,
   window,
   pane,
   buffer,
@@ -221,11 +245,37 @@ const materializers = State.SQLite.materializers(events, {
       tables.parentLinks.delete().where({ childId: nodeId }),
     );
 
+    // Clean up type associations (both as node and as type)
+    const deleteNodeTypesAsNodeOps = allNodeIds.map((nodeId) =>
+      tables.nodeTypes.delete().where({ nodeId }),
+    );
+    const deleteNodeTypesAsTypeOps = allNodeIds.map((nodeId) =>
+      tables.nodeTypes.delete().where({ typeId: nodeId }),
+    );
+
     const deleteNodesOps = allNodeIds.map((nodeId) =>
       tables.nodes.delete().where({ id: nodeId }),
     );
 
-    return [...deleteParentLinksOps, ...deleteNodesOps];
+    return [
+      ...deleteParentLinksOps,
+      ...deleteNodeTypesAsNodeOps,
+      ...deleteNodeTypesAsTypeOps,
+      ...deleteNodesOps,
+    ];
+  },
+  "v1.TypeAddedToNode": ({ timestamp, data }) => {
+    return tables.nodeTypes.insert({
+      nodeId: data.nodeId,
+      typeId: data.typeId,
+      position: data.position,
+      createdAt: timestamp,
+    });
+  },
+  "v1.TypeRemovedFromNode": ({ data }) => {
+    return tables.nodeTypes
+      .delete()
+      .where({ nodeId: data.nodeId, typeId: data.typeId });
   },
 });
 
