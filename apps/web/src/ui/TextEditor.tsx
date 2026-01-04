@@ -1,6 +1,8 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { Id } from "@/schema";
+import * as BlockType from "@/services/ui/BlockType";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
@@ -87,8 +89,8 @@ interface TextEditorProps {
   onSelectionChange?: (selection: SelectionInfo) => void;
   onBlur?: () => void;
   onZoomIn?: () => void;
-  /** Called when user types "- " at start of line. Return true to handle (eats the dash), false to let normal input through. */
-  onListTrigger?: () => boolean;
+  /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
+  onTypeTrigger?: (typeId: Id.Node) => boolean;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: {
@@ -121,7 +123,7 @@ export default function TextEditor(props: TextEditorProps) {
     onSelectionChange,
     onBlur,
     onZoomIn,
-    onListTrigger,
+    onTypeTrigger,
     initialClickCoords,
     initialSelection,
     variant = "block",
@@ -445,18 +447,28 @@ export default function TextEditor(props: TextEditorProps) {
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
 
-    if (onListTrigger) {
+    if (onTypeTrigger) {
+      const triggersWithTypes = BlockType.getWithTriggers();
+
       extensions.push(
         EditorView.inputHandler.of((view, from, to, text) => {
-          if (text === " " && from === 1 && to === 1) {
-            const doc = view.state.doc.toString();
-            if (doc.at(0) === "-" && onListTrigger()) {
-              // Callback returned true - eat the dash and prevent the space
-              view.dispatch({
-                changes: { from: 0, to: 1, insert: "" },
-                selection: { anchor: 0 },
-              });
-              return true;
+          if (text !== " ") return false;
+
+          const doc = view.state.doc.toString();
+
+          for (const def of triggersWithTypes) {
+            const trigger = def.trigger!;
+            if (from === trigger.consume && to === trigger.consume) {
+              const prefix = doc.slice(0, trigger.consume);
+              if (trigger.pattern.test(prefix)) {
+                if (onTypeTrigger(def.id)) {
+                  view.dispatch({
+                    changes: { from: 0, to: trigger.consume, insert: "" },
+                    selection: { anchor: 0 },
+                  });
+                  return true;
+                }
+              }
             }
           }
           return false;

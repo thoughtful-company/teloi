@@ -1,11 +1,12 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { events } from "@/livestore/schema";
-import { Id, System } from "@/schema";
+import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
+import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
@@ -88,7 +89,21 @@ export default function Block({ blockId }: BlockProps) {
   const undoManager = Yjs.getUndoManager(nodeId);
 
   const [textContent, setTextContent] = createSignal(ytext.toString());
-  const [isListElement, setIsListElement] = createSignal(false);
+  const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
+
+  const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
+
+  const getActiveDefinitions = () =>
+    activeTypes()
+      .map(BlockType.get)
+      .filter((d): d is BlockType.BlockTypeDefinition => d != null);
+
+  const getPrimaryDecoration = () => {
+    for (const def of getActiveDefinitions()) {
+      if (def.renderDecoration) return def.renderDecoration;
+    }
+    return null;
+  };
 
   onMount(() => {
     const dispose = start(runtime);
@@ -102,7 +117,7 @@ export default function Block({ blockId }: BlockProps) {
         const stream = yield* Type.subscribeTypes(nodeId);
         yield* Stream.runForEach(stream, (types) =>
           Effect.sync(() => {
-            setIsListElement(types.includes(System.LIST_ELEMENT));
+            setActiveTypes(types);
           }),
         );
       }),
@@ -210,15 +225,15 @@ export default function Block({ blockId }: BlockProps) {
         const Buffer = yield* BufferT;
         const Yjs = yield* YjsT;
 
-        // Empty list item: remove list type and exit (don't create new node)
-        if (
-          isListElement() &&
-          info.cursorPos === 0 &&
-          info.textAfter.length === 0
-        ) {
-          const Type = yield* TypeT;
-          yield* Type.removeType(nodeId, System.LIST_ELEMENT);
-          return;
+        // Check if any active type wants to be removed on empty Enter
+        if (info.cursorPos === 0 && info.textAfter.length === 0) {
+          for (const def of getActiveDefinitions()) {
+            if (def.enter?.removeOnEmpty) {
+              const Type = yield* TypeT;
+              yield* Type.removeType(nodeId, def.id);
+              return;
+            }
+          }
         }
 
         // Get parent of current node
@@ -233,10 +248,12 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: nodeId,
         });
 
-        // Propagate list type to new node
-        if (isListElement()) {
-          const Type = yield* TypeT;
-          yield* Type.addType(newNodeId, System.LIST_ELEMENT);
+        // Propagate types that want to be propagated
+        const Type = yield* TypeT;
+        for (const def of getActiveDefinitions()) {
+          if (def.enter?.propagateToNewBlock) {
+            yield* Type.addType(newNodeId, def.id);
+          }
         }
 
         // Update Y.Text content for split
@@ -341,11 +358,13 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
 
-        // List item: remove list type instead of merging
-        if (isListElement()) {
-          const Type = yield* TypeT;
-          yield* Type.removeType(nodeId, System.LIST_ELEMENT);
-          return;
+        // Check if any active type wants to be removed on backspace at start
+        for (const def of getActiveDefinitions()) {
+          if (def.backspace?.removeTypeAtStart) {
+            const Type = yield* TypeT;
+            yield* Type.removeType(nodeId, def.id);
+            return;
+          }
         }
 
         const Node = yield* NodeT;
@@ -931,12 +950,12 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleListTrigger = (): boolean => {
-    if (isListElement()) return false; // Already a list item, let "- " be typed normally
+  const handleTypeTrigger = (typeId: Id.Node): boolean => {
+    if (hasType(typeId)) return false;
     runtime.runPromise(
       Effect.gen(function* () {
         const Type = yield* TypeT;
-        yield* Type.addType(nodeId, System.LIST_ELEMENT);
+        yield* Type.addType(nodeId, typeId);
       }),
     );
     return true;
@@ -949,16 +968,16 @@ export default function Block({ blockId }: BlockProps) {
           enterActiveClass="transition-all duration-150 ease-out"
           enterClass="opacity-0 scale-0"
           enterToClass="opacity-100 scale-100"
-          exitActiveClass="transition-all duration-75 ease-in"
+          exitActiveClass="transition-all duration-150 ease-in"
           exitClass="w-3.5 opacity-100 scale-100"
           exitToClass="w-0 opacity-0 scale-0"
         >
-          <Show when={isListElement()}>
-            <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none origin-center overflow-hidden">
-              <span class="h-[var(--text-block)] flex items-center justify-center">
-                <span class="w-1 h-1 rounded-full bg-current" />
+          <Show when={getPrimaryDecoration()}>
+            {(renderDecoration) => (
+              <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none origin-center overflow-hidden">
+                {renderDecoration()({ nodeId })}
               </span>
-            </span>
+            )}
           </Show>
         </Transition>
         <div class="flex-1 min-w-0">
@@ -985,7 +1004,7 @@ export default function Block({ blockId }: BlockProps) {
               onSelectionChange={handleSelectionChange}
               onBlur={handleBlur}
               onZoomIn={handleZoomIn}
-              onListTrigger={handleListTrigger}
+              onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}
               selection={store.selection}

@@ -45,6 +45,8 @@ Comments should explain **why**, not **what**. The code already shows what it do
 
 Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
 
+Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
+
 ## Project Structure
 
 This is a pnpm monorepo with:
@@ -183,9 +185,14 @@ App
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
 - [ ] Implement list items
   - [x] Add a list item
-  - [ ] Make a list item beautiful
-  - [ ] Add a new list item when you press Enter from existing list item
-  - [ ] Remove list item when you type delete at the start of it
+  - [x] Make a list item beautiful
+  - [x] Add a new list item when you press Enter from existing list item
+  - [x] Remove list item when you type delete at the start of it
+  - [x] Don't try to make list item when you already have a list item
+  - [ ] Refactor list items implementation, to extend to other types of renderings.
+    There is a question of rendering correct thing (in block.tsx)
+  - [ ] Bug: Why animation when you type "- " is not working?
+- [ ] Refactor type system implementation 
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
