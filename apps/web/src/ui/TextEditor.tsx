@@ -450,7 +450,7 @@ export default function TextEditor(props: TextEditorProps) {
         EditorView.inputHandler.of((view, from, to, text) => {
           if (text === " " && from === 1 && to === 1) {
             const doc = view.state.doc.toString();
-            if (doc === "-") {
+            if (doc.at(0) === "-") {
               // Returning true prevents the space from being inserted
               view.dispatch({
                 changes: { from: 0, to: 1, insert: "" },

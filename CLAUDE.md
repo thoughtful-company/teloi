@@ -134,6 +134,7 @@ Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__t
 
 **Testing Anti-Patterns** (DO NOT USE):
 - `yield* Effect.sleep("50 millis")` or any arbitrary sleep duration - These make tests slow and flaky. Total test time explodes when every test adds random delays. Instead:
+  - Try to run tests without waiting, probably they'll pass
   - Use `waitFor()` to poll for expected state changes
   - Use proper async patterns that wait for specific conditions
   - If you must wait, wait for a specific event/condition, not arbitrary time
@@ -169,19 +170,22 @@ App
 - [ ] Block-level undo (structural changes, not just text)
 - [ ] Breadcrumbs (needs design)
 - [ ] Block selection (multi-block select)
-- [x] Sidebar (in progress on `feature/sidebar`)
-  - [x] Implement shortcut for hiding sidebar
 - [ ] Dev script: ccusage for ~/.claude and ~/.clancy
 - [ ] Fix failing tests
 - [ ] Implement move block below and move block above
-- [ ] Implement different document types
+- [ ] Implement different document types (see `docs/ontology.md`)
 - [ ] Remove new node creation upon buffer initialization
+- [ ] Bug: if the whole node is selected, upon reload, selection is lost
+- [ ] Bug: if you select part of a node and press enter, the selected part does not get deleted
 - [ ] Remove all `Effect.sleep` with arbitrary durations from tests (see Testing Anti-Patterns below)
-- [ ] Create test for "arrow down from start of wrapped line"
-  - [x] Creat Given util for selection
-  - [x] Creat given util for active element
-  - [ ] Access code mirror intstance
+- [ ] Implement delete button for sidebar items that shows up on hover and deletes an element
+  button is located on the right side of a list item
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
+- [ ] Implement list items
+  - [x] Add a list item
+  - [ ] Make a list item beautiful
+  - [ ] Add a new list item when you press Enter from existing list item
+  - [ ] Remove list item when you type delete at the start of it
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

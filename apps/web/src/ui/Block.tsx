@@ -12,7 +12,10 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { type EnterKeyInfo, type SelectionInfo } from "./TextEditor";
+import TextEditor, {
+  type EnterKeyInfo,
+  type SelectionInfo,
+} from "./TextEditor";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -67,14 +70,18 @@ export default function Block({ blockId }: BlockProps) {
     initial: {
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null,
+      selection: null as {
+        anchor: number;
+        head: number;
+        goalX: number | null;
+        goalLine: "first" | "last" | null;
+        assoc: -1 | 0 | 1;
+      } | null,
     },
   });
 
   // Get Y.Text and UndoManager for this block's node
-  const [, nodeId] = Id.parseBlockId(blockId).pipe(
-    Effect.runSync,
-  );
+  const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
   const Yjs = runtime.runSync(YjsT);
   const ytext = Yjs.getText(nodeId);
   const undoManager = Yjs.getUndoManager(nodeId);
@@ -704,9 +711,11 @@ export default function Block({ blockId }: BlockProps) {
 
         // Preserve existing goalX if set (for chained arrow navigation)
         const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
-          ? existingSelection.value.goalX
-          : cursorGoalX;
+        const goalX =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.goalX != null
+            ? existingSelection.value.goalX
+            : cursorGoalX;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
@@ -789,9 +798,11 @@ export default function Block({ blockId }: BlockProps) {
 
         // Preserve existing goalX if set (for chained arrow navigation)
         const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
-          ? existingSelection.value.goalX
-          : cursorGoalX;
+        const goalX =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.goalX != null
+            ? existingSelection.value.goalX
+            : cursorGoalX;
 
         const children = yield* Node.getNodeChildren(nodeId);
 
@@ -907,8 +918,10 @@ export default function Block({ blockId }: BlockProps) {
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus} class="flex">
         <Show when={isListElement()}>
-          <span class="w-5 shrink-0 text-[length:var(--text-block)] leading-[var(--text-block--line-height)] select-none">
-            •
+          <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none">
+            <span class="h-[var(--text-block)] flex items-center justify-center">
+              <span class="w-1 h-1 rounded-full bg-current" />
+            </span>
           </span>
         </Show>
         <div class="flex-1 min-w-0">
