@@ -12,6 +12,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Transition } from "solid-transition-group";
 import TextEditor, {
   type EnterKeyInfo,
   type SelectionInfo,
@@ -209,6 +210,17 @@ export default function Block({ blockId }: BlockProps) {
         const Buffer = yield* BufferT;
         const Yjs = yield* YjsT;
 
+        // Empty list item: remove list type and exit (don't create new node)
+        if (
+          isListElement() &&
+          info.cursorPos === 0 &&
+          info.textAfter.length === 0
+        ) {
+          const Type = yield* TypeT;
+          yield* Type.removeType(nodeId, System.LIST_ELEMENT);
+          return;
+        }
+
         // Get parent of current node
         const parentId = yield* Node.getParent(nodeId);
 
@@ -220,6 +232,12 @@ export default function Block({ blockId }: BlockProps) {
           insert: isAtStart ? "before" : "after",
           siblingId: nodeId,
         });
+
+        // Propagate list type to new node
+        if (isListElement()) {
+          const Type = yield* TypeT;
+          yield* Type.addType(newNodeId, System.LIST_ELEMENT);
+        }
 
         // Update Y.Text content for split
         if (isAtStart) {
@@ -322,6 +340,14 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+
+        // List item: remove list type instead of merging
+        if (isListElement()) {
+          const Type = yield* TypeT;
+          yield* Type.removeType(nodeId, System.LIST_ELEMENT);
+          return;
+        }
+
         const Node = yield* NodeT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
@@ -905,25 +931,36 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleListTrigger = () => {
+  const handleListTrigger = (): boolean => {
+    if (isListElement()) return false; // Already a list item, let "- " be typed normally
     runtime.runPromise(
       Effect.gen(function* () {
         const Type = yield* TypeT;
         yield* Type.addType(nodeId, System.LIST_ELEMENT);
       }),
     );
+    return true;
   };
 
   return (
     <div data-element-id={blockId} data-element-type="block">
       <div onClick={handleFocus} class="flex">
-        <Show when={isListElement()}>
-          <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none">
-            <span class="h-[var(--text-block)] flex items-center justify-center">
-              <span class="w-1 h-1 rounded-full bg-current" />
+        <Transition
+          enterActiveClass="transition-all duration-150 ease-out"
+          enterClass="opacity-0 scale-0"
+          enterToClass="opacity-100 scale-100"
+          exitActiveClass="transition-all duration-75 ease-in"
+          exitClass="w-3.5 opacity-100 scale-100"
+          exitToClass="w-0 opacity-0 scale-0"
+        >
+          <Show when={isListElement()}>
+            <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none origin-center overflow-hidden">
+              <span class="h-[var(--text-block)] flex items-center justify-center">
+                <span class="w-1 h-1 rounded-full bg-current" />
+              </span>
             </span>
-          </span>
-        </Show>
+          </Show>
+        </Transition>
         <div class="flex-1 min-w-0">
           <Show
             when={store.isActive}
