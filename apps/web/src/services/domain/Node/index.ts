@@ -3,7 +3,11 @@ import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
 import { Context, Effect, Either, Layer, Stream } from "effect";
-import { NodeHasNoParentError, NodeInsertError, NodeNotFoundError } from "../errors";
+import {
+  NodeHasNoParentError,
+  NodeInsertError,
+  NodeNotFoundError,
+} from "../errors";
 import { attestExistence } from "./attestExistence";
 import { get } from "./get";
 import { getNodeChildren } from "./getNodeChildren";
@@ -13,6 +17,7 @@ import { subscribe } from "./subscribe";
 import { subscribeChildren } from "./subscribeChildren";
 import { subscribeEither } from "./subscribeEither";
 import { createRootNode } from "./createRootNode";
+import { deleteNode } from "./deleteNode";
 import { subscribeRootNodes } from "./subscribeRootNodes";
 
 export class NodeT extends Context.Tag("NodeT")<
@@ -23,7 +28,9 @@ export class NodeT extends Context.Tag("NodeT")<
     ) => Effect.Effect<Stream.Stream<TeloiNode, NodeNotFoundError>>;
     subscribeEither: (
       nodeId: Id.Node,
-    ) => Effect.Effect<Stream.Stream<Either.Either<TeloiNode, NodeNotFoundError>>>;
+    ) => Effect.Effect<
+      Stream.Stream<Either.Either<TeloiNode, NodeNotFoundError>>
+    >;
     subscribeChildren: (
       nodeId: Id.Node,
     ) => Effect.Effect<Stream.Stream<readonly string[]>>;
@@ -32,7 +39,9 @@ export class NodeT extends Context.Tag("NodeT")<
      * Creates a new root node (top-level page with no parent).
      */
     createRootNode: () => Effect.Effect<Id.Node>;
-    attestExistence: (nodeId: Id.Node) => Effect.Effect<void, NodeNotFoundError>;
+    attestExistence: (
+      nodeId: Id.Node,
+    ) => Effect.Effect<void, NodeNotFoundError>;
     /**
      * Inserts a new node or moves an existing node in the tree structure.
      * If nodeId exists, the node is moved; otherwise, a new node is created.
@@ -43,7 +52,9 @@ export class NodeT extends Context.Tag("NodeT")<
     /**
      * Get the parent ID of a node.
      */
-    getParent: (nodeId: Id.Node) => Effect.Effect<Id.Node, NodeHasNoParentError>;
+    getParent: (
+      nodeId: Id.Node,
+    ) => Effect.Effect<Id.Node, NodeHasNoParentError>;
     /**
      * Gets all direct children of the specified node.
      * Returns child node IDs in order by position.
@@ -53,6 +64,10 @@ export class NodeT extends Context.Tag("NodeT")<
      * Gets a node by ID.
      */
     get: (nodeId: Id.Node) => Effect.Effect<TeloiNode, NodeNotFoundError>;
+    /**
+     * Deletes a node and all its descendants.
+     */
+    deleteNode: (nodeId: Id.Node) => Effect.Effect<void>;
   }
 >() {}
 
@@ -73,6 +88,7 @@ export const NodeLive = Layer.effect(
       getParent: withContext(getParent)(context),
       getNodeChildren: withContext(getNodeChildren)(context),
       get: withContext(get)(context),
+      deleteNode: withContext(deleteNode)(context),
     };
   }),
 );

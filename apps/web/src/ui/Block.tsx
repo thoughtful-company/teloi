@@ -1,5 +1,4 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
@@ -408,12 +407,7 @@ export default function Block({ blockId }: BlockProps) {
           parentYtext.insert(mergePoint, currentText);
 
           // Delete current node and cleanup Y.Text
-          yield* Store.commit(
-            events.nodeDeleted({
-              timestamp: Date.now(),
-              data: { nodeId },
-            }),
-          );
+          yield* Node.deleteNode(nodeId);
           Yjs.deleteText(nodeId);
 
           // Move focus to parent (title if root, otherwise block)
@@ -451,12 +445,7 @@ export default function Block({ blockId }: BlockProps) {
         targetYtext.insert(mergePoint, currentText);
 
         // Delete current node and cleanup Y.Text
-        yield* Store.commit(
-          events.nodeDeleted({
-            timestamp: Date.now(),
-            data: { nodeId },
-          }),
-        );
+        yield* Node.deleteNode(nodeId);
         Yjs.deleteText(nodeId);
 
         const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
@@ -484,7 +473,6 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Node = yield* NodeT;
-        const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Yjs = yield* YjsT;
 
@@ -501,12 +489,7 @@ export default function Block({ blockId }: BlockProps) {
           ytext.insert(mergePoint, childText);
 
           // Delete child node and cleanup Y.Text
-          yield* Store.commit(
-            events.nodeDeleted({
-              timestamp: Date.now(),
-              data: { nodeId: firstChildId },
-            }),
-          );
+          yield* Node.deleteNode(firstChildId);
           Yjs.deleteText(firstChildId);
 
           yield* Buffer.setSelection(
@@ -558,12 +541,7 @@ export default function Block({ blockId }: BlockProps) {
         ytext.insert(mergePoint, nextText);
 
         // Delete next node and cleanup Y.Text
-        yield* Store.commit(
-          events.nodeDeleted({
-            timestamp: Date.now(),
-            data: { nodeId: nextNodeId },
-          }),
-        );
+        yield* Node.deleteNode(nextNodeId);
         Yjs.deleteText(nextNodeId);
 
         yield* Buffer.setSelection(
@@ -950,12 +928,19 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleTypeTrigger = (typeId: Id.Node): boolean => {
+  const handleTypeTrigger = (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ): boolean => {
     if (hasType(typeId)) return false;
     runtime.runPromise(
       Effect.gen(function* () {
         const Type = yield* TypeT;
         yield* Type.addType(nodeId, typeId);
+        if (trigger.onTrigger) {
+          // onTrigger may have dependencies (e.g., TupleT) which are provided by the runtime
+          yield* trigger.onTrigger(nodeId) as Effect.Effect<void>;
+        }
       }),
     );
     return true;
