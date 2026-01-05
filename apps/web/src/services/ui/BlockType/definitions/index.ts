@@ -1,4 +1,5 @@
 import { register } from "../registry";
+import { checkboxDefinition } from "./checkbox";
 import { listElementDefinition } from "./listElement";
 
 /**
@@ -7,4 +8,5 @@ import { listElementDefinition } from "./listElement";
  */
 export const registerBuiltInTypes = (): void => {
   register(listElementDefinition);
+  register(checkboxDefinition);
 };

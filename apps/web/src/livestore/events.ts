@@ -85,3 +85,75 @@ export const typeRemovedFromNode = Events.synced({
     }),
   }),
 });
+
+// Tuple system events
+export const tupleTypeRoleAdded = Events.synced({
+  name: "v1.TupleTypeRoleAdded",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      tupleTypeId: Schema.String,
+      position: Schema.Number,
+      name: Schema.String,
+      required: Schema.Boolean,
+    }),
+  }),
+});
+
+export type TupleTypeRoleAdded = typeof tupleTypeRoleAdded;
+
+export const tupleTypeRoleUpdated = Events.synced({
+  name: "v1.TupleTypeRoleUpdated",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      tupleTypeId: Schema.String,
+      position: Schema.Number,
+      name: Schema.String,
+      required: Schema.Boolean,
+    }),
+  }),
+});
+
+export type TupleTypeRoleUpdated = typeof tupleTypeRoleUpdated;
+
+export const tupleTypeRoleAllowedTypeAdded = Events.synced({
+  name: "v1.TupleTypeRoleAllowedTypeAdded",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      tupleTypeId: Schema.String,
+      position: Schema.Number,
+      allowedTypeId: Schema.String,
+    }),
+  }),
+});
+
+export type TupleTypeRoleAllowedTypeAdded =
+  typeof tupleTypeRoleAllowedTypeAdded;
+
+export const tupleCreated = Events.synced({
+  name: "v1.TupleCreated",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      tupleId: Schema.String,
+      tupleTypeId: Schema.String,
+      members: Schema.Array(Schema.String),
+    }),
+  }),
+});
+
+export type TupleCreated = typeof tupleCreated;
+
+export const tupleDeleted = Events.synced({
+  name: "v1.TupleDeleted",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      tupleId: Schema.String,
+    }),
+  }),
+});
+
+export type TupleDeleted = typeof tupleDeleted;

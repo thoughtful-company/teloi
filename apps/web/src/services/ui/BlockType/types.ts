@@ -27,9 +27,11 @@ export interface BlockTypeDefinition {
     pattern: RegExp;
     /**
      * Number of characters to delete when triggered.
+     * Single number or array of possible lengths to try.
      * For "- " trigger: consume = 1 (deletes the "-")
+     * For checkbox: consume = [2, 3] (accepts both "[]" and "[ ]")
      */
-    consume: number;
+    consume: number | readonly number[];
   };
 
   /** Enter key behavior */

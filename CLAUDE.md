@@ -192,7 +192,8 @@ App
   - [ ] Refactor list items implementation, to extend to other types of renderings.
     There is a question of rendering correct thing (in block.tsx)
   - [ ] Bug: Why animation when you type "- " is not working?
-- [ ] Refactor type system implementation 
+- [ ] Refactor type system implementation
+- [ ] Support `[x]` trigger for pre-checked checkbox
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

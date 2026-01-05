@@ -969,12 +969,12 @@ export default function Block({ blockId }: BlockProps) {
           enterClass="opacity-0 scale-0"
           enterToClass="opacity-100 scale-100"
           exitActiveClass="transition-all duration-150 ease-in"
-          exitClass="w-3.5 opacity-100 scale-100"
+          exitClass="w-4 opacity-100 scale-100"
           exitToClass="w-0 opacity-0 scale-0"
         >
           <Show when={getPrimaryDecoration()}>
             {(renderDecoration) => (
-              <span class="w-3.5 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] select-none origin-center overflow-hidden">
+              <span class="w-4 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] mr-1 select-none origin-center overflow-hidden">
                 {renderDecoration()({ nodeId })}
               </span>
             )}

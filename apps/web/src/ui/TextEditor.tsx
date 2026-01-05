@@ -458,15 +458,21 @@ export default function TextEditor(props: TextEditorProps) {
 
           for (const def of triggersWithTypes) {
             const trigger = def.trigger!;
-            if (from === trigger.consume && to === trigger.consume) {
-              const prefix = doc.slice(0, trigger.consume);
-              if (trigger.pattern.test(prefix)) {
-                if (onTypeTrigger(def.id)) {
-                  view.dispatch({
-                    changes: { from: 0, to: trigger.consume, insert: "" },
-                    selection: { anchor: 0 },
-                  });
-                  return true;
+            const consumeValues = Array.isArray(trigger.consume)
+              ? trigger.consume
+              : [trigger.consume];
+
+            for (const consume of consumeValues) {
+              if (from === consume && to === consume) {
+                const prefix = doc.slice(0, consume);
+                if (trigger.pattern.test(prefix)) {
+                  if (onTypeTrigger(def.id)) {
+                    view.dispatch({
+                      changes: { from: 0, to: consume, insert: "" },
+                      selection: { anchor: 0 },
+                    });
+                    return true;
+                  }
                 }
               }
             }
