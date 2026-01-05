@@ -39,6 +39,7 @@ export const subscribe = (blockId: Id.Block) =>
     const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
     const selection$ = yield* makeSelectionStream(bufferId, nodeId);
+    const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
 
     const activeElementStream = yield* Window.subscribeActiveElement();
     const isActiveStream = activeElementStream.pipe(
@@ -64,9 +65,17 @@ export const subscribe = (blockId: Id.Block) =>
       node$,
       isActiveStream,
       selection$,
+      isSelected$,
     ).pipe(
       Stream.map(
-        ([blockEither, blockChildrenIds, nodeEither, isActive, selection]) => {
+        ([
+          blockEither,
+          blockChildrenIds,
+          nodeEither,
+          isActive,
+          selection,
+          isSelected,
+        ]) => {
           if (Either.isLeft(blockEither)) {
             return Either.left(new BlockGoneError({ blockId, nodeId }));
           }
@@ -80,6 +89,7 @@ export const subscribe = (blockId: Id.Block) =>
           return Either.right({
             ...block,
             isActive,
+            isSelected,
             childBlockIds: blockChildrenIds,
             nodeData,
             selection,
@@ -111,7 +121,7 @@ export const subscribe = (blockId: Id.Block) =>
 //   Internal Functions
 // ===============================
 
-type BlockDoc = { isSelected: boolean; isToggled: boolean };
+type BlockDoc = { isToggled: boolean };
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
   Effect.gen(function* () {
@@ -193,10 +203,7 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
 
         const sel = buffer.selection;
         // Only return selection if both anchor and focus are on this node
-        if (
-          sel.anchor.nodeId !== nodeId ||
-          sel.focus.nodeId !== nodeId
-        ) {
+        if (sel.anchor.nodeId !== nodeId || sel.focus.nodeId !== nodeId) {
           return null;
         }
 
@@ -212,6 +219,31 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
       Stream.tap((sel) =>
         Effect.logTrace("[Block.Subscribe] Selection emitted").pipe(
           Effect.annotateLogs({ nodeId, selection: sel }),
+        ),
+      ),
+    );
+  });
+
+const makeIsSelectedStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const query = queryDb(
+      tables.buffer
+        .select("value")
+        .where("id", "=", bufferId)
+        .first({ fallback: () => null }),
+    );
+    const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+
+    return stream.pipe(
+      Stream.map((buffer): boolean => {
+        if (!buffer?.selectedBlocks) return false;
+        return buffer.selectedBlocks.includes(nodeId);
+      }),
+      Stream.changesWith((a, b) => a === b),
+      Stream.tap((isSelected) =>
+        Effect.logTrace("[Block.Subscribe] isSelected emitted").pipe(
+          Effect.annotateLogs({ nodeId, isSelected }),
         ),
       ),
     );

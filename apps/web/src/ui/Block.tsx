@@ -44,7 +44,6 @@ export default function Block({ blockId }: BlockProps) {
           yield* Store.setDocument(
             "block",
             {
-              isSelected: false,
               isToggled: false,
             },
             blockId,
@@ -65,11 +64,13 @@ export default function Block({ blockId }: BlockProps) {
     stream: blockStream,
     project: (view) => ({
       isActive: view.isActive,
+      isSelected: view.isSelected,
       childBlockIds: view.childBlockIds,
       selection: view.selection,
     }),
     initial: {
       isActive: false,
+      isSelected: false,
       childBlockIds: [] as readonly Id.Block[],
       selection: null as {
         anchor: number;
@@ -131,6 +132,8 @@ export default function Block({ blockId }: BlockProps) {
 
   let clickCoords: { x: number; y: number } | null = null;
   let initialSelection: { anchor: number; head: number } | null = null;
+  // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
+  let isTransitioningToBlockSelection = false;
 
   const handleFocus = (e: MouseEvent) => {
     clickCoords = { x: e.clientX, y: e.clientY };
@@ -194,6 +197,11 @@ export default function Block({ blockId }: BlockProps) {
     // Don't clear selection when window loses focus (alt-tab, tab switch).
     // Only clear when user clicks elsewhere within the document.
     if (!document.hasFocus()) {
+      return;
+    }
+
+    // Don't clear if we're transitioning to block selection mode (Escape was pressed)
+    if (isTransitioningToBlockSelection) {
       return;
     }
 
@@ -928,6 +936,29 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleEscape = () => {
+    // Set flag synchronously to prevent handleBlur from clearing activeElement
+    isTransitioningToBlockSelection = true;
+
+    runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+          const Window = yield* WindowT;
+          const Buffer = yield* BufferT;
+
+          // Switch to block selection mode
+          yield* Window.setActiveElement(
+            Option.some({ type: "buffer" as const, id: bufferId }),
+          );
+          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+        }),
+      )
+      .finally(() => {
+        isTransitioningToBlockSelection = false;
+      });
+  };
+
   const handleTypeTrigger = (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -947,7 +978,13 @@ export default function Block({ blockId }: BlockProps) {
   };
 
   return (
-    <div data-element-id={blockId} data-element-type="block">
+    <div
+      data-element-id={blockId}
+      data-element-type="block"
+      classList={{
+        "ring-2 ring-blue-400 bg-blue-50/50 rounded": store.isSelected,
+      }}
+    >
       <div onClick={handleFocus} class="flex">
         <Transition
           enterActiveClass="transition-all duration-150 ease-out"
@@ -989,6 +1026,7 @@ export default function Block({ blockId }: BlockProps) {
               onSelectionChange={handleSelectionChange}
               onBlur={handleBlur}
               onZoomIn={handleZoomIn}
+              onEscape={handleEscape}
               onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}

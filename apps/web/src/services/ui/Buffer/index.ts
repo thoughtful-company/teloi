@@ -8,6 +8,7 @@ import { NodeT } from "../../domain/Node";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
+import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
 import { BufferView, subscribe } from "./subscribe";
 
@@ -18,11 +19,17 @@ export class BufferT extends Context.Tag("BufferT")<
       bufferId: Id.Buffer,
     ) => Effect.Effect<
       Stream.Stream<BufferView, NodeNotFoundError>,
-      BufferNotFoundError | LiveStoreError | BufferNodeNotAssignedError | NodeNotFoundError
+      | BufferNotFoundError
+      | LiveStoreError
+      | BufferNodeNotAssignedError
+      | NodeNotFoundError
     >;
     getSelection: (
       bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<Model.BufferSelection>, BufferNotFoundError>;
+    ) => Effect.Effect<
+      Option.Option<Model.BufferSelection>,
+      BufferNotFoundError
+    >;
     setSelection: (
       bufferId: Id.Buffer,
       selection: Option.Option<Model.BufferSelection>,
@@ -30,6 +37,11 @@ export class BufferT extends Context.Tag("BufferT")<
     setAssignedNodeId: (
       bufferId: Id.Buffer,
       nodeId: Id.Node | null,
+    ) => Effect.Effect<void, BufferNotFoundError>;
+    setBlockSelection: (
+      bufferId: Id.Buffer,
+      blocks: readonly Id.Node[],
+      lastFocusedBlockId: Id.Node,
     ) => Effect.Effect<void, BufferNotFoundError>;
   }
 >() {}
@@ -40,9 +52,7 @@ export const BufferLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
 
-    const context = Context.make(StoreT, Store).pipe(
-      Context.add(NodeT, Node),
-    );
+    const context = Context.make(StoreT, Store).pipe(Context.add(NodeT, Node));
 
     return {
       subscribe: withContext(subscribe)(context),
@@ -54,6 +64,14 @@ export const BufferLive = Layer.effect(
       setSelection: withContext(setSelection)(context),
       setAssignedNodeId: (bufferId: Id.Buffer, nodeId: Id.Node | null) =>
         setAssignedNodeId(bufferId, nodeId).pipe(
+          Effect.provideService(StoreT, Store),
+        ),
+      setBlockSelection: (
+        bufferId: Id.Buffer,
+        blocks: readonly Id.Node[],
+        lastFocusedBlockId: Id.Node,
+      ) =>
+        setBlockSelection(bufferId, blocks, lastFocusedBlockId).pipe(
           Effect.provideService(StoreT, Store),
         ),
     };

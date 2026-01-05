@@ -89,6 +89,7 @@ interface TextEditorProps {
   onSelectionChange?: (selection: SelectionInfo) => void;
   onBlur?: () => void;
   onZoomIn?: () => void;
+  onEscape?: () => void;
   /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
   onTypeTrigger?: (
     typeId: Id.Node,
@@ -126,6 +127,7 @@ export default function TextEditor(props: TextEditorProps) {
     onSelectionChange,
     onBlur,
     onZoomIn,
+    onEscape,
     onTypeTrigger,
     initialClickCoords,
     initialSelection,
@@ -349,6 +351,20 @@ export default function TextEditor(props: TextEditorProps) {
             key: "Mod-.",
             run: () => {
               onZoomIn();
+              return true;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onEscape) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Escape",
+            run: () => {
+              onEscape();
               return true;
             },
           },

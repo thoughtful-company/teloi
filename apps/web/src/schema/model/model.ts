@@ -47,7 +47,8 @@ export const EditorBuffer = Schema.mutable(
     windowId: Id.Window,
     parent: Entity.Pane,
     assignedNodeId: Schema.NullOr(Schema.String),
-    selectedNodes: Schema.mutable(Schema.Array(Schema.Array(Schema.Number))),
+    selectedBlocks: Schema.mutable(Schema.Array(Id.Node)),
+    lastFocusedBlockId: Schema.NullOr(Id.Node),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     selection: Schema.NullOr(BufferSelection),
   }),
@@ -55,7 +56,6 @@ export const EditorBuffer = Schema.mutable(
 export type EditorBuffer = typeof EditorBuffer.Type;
 
 export const Block = Schema.Struct({
-  isSelected: Schema.Boolean,
   isToggled: Schema.Boolean,
 });
 export type Block = typeof Block.Type;
