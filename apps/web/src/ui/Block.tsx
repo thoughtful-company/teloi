@@ -162,7 +162,13 @@ export default function Block({ blockId }: BlockProps) {
 
     runtime.runPromise(
       Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
+
+        // Clear block selection when entering text editing mode
+        yield* Buffer.setBlockSelection(bufferId, [], nodeId);
+
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: blockId }),
         );

@@ -211,4 +211,83 @@ describe("Block selection via Escape", () => {
       );
     }).pipe(runtime.runPromise);
   });
+
+  it("clicking another block clears selection", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with two blocks, first one is selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "First block" }, { text: "Second block" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Click first block and press Escape to select it
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmEditor = document.querySelector(".cm-editor.cm-focused");
+            expect(cmEditor).not.toBeNull();
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Verify first block is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+              childNodeIds[0],
+            );
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User clicks second block to edit it
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+
+      // Then: Selection is cleared, first block no longer has ring
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const firstBlockEl = document.querySelector(
+              `[data-element-id="${firstBlockId}"]`,
+            );
+            expect(firstBlockEl).not.toBeNull();
+            // Ring class should be gone
+            expect(firstBlockEl?.className).not.toMatch(/ring/);
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
 });
