@@ -178,8 +178,8 @@ tfoot th {
     color-mix(in display-p3, var(--color-zinc-800) 9%, transparent);
 
   --font-sans:
-    "General Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    "Fixel Variable", "General Sans", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   --text-title: 1.875rem;
   --text-title--line-height: 2.5rem;
