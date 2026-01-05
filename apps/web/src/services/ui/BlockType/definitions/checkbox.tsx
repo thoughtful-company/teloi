@@ -98,10 +98,21 @@ export const checkboxDefinition: BlockTypeDefinition = {
 
   renderDecoration: (props) => <CheckboxDecoration nodeId={props.nodeId} />,
 
-  trigger: {
-    pattern: /^\[[\s]?\]$/,
-    consume: [2, 3],
-  },
+  trigger: [
+    {
+      pattern: /^\[[\s]?\]$/,
+      consume: [2, 3],
+    },
+    {
+      pattern: /^\[[xX]\]$/,
+      consume: 3,
+      onTrigger: (nodeId) =>
+        Effect.gen(function* () {
+          const TupleService = yield* TupleT;
+          yield* TupleService.create(System.IS_CHECKED, [nodeId, System.TRUE]);
+        }),
+    },
+  ],
 
   enter: {
     propagateToNewBlock: true,

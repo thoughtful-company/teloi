@@ -1,2 +1,8 @@
-export type { BlockTypeDefinition } from "./types";
-export { register, get, getAll, getWithTriggers } from "./registry";
+export type { BlockTypeDefinition, TriggerDefinition } from "./types";
+export {
+  register,
+  get,
+  getAll,
+  getTriggersWithDefinitions,
+  type TriggerWithDefinition,
+} from "./registry";

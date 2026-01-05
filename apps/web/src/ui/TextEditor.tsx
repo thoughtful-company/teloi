@@ -90,7 +90,10 @@ interface TextEditorProps {
   onBlur?: () => void;
   onZoomIn?: () => void;
   /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
-  onTypeTrigger?: (typeId: Id.Node) => boolean;
+  onTypeTrigger?: (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ) => boolean;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
   selection?: {
@@ -448,7 +451,7 @@ export default function TextEditor(props: TextEditorProps) {
     extensions.push(keymap.of(yUndoManagerKeymap));
 
     if (onTypeTrigger) {
-      const triggersWithTypes = BlockType.getWithTriggers();
+      const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
 
       extensions.push(
         EditorView.inputHandler.of((view, from, to, text) => {
@@ -456,8 +459,7 @@ export default function TextEditor(props: TextEditorProps) {
 
           const doc = view.state.doc.toString();
 
-          for (const def of triggersWithTypes) {
-            const trigger = def.trigger!;
+          for (const { definition, trigger } of triggersWithDefinitions) {
             const consumeValues = Array.isArray(trigger.consume)
               ? trigger.consume
               : [trigger.consume];
@@ -466,7 +468,7 @@ export default function TextEditor(props: TextEditorProps) {
               if (from === consume && to === consume) {
                 const prefix = doc.slice(0, consume);
                 if (trigger.pattern.test(prefix)) {
-                  if (onTypeTrigger(def.id)) {
+                  if (onTypeTrigger(definition.id, trigger)) {
                     view.dispatch({
                       changes: { from: 0, to: consume, insert: "" },
                       selection: { anchor: 0 },

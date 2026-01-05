@@ -1,5 +1,30 @@
 import { Id } from "@/schema";
+import { Effect } from "effect";
 import { JSX } from "solid-js";
+
+/**
+ * Defines an input trigger that converts a plain block to a typed block.
+ */
+export interface TriggerDefinition {
+  /**
+   * Pattern to match at start of document before space is typed.
+   * e.g., /^-$/ matches "-" (triggered by typing "- ")
+   */
+  pattern: RegExp;
+  /**
+   * Number of characters to delete when triggered.
+   * Single number or array of possible lengths to try.
+   * For "- " trigger: consume = 1 (deletes the "-")
+   * For checkbox: consume = [2, 3] (accepts both "[]" and "[ ]")
+   */
+  consume: number | readonly number[];
+  /**
+   * Additional effect to run after the type is added.
+   * Used for triggers that need to do more than just add a type.
+   * e.g., "[x] " trigger adds CHECKBOX type AND creates IS_CHECKED tuple.
+   */
+  onTrigger?: (nodeId: Id.Node) => Effect.Effect<void, unknown, unknown>;
+}
 
 /**
  * Defines the behavior and rendering for a block type.
@@ -16,23 +41,11 @@ export interface BlockTypeDefinition {
   renderDecoration?: (props: { nodeId: Id.Node }) => JSX.Element | null;
 
   /**
-   * Input trigger that converts a plain block to this type.
+   * Input trigger(s) that convert a plain block to this type.
    * When matched at document start and space is typed, the pattern is consumed and the type is added.
+   * Can be a single trigger or array of triggers (e.g., checkbox has both "[]" and "[x]" triggers).
    */
-  trigger?: {
-    /**
-     * Pattern to match at start of document before space is typed.
-     * e.g., /^-$/ matches "-" (triggered by typing "- ")
-     */
-    pattern: RegExp;
-    /**
-     * Number of characters to delete when triggered.
-     * Single number or array of possible lengths to try.
-     * For "- " trigger: consume = 1 (deletes the "-")
-     * For checkbox: consume = [2, 3] (accepts both "[]" and "[ ]")
-     */
-    consume: number | readonly number[];
-  };
+  trigger?: TriggerDefinition | readonly TriggerDefinition[];
 
   /** Enter key behavior */
   enter?: {

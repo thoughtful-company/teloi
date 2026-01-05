@@ -1,7 +1,16 @@
 import { Id } from "@/schema";
-import { BlockTypeDefinition } from "./types";
+import { BlockTypeDefinition, TriggerDefinition } from "./types";
 
 const definitions = new Map<Id.Node, BlockTypeDefinition>();
+
+/**
+ * A trigger paired with its parent definition.
+ * Used for iterating all triggers across all definitions.
+ */
+export interface TriggerWithDefinition {
+  definition: BlockTypeDefinition;
+  trigger: TriggerDefinition;
+}
 
 /**
  * Register a block type definition.
@@ -27,9 +36,21 @@ export const getAll = (): readonly BlockTypeDefinition[] => {
 };
 
 /**
- * Get definitions that have input triggers.
+ * Get all triggers paired with their parent definitions.
+ * Flattens definitions with multiple triggers into separate entries.
  * Used by TextEditor.tsx input handler.
  */
-export const getWithTriggers = (): readonly BlockTypeDefinition[] => {
-  return Array.from(definitions.values()).filter((d) => d.trigger != null);
-};
+export const getTriggersWithDefinitions =
+  (): readonly TriggerWithDefinition[] => {
+    const result: TriggerWithDefinition[] = [];
+    for (const definition of definitions.values()) {
+      if (!definition.trigger) continue;
+      const triggers = Array.isArray(definition.trigger)
+        ? definition.trigger
+        : [definition.trigger];
+      for (const trigger of triggers) {
+        result.push({ definition, trigger });
+      }
+    }
+    return result;
+  };
