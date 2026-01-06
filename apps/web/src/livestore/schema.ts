@@ -355,6 +355,17 @@ const materializers = State.SQLite.materializers(events, {
         tupleIdsToDelete.add(m.tupleId);
       }
     }
+
+    // Also delete tuples whose type node is being deleted
+    for (const nodeId of allNodeIds) {
+      const tuplesOfType = ctx.query(
+        tables.tuples.select().where({ tupleTypeId: nodeId }),
+      );
+      for (const t of tuplesOfType) {
+        tupleIdsToDelete.add(t.id);
+      }
+    }
+
     const deleteTupleMembersOps = Array.from(tupleIdsToDelete).map((tupleId) =>
       tables.tupleMembers.delete().where({ tupleId }),
     );

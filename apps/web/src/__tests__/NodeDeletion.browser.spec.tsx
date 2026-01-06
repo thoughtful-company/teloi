@@ -143,4 +143,71 @@ describe("Node Deletion", () => {
       }).pipe(runtime.runPromise);
     });
   });
+
+  describe("tuple instance cleanup", () => {
+    it("removes tuple instances when their tuple type node is deleted", async () => {
+      await Effect.gen(function* () {
+        const Store = yield* StoreT;
+
+        // Create a tuple type node
+        const { nodeId: tupleTypeId } =
+          yield* Given.A_BUFFER_WITH_TEXT("TupleType");
+
+        // Create two member nodes
+        const { nodeId: member1Id } =
+          yield* Given.A_BUFFER_WITH_TEXT("Member1");
+        const { nodeId: member2Id } =
+          yield* Given.A_BUFFER_WITH_TEXT("Member2");
+
+        // Create a tuple instance
+        const tupleId = "tuple-1";
+        yield* Store.commit(
+          events.tupleCreated({
+            timestamp: Date.now(),
+            data: {
+              tupleId,
+              tupleTypeId,
+              members: [
+                { position: 0, nodeId: member1Id },
+                { position: 1, nodeId: member2Id },
+              ],
+            },
+          }),
+        );
+
+        // Verify the tuple exists
+        const beforeDeletion = yield* Store.query(
+          queryDb(tables.tuples.select().where({ id: tupleId })),
+        );
+        expect(beforeDeletion).toHaveLength(1);
+        expect(beforeDeletion[0]?.tupleTypeId).toBe(tupleTypeId);
+
+        // Verify tuple members exist
+        const membersBefore = yield* Store.query(
+          queryDb(tables.tupleMembers.select().where({ tupleId })),
+        );
+        expect(membersBefore).toHaveLength(2);
+
+        // Delete the tuple type node
+        yield* Store.commit(
+          events.nodeDeleted({
+            timestamp: Date.now(),
+            data: { nodeId: tupleTypeId },
+          }),
+        );
+
+        // Verify the tuple instance is cleaned up
+        const afterDeletion = yield* Store.query(
+          queryDb(tables.tuples.select().where({ id: tupleId })),
+        );
+        expect(afterDeletion).toHaveLength(0);
+
+        // Verify tuple members are also cleaned up
+        const membersAfter = yield* Store.query(
+          queryDb(tables.tupleMembers.select().where({ tupleId })),
+        );
+        expect(membersAfter).toHaveLength(0);
+      }).pipe(runtime.runPromise);
+    });
+  });
 });
