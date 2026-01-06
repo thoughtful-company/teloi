@@ -224,7 +224,10 @@ App
    - C |
    with C being currently focused node
   - [x] Allow to copy content of selected blocks (Mod+C)
-  - [ ] When you go down with selected block, it does not scroll into view
+  - [x] When you go down with selected block, it does not scroll into view
+  - [x] Feature: when you have in-block selection and have focus offset 0 and press shift+up, you enter buffer-level selection with current block selected
+    - [x] Basic implementation (Shift+Up from text selection)
+    - [x] Mirror implementation for shift+down (Shift+Down from text selection)
 - [ ] Add spacing between paragraphs
 
 **Bugs**:

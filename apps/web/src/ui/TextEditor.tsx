@@ -90,6 +90,10 @@ interface TextEditorProps {
   onBlur?: () => void;
   onZoomIn?: () => void;
   onEscape?: () => void;
+  /** Called when Shift+ArrowUp is pressed with focus at offset 0 (transitioning to block selection) */
+  onShiftArrowUpFromTextSelection?: () => void;
+  /** Called when Shift+ArrowDown is pressed with focus at document end (transitioning to block selection) */
+  onShiftArrowDownFromTextSelection?: () => void;
   /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
   onTypeTrigger?: (
     typeId: Id.Node,
@@ -128,6 +132,8 @@ export default function TextEditor(props: TextEditorProps) {
     onBlur,
     onZoomIn,
     onEscape,
+    onShiftArrowUpFromTextSelection,
+    onShiftArrowDownFromTextSelection,
     onTypeTrigger,
     initialClickCoords,
     initialSelection,
@@ -366,6 +372,45 @@ export default function TextEditor(props: TextEditorProps) {
             run: () => {
               onEscape();
               return true;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onShiftArrowUpFromTextSelection) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Shift-ArrowUp",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              // Trigger callback when focus (head) is at offset 0
+              if (sel.head === 0) {
+                onShiftArrowUpFromTextSelection();
+                return true;
+              }
+              return false; // Let CodeMirror handle normal Shift+ArrowUp selection
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onShiftArrowDownFromTextSelection) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Shift-ArrowDown",
+            run: (view) => {
+              const sel = view.state.selection.main;
+              const docLen = view.state.doc.length;
+              // Trigger callback when focus (head) is at document end
+              if (sel.head === docLen) {
+                onShiftArrowDownFromTextSelection();
+                return true;
+              }
+              return false; // Let CodeMirror handle normal Shift+ArrowDown selection
             },
           },
         ]),

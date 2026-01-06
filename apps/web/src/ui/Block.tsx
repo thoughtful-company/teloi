@@ -974,6 +974,52 @@ export default function Block({ blockId }: BlockProps) {
       });
   };
 
+  const handleShiftArrowUpFromTextSelection = () => {
+    // Set flag synchronously to prevent handleBlur from clearing activeElement
+    isTransitioningToBlockSelection = true;
+
+    runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+          const Window = yield* WindowT;
+          const Buffer = yield* BufferT;
+
+          // Switch to block selection mode
+          yield* Window.setActiveElement(
+            Option.some({ type: "buffer" as const, id: bufferId }),
+          );
+          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+        }),
+      )
+      .finally(() => {
+        isTransitioningToBlockSelection = false;
+      });
+  };
+
+  const handleShiftArrowDownFromTextSelection = () => {
+    // Set flag synchronously to prevent handleBlur from clearing activeElement
+    isTransitioningToBlockSelection = true;
+
+    runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+          const Window = yield* WindowT;
+          const Buffer = yield* BufferT;
+
+          // Switch to block selection mode
+          yield* Window.setActiveElement(
+            Option.some({ type: "buffer" as const, id: bufferId }),
+          );
+          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+        }),
+      )
+      .finally(() => {
+        isTransitioningToBlockSelection = false;
+      });
+  };
+
   const handleTypeTrigger = (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -1042,6 +1088,12 @@ export default function Block({ blockId }: BlockProps) {
               onBlur={handleBlur}
               onZoomIn={handleZoomIn}
               onEscape={handleEscape}
+              onShiftArrowUpFromTextSelection={
+                handleShiftArrowUpFromTextSelection
+              }
+              onShiftArrowDownFromTextSelection={
+                handleShiftArrowDownFromTextSelection
+              }
               onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}
