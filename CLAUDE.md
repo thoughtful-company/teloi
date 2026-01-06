@@ -23,6 +23,7 @@ pnpm dev:web              # Start web app dev server (localhost:3003)
 # Testing
 pnpm -F @teloi/web test   # Run all tests (vitest)
 pnpm -F @teloi/web test:browser  # Run browser tests only (headless)
+pnpm -F @teloi/web test:browser FileName.browser.spec.tsx # this is prefered when you test one specific file
 pnpm -F @teloi/web test:browser -- -t "pattern"  # Filter by test name
 
 # Type checking (must run from apps/web due to monorepo path aliases)
@@ -170,8 +171,10 @@ App
 
 **Active work**:
 - [ ] Block-level undo (structural changes, not just text)
+- [ ] Implement toggles for nodes that have children >
+  This is a complicated feature that requires revamping how Enter, Delete, Backspace and arrow navigation work.
+  Problem appears: how to combine toggles with list elements.
 - [ ] Breadcrumbs (needs design)
-- [ ] Block selection (multi-block select)
 - [ ] Dev script: ccusage for ~/.claude and ~/.clancy
 - [ ] Fix failing tests
 - [ ] Implement move block below and move block above
@@ -183,17 +186,29 @@ App
 - [ ] Implement delete button for sidebar items that shows up on hover and deletes an element
   button is located on the right side of a list item
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
-- [ ] Implement list items
-  - [x] Add a list item
-  - [x] Make a list item beautiful
-  - [x] Add a new list item when you press Enter from existing list item
-  - [x] Remove list item when you type delete at the start of it
-  - [x] Don't try to make list item when you already have a list item
-  - [ ] Refactor list items implementation, to extend to other types of renderings.
-    There is a question of rendering correct thing (in block.tsx)
-  - [ ] Bug: Why animation when you type "- " is not working?
-- [ ] Refactor type system implementation
-- [ ] Support `[x]` trigger for pre-checked checkbox
+- [x] Implement list items
+- [x] Support `[x]` trigger for pre-checked checkbox
+- [ ] Implement home node for a workspace
+  Home node should have an icon leftmost in heading and should display top-level workspace nodes.
+  We can also create workspace node explicitly and move top level nodes there.
+- [ ] Block selection (multi-block select)
+  - [x] Add visual queues for selected blocks
+  - [x] Allow to select blocks with arrow up and arrow down
+    This is tricky. When you have selected nodes like this:
+   - A
+   - B
+   - C |
+   with C being currently focused node
+  - [ ] Allow to copy content of selected blocks
+- [ ] Add spacing between paragraphs
+
+**Bugs**:
+- [ ] When you delete a node from sidebar that you currently focus, it stays on the screen
+  Probably, we can redirect to home
+- [ ] Update export feature to account for tuples and types
+- [ ] Navigation from empty node to previous node is cursed
+- [x] When I click on title, block selection in browser is not cleared
+  Fixed: EditorBuffer now clears selectedBlocks when transitioning out of block selection mode
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

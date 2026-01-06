@@ -58,13 +58,36 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     const activeElementFiber = runtime.runFork(
       Effect.gen(function* () {
         const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
+        const Store = yield* StoreT;
         const stream = yield* Window.subscribeActiveElement();
+
+        let wasBufferActive = false;
+
         yield* Stream.runForEach(stream, (activeElement) =>
-          Effect.sync(() => {
+          Effect.gen(function* () {
             const isBufferActive = Option.match(activeElement, {
               onNone: () => false,
               onSome: (el) => el.type === "buffer" && el.id === bufferId,
             });
+
+            // When transitioning OUT of block selection mode, clear selection
+            if (wasBufferActive && !isBufferActive) {
+              const bufferDoc = yield* Store.getDocument(
+                "buffer",
+                bufferId,
+              ).pipe(Effect.orDie);
+              const anchor = Option.match(bufferDoc, {
+                onNone: () => null,
+                onSome: (buf) => buf.blockSelectionAnchor,
+              });
+
+              if (anchor) {
+                yield* Buffer.setBlockSelection(bufferId, [], anchor);
+              }
+            }
+
+            wasBufferActive = isBufferActive;
             setIsBlockSelectionMode(isBufferActive);
           }),
         );

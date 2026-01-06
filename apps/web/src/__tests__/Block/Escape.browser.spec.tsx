@@ -1073,6 +1073,71 @@ describe("Block selection via Escape", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("clicking title clears block selection", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with a block selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Block content" }],
+      );
+
+      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Click block and press Escape to select it
+      yield* When.USER_CLICKS_BLOCK(blockId);
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmEditor = document.querySelector(".cm-editor.cm-focused");
+            expect(cmEditor).not.toBeNull();
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Verify block is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+              childNodeIds[0],
+            );
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User clicks the title
+      yield* When.USER_CLICKS_TITLE(bufferId);
+
+      // Then: selectedBlocks should be cleared but anchor preserved
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]); // Preserved!
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
   it("Enter with multi-block selection edits focus block (not anchor)", async () => {
     await Effect.gen(function* () {
       // Given: Three blocks, all selected (anchor = first, focus = third)
