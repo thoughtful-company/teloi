@@ -80,7 +80,7 @@ function PageItem(props: PageItemProps) {
       </button>
       <button
         onClick={handleDelete}
-        class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-60 hover:!opacity-100 text-sidebar-foreground"
+        class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-60 focus:opacity-100 hover:!opacity-100 text-sidebar-foreground"
         aria-label="Delete page"
       >
         <svg
