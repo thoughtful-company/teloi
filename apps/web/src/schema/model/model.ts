@@ -48,7 +48,10 @@ export const EditorBuffer = Schema.mutable(
     parent: Entity.Pane,
     assignedNodeId: Schema.NullOr(Schema.String),
     selectedBlocks: Schema.mutable(Schema.Array(Id.Node)),
-    lastFocusedBlockId: Schema.NullOr(Id.Node),
+    /** Anchor of block selection - fixed endpoint where Escape was pressed */
+    blockSelectionAnchor: Schema.NullOr(Id.Node),
+    /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
+    blockSelectionFocus: Schema.NullOr(Id.Node),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     selection: Schema.NullOr(BufferSelection),
   }),

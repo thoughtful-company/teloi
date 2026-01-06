@@ -6,7 +6,8 @@ import { BufferNotFoundError } from "../errors";
 export const setBlockSelection = (
   bufferId: Id.Buffer,
   blocks: readonly Id.Node[],
-  lastFocusedBlockId: Id.Node,
+  blockSelectionAnchor: Id.Node,
+  blockSelectionFocus?: Id.Node | null,
 ): Effect.Effect<void, BufferNotFoundError, StoreT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
@@ -20,13 +21,16 @@ export const setBlockSelection = (
     }
 
     const currentBuffer = bufferDoc.value;
+    // Default focus to anchor if not provided
+    const focus = blockSelectionFocus ?? blockSelectionAnchor;
 
     yield* Store.setDocument(
       "buffer",
       {
         ...currentBuffer,
         selectedBlocks: [...blocks],
-        lastFocusedBlockId,
+        blockSelectionAnchor,
+        blockSelectionFocus: blocks.length > 0 ? focus : null,
       },
       bufferId,
     ).pipe(Effect.orDie);
@@ -37,7 +41,8 @@ export const setBlockSelection = (
       Effect.annotateLogs({
         bufferId,
         selectedBlocks: blocks,
-        lastFocusedBlockId,
+        blockSelectionAnchor,
+        blockSelectionFocus: focus,
       }),
     );
   });

@@ -87,20 +87,157 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const Buffer = yield* BufferT;
             const Store = yield* StoreT;
 
-            // Get current lastFocusedBlockId to preserve it
+            // Get current blockSelectionAnchor to preserve it
             const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
               Effect.orDie,
             );
-            const lastFocusedBlockId = Option.match(bufferDoc, {
+            const blockSelectionAnchor = Option.match(bufferDoc, {
               onNone: () => null,
-              onSome: (buf) => buf.lastFocusedBlockId,
+              onSome: (buf) => buf.blockSelectionAnchor,
             });
 
-            // Clear selection but preserve lastFocusedBlockId
-            if (lastFocusedBlockId) {
-              yield* Buffer.setBlockSelection(bufferId, [], lastFocusedBlockId);
+            // Clear selection but preserve blockSelectionAnchor
+            if (blockSelectionAnchor) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [],
+                blockSelectionAnchor,
+              );
             }
             yield* Window.setActiveElement(Option.none());
+          }),
+        );
+      }
+
+      if (
+        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Store = yield* StoreT;
+
+            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isNone(bufferDoc)) return;
+
+            const { blockSelectionAnchor, blockSelectionFocus } =
+              bufferDoc.value;
+            if (!blockSelectionAnchor) return;
+
+            // Get nodeIds from childBlockIds for index lookup
+            const childNodeIds = store.childBlockIds.map((blockId) => {
+              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+              return nodeId;
+            });
+
+            const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
+            const focusIndex = childNodeIds.indexOf(currentFocus);
+
+            if (focusIndex === -1) return;
+
+            // Move focus up or down
+            const newFocusIndex =
+              e.key === "ArrowUp"
+                ? Math.max(0, focusIndex - 1)
+                : Math.min(childNodeIds.length - 1, focusIndex + 1);
+
+            const newFocus = childNodeIds[newFocusIndex];
+            if (!newFocus) return;
+
+            const anchorIndex = childNodeIds.indexOf(blockSelectionAnchor);
+            if (anchorIndex === -1) return;
+
+            if (e.shiftKey) {
+              // Shift+Arrow: extend/contract range from anchor to new focus
+              const startIndex = Math.min(anchorIndex, newFocusIndex);
+              const endIndex = Math.max(anchorIndex, newFocusIndex);
+              const newSelection = childNodeIds.slice(startIndex, endIndex + 1);
+
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                newSelection,
+                blockSelectionAnchor,
+                newFocus,
+              );
+            } else {
+              // Plain Arrow: collapse to single block
+              const selectionStart = Math.min(anchorIndex, focusIndex);
+              const selectionEnd = Math.max(anchorIndex, focusIndex);
+              const isSingleSelection = selectionStart === selectionEnd;
+
+              // For multi-selection, clamp to selection bounds
+              // For single selection, allow moving outside
+              const clampedFocusIndex = isSingleSelection
+                ? newFocusIndex
+                : Math.max(
+                    selectionStart,
+                    Math.min(selectionEnd, newFocusIndex),
+                  );
+
+              const clampedFocus = childNodeIds[clampedFocusIndex];
+              if (!clampedFocus) return;
+
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [clampedFocus],
+                clampedFocus,
+                clampedFocus,
+              );
+            }
+          }),
+        );
+      }
+
+      if (e.key === "Enter" && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
+            const Store = yield* StoreT;
+            const Yjs = yield* YjsT;
+
+            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isNone(bufferDoc)) return;
+
+            const { blockSelectionAnchor, blockSelectionFocus } =
+              bufferDoc.value;
+            // Use focus (moving end) for Enter - that's what user is looking at
+            const targetBlock = blockSelectionFocus ?? blockSelectionAnchor;
+            if (!targetBlock) return;
+
+            // Get text length to place cursor at end
+            const text = Yjs.getText(targetBlock).toString();
+            const textLength = text.length;
+
+            // Set selection to end of text
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { nodeId: targetBlock },
+                anchorOffset: textLength,
+                focus: { nodeId: targetBlock },
+                focusOffset: textLength,
+                goalX: null,
+                goalLine: null,
+                assoc: 0,
+              }),
+            );
+
+            // Clear block selection, reset anchor to target block
+            yield* Buffer.setBlockSelection(bufferId, [], targetBlock);
+
+            // Enter text editing mode
+            const blockId = Id.makeBlockId(bufferId, targetBlock);
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: blockId }),
+            );
           }),
         );
       }

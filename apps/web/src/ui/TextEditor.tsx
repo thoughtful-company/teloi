@@ -580,7 +580,10 @@ export default function TextEditor(props: TextEditorProps) {
     } else if (view.state.doc.length > 0) {
       // Only default to position 0 if doc has content
       // Otherwise, let updateListener set selection when Yjs syncs
+      // Suppress onSelectionChange to avoid overwriting pending selection from model
+      suppressSelectionChange = true;
       view.dispatch({ selection: { anchor: 0 } });
+      suppressSelectionChange = false;
     }
 
     // Focus logic: balance cursor flash prevention with immediate focus for new blocks
