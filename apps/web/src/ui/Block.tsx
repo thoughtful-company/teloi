@@ -12,7 +12,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { Transition } from "solid-transition-group";
+import { Transition, TransitionGroup } from "solid-transition-group";
 import TextEditor, {
   type EnterKeyInfo,
   type SelectionInfo,
@@ -89,6 +89,9 @@ export default function Block({ blockId }: BlockProps) {
 
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
+
+  // Flag to prevent blur handler from clearing state during block movement
+  let isMoving = false;
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
 
@@ -194,6 +197,11 @@ export default function Block({ blockId }: BlockProps) {
     // Don't clear selection when window loses focus (alt-tab, tab switch).
     // Only clear when user clicks elsewhere within the document.
     if (!document.hasFocus()) {
+      return;
+    }
+
+    // Don't clear selection during block movement (swap up/down)
+    if (isMoving) {
       return;
     }
 
@@ -349,6 +357,54 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: parentId,
         });
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
+  const handleSwapUp = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't swap if first child
+        if (siblingIndex <= 0) {
+          return;
+        }
+
+        const prevSiblingId = siblings[siblingIndex - 1]!;
+
+        // Move this node before the previous sibling (effectively swapping)
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "before",
+          siblingId: prevSiblingId,
+        });
+
+        // Wait for DOM to settle
+        yield* Effect.promise(
+          () =>
+            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+        );
+
+        // Re-focus the block's editor after DOM settles
+        yield* Effect.sync(() => {
+          const blockEl = document.querySelector(
+            `[data-element-id="${blockId}"] .cm-content`,
+          );
+          if (blockEl instanceof HTMLElement) {
+            blockEl.focus();
+          }
+        });
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
     );
   };
 
@@ -937,11 +993,11 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const Type = yield* TypeT;
         yield* Type.addType(nodeId, typeId);
-        if (trigger.onTrigger) {
-          yield* trigger.onTrigger(nodeId);
-        }
       }),
     );
+    if (trigger.onTrigger) {
+      runtime.runPromise(trigger.onTrigger(nodeId));
+    }
     return true;
   };
 
@@ -988,6 +1044,7 @@ export default function Block({ blockId }: BlockProps) {
               onSelectionChange={handleSelectionChange}
               onBlur={handleBlur}
               onZoomIn={handleZoomIn}
+              onSwapUp={handleSwapUp}
               onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}
@@ -997,9 +1054,11 @@ export default function Block({ blockId }: BlockProps) {
         </div>
       </div>
       <div class="pl-4">
-        <For each={store.childBlockIds}>
-          {(childId) => <Block blockId={childId} />}
-        </For>
+        <TransitionGroup moveClass="block-move">
+          <For each={store.childBlockIds}>
+            {(childId) => <Block blockId={childId} />}
+          </For>
+        </TransitionGroup>
       </div>
     </div>
   );
