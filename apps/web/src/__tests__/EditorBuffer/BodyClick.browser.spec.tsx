@@ -1,9 +1,10 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { userEvent } from "@vitest/browser/context";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then } from "../bdd";
@@ -406,25 +407,20 @@ describe("Body click creates block", () => {
       const clickY = blockRect.top + blockRect.height / 2;
 
       // Verify there's actually space to click beside the block
-      // (if block fills entire body width, this test scenario isn't valid)
-      if (clickX >= bodyRect.right) {
-        // No space beside block - block fills the entire body width
-        // This test scenario doesn't apply to this layout
-        console.log("Test skipped: no space beside block (block fills body width)");
-        return;
-      }
+      expect(
+        clickX < bodyRect.right,
+        `Test requires space beside block, but clickX (${clickX}) >= bodyRect.right (${bodyRect.right})`,
+      ).toBe(true);
 
       // Find which element is at these coordinates (simulates real browser behavior)
       const targetElement = document.elementFromPoint(clickX, clickY);
 
       // Verify we're not clicking on the block itself
       const isClickingOnBlock = targetElement?.closest("[data-element-type='block']") !== null;
-      if (isClickingOnBlock) {
-        // The click would land on the block - this means the block extends
-        // to where we're trying to click. Test scenario doesn't apply.
-        console.log("Test skipped: click coordinates land on block element");
-        return;
-      }
+      expect(
+        isClickingOnBlock,
+        `Test requires clicking beside block, but coordinates (${clickX}, ${clickY}) land on block element`,
+      ).toBe(false);
 
       // Dispatch a real click event at the exact coordinates
       // (userEvent.click would click at element center, not our coordinates)
@@ -452,6 +448,11 @@ describe("Body click creates block", () => {
       // And: No CodeMirror should be mounted (block not focused)
       const cm = document.querySelector(".cm-content");
       expect(cm).toBeNull();
+
+      // And: Model selection should remain empty
+      const Buffer = yield* BufferT;
+      const modelSelection = yield* Buffer.getSelection(bufferId);
+      expect(Option.isNone(modelSelection)).toBe(true);
     }).pipe(runtime.runPromise);
   });
 });
