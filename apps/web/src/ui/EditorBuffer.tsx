@@ -464,6 +464,64 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
+
+      if (e.key === "x" && modPressed && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Yjs = yield* YjsT;
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { selectedBlocks } = bufferDoc;
+            if (selectedBlocks.length === 0) return;
+
+            const childNodeIds = getChildNodeIds();
+
+            const orderedSelection = childNodeIds.filter((id) =>
+              selectedBlocks.includes(id),
+            );
+
+            const texts = orderedSelection.map((nodeId) =>
+              Yjs.getText(nodeId).toString(),
+            );
+
+            yield* Effect.promise(() =>
+              navigator.clipboard.writeText(texts.join("\n\n")),
+            );
+
+            const firstSelectedIndex = childNodeIds.findIndex((id) =>
+              selectedBlocks.includes(id),
+            );
+
+            const remainingNodes = childNodeIds.filter(
+              (id) => !selectedBlocks.includes(id),
+            );
+            const focusAfterDelete =
+              firstSelectedIndex > 0
+                ? childNodeIds[firstSelectedIndex - 1]
+                : (remainingNodes[0] ?? null);
+
+            for (const nodeId of selectedBlocks) {
+              yield* Node.deleteNode(nodeId);
+            }
+
+            if (focusAfterDelete) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [focusAfterDelete],
+                focusAfterDelete,
+              );
+            } else {
+              yield* Window.setActiveElement(Option.none());
+            }
+          }),
+        );
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);

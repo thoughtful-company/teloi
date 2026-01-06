@@ -76,6 +76,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Enter` - Start editing focused block
 - `Delete/Backspace` - Delete selected blocks
 - `Mod+C` - Copy selected blocks
+- `Mod+X` - Cut selected blocks
 
 ## 3. Editor Shortcuts (CodeMirror)
 
