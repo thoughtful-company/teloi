@@ -595,6 +595,8 @@ export default function TextEditor(props: TextEditorProps) {
         const anchor = Math.min(props.selection.anchor, docLen);
         const head = Math.min(props.selection.head, docLen);
 
+        // Suppress onSelectionChange - this is syncing FROM model, not user input
+        suppressSelectionChange = true;
         if (anchor === head) {
           view.dispatch({
             selection: EditorSelection.create([
@@ -604,6 +606,7 @@ export default function TextEditor(props: TextEditorProps) {
         } else {
           view.dispatch({ selection: { anchor, head } });
         }
+        suppressSelectionChange = false;
       }
     } else if (initialClickCoords) {
       // Only use click coords if doc has content - clicking on empty doc is meaningless

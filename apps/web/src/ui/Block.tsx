@@ -954,6 +954,8 @@ export default function Block({ blockId }: BlockProps) {
   const handleEscape = () => {
     // Set flag synchronously to prevent handleBlur from clearing activeElement
     isTransitioningToBlockSelection = true;
+    // Clear captured selection so Enter returns cursor to model position, not old DOM position
+    initialSelection = null;
 
     runtime
       .runPromise(
@@ -977,6 +979,8 @@ export default function Block({ blockId }: BlockProps) {
   const handleShiftArrowUpFromTextSelection = () => {
     // Set flag synchronously to prevent handleBlur from clearing activeElement
     isTransitioningToBlockSelection = true;
+    // Clear captured selection so Enter returns cursor to model position, not old DOM position
+    initialSelection = null;
 
     runtime
       .runPromise(
@@ -1000,6 +1004,8 @@ export default function Block({ blockId }: BlockProps) {
   const handleShiftArrowDownFromTextSelection = () => {
     // Set flag synchronously to prevent handleBlur from clearing activeElement
     isTransitioningToBlockSelection = true;
+    // Clear captured selection so Enter returns cursor to model position, not old DOM position
+    initialSelection = null;
 
     runtime
       .runPromise(

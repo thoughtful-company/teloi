@@ -1,6 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
+import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { describe, expect, it } from "vitest";
@@ -161,6 +162,101 @@ describe("Block Escape key", () => {
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selectedBlocks).toEqual([]);
             expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]); // Preserved!
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Enter after Escape places cursor at end of block, not at old selection position", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with a block, cursor positioned mid-text (simulating text selection)
+      const { bufferId, childNodeIds, windowId } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
+
+      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Click block to enter text editing mode
+      yield* When.USER_CLICKS_BLOCK(blockId);
+
+      const Store = yield* StoreT;
+      const Buffer = yield* BufferT;
+
+      // Wait for CodeMirror to be mounted and focused
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmEditor = document.querySelector(".cm-editor.cm-focused");
+            expect(cmEditor).not.toBeNull();
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Set selection mid-text (simulating user selecting text before pressing Escape)
+      yield* Buffer.setSelection(
+        bufferId,
+        Option.some({
+          anchor: { nodeId: childNodeIds[0] },
+          anchorOffset: 2, // After "He"
+          focus: { nodeId: childNodeIds[0] },
+          focusOffset: 5, // After "Hello" - selecting "llo"
+          goalX: null,
+          goalLine: null,
+          assoc: 0,
+        }),
+      );
+
+      // When: User presses Escape to enter block selection
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Wait for block selection mode
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const activeEl = Option.getOrThrow(windowDoc).activeElement;
+            expect(activeEl?.type).toBe("buffer");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses Enter to exit block selection and return to text editing
+      yield* When.USER_PRESSES("{Enter}");
+
+      // Then: Cursor should be at END of block (position 11), not at old selection (position 2-5)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            // "Hello world" = 11 characters, cursor should be at end
+            expect(buf.selection?.anchorOffset).toBe(11);
+            expect(buf.selection?.focusOffset).toBe(11);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Verify we're back in text editing mode
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const activeEl = Option.getOrThrow(windowDoc).activeElement;
+            expect(activeEl?.type).toBe("block");
           },
           { timeout: 2000 },
         ),
