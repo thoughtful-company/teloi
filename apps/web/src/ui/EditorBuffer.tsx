@@ -326,6 +326,48 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
+
+      // Copy pattern matches KeyboardService's Mod detection (Cmd on Mac, Ctrl elsewhere)
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const modPressed = isMac ? e.metaKey : e.ctrlKey;
+
+      if (e.key === "c" && modPressed && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Store = yield* StoreT;
+            const Yjs = yield* YjsT;
+
+            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isNone(bufferDoc)) return;
+
+            const { selectedBlocks } = bufferDoc.value;
+            if (selectedBlocks.length === 0) return;
+
+            // Get text for each selected block in document order
+            const childNodeIds = store.childBlockIds.map((blockId) => {
+              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+              return nodeId;
+            });
+
+            // Filter to selected blocks, maintaining document order
+            const orderedSelection = childNodeIds.filter((id) =>
+              selectedBlocks.includes(id),
+            );
+
+            const texts = orderedSelection.map((nodeId) =>
+              Yjs.getText(nodeId).toString(),
+            );
+
+            // Join with double newlines (paragraph spacing) and copy to clipboard
+            yield* Effect.promise(() =>
+              navigator.clipboard.writeText(texts.join("\n\n")),
+            );
+          }),
+        );
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);

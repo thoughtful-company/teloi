@@ -48,6 +48,8 @@ Never write comments like `// Set the text` above `setText(value)`. If the code 
 
 Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
 
+When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
+
 ## Project Structure
 
 This is a pnpm monorepo with:
@@ -199,7 +201,8 @@ App
    - B
    - C |
    with C being currently focused node
-  - [ ] Allow to copy content of selected blocks
+  - [x] Allow to copy content of selected blocks (Mod+C)
+  - [ ] When you go down with selected block, it does not scroll into view
 - [ ] Add spacing between paragraphs
 
 **Bugs**:
