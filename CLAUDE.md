@@ -40,6 +40,40 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 When you are about to make a new feature, ALWAYS consider writing a test first.
 
+## Logging
+
+**Why logging usually sucks**: Logs optimized for writing ("I'm setting X now") instead of querying ("what happened to this request?"). At scale, you get 130k scattered lines/second that grep can't correlate. String search doesn't understand structure.
+
+**The fix**: Wide events. One comprehensive log per operation containing everything you'd need to debug it later. Not "entering function", "got value", "returning" — just one "Operation completed" with all context attached.
+
+Use Effect's logging with `annotateLogs` for structured context:
+
+```typescript
+// BAD: scattered, implementation-focused, unqueryable
+yield* Effect.logDebug("Setting selection");
+yield* Effect.logDebug(`bufferId is ${bufferId}`);
+yield* Effect.logDebug("Selection set successfully");
+
+// GOOD: one wide event, outcome-focused, queryable
+yield* Effect.logDebug("[Buffer.setSelection] Selection updated").pipe(
+  Effect.annotateLogs({
+    bufferId,
+    nodeId: selection.anchor.nodeId,
+    offset: selection.anchorOffset,
+    goalX: selection.goalX,
+  }),
+);
+```
+
+**What to include**: Request/entity IDs, relevant state, outcome. Think "what would I grep for when debugging this at 3am?"
+
+**When to log**:
+- `logDebug`: State transitions that matter (selection changes, navigation, focus)
+- `logTrace`: High-frequency events you'd only enable when hunting specific bugs
+- `logError`: Failures with full context to reproduce
+
+**Don't log inside components** — React/Solid code runs outside Effect context. Log in services where Effect.log* works.
+
 ## Project Structure
 
 This is a pnpm monorepo with:
@@ -202,6 +236,9 @@ App
   - [ ] temporary fix: make spacing with flex and gap
 - [x] When I click on title, block selection in browser is not cleared
   Fixed: EditorBuffer now clears selectedBlocks when transitioning out of block selection mode
+- [ ] When you copy list elements and todo's they should be copied the right way
+- [ ] When you stay on the first block in selection mode and press up, you need to scroll up to the top of the buffer
+- [ ] When you indent node and outline it with "- ", they should be on the same X axis.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

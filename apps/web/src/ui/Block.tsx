@@ -183,6 +183,15 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const [bufferId] = yield* Id.parseBlockId(blockId);
         const Buffer = yield* BufferT;
+
+        // Preserve goalX/goalLine only for same-node selection changes (chained vertical navigation)
+        const existingSelection = yield* Buffer.getSelection(bufferId);
+        const isSameNode =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.anchor.nodeId === nodeId;
+        const goalX = isSameNode ? existingSelection.value.goalX : null;
+        const goalLine = isSameNode ? existingSelection.value.goalLine : null;
+
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
@@ -190,8 +199,8 @@ export default function Block({ blockId }: BlockProps) {
             anchorOffset: selection.anchor,
             focus: { nodeId },
             focusOffset: selection.head,
-            goalX: null,
-            goalLine: null,
+            goalX,
+            goalLine,
             assoc: selection.assoc,
           }),
         );

@@ -528,16 +528,17 @@ export default function TextEditor(props: TextEditorProps) {
       props.selection?.goalLine != null
     ) {
       // Use goalX (absolute viewport X) to position cursor on the target line
-      // For "first": use position 0 (start of doc) to get Y of first visual line
-      // For "last": use doc.length (end of doc) to get Y of last visual line
       const linePos =
         props.selection.goalLine === "first" ? 0 : view.state.doc.length;
       const lineCoords = view.coordsAtPos(linePos);
       const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
-      const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
+      const pos = view.posAtCoords({
+        x: props.selection.goalX,
+        y: targetY,
+      });
+
       if (pos !== null) {
-        // Suppress onSelectionChange - this is programmatic positioning for arrow navigation
         suppressSelectionChange = true;
         view.dispatch({ selection: { anchor: pos } });
         suppressSelectionChange = false;
@@ -614,12 +615,26 @@ export default function TextEditor(props: TextEditorProps) {
     const selection = props.selection;
     if (!view || !selection) return;
 
-    // Skip syncing when goalX and goalLine are set - positioning is handled by mount using posAtCoords
+    const docLen = view.state.doc.length;
+
+    // When goalX and goalLine are set, apply goalX positioning using posAtCoords.
+    // This handles the race condition where goalX arrives after mount.
     if (selection.goalX != null && selection.goalLine != null) {
+      if (docLen > 0) {
+        const linePos = selection.goalLine === "first" ? 0 : docLen;
+        const lineCoords = view.coordsAtPos(linePos);
+        const contentRect = view.contentDOM.getBoundingClientRect();
+        const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
+        const pos = view.posAtCoords({ x: selection.goalX, y: targetY });
+
+        if (pos !== null) {
+          suppressSelectionChange = true;
+          view.dispatch({ selection: { anchor: pos } });
+          suppressSelectionChange = false;
+        }
+      }
       return;
     }
-
-    const docLen = view.state.doc.length;
 
     // Only sync selection when doc has content - empty doc means Yjs hasn't synced yet
     // (The updateListener will handle selection when Yjs syncs)
