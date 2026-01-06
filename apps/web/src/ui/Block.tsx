@@ -1,17 +1,22 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
+import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Option, Stream } from "effect";
+import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { type EnterKeyInfo, type SelectionInfo } from "./TextEditor";
+import { Transition } from "solid-transition-group";
+import TextEditor, {
+  type EnterKeyInfo,
+  type SelectionInfo,
+} from "./TextEditor";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -66,31 +71,61 @@ export default function Block({ blockId }: BlockProps) {
     initial: {
       isActive: false,
       childBlockIds: [] as readonly Id.Block[],
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
+      selection: null as {
+        anchor: number;
+        head: number;
+        goalX: number | null;
+        goalLine: "first" | "last" | null;
+        assoc: -1 | 0 | 1;
+      } | null,
     },
   });
 
   // Get Y.Text and UndoManager for this block's node
-  const [, nodeId] = Id.parseBlockId(blockId).pipe(
-    Effect.runSync,
-  );
+  const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
   const Yjs = runtime.runSync(YjsT);
   const ytext = Yjs.getText(nodeId);
   const undoManager = Yjs.getUndoManager(nodeId);
 
-  // Reactive text content signal for unfocused view (observes Y.Text changes)
   const [textContent, setTextContent] = createSignal(ytext.toString());
+  const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
+
+  const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
+
+  const getActiveDefinitions = () =>
+    activeTypes()
+      .map(BlockType.get)
+      .filter((d): d is BlockType.BlockTypeDefinition => d != null);
+
+  const getPrimaryDecoration = () => {
+    for (const def of getActiveDefinitions()) {
+      if (def.renderDecoration) return def.renderDecoration;
+    }
+    return null;
+  };
 
   onMount(() => {
     const dispose = start(runtime);
 
-    // Observe Y.Text changes for unfocused view
     const observer = () => setTextContent(ytext.toString());
     ytext.observe(observer);
+
+    const typesFiber = runtime.runFork(
+      Effect.gen(function* () {
+        const Type = yield* TypeT;
+        const stream = yield* Type.subscribeTypes(nodeId);
+        yield* Stream.runForEach(stream, (types) =>
+          Effect.sync(() => {
+            setActiveTypes(types);
+          }),
+        );
+      }),
+    );
 
     onCleanup(() => {
       dispose();
       ytext.unobserve(observer);
+      runtime.runFork(Fiber.interrupt(typesFiber));
     });
   });
 
@@ -189,6 +224,17 @@ export default function Block({ blockId }: BlockProps) {
         const Buffer = yield* BufferT;
         const Yjs = yield* YjsT;
 
+        // Check if any active type wants to be removed on empty Enter
+        if (info.cursorPos === 0 && info.textAfter.length === 0) {
+          for (const def of getActiveDefinitions()) {
+            if (def.enter?.removeOnEmpty) {
+              const Type = yield* TypeT;
+              yield* Type.removeType(nodeId, def.id);
+              return;
+            }
+          }
+        }
+
         // Get parent of current node
         const parentId = yield* Node.getParent(nodeId);
 
@@ -200,6 +246,14 @@ export default function Block({ blockId }: BlockProps) {
           insert: isAtStart ? "before" : "after",
           siblingId: nodeId,
         });
+
+        // Propagate types that want to be propagated
+        const Type = yield* TypeT;
+        for (const def of getActiveDefinitions()) {
+          if (def.enter?.propagateToNewBlock) {
+            yield* Type.addType(newNodeId, def.id);
+          }
+        }
 
         // Update Y.Text content for split
         if (isAtStart) {
@@ -224,7 +278,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -302,6 +356,16 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+
+        // Check if any active type wants to be removed on backspace at start
+        for (const def of getActiveDefinitions()) {
+          if (def.backspace?.removeTypeAtStart) {
+            const Type = yield* TypeT;
+            yield* Type.removeType(nodeId, def.id);
+            return;
+          }
+        }
+
         const Node = yield* NodeT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
@@ -343,12 +407,7 @@ export default function Block({ blockId }: BlockProps) {
           parentYtext.insert(mergePoint, currentText);
 
           // Delete current node and cleanup Y.Text
-          yield* Store.commit(
-            events.nodeDeleted({
-              timestamp: Date.now(),
-              data: { nodeId },
-            }),
-          );
+          yield* Node.deleteNode(nodeId);
           Yjs.deleteText(nodeId);
 
           // Move focus to parent (title if root, otherwise block)
@@ -361,7 +420,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: mergePoint,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -386,12 +445,7 @@ export default function Block({ blockId }: BlockProps) {
         targetYtext.insert(mergePoint, currentText);
 
         // Delete current node and cleanup Y.Text
-        yield* Store.commit(
-          events.nodeDeleted({
-            timestamp: Date.now(),
-            data: { nodeId },
-          }),
-        );
+        yield* Node.deleteNode(nodeId);
         Yjs.deleteText(nodeId);
 
         const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
@@ -404,7 +458,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -419,7 +473,6 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Node = yield* NodeT;
-        const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Yjs = yield* YjsT;
 
@@ -436,12 +489,7 @@ export default function Block({ blockId }: BlockProps) {
           ytext.insert(mergePoint, childText);
 
           // Delete child node and cleanup Y.Text
-          yield* Store.commit(
-            events.nodeDeleted({
-              timestamp: Date.now(),
-              data: { nodeId: firstChildId },
-            }),
-          );
+          yield* Node.deleteNode(firstChildId);
           Yjs.deleteText(firstChildId);
 
           yield* Buffer.setSelection(
@@ -453,7 +501,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: mergePoint,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           return;
@@ -493,12 +541,7 @@ export default function Block({ blockId }: BlockProps) {
         ytext.insert(mergePoint, nextText);
 
         // Delete next node and cleanup Y.Text
-        yield* Store.commit(
-          events.nodeDeleted({
-            timestamp: Date.now(),
-            data: { nodeId: nextNodeId },
-          }),
-        );
+        yield* Node.deleteNode(nextNodeId);
         Yjs.deleteText(nextNodeId);
 
         yield* Buffer.setSelection(
@@ -510,7 +553,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: mergePoint,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
       }),
@@ -566,7 +609,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -586,7 +629,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: endPos,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -626,7 +669,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -670,7 +713,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -691,9 +734,11 @@ export default function Block({ blockId }: BlockProps) {
 
         // Preserve existing goalX if set (for chained arrow navigation)
         const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
-          ? existingSelection.value.goalX
-          : cursorGoalX;
+        const goalX =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.goalX != null
+            ? existingSelection.value.goalX
+            : cursorGoalX;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
@@ -731,7 +776,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -748,7 +793,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "last",
-              assoc: null,
+              assoc: 0,
             }),
           );
           if (parentId === rootNodeId) {
@@ -776,9 +821,11 @@ export default function Block({ blockId }: BlockProps) {
 
         // Preserve existing goalX if set (for chained arrow navigation)
         const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
-          ? existingSelection.value.goalX
-          : cursorGoalX;
+        const goalX =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.goalX != null
+            ? existingSelection.value.goalX
+            : cursorGoalX;
 
         const children = yield* Node.getNodeChildren(nodeId);
 
@@ -795,7 +842,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: 0,
               goalX,
               goalLine: "first",
-              assoc: null,
+              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -841,7 +888,7 @@ export default function Block({ blockId }: BlockProps) {
               focusOffset: textLength,
               goalX: null,
               goalLine: null,
-              assoc: null,
+              assoc: 0,
             }),
           );
           return;
@@ -857,7 +904,7 @@ export default function Block({ blockId }: BlockProps) {
             focusOffset: 0,
             goalX,
             goalLine: "first",
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -881,37 +928,73 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleTypeTrigger = (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ): boolean => {
+    if (hasType(typeId)) return false;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Type = yield* TypeT;
+        yield* Type.addType(nodeId, typeId);
+        if (trigger.onTrigger) {
+          yield* trigger.onTrigger(nodeId);
+        }
+      }),
+    );
+    return true;
+  };
+
   return (
     <div data-element-id={blockId} data-element-type="block">
-      <div onClick={handleFocus}>
-        <Show
-          when={store.isActive}
-          fallback={
-            <p class="text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-pre-wrap">
-              {textContent() || "\u00A0"}
-            </p>
-          }
+      <div onClick={handleFocus} class="flex">
+        <Transition
+          enterActiveClass="transition-all duration-150 ease-out"
+          enterClass="opacity-0 scale-0"
+          enterToClass="opacity-100 scale-100"
+          exitActiveClass="transition-all duration-150 ease-in"
+          exitClass="w-4 opacity-100 scale-100"
+          exitToClass="w-0 opacity-0 scale-0"
         >
-          <TextEditor
-            ytext={ytext}
-            undoManager={undoManager}
-            onEnter={handleEnter}
-            onTab={handleTab}
-            onShiftTab={handleShiftTab}
-            onBackspaceAtStart={handleBackspaceAtStart}
-            onDeleteAtEnd={handleDeleteAtEnd}
-            onArrowLeftAtStart={handleArrowLeftAtStart}
-            onArrowRightAtEnd={handleArrowRightAtEnd}
-            onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
-            onArrowDownOnLastLine={handleArrowDownOnLastLine}
-            onSelectionChange={handleSelectionChange}
-            onBlur={handleBlur}
-            onZoomIn={handleZoomIn}
-            initialClickCoords={clickCoords}
-            initialSelection={initialSelection}
-            selection={store.selection}
-          />
-        </Show>
+          <Show when={getPrimaryDecoration()}>
+            {(renderDecoration) => (
+              <span class="w-4 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] mr-1 select-none origin-center overflow-hidden">
+                {renderDecoration()({ nodeId })}
+              </span>
+            )}
+          </Show>
+        </Transition>
+        <div class="flex-1 min-w-0">
+          <Show
+            when={store.isActive}
+            fallback={
+              <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
+                {textContent() || "\u00A0"}
+              </p>
+            }
+          >
+            <TextEditor
+              ytext={ytext}
+              undoManager={undoManager}
+              onEnter={handleEnter}
+              onTab={handleTab}
+              onShiftTab={handleShiftTab}
+              onBackspaceAtStart={handleBackspaceAtStart}
+              onDeleteAtEnd={handleDeleteAtEnd}
+              onArrowLeftAtStart={handleArrowLeftAtStart}
+              onArrowRightAtEnd={handleArrowRightAtEnd}
+              onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
+              onArrowDownOnLastLine={handleArrowDownOnLastLine}
+              onSelectionChange={handleSelectionChange}
+              onBlur={handleBlur}
+              onZoomIn={handleZoomIn}
+              onTypeTrigger={handleTypeTrigger}
+              initialClickCoords={clickCoords}
+              initialSelection={initialSelection}
+              selection={store.selection}
+            />
+          </Show>
+        </div>
       </div>
       <div class="pl-4">
         <For each={store.childBlockIds}>

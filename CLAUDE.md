@@ -36,7 +36,9 @@ pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on comm
 
 Never create type aliases for backwards compatibility (e.g., type OldName = NewName). Either rename the original to the correct name, or update all usages to the correct name. Aliases obscure the codebase and add confusion.
 
-When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
+**NEVER use `as` type assertions to mask type errors or missing dependencies.** Type assertions with `as` silence the compiler and hide real issues (missing Effect dependencies, incorrect error types, etc.). If the types don't match, fix the underlying problem—don't cast it away. The only acceptable use of `as` is for unavoidable external library limitations where the types are provably correct but can't be expressed in TypeScript.
+
+When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Remove any auto-generated annotations or irrelevant tool metadata from commit messages. Before committing, review all changed files to ensure no unnecessary comments were added.
 
 Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
 - Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
@@ -44,6 +46,8 @@ Comments should explain **why**, not **what**. The code already shows what it do
 - Important constraints or invariants that aren't obvious from the code
 
 Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
+
+Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clarity.
 
 ## Project Structure
 
@@ -132,6 +136,13 @@ Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__t
 - Hide Effect machinery and DOM queries inside helpers
 - Assertions check model state (LiveStore), not just DOM
 
+**Testing Anti-Patterns** (DO NOT USE):
+- `yield* Effect.sleep("50 millis")` or any arbitrary sleep duration - These make tests slow and flaky. Total test time explodes when every test adds random delays. Instead:
+  - Try to run tests without waiting, probably they'll pass
+  - Use `waitFor()` to poll for expected state changes
+  - Use proper async patterns that wait for specific conditions
+  - If you must wait, wait for a specific event/condition, not arbitrary time
+
 ## Tech Stack
 - **Framework**: SolidJS (not React)
 - **Styling**: Tailwind CSS v4
@@ -163,14 +174,28 @@ App
 - [ ] Block-level undo (structural changes, not just text)
 - [ ] Breadcrumbs (needs design)
 - [ ] Block selection (multi-block select)
-- [ ] Sidebar (in progress on `feature/sidebar`)
-  - [ ] Implement shortcut for hiding sidebar
 - [ ] Dev script: ccusage for ~/.claude and ~/.clancy
 - [ ] Fix failing tests
 - [ ] Implement move block below and move block above
-
-**Known bugs**:
-- [ ] DataPort import duplicates text on re-import: `importData` clears Yjs for existing node IDs but doesn't clear the INCOMING node IDs before inserting. Since y-indexeddb persists, re-importing the same backup causes text to double (insert(0, text) prepends to existing content instead of replacing)
+- [ ] Implement different document types (see `docs/ontology.md`)
+- [ ] Remove new node creation upon buffer initialization
+- [ ] Bug: if the whole node is selected, upon reload, selection is lost
+- [ ] Bug: if you select part of a node and press enter, the selected part does not get deleted
+- [ ] Remove all `Effect.sleep` with arbitrary durations from tests (see Testing Anti-Patterns below)
+- [ ] Implement delete button for sidebar items that shows up on hover and deletes an element
+  button is located on the right side of a list item
+- [ ] When selection is set to wrap place with assoc 0, it causes problems
+- [ ] Implement list items
+  - [x] Add a list item
+  - [x] Make a list item beautiful
+  - [x] Add a new list item when you press Enter from existing list item
+  - [x] Remove list item when you type delete at the start of it
+  - [x] Don't try to make list item when you already have a list item
+  - [ ] Refactor list items implementation, to extend to other types of renderings.
+    There is a question of rendering correct thing (in block.tsx)
+  - [ ] Bug: Why animation when you type "- " is not working?
+- [ ] Refactor type system implementation
+- [ ] Support `[x]` trigger for pre-checked checkbox
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

@@ -1,6 +1,8 @@
 import { defaultKeymap } from "@codemirror/commands";
-import { EditorState, Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { Id } from "@/schema";
+import * as BlockType from "@/services/ui/BlockType";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
@@ -66,8 +68,8 @@ export interface EnterKeyInfo {
 export interface SelectionInfo {
   anchor: number;
   head: number;
-  /** Cursor association at wrap boundaries: -1 = end of prev line, 1 = start of next line */
-  assoc: -1 | 1 | null;
+  /** Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line */
+  assoc: -1 | 0 | 1;
 }
 
 interface TextEditorProps {
@@ -87,9 +89,20 @@ interface TextEditorProps {
   onSelectionChange?: (selection: SelectionInfo) => void;
   onBlur?: () => void;
   onZoomIn?: () => void;
+  /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
+  onTypeTrigger?: (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ) => boolean;
   initialClickCoords?: { x: number; y: number } | null;
   initialSelection?: { anchor: number; head: number } | null;
-  selection?: { anchor: number; head: number; goalX?: number | null; goalLine?: "first" | "last" | null; assoc?: -1 | 1 | null } | null;
+  selection?: {
+    anchor: number;
+    head: number;
+    goalX?: number | null;
+    goalLine?: "first" | "last" | null;
+    assoc?: -1 | 0 | 1;
+  } | null;
   variant?: TextEditorVariant;
 }
 
@@ -113,6 +126,7 @@ export default function TextEditor(props: TextEditorProps) {
     onSelectionChange,
     onBlur,
     onZoomIn,
+    onTypeTrigger,
     initialClickCoords,
     initialSelection,
     variant = "block",
@@ -147,13 +161,26 @@ export default function TextEditor(props: TextEditorProps) {
             const docLen = update.state.doc.length;
             const anchor = Math.min(sel.anchor, docLen);
             const head = Math.min(sel.head, docLen);
-            // Use setTimeout to avoid dispatch during update
-            // Set selection ready BEFORE focus to avoid cursor flash
-            setTimeout(() => {
-              update.view.dispatch({ selection: { anchor, head } });
-              setIsSelectionReady(true);
-              update.view.focus();
-            }, 0);
+
+            if (anchor === head) {
+              setTimeout(() => {
+                update.view.dispatch({
+                  selection: EditorSelection.create([
+                    EditorSelection.cursor(anchor, sel.assoc),
+                  ]),
+                });
+                setIsSelectionReady(true);
+                update.view.focus();
+              }, 0);
+            } else {
+              // Use setTimeout to avoid dispatch during update
+              // Set selection ready BEFORE focus to avoid cursor flash
+              setTimeout(() => {
+                update.view.dispatch({ selection: { anchor, head } });
+                setIsSelectionReady(true);
+                update.view.focus();
+              }, 0);
+            }
           } else {
             // No saved selection, just focus now that doc has content
             setTimeout(() => {
@@ -164,7 +191,11 @@ export default function TextEditor(props: TextEditorProps) {
         }
 
         // Text changes are handled by Yjs, only track selection
-        if (update.selectionSet && onSelectionChange && !suppressSelectionChange) {
+        if (
+          update.selectionSet &&
+          onSelectionChange &&
+          !suppressSelectionChange
+        ) {
           // Don't save selection when doc is empty - Yjs hasn't synced yet
           if (update.state.doc.length === 0) return;
 
@@ -172,9 +203,10 @@ export default function TextEditor(props: TextEditorProps) {
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
           const coordsAfter = update.view.coordsAtPos(sel.head, 1);
-          const isAtWrapBoundary = coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+          const isAtWrapBoundary =
+            coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
-          const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : null;
+          const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
           onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
         }
         if (update.focusChanged && !update.view.hasFocus && onBlur) {
@@ -332,7 +364,8 @@ export default function TextEditor(props: TextEditorProps) {
           run: (view) => {
             const sel = view.state.selection.main;
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            const side = props.selection?.assoc ?? -1;
+            // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
+            const side = props.selection?.assoc === 1 ? 1 : -1;
             const currentY = view.coordsAtPos(sel.head, side)?.top;
             const moved = view.moveVertically(sel, false);
             const movedY = view.coordsAtPos(moved.head)?.top;
@@ -346,8 +379,15 @@ export default function TextEditor(props: TextEditorProps) {
 
             // Moving between visual lines within editor
             // If we have a goalX, use it instead of CodeMirror's goal column
-            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
-              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+            if (
+              props.selection?.goalX != null &&
+              movedY != null &&
+              currentY !== movedY
+            ) {
+              const pos = view.posAtCoords({
+                x: props.selection.goalX,
+                y: movedY + 1,
+              });
               if (pos !== null) {
                 suppressSelectionChange = true;
                 view.dispatch({ selection: { anchor: pos } });
@@ -370,7 +410,7 @@ export default function TextEditor(props: TextEditorProps) {
           run: (view) => {
             const sel = view.state.selection.main;
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            const side = props.selection?.assoc ?? -1;
+            const side = props.selection?.assoc === 1 ? 1 : -1;
             const currentY = view.coordsAtPos(sel.head, side)?.top;
             const moved = view.moveVertically(sel, true);
             const movedY = view.coordsAtPos(moved.head)?.top;
@@ -384,8 +424,15 @@ export default function TextEditor(props: TextEditorProps) {
 
             // Moving between visual lines within editor
             // If we have a goalX, use it instead of CodeMirror's goal column
-            if (props.selection?.goalX != null && movedY != null && currentY !== movedY) {
-              const pos = view.posAtCoords({ x: props.selection.goalX, y: movedY + 1 });
+            if (
+              props.selection?.goalX != null &&
+              movedY != null &&
+              currentY !== movedY
+            ) {
+              const pos = view.posAtCoords({
+                x: props.selection.goalX,
+                y: movedY + 1,
+              });
               if (pos !== null) {
                 suppressSelectionChange = true;
                 view.dispatch({ selection: { anchor: pos } });
@@ -402,6 +449,40 @@ export default function TextEditor(props: TextEditorProps) {
 
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
+
+    if (onTypeTrigger) {
+      const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
+
+      extensions.push(
+        EditorView.inputHandler.of((view, from, to, text) => {
+          if (text !== " ") return false;
+
+          const doc = view.state.doc.toString();
+
+          for (const { definition, trigger } of triggersWithDefinitions) {
+            const consumeValues = Array.isArray(trigger.consume)
+              ? trigger.consume
+              : [trigger.consume];
+
+            for (const consume of consumeValues) {
+              if (from === consume && to === consume) {
+                const prefix = doc.slice(0, consume);
+                if (trigger.pattern.test(prefix)) {
+                  if (onTypeTrigger(definition.id, trigger)) {
+                    view.dispatch({
+                      changes: { from: 0, to: consume, insert: "" },
+                      selection: { anchor: 0 },
+                    });
+                    return true;
+                  }
+                }
+              }
+            }
+          }
+          return false;
+        }),
+      );
+    }
 
     // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
     const filteredDefaultKeymap = defaultKeymap.filter(
@@ -426,11 +507,15 @@ export default function TextEditor(props: TextEditorProps) {
       const anchor = Math.min(initialSelection.anchor, docLen);
       const head = Math.min(initialSelection.head, docLen);
       view.dispatch({ selection: { anchor, head } });
-    } else if (props.selection?.goalX != null && props.selection?.goalLine != null) {
+    } else if (
+      props.selection?.goalX != null &&
+      props.selection?.goalLine != null
+    ) {
       // Use goalX (absolute viewport X) to position cursor on the target line
       // For "first": use position 0 (start of doc) to get Y of first visual line
       // For "last": use doc.length (end of doc) to get Y of last visual line
-      const linePos = props.selection.goalLine === "first" ? 0 : view.state.doc.length;
+      const linePos =
+        props.selection.goalLine === "first" ? 0 : view.state.doc.length;
       const lineCoords = view.coordsAtPos(linePos);
       const contentRect = view.contentDOM.getBoundingClientRect();
       const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
@@ -447,16 +532,33 @@ export default function TextEditor(props: TextEditorProps) {
       if (docLen > 0) {
         const anchor = Math.min(props.selection.anchor, docLen);
         const head = Math.min(props.selection.head, docLen);
-        view.dispatch({ selection: { anchor, head } });
+
+        if (anchor === head) {
+          view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(anchor, props.selection.assoc),
+            ]),
+          });
+        } else {
+          view.dispatch({ selection: { anchor, head } });
+        }
       }
     } else if (initialClickCoords) {
       // Only use click coords if doc has content - clicking on empty doc is meaningless
       // and the saved selection will be restored when Yjs syncs
       const docLen = view.state.doc.length;
+
       if (docLen > 0) {
-        const pos = view.posAtCoords(initialClickCoords);
+        const { pos, assoc } = view.posAndSideAtCoords(initialClickCoords) || {
+          pos: null,
+          assoc: 0,
+        };
         if (pos !== null) {
-          view.dispatch({ selection: { anchor: pos } });
+          view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(pos, assoc),
+            ]),
+          });
         }
       }
     } else if (view.state.doc.length > 0) {
@@ -506,12 +608,21 @@ export default function TextEditor(props: TextEditorProps) {
       const currentSel = view.state.selection.main;
       const needsUpdate =
         currentSel.anchor !== selection.anchor ||
-        currentSel.head !== selection.head;
+        currentSel.head !== selection.head ||
+        currentSel.assoc !== selection.assoc;
 
       if (needsUpdate) {
         const anchor = Math.min(selection.anchor, docLen);
         const head = Math.min(selection.head, docLen);
-        view.dispatch({ selection: { anchor, head } });
+        // Use EditorSelection.cursor to preserve assoc for collapsed selections
+        const newSel =
+          anchor === head
+            ? EditorSelection.cursor(head, selection.assoc)
+            : EditorSelection.range(anchor, head);
+        // Suppress onSelectionChange - this is syncing FROM model, not user input
+        suppressSelectionChange = true;
+        view.dispatch({ selection: EditorSelection.create([newSel]) });
+        suppressSelectionChange = false;
       }
     }
 

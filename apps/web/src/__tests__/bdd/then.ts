@@ -1,6 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { YjsT } from "@/services/external/Yjs";
+import { EditorView } from "@codemirror/view";
 import { Effect } from "effect";
 import { screen, waitFor } from "solid-testing-library";
 import { expect } from "vitest";
@@ -40,24 +41,26 @@ export const TEXT_IS_VISIBLE = (text: string) =>
 /**
  * Asserts that a node has the expected number of children.
  */
-export const NODE_HAS_CHILDREN = Effect.fn("Then.NODE_HAS_CHILDREN")(
-  function* (nodeId: Id.Node, count: number) {
-    const Node = yield* NodeT;
-    const children = yield* Node.getNodeChildren(nodeId);
-    expect(children.length).toBe(count);
-  },
-);
+export const NODE_HAS_CHILDREN = Effect.fn("Then.NODE_HAS_CHILDREN")(function* (
+  nodeId: Id.Node,
+  count: number,
+) {
+  const Node = yield* NodeT;
+  const children = yield* Node.getNodeChildren(nodeId);
+  expect(children.length).toBe(count);
+});
 
 /**
  * Asserts that a node has the expected text content (checks Yjs, not LiveStore).
  */
-export const NODE_HAS_TEXT = Effect.fn("Then.NODE_HAS_TEXT")(
-  function* (nodeId: Id.Node, expectedText: string) {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    expect(ytext.toString()).toBe(expectedText);
-  },
-);
+export const NODE_HAS_TEXT = Effect.fn("Then.NODE_HAS_TEXT")(function* (
+  nodeId: Id.Node,
+  expectedText: string,
+) {
+  const Yjs = yield* YjsT;
+  const ytext = Yjs.getText(nodeId);
+  expect(ytext.toString()).toBe(expectedText);
+});
 
 /**
  * Waits for the DOM to have exactly N block elements.
@@ -145,3 +148,38 @@ export const SELECTION_IS_ON_TITLE = (bufferId: Id.Buffer) =>
     const currentTitleId = getSelectionTitleId();
     expect(currentTitleId).toBe(bufferId);
   }).pipe(Effect.withSpan("Then.SELECTION_IS_ON_TITLE"));
+
+/**
+ * Gets the CodeMirror EditorView from the focused .cm-content element.
+ */
+const getCodeMirrorView = (): EditorView | null => {
+  const cmContent = document.querySelector<HTMLElement>(".cm-content");
+  if (!cmContent) return null;
+  return EditorView.findFromDOM(cmContent);
+};
+
+/**
+ * Asserts CodeMirror's selection state (head position, and optionally assoc).
+ * Unlike SELECTION_IS_COLLAPSED_AT_OFFSET which uses DOM selection,
+ * this checks CodeMirror's internal state directly.
+ */
+export const CM_CURSOR_IS_AT = (
+  expectedHead: number,
+  expectedAssoc?: -1 | 0 | 1,
+) =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const view = getCodeMirrorView();
+        expect(view, "CodeMirror view not found").not.toBeNull();
+
+        const sel = view!.state.selection.main;
+        expect(sel.head, "cursor head position").toBe(expectedHead);
+
+        if (expectedAssoc !== undefined) {
+          expect(sel.assoc, "cursor assoc").toBe(expectedAssoc);
+        }
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.CM_CURSOR_IS_AT"));

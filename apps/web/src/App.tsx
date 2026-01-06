@@ -1,6 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { KeyboardB } from "@/services/browser/KeyboardService";
+import { BootstrapT } from "@/services/domain/Bootstrap";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { Component, createSignal, For, onCleanup, onMount, Show } from "solid-js";
@@ -48,6 +49,10 @@ const App: Component = () => {
 
   const { panes, buffersByPane } = runtime.runSync(
     Effect.gen(function* () {
+      // Ensure system nodes exist before anything else
+      const Bootstrap = yield* BootstrapT;
+      yield* Bootstrap.ensureSystemNodes();
+
       const Store = yield* StoreT;
       const sessionId = yield* Store.getSessionId();
       const windowId = Id.Window.make(sessionId);

@@ -52,10 +52,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     onCleanup(dispose);
   });
 
-  const handleBodyClick = (e: MouseEvent, nodeId: Id.Node) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-element-type='block']")) return;
-
+  const handleClickZone = (_e: MouseEvent, nodeId: Id.Node) => {
     runtime.runPromise(
       Effect.gen(function* () {
         const Node = yield* NodeT;
@@ -98,7 +95,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -118,14 +115,18 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             </header>
             <div
               data-testid="editor-body"
-              class="flex-1 flex flex-col pt-4 cursor-text"
-              onClick={(e) => handleBodyClick(e, nodeId)}
+              class="flex-1 flex flex-col pt-4"
             >
               <div class="mx-auto max-w-[var(--max-line-width)] w-full">
                 <For each={store.childBlockIds}>
                   {(childId) => <Block blockId={childId} />}
                 </For>
               </div>
+              <div
+                data-testid="editor-click-zone"
+                class="flex-1 cursor-text"
+                onClick={(e) => handleClickZone(e, nodeId)}
+              />
             </div>
           </>
         )}

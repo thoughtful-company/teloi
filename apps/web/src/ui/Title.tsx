@@ -70,7 +70,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       );
 
       const selectionStream = bufferStream.pipe(
-        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null => {
+        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null => {
           if (!buffer?.selection) return null;
 
           const sel = buffer.selection;
@@ -84,7 +84,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             head: sel.focusOffset,
             goalX: sel.goalX ?? null,
             goalLine: sel.goalLine ?? null,
-            assoc: sel.assoc ?? null,
+            assoc: sel.assoc,
           };
         }),
         Stream.changesWith(deepEqual),
@@ -106,7 +106,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     project: (v) => v,
     initial: {
       isActive: false,
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 1 | null } | null,
+      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null,
     },
   });
 
@@ -187,7 +187,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -225,7 +225,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusOffset: 0,
             goalX,
             goalLine: "first",
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(
@@ -263,7 +263,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
             focusOffset: 0,
             goalX: null,
             goalLine: null,
-            assoc: null,
+            assoc: 0,
           }),
         );
         yield* Window.setActiveElement(

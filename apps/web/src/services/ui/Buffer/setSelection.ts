@@ -35,7 +35,7 @@ export const setSelection = (
         selection: Option.match(selection, {
           onNone: () => null,
           onSome: (s) =>
-            `${s.anchor.nodeId}:${s.anchorOffset}-${s.focus.nodeId}:${s.focusOffset}`,
+            `${s.anchor.nodeId}:${s.anchorOffset}-${s.focus.nodeId}:${s.focusOffset}|accos:${s.assoc}`,
         }),
       }),
     );

@@ -32,6 +32,106 @@ const parentLinks = State.SQLite.table({
   ],
 });
 
+const nodeTypes = State.SQLite.table({
+  name: "node_types",
+  columns: {
+    nodeId: State.SQLite.text(),
+    typeId: State.SQLite.text(),
+    position: State.SQLite.text(),
+    createdAt: State.SQLite.integer(),
+  },
+  indexes: [
+    {
+      name: "nodeTypes_nodeId",
+      columns: ["nodeId", "position"],
+      isUnique: false,
+    },
+    {
+      name: "nodeTypes_typeId",
+      columns: ["typeId"],
+      isUnique: false,
+    },
+  ],
+});
+
+// Tuple system tables
+const tupleTypeRoles = State.SQLite.table({
+  name: "tuple_type_roles",
+  columns: {
+    tupleTypeId: State.SQLite.text(),
+    position: State.SQLite.integer(),
+    name: State.SQLite.text(),
+    required: State.SQLite.boolean(),
+    createdAt: State.SQLite.integer(),
+  },
+  indexes: [
+    {
+      name: "tupleTypeRoles_type_position",
+      columns: ["tupleTypeId", "position"],
+      isUnique: true,
+    },
+  ],
+});
+
+const tupleTypeRoleAllowedTypes = State.SQLite.table({
+  name: "tuple_type_role_allowed_types",
+  columns: {
+    tupleTypeId: State.SQLite.text(),
+    position: State.SQLite.integer(),
+    allowedTypeId: State.SQLite.text(),
+    createdAt: State.SQLite.integer(),
+  },
+  indexes: [
+    {
+      name: "tupleTypeRoleAllowedTypes_role",
+      columns: ["tupleTypeId", "position"],
+      isUnique: false,
+    },
+    {
+      name: "tupleTypeRoleAllowedTypes_type",
+      columns: ["allowedTypeId"],
+      isUnique: false,
+    },
+  ],
+});
+
+const tuples = State.SQLite.table({
+  name: "tuples",
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    tupleTypeId: State.SQLite.text(),
+    createdAt: State.SQLite.integer(),
+  },
+  indexes: [
+    {
+      name: "tuples_type",
+      columns: ["tupleTypeId"],
+      isUnique: false,
+    },
+  ],
+});
+
+const tupleMembers = State.SQLite.table({
+  name: "tuple_members",
+  columns: {
+    tupleId: State.SQLite.text(),
+    position: State.SQLite.integer(),
+    nodeId: State.SQLite.text(),
+  },
+  indexes: [
+    {
+      name: "tupleMembers_tuple_position",
+      columns: ["tupleId", "position"],
+      isUnique: true,
+    },
+    {
+      name: "tupleMembers_node",
+      columns: ["nodeId"],
+      isUnique: false,
+    },
+  ],
+});
+
 const window = State.SQLite.clientDocument({
   name: Model.DocumentName.Window,
   schema: Model.DocumentSchemas[Model.DocumentName.Window].schema,
@@ -131,10 +231,26 @@ export const events = {
 
 export type TeloiNode = State.SQLite.FromTable.RowDecoded<typeof nodes>;
 export type ParentLink = State.SQLite.FromTable.RowDecoded<typeof parentLinks>;
+export type NodeType = State.SQLite.FromTable.RowDecoded<typeof nodeTypes>;
+export type TupleTypeRole = State.SQLite.FromTable.RowDecoded<
+  typeof tupleTypeRoles
+>;
+export type TupleTypeRoleAllowedType = State.SQLite.FromTable.RowDecoded<
+  typeof tupleTypeRoleAllowedTypes
+>;
+export type TupleRow = State.SQLite.FromTable.RowDecoded<typeof tuples>;
+export type TupleMember = State.SQLite.FromTable.RowDecoded<
+  typeof tupleMembers
+>;
 
 export const tables = {
   nodes,
   parentLinks,
+  nodeTypes,
+  tupleTypeRoles,
+  tupleTypeRoleAllowedTypes,
+  tuples,
+  tupleMembers,
   window,
   pane,
   buffer,
@@ -221,11 +337,129 @@ const materializers = State.SQLite.materializers(events, {
       tables.parentLinks.delete().where({ childId: nodeId }),
     );
 
+    // Clean up type associations (both as node and as type)
+    const deleteNodeTypesAsNodeOps = allNodeIds.map((nodeId) =>
+      tables.nodeTypes.delete().where({ nodeId }),
+    );
+    const deleteNodeTypesAsTypeOps = allNodeIds.map((nodeId) =>
+      tables.nodeTypes.delete().where({ typeId: nodeId }),
+    );
+
+    // Clean up tuples where deleted nodes appear as members
+    const tupleIdsToDelete = new Set<string>();
+    for (const nodeId of allNodeIds) {
+      const memberships = ctx.query(
+        tables.tupleMembers.select().where({ nodeId }),
+      );
+      for (const m of memberships) {
+        tupleIdsToDelete.add(m.tupleId);
+      }
+    }
+
+    // Also delete tuples whose type node is being deleted
+    for (const nodeId of allNodeIds) {
+      const tuplesOfType = ctx.query(
+        tables.tuples.select().where({ tupleTypeId: nodeId }),
+      );
+      for (const t of tuplesOfType) {
+        tupleIdsToDelete.add(t.id);
+      }
+    }
+
+    const deleteTupleMembersOps = Array.from(tupleIdsToDelete).map((tupleId) =>
+      tables.tupleMembers.delete().where({ tupleId }),
+    );
+    const deleteTuplesOps = Array.from(tupleIdsToDelete).map((tupleId) =>
+      tables.tuples.delete().where({ id: tupleId }),
+    );
+
+    // Clean up tuple type definitions if a tuple type node is being deleted
+    const deleteTupleTypeRolesOps = allNodeIds.map((nodeId) =>
+      tables.tupleTypeRoles.delete().where({ tupleTypeId: nodeId }),
+    );
+    const deleteTupleTypeRoleAllowedTypesOps = allNodeIds.map((nodeId) =>
+      tables.tupleTypeRoleAllowedTypes.delete().where({ tupleTypeId: nodeId }),
+    );
+    const deleteTupleTypeRoleAllowedTypesByAllowedTypeOps = allNodeIds.map(
+      (nodeId) =>
+        tables.tupleTypeRoleAllowedTypes.delete().where({ allowedTypeId: nodeId }),
+    );
+
     const deleteNodesOps = allNodeIds.map((nodeId) =>
       tables.nodes.delete().where({ id: nodeId }),
     );
 
-    return [...deleteParentLinksOps, ...deleteNodesOps];
+    return [
+      ...deleteParentLinksOps,
+      ...deleteNodeTypesAsNodeOps,
+      ...deleteNodeTypesAsTypeOps,
+      ...deleteTupleMembersOps,
+      ...deleteTuplesOps,
+      ...deleteTupleTypeRolesOps,
+      ...deleteTupleTypeRoleAllowedTypesOps,
+      ...deleteTupleTypeRoleAllowedTypesByAllowedTypeOps,
+      ...deleteNodesOps,
+    ];
+  },
+  "v1.TypeAddedToNode": ({ timestamp, data }) => {
+    return tables.nodeTypes.insert({
+      nodeId: data.nodeId,
+      typeId: data.typeId,
+      position: data.position,
+      createdAt: timestamp,
+    });
+  },
+  "v1.TypeRemovedFromNode": ({ data }) => {
+    return tables.nodeTypes
+      .delete()
+      .where({ nodeId: data.nodeId, typeId: data.typeId });
+  },
+  // Tuple system materializers
+  "v1.TupleTypeRoleAdded": ({ timestamp, data }) => {
+    return tables.tupleTypeRoles.insert({
+      tupleTypeId: data.tupleTypeId,
+      position: data.position,
+      name: data.name,
+      required: data.required,
+      createdAt: timestamp,
+    });
+  },
+  "v1.TupleTypeRoleUpdated": ({ data }) => {
+    return tables.tupleTypeRoles
+      .update({ name: data.name, required: data.required })
+      .where({ tupleTypeId: data.tupleTypeId, position: data.position });
+  },
+  "v1.TupleTypeRoleAllowedTypeAdded": ({ timestamp, data }) => {
+    return tables.tupleTypeRoleAllowedTypes.insert({
+      tupleTypeId: data.tupleTypeId,
+      position: data.position,
+      allowedTypeId: data.allowedTypeId,
+      createdAt: timestamp,
+    });
+  },
+  "v1.TupleCreated": ({ timestamp, data }) => {
+    const insertTupleOp = tables.tuples.insert({
+      id: data.tupleId,
+      tupleTypeId: data.tupleTypeId,
+      createdAt: timestamp,
+    });
+
+    const insertMemberOps = data.members.map((nodeId, position) =>
+      tables.tupleMembers.insert({
+        tupleId: data.tupleId,
+        position,
+        nodeId,
+      }),
+    );
+
+    return [insertTupleOp, ...insertMemberOps];
+  },
+  "v1.TupleDeleted": ({ data }) => {
+    const deleteMembersOp = tables.tupleMembers
+      .delete()
+      .where({ tupleId: data.tupleId });
+    const deleteTupleOp = tables.tuples.delete().where({ id: data.tupleId });
+    return [deleteMembersOp, deleteTupleOp];
   },
 });
 

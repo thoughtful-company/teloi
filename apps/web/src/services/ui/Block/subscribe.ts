@@ -14,7 +14,7 @@ export interface BlockSelection {
   head: number;
   goalX: number | null;
   goalLine: "first" | "last" | null;
-  assoc: -1 | 1 | null;
+  assoc: -1 | 0 | 1;
 }
 
 export interface BlockView {
@@ -205,7 +205,7 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
           head: sel.focusOffset,
           goalX: sel.goalX ?? null,
           goalLine: sel.goalLine ?? null,
-          assoc: sel.assoc ?? null,
+          assoc: sel.assoc,
         };
       }),
       Stream.changesWith(deepEqual),
