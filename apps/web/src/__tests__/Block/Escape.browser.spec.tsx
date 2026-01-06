@@ -1073,6 +1073,122 @@ describe("Block selection via Escape", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("Delete removes selected blocks and stays in selection mode", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with three blocks, middle one is selected
+      const { bufferId, childNodeIds, windowId } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "First" },
+          { text: "Second" },
+          { text: "Third" },
+        ]);
+
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Click second block and press Escape to select it
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmEditor = document.querySelector(".cm-editor.cm-focused");
+            expect(cmEditor).not.toBeNull();
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Verify second block is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+              childNodeIds[1],
+            ]);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses Delete
+      yield* When.USER_PRESSES("{Delete}");
+
+      // Then: Second block should be deleted, only First and Third remain
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const children = document.querySelectorAll(
+              '[data-testid="editor-body"] [data-element-type="block"]',
+            );
+            expect(children).toHaveLength(2);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Verify the remaining blocks are First and Third (Second was deleted)
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const firstBlock = document.querySelector(
+              `[data-element-id="${Id.makeBlockId(bufferId, childNodeIds[0])}"]`,
+            );
+            const thirdBlock = document.querySelector(
+              `[data-element-id="${Id.makeBlockId(bufferId, childNodeIds[2])}"]`,
+            );
+            const secondBlock = document.querySelector(
+              `[data-element-id="${secondBlockId}"]`,
+            );
+            expect(firstBlock).not.toBeNull();
+            expect(thirdBlock).not.toBeNull();
+            expect(secondBlock).toBeNull(); // Deleted!
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Verify we stay in block selection mode with First block selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const activeEl = Option.getOrThrow(windowDoc).activeElement;
+            expect(activeEl?.type).toBe("buffer"); // Still in selection mode!
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Verify First block is now selected (block before the deleted one)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([childNodeIds[0]]); // First block
+            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]);
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
   it("clicking title clears block selection", async () => {
     await Effect.gen(function* () {
       // Given: A buffer with a block selected

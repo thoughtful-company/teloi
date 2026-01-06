@@ -264,6 +264,68 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
+
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
+            const Store = yield* StoreT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isNone(bufferDoc)) return;
+
+            const { selectedBlocks } = bufferDoc.value;
+            if (selectedBlocks.length === 0) return;
+
+            // Get current child node IDs to find where to focus after deletion
+            const childNodeIds = store.childBlockIds.map((blockId) => {
+              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+              return nodeId;
+            });
+
+            // Find the first selected block's index
+            const firstSelectedIndex = childNodeIds.findIndex((id) =>
+              selectedBlocks.includes(id),
+            );
+
+            // Determine which block to focus after deletion
+            // Prefer block before selection, otherwise block after, otherwise none
+            const remainingNodes = childNodeIds.filter(
+              (id) => !selectedBlocks.includes(id),
+            );
+            const focusAfterDelete =
+              firstSelectedIndex > 0
+                ? childNodeIds[firstSelectedIndex - 1]
+                : (remainingNodes[0] ?? null);
+
+            // Delete all selected nodes
+            for (const nodeId of selectedBlocks) {
+              yield* Node.deleteNode(nodeId);
+            }
+
+            // Stay in block selection mode with the next block selected
+            if (focusAfterDelete) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [focusAfterDelete],
+                focusAfterDelete,
+              );
+              // Stay in buffer selection mode (don't enter text editing)
+            } else {
+              // No blocks remaining, exit block selection mode
+              yield* Window.setActiveElement(Option.none());
+            }
+          }),
+        );
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
