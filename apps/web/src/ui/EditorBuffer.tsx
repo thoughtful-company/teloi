@@ -11,6 +11,8 @@ import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
 import Title from "./Title";
 
+const isMac = navigator.platform.toUpperCase().includes("MAC");
+
 /** Spring-based smooth scroll with ease-in-out feel */
 function smoothScrollBy(container: HTMLElement, deltaY: number) {
   const target = container.scrollTop + deltaY;
@@ -66,6 +68,36 @@ function smoothScrollBy(container: HTMLElement, deltaY: number) {
   requestAnimationFrame(tick);
 }
 
+/** Scroll a block into view with margin, using spring animation */
+function scrollBlockIntoView(blockId: Id.Block, margin = 50) {
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(
+      `[data-element-id="${blockId}"][data-element-type="block"]`,
+    );
+    if (!el) return;
+
+    const scrollContainer = el.closest<HTMLElement>(
+      ".overflow-y-auto, .overflow-auto",
+    );
+    if (!scrollContainer) return;
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+
+    const topInContainer = elRect.top - containerRect.top;
+    const bottomInContainer = elRect.bottom - containerRect.top;
+
+    if (topInContainer < margin) {
+      smoothScrollBy(scrollContainer, topInContainer - margin);
+    } else if (bottomInContainer > containerRect.height - margin) {
+      smoothScrollBy(
+        scrollContainer,
+        bottomInContainer - containerRect.height + margin,
+      );
+    }
+  });
+}
+
 interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
@@ -101,6 +133,18 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
       nodeId: null as Id.Node | null,
       childBlockIds: [] as Id.Block[],
     },
+  });
+
+  const getChildNodeIds = () =>
+    store.childBlockIds.map((blockId) => {
+      const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+      return nodeId;
+    });
+
+  const getBufferDoc = Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const doc = yield* Store.getDocument("buffer", bufferId).pipe(Effect.orDie);
+    return Option.getOrNull(doc);
   });
 
   // Track if we're in block selection mode (activeElement.type === "buffer")
@@ -163,18 +207,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           Effect.gen(function* () {
             const Window = yield* WindowT;
             const Buffer = yield* BufferT;
-            const Store = yield* StoreT;
 
-            // Get current blockSelectionAnchor to preserve it
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            const blockSelectionAnchor = Option.match(bufferDoc, {
-              onNone: () => null,
-              onSome: (buf) => buf.blockSelectionAnchor,
-            });
+            const bufferDoc = yield* getBufferDoc;
+            const blockSelectionAnchor =
+              bufferDoc?.blockSelectionAnchor ?? null;
 
-            // Clear selection but preserve blockSelectionAnchor
             if (blockSelectionAnchor) {
               yield* Buffer.setBlockSelection(
                 bufferId,
@@ -195,22 +232,14 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
-            const Store = yield* StoreT;
 
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isNone(bufferDoc)) return;
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
 
-            const { blockSelectionAnchor, blockSelectionFocus } =
-              bufferDoc.value;
+            const { blockSelectionAnchor, blockSelectionFocus } = bufferDoc;
             if (!blockSelectionAnchor) return;
 
-            // Get nodeIds from childBlockIds for index lookup
-            const childNodeIds = store.childBlockIds.map((blockId) => {
-              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
-              return nodeId;
-            });
+            const childNodeIds = getChildNodeIds();
 
             const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
             const focusIndex = childNodeIds.indexOf(currentFocus);
@@ -242,37 +271,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 newFocus,
               );
 
-              // Scroll new focus block into view with margin
-              const focusBlockId = Id.makeBlockId(bufferId, newFocus);
-              requestAnimationFrame(() => {
-                const el = document.querySelector<HTMLElement>(
-                  `[data-element-id="${focusBlockId}"][data-element-type="block"]`,
-                );
-                if (!el) return;
-
-                // Find the scroll container (PaneWrapper's section with overflow-y-auto)
-                const scrollContainer = el.closest<HTMLElement>(
-                  ".overflow-y-auto, .overflow-auto",
-                );
-                if (!scrollContainer) return;
-
-                const margin = 50;
-                const containerRect = scrollContainer.getBoundingClientRect();
-                const elRect = el.getBoundingClientRect();
-
-                // Position relative to scroll container
-                const topInContainer = elRect.top - containerRect.top;
-                const bottomInContainer = elRect.bottom - containerRect.top;
-
-                if (topInContainer < margin) {
-                  smoothScrollBy(scrollContainer, topInContainer - margin);
-                } else if (bottomInContainer > containerRect.height - margin) {
-                  smoothScrollBy(
-                    scrollContainer,
-                    bottomInContainer - containerRect.height + margin,
-                  );
-                }
-              });
+              scrollBlockIntoView(Id.makeBlockId(bufferId, newFocus));
             } else {
               // Plain Arrow: collapse to single block
               const selectionStart = Math.min(anchorIndex, focusIndex);
@@ -298,37 +297,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 clampedFocus,
               );
 
-              // Scroll new focus block into view with margin
-              const focusBlockId = Id.makeBlockId(bufferId, clampedFocus);
-              requestAnimationFrame(() => {
-                const el = document.querySelector<HTMLElement>(
-                  `[data-element-id="${focusBlockId}"][data-element-type="block"]`,
-                );
-                if (!el) return;
-
-                // Find the scroll container (PaneWrapper's section with overflow-y-auto)
-                const scrollContainer = el.closest<HTMLElement>(
-                  ".overflow-y-auto, .overflow-auto",
-                );
-                if (!scrollContainer) return;
-
-                const margin = 50;
-                const containerRect = scrollContainer.getBoundingClientRect();
-                const elRect = el.getBoundingClientRect();
-
-                // Position relative to scroll container
-                const topInContainer = elRect.top - containerRect.top;
-                const bottomInContainer = elRect.bottom - containerRect.top;
-
-                if (topInContainer < margin) {
-                  smoothScrollBy(scrollContainer, topInContainer - margin);
-                } else if (bottomInContainer > containerRect.height - margin) {
-                  smoothScrollBy(
-                    scrollContainer,
-                    bottomInContainer - containerRect.height + margin,
-                  );
-                }
-              });
+              scrollBlockIntoView(Id.makeBlockId(bufferId, clampedFocus));
             }
           }),
         );
@@ -340,17 +309,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
             const Window = yield* WindowT;
-            const Store = yield* StoreT;
             const Yjs = yield* YjsT;
 
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isNone(bufferDoc)) return;
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
 
-            const { blockSelectionAnchor, blockSelectionFocus } =
-              bufferDoc.value;
-            // Use focus (moving end) for Enter - that's what user is looking at
+            const { blockSelectionAnchor, blockSelectionFocus } = bufferDoc;
             const targetBlock = blockSelectionFocus ?? blockSelectionAnchor;
             if (!targetBlock) return;
 
@@ -393,22 +357,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
             const Window = yield* WindowT;
-            const Store = yield* StoreT;
             const Node = yield* NodeT;
 
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isNone(bufferDoc)) return;
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
 
-            const { selectedBlocks } = bufferDoc.value;
+            const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            // Get current child node IDs to find where to focus after deletion
-            const childNodeIds = store.childBlockIds.map((blockId) => {
-              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
-              return nodeId;
-            });
+            const childNodeIds = getChildNodeIds();
 
             // Find the first selected block's index
             const firstSelectedIndex = childNodeIds.findIndex((id) =>
@@ -446,30 +403,21 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
-      // Copy pattern matches KeyboardService's Mod detection (Cmd on Mac, Ctrl elsewhere)
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
       const modPressed = isMac ? e.metaKey : e.ctrlKey;
 
       if (e.key === "c" && modPressed && isBlockSelectionMode()) {
         e.preventDefault();
         runtime.runPromise(
           Effect.gen(function* () {
-            const Store = yield* StoreT;
             const Yjs = yield* YjsT;
 
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isNone(bufferDoc)) return;
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
 
-            const { selectedBlocks } = bufferDoc.value;
+            const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            // Get text for each selected block in document order
-            const childNodeIds = store.childBlockIds.map((blockId) => {
-              const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
-              return nodeId;
-            });
+            const childNodeIds = getChildNodeIds();
 
             // Filter to selected blocks, maintaining document order
             const orderedSelection = childNodeIds.filter((id) =>
