@@ -98,6 +98,25 @@ function scrollBlockIntoView(blockId: Id.Block, margin = 50) {
   });
 }
 
+/** Scroll buffer to show the top (title area), using spring animation */
+function scrollBufferToTop(bufferId: Id.Buffer) {
+  requestAnimationFrame(() => {
+    const titleEl = document.querySelector<HTMLElement>(
+      `[data-element-id="${bufferId}"][data-element-type="title"]`,
+    );
+    if (!titleEl) return;
+
+    const scrollContainer = titleEl.closest<HTMLElement>(
+      ".overflow-y-auto, .overflow-auto",
+    );
+    if (!scrollContainer) return;
+
+    if (scrollContainer.scrollTop > 0) {
+      smoothScrollBy(scrollContainer, -scrollContainer.scrollTop);
+    }
+  });
+}
+
 interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
@@ -252,6 +271,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 ? Math.max(0, focusIndex - 1)
                 : Math.min(childNodeIds.length - 1, focusIndex + 1);
 
+            // ArrowUp on first block: scroll to show top of buffer (skip normal scroll)
+            const didScrollToTop =
+              e.key === "ArrowUp" && focusIndex === 0 && !e.shiftKey;
+            if (didScrollToTop) {
+              scrollBufferToTop(bufferId);
+            }
+
             const newFocus = childNodeIds[newFocusIndex];
             if (!newFocus) return;
 
@@ -297,7 +323,10 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 clampedFocus,
               );
 
-              scrollBlockIntoView(Id.makeBlockId(bufferId, clampedFocus));
+              // Don't scroll block into view if we already scrolled to top
+              if (!didScrollToTop) {
+                scrollBlockIntoView(Id.makeBlockId(bufferId, clampedFocus));
+              }
             }
           }),
         );
