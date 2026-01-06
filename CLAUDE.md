@@ -38,7 +38,7 @@ Never create type aliases for backwards compatibility (e.g., type OldName = NewN
 
 **NEVER use `as` type assertions to mask type errors or missing dependencies.** Type assertions with `as` silence the compiler and hide real issues (missing Effect dependencies, incorrect error types, etc.). If the types don't match, fix the underlying problem—don't cast it away. The only acceptable use of `as` is for unavoidable external library limitations where the types are provably correct but can't be expressed in TypeScript.
 
-When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
+When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Remove any auto-generated annotations or irrelevant tool metadata from commit messages. Before committing, review all changed files to ensure no unnecessary comments were added.
 
 Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
 - Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
@@ -47,7 +47,7 @@ Comments should explain **why**, not **what**. The code already shows what it do
 
 Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
 
-Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
+Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clarity.
 
 ## Project Structure
 
