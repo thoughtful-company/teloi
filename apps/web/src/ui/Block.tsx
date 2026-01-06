@@ -938,8 +938,7 @@ export default function Block({ blockId }: BlockProps) {
         const Type = yield* TypeT;
         yield* Type.addType(nodeId, typeId);
         if (trigger.onTrigger) {
-          // onTrigger may have dependencies (e.g., TupleT) which are provided by the runtime
-          yield* trigger.onTrigger(nodeId) as Effect.Effect<void>;
+          yield* trigger.onTrigger(nodeId);
         }
       }),
     );

@@ -36,6 +36,8 @@ pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on comm
 
 Never create type aliases for backwards compatibility (e.g., type OldName = NewName). Either rename the original to the correct name, or update all usages to the correct name. Aliases obscure the codebase and add confusion.
 
+**NEVER use `as` type assertions to mask type errors or missing dependencies.** Type assertions with `as` silence the compiler and hide real issues (missing Effect dependencies, incorrect error types, etc.). If the types don't match, fix the underlying problem—don't cast it away. The only acceptable use of `as` is for unavoidable external library limitations where the types are provably correct but can't be expressed in TypeScript.
+
 When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
 
 Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
