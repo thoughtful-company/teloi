@@ -14,23 +14,11 @@ Claude should proactively update this file when:
 
 Updates should be minimal and surgical—add only what's necessary to keep the document accurate and useful. Don't duplicate information that can be easily discovered from the code itself.
 
-## Build & Development Commands
+## Type checking
 
 ```bash
-# Development
-pnpm dev:web              # Start web app dev server (localhost:3003)
-
-# Testing
-pnpm -F @teloi/web test   # Run all tests (vitest)
-pnpm -F @teloi/web test:browser  # Run browser tests only (headless)
-pnpm -F @teloi/web test:browser FileName.browser.spec.tsx # this is prefered when you test one specific file
-pnpm -F @teloi/web test:browser -- -t "pattern"  # Filter by test name
-
-# Type checking (must run from apps/web due to monorepo path aliases)
+# Must run from apps/web due to monorepo path aliases
 cd apps/web && pnpm tsc --noEmit
-
-# Linting
-pnpm eslint .             # Lint entire repo (auto-fixes via lint-staged on commit)
 ```
 
 ## Rules
@@ -49,6 +37,8 @@ Never write comments like `// Set the text` above `setText(value)`. If the code 
 Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
 
 When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
+
+When you are about to make a new feature, ALWAYS consider writing a test first.
 
 ## Project Structure
 
@@ -188,8 +178,6 @@ App
 - [ ] Implement delete button for sidebar items that shows up on hover and deletes an element
   button is located on the right side of a list item
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
-- [x] Implement list items
-- [x] Support `[x]` trigger for pre-checked checkbox
 - [ ] Implement home node for a workspace
   Home node should have an icon leftmost in heading and should display top-level workspace nodes.
   We can also create workspace node explicitly and move top level nodes there.
@@ -210,6 +198,8 @@ App
   Probably, we can redirect to home
 - [ ] Update export feature to account for tuples and types
 - [ ] Navigation from empty node to previous node is cursed
+- [ ] Fix spacing between elements
+  - [ ] temporary fix: make spacing with flex and gap
 - [x] When I click on title, block selection in browser is not cleared
   Fixed: EditorBuffer now clears selectedBlocks when transitioning out of block selection mode
 

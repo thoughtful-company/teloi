@@ -11,6 +11,61 @@ import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
 import Title from "./Title";
 
+/** Spring-based smooth scroll with ease-in-out feel */
+function smoothScrollBy(container: HTMLElement, deltaY: number) {
+  const target = container.scrollTop + deltaY;
+
+  // Spring parameters
+  const stiffness = 180;
+  const damping = 26;
+
+  // Ramp-up phase: gradually engage the spring for ease-in effect
+  const rampDuration = 0.3; // seconds to reach full spring force
+
+  // State
+  let position = container.scrollTop;
+  let velocity = 0;
+  let lastTime = performance.now();
+  const startTime = lastTime;
+
+  const positionThreshold = 0.5;
+  const velocityThreshold = 0.5;
+
+  function tick(now: number) {
+    const dt = Math.min((now - lastTime) / 1000, 0.064);
+    lastTime = now;
+
+    // Ease-in: ramp spring force from 0 to 1 over rampDuration
+    const elapsed = (now - startTime) / 1000;
+    const ramp = Math.min(elapsed / rampDuration, 1);
+    // Smooth the ramp with ease-out curve for natural feel
+    const smoothRamp = 1 - Math.pow(1 - ramp, 3);
+
+    // Spring physics with ramped stiffness
+    const displacement = position - target;
+    const springForce = -stiffness * smoothRamp * displacement;
+    const dampingForce = -damping * velocity;
+    const acceleration = springForce + dampingForce;
+
+    velocity += acceleration * dt;
+    position += velocity * dt;
+
+    container.scrollTop = position;
+
+    const isSettled =
+      Math.abs(position - target) < positionThreshold &&
+      Math.abs(velocity) < velocityThreshold;
+
+    if (!isSettled) {
+      requestAnimationFrame(tick);
+    } else {
+      container.scrollTop = target;
+    }
+  }
+
+  requestAnimationFrame(tick);
+}
+
 interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
@@ -186,6 +241,38 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 blockSelectionAnchor,
                 newFocus,
               );
+
+              // Scroll new focus block into view with margin
+              const focusBlockId = Id.makeBlockId(bufferId, newFocus);
+              requestAnimationFrame(() => {
+                const el = document.querySelector<HTMLElement>(
+                  `[data-element-id="${focusBlockId}"][data-element-type="block"]`,
+                );
+                if (!el) return;
+
+                // Find the scroll container (PaneWrapper's section with overflow-y-auto)
+                const scrollContainer = el.closest<HTMLElement>(
+                  ".overflow-y-auto, .overflow-auto",
+                );
+                if (!scrollContainer) return;
+
+                const margin = 50;
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elRect = el.getBoundingClientRect();
+
+                // Position relative to scroll container
+                const topInContainer = elRect.top - containerRect.top;
+                const bottomInContainer = elRect.bottom - containerRect.top;
+
+                if (topInContainer < margin) {
+                  smoothScrollBy(scrollContainer, topInContainer - margin);
+                } else if (bottomInContainer > containerRect.height - margin) {
+                  smoothScrollBy(
+                    scrollContainer,
+                    bottomInContainer - containerRect.height + margin,
+                  );
+                }
+              });
             } else {
               // Plain Arrow: collapse to single block
               const selectionStart = Math.min(anchorIndex, focusIndex);
@@ -210,6 +297,38 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 clampedFocus,
                 clampedFocus,
               );
+
+              // Scroll new focus block into view with margin
+              const focusBlockId = Id.makeBlockId(bufferId, clampedFocus);
+              requestAnimationFrame(() => {
+                const el = document.querySelector<HTMLElement>(
+                  `[data-element-id="${focusBlockId}"][data-element-type="block"]`,
+                );
+                if (!el) return;
+
+                // Find the scroll container (PaneWrapper's section with overflow-y-auto)
+                const scrollContainer = el.closest<HTMLElement>(
+                  ".overflow-y-auto, .overflow-auto",
+                );
+                if (!scrollContainer) return;
+
+                const margin = 50;
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elRect = el.getBoundingClientRect();
+
+                // Position relative to scroll container
+                const topInContainer = elRect.top - containerRect.top;
+                const bottomInContainer = elRect.bottom - containerRect.top;
+
+                if (topInContainer < margin) {
+                  smoothScrollBy(scrollContainer, topInContainer - margin);
+                } else if (bottomInContainer > containerRect.height - margin) {
+                  smoothScrollBy(
+                    scrollContainer,
+                    bottomInContainer - containerRect.height + margin,
+                  );
+                }
+              });
             }
           }),
         );
@@ -442,14 +561,14 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               <Title bufferId={bufferId} nodeId={nodeId} />
             </header>
             <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
-              <div class="mx-auto max-w-[var(--max-line-width)] w-full">
+              <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
                 <For each={store.childBlockIds}>
                   {(childId) => <Block blockId={childId} />}
                 </For>
               </div>
               <div
                 data-testid="editor-click-zone"
-                class="flex-1 cursor-text"
+                class="flex-1 min-h-[25vh] cursor-text"
                 onClick={(e) => handleClickZone(e, nodeId)}
               />
             </div>
