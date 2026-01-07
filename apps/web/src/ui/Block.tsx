@@ -996,7 +996,7 @@ export default function Block({ blockId }: BlockProps) {
           </Show>
         </div>
       </div>
-      <div class="pl-4">
+      <div class="pl-5">
         <For each={store.childBlockIds}>
           {(childId) => <Block blockId={childId} />}
         </For>
