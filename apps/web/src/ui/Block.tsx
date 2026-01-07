@@ -395,7 +395,7 @@ export default function Block({ blockId }: BlockProps) {
         // Re-focus the block's editor after DOM settles
         yield* Effect.sync(() => {
           const blockEl = document.querySelector(
-            `[data-element-id="${blockId}"] .cm-content`,
+            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
           );
           if (blockEl instanceof HTMLElement) {
             blockEl.focus();
@@ -443,7 +443,7 @@ export default function Block({ blockId }: BlockProps) {
         // Re-focus the block's editor after DOM settles
         yield* Effect.sync(() => {
           const blockEl = document.querySelector(
-            `[data-element-id="${blockId}"] .cm-content`,
+            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
           );
           if (blockEl instanceof HTMLElement) {
             blockEl.focus();
@@ -491,7 +491,7 @@ export default function Block({ blockId }: BlockProps) {
         // Re-focus the block's editor after DOM settles
         yield* Effect.sync(() => {
           const blockEl = document.querySelector(
-            `[data-element-id="${blockId}"] .cm-content`,
+            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
           );
           if (blockEl instanceof HTMLElement) {
             blockEl.focus();
@@ -539,7 +539,7 @@ export default function Block({ blockId }: BlockProps) {
         // Re-focus the block's editor after DOM settles
         yield* Effect.sync(() => {
           const blockEl = document.querySelector(
-            `[data-element-id="${blockId}"] .cm-content`,
+            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
           );
           if (blockEl instanceof HTMLElement) {
             blockEl.focus();
