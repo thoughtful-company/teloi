@@ -1108,7 +1108,10 @@ export default function Block({ blockId }: BlockProps) {
           </Show>
         </div>
       </div>
-      <div class="pl-4">
+      <div class="pl-4 flex flex-col gap-1.5">
+        <Show when={store.childBlockIds.length > 0}>
+          <div class="w-max h-0"> </div>
+        </Show>
         <For each={store.childBlockIds}>
           {(childId) => <Block blockId={childId} />}
         </For>
