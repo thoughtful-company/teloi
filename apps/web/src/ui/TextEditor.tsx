@@ -90,6 +90,9 @@ interface TextEditorProps {
   onBlur?: () => void;
   onZoomIn?: () => void;
   onSwapUp?: () => void;
+  onSwapDown?: () => void;
+  onMoveToFirst?: () => void;
+  onMoveToLast?: () => void;
   /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
   onTypeTrigger?: (
     typeId: Id.Node,
@@ -128,6 +131,9 @@ export default function TextEditor(props: TextEditorProps) {
     onBlur,
     onZoomIn,
     onSwapUp,
+    onSwapDown,
+    onMoveToFirst,
+    onMoveToLast,
     onTypeTrigger,
     initialClickCoords,
     initialSelection,
@@ -365,6 +371,48 @@ export default function TextEditor(props: TextEditorProps) {
             key: "Alt-Mod-ArrowUp",
             run: () => {
               onSwapUp();
+              return true;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onSwapDown) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Alt-Mod-ArrowDown",
+            run: () => {
+              onSwapDown();
+              return true;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onMoveToFirst) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Shift-Alt-Mod-ArrowUp",
+            run: () => {
+              onMoveToFirst();
+              return true;
+            },
+          },
+        ]),
+      );
+    }
+
+    if (onMoveToLast) {
+      extensions.push(
+        keymap.of([
+          {
+            key: "Shift-Alt-Mod-ArrowDown",
+            run: () => {
+              onMoveToLast();
               return true;
             },
           },

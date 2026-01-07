@@ -408,6 +408,150 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleSwapDown = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't swap if last child
+        if (siblingIndex >= siblings.length - 1) {
+          return;
+        }
+
+        const nextSiblingId = siblings[siblingIndex + 1]!;
+
+        // Move this node after the next sibling (effectively swapping)
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "after",
+          siblingId: nextSiblingId,
+        });
+
+        // Wait for DOM to settle
+        yield* Effect.promise(
+          () =>
+            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+        );
+
+        // Re-focus the block's editor after DOM settles
+        yield* Effect.sync(() => {
+          const blockEl = document.querySelector(
+            `[data-element-id="${blockId}"] .cm-content`,
+          );
+          if (blockEl instanceof HTMLElement) {
+            blockEl.focus();
+          }
+        });
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
+  const handleMoveToFirst = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Already first child
+        if (siblingIndex === 0) {
+          return;
+        }
+
+        const firstSiblingId = siblings[0]!;
+
+        // Move this node before the first sibling
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "before",
+          siblingId: firstSiblingId,
+        });
+
+        // Wait for DOM to settle
+        yield* Effect.promise(
+          () =>
+            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+        );
+
+        // Re-focus the block's editor after DOM settles
+        yield* Effect.sync(() => {
+          const blockEl = document.querySelector(
+            `[data-element-id="${blockId}"] .cm-content`,
+          );
+          if (blockEl instanceof HTMLElement) {
+            blockEl.focus();
+          }
+        });
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
+  const handleMoveToLast = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Already last child
+        if (siblingIndex >= siblings.length - 1) {
+          return;
+        }
+
+        const lastSiblingId = siblings[siblings.length - 1]!;
+
+        // Move this node after the last sibling
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "after",
+          siblingId: lastSiblingId,
+        });
+
+        // Wait for DOM to settle
+        yield* Effect.promise(
+          () =>
+            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+        );
+
+        // Re-focus the block's editor after DOM settles
+        yield* Effect.sync(() => {
+          const blockEl = document.querySelector(
+            `[data-element-id="${blockId}"] .cm-content`,
+          );
+          if (blockEl instanceof HTMLElement) {
+            blockEl.focus();
+          }
+        });
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
   const handleBackspaceAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -1045,6 +1189,9 @@ export default function Block({ blockId }: BlockProps) {
               onBlur={handleBlur}
               onZoomIn={handleZoomIn}
               onSwapUp={handleSwapUp}
+              onSwapDown={handleSwapDown}
+              onMoveToFirst={handleMoveToFirst}
+              onMoveToLast={handleMoveToLast}
               onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}
