@@ -621,14 +621,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            const childNodeIds = getChildNodeIds();
-
-            // Filter to selected blocks, maintaining document order
-            const orderedSelection = childNodeIds.filter((id) =>
-              selectedBlocks.includes(id),
-            );
-
-            const texts = orderedSelection.map((nodeId) =>
+            // selectedBlocks is already in document order (maintained by selection extension logic)
+            const texts = selectedBlocks.map((nodeId) =>
               Yjs.getText(nodeId).toString(),
             );
 
@@ -655,13 +649,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            const childNodeIds = getChildNodeIds();
-
-            const orderedSelection = childNodeIds.filter((id) =>
-              selectedBlocks.includes(id),
-            );
-
-            const texts = orderedSelection.map((nodeId) =>
+            // selectedBlocks is already in document order (maintained by selection extension logic)
+            const texts = selectedBlocks.map((nodeId) =>
               Yjs.getText(nodeId).toString(),
             );
 
@@ -669,17 +658,42 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               navigator.clipboard.writeText(texts.join("\n\n")),
             );
 
-            const firstSelectedIndex = childNodeIds.findIndex((id) =>
-              selectedBlocks.includes(id),
+            // Determine focus after deletion - works for nested blocks too
+            const firstSelectedBlock = selectedBlocks[0]!;
+
+            const parentId = yield* Node.getParent(firstSelectedBlock).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed(null),
+              ),
             );
 
-            const remainingNodes = childNodeIds.filter(
-              (id) => !selectedBlocks.includes(id),
-            );
-            const focusAfterDelete =
-              firstSelectedIndex > 0
-                ? childNodeIds[firstSelectedIndex - 1]
-                : (remainingNodes[0] ?? null);
+            let focusAfterDelete: Id.Node | null = null;
+
+            if (parentId) {
+              const siblings = yield* Node.getNodeChildren(parentId);
+              const remainingSiblings = siblings.filter(
+                (id) => !selectedBlocks.includes(id),
+              );
+
+              const firstSelectedIndex = siblings.findIndex((id) =>
+                selectedBlocks.includes(id),
+              );
+
+              if (remainingSiblings.length > 0) {
+                const siblingBefore = siblings[firstSelectedIndex - 1];
+                if (
+                  firstSelectedIndex > 0 &&
+                  siblingBefore &&
+                  !selectedBlocks.includes(siblingBefore)
+                ) {
+                  focusAfterDelete = siblingBefore;
+                } else {
+                  focusAfterDelete = remainingSiblings[0]!;
+                }
+              } else {
+                focusAfterDelete = parentId;
+              }
+            }
 
             for (const nodeId of selectedBlocks) {
               yield* Node.deleteNode(nodeId);

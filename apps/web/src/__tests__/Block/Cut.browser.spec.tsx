@@ -161,4 +161,93 @@ describe("Cut selected blocks (Mod+X)", () => {
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
     }).pipe(runtime.runPromise);
   });
+
+  it("Mod+X cuts nested child block (copies and deletes)", async () => {
+    await Effect.gen(function* () {
+      // Given: Root → Parent → [ChildA, ChildB]
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+      const parentNodeId = childNodeIds[0];
+
+      // Add nested children to Parent
+      const nestedChildA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Nested Child A",
+      });
+      const nestedChildB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Nested Child B",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Select nested child A
+      const nestedBlockId = Id.makeBlockId(bufferId, nestedChildA);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA]);
+
+      // When: User presses Mod+X
+      yield* When.USER_PRESSES("{Meta>}x{/Meta}");
+
+      // Then: Clipboard contains the nested block's text
+      yield* Then.CLIPBOARD_CONTAINS("Nested Child A");
+
+      // And: Nested child A is deleted, B remains
+      yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(nestedChildB, "Nested Child B");
+
+      // And: Selection moves to sibling B
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildB]);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+X cuts multiple nested children", async () => {
+    await Effect.gen(function* () {
+      // Given: Root → Parent → [ChildA, ChildB, ChildC]
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+      const parentNodeId = childNodeIds[0];
+
+      // Add nested children to Parent
+      const nestedChildA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Alpha",
+      });
+      const nestedChildB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Beta",
+      });
+      const nestedChildC = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Gamma",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Select first two nested children
+      const nestedBlockA = Id.makeBlockId(bufferId, nestedChildA);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA, nestedChildB]);
+
+      // When: User presses Mod+X
+      yield* When.USER_PRESSES("{Meta>}x{/Meta}");
+
+      // Then: Clipboard contains both nested blocks
+      yield* Then.CLIPBOARD_CONTAINS("Alpha\n\nBeta");
+
+      // And: Only Gamma remains under Parent
+      yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(nestedChildC, "Gamma");
+    }).pipe(runtime.runPromise);
+  });
 });
