@@ -244,6 +244,36 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // ArrowLeft in block selection mode: select parent block (if nested)
+      if (e.key === "ArrowLeft" && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            const currentFocus =
+              bufferDoc?.blockSelectionFocus ?? bufferDoc?.blockSelectionAnchor;
+
+            if (!currentFocus) return;
+
+            const parentId = yield* Node.getParent(currentFocus);
+            const assignedNodeId = bufferDoc?.assignedNodeId;
+
+            // Only select parent if nested (parent is not the buffer root)
+            if (parentId !== assignedNodeId) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [parentId],
+                parentId,
+                parentId,
+              );
+            }
+          }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+        );
+      }
+
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown") &&
         isBlockSelectionMode()
