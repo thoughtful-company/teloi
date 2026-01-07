@@ -233,7 +233,7 @@ App
   - [x] Add cmd + a command when buffer is active to select all blocks
   - [x] Add shift + cmd + down/up to select currently selected blocks + up to start/end
   - [x] Add cmd + up/down to go to last/first block in buffer or if the block was a child block, then go to first/last sibling
-  - [ ] Bug: when I select a child of a block and delete it, selection goes to the first block in the buffer, however it should go to the first block in the parent's children, or if there are none to parent itself
+  - [x] Bug: when I select a child of a block and delete it, selection goes to the first block in the buffer, however it should go to the first block in the parent's children, or if there are none to parent itself
 - [x] Add spacing between paragraphs
 
 **Bugs**:

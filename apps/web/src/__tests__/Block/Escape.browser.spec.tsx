@@ -517,3 +517,215 @@ describe("Block Escape key", () => {
     }).pipe(runtime.runPromise);
   });
 });
+
+describe("Block deletion in block selection mode", () => {
+  it("deleting nested child selects next sibling", async () => {
+    await Effect.gen(function* () {
+      // Given: Root → Parent → [A, B, C], A selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Add children A, B, C under Parent
+      const childA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "A",
+      });
+      const childB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "B",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "C",
+      });
+
+      const childABlockId = Id.makeBlockId(bufferId, childA);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Enter block selection mode with A selected
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
+
+      // Verify A is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toContain(childA);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses Delete
+      yield* When.USER_PRESSES("{Delete}");
+
+      // Then: B becomes selected (first remaining sibling)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([childB]);
+            expect(buf.blockSelectionAnchor).toBe(childB);
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("deleting last nested child selects parent", async () => {
+    await Effect.gen(function* () {
+      // Given: Root → Parent → [OnlyChild], OnlyChild selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Add single child under Parent
+      const onlyChild = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Only child",
+      });
+
+      const onlyChildBlockId = Id.makeBlockId(bufferId, onlyChild);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Enter block selection mode with OnlyChild selected
+      yield* When.USER_ENTERS_BLOCK_SELECTION(onlyChildBlockId);
+
+      // Verify OnlyChild is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toContain(onlyChild);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses Delete
+      yield* When.USER_PRESSES("{Delete}");
+
+      // Then: Parent becomes selected (no siblings remain)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([parentNodeId]);
+            expect(buf.blockSelectionAnchor).toBe(parentNodeId);
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("deleting all nested children selects parent", async () => {
+    await Effect.gen(function* () {
+      // Given: Root → Parent → [A, B, C], all selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Add children A, B, C under Parent
+      const childA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "A",
+      });
+      const childB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "B",
+      });
+      const childC = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "C",
+      });
+
+      const childABlockId = Id.makeBlockId(bufferId, childA);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Enter block selection mode with A selected, then extend to C
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+
+      // Verify all children are selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toContain(childA);
+            expect(buf.selectedBlocks).toContain(childB);
+            expect(buf.selectedBlocks).toContain(childC);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses Delete
+      yield* When.USER_PRESSES("{Delete}");
+
+      // Then: Parent becomes selected (all children deleted)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([parentNodeId]);
+            expect(buf.blockSelectionAnchor).toBe(parentNodeId);
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+});

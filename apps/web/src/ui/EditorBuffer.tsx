@@ -545,22 +545,46 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            const childNodeIds = getChildNodeIds();
+            // Determine focus after deletion - works for nested blocks too
+            const firstSelectedBlock = selectedBlocks[0]!;
 
-            // Find the first selected block's index
-            const firstSelectedIndex = childNodeIds.findIndex((id) =>
-              selectedBlocks.includes(id),
+            // Get the parent and siblings of the deleted block
+            const parentId = yield* Node.getParent(firstSelectedBlock).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed(null),
+              ),
             );
 
-            // Determine which block to focus after deletion
-            // Prefer block before selection, otherwise block after, otherwise none
-            const remainingNodes = childNodeIds.filter(
-              (id) => !selectedBlocks.includes(id),
-            );
-            const focusAfterDelete =
-              firstSelectedIndex > 0
-                ? childNodeIds[firstSelectedIndex - 1]
-                : (remainingNodes[0] ?? null);
+            let focusAfterDelete: Id.Node | null = null;
+
+            if (parentId) {
+              const siblings = yield* Node.getNodeChildren(parentId);
+              const remainingSiblings = siblings.filter(
+                (id) => !selectedBlocks.includes(id),
+              );
+
+              // Find first selected block's index among siblings
+              const firstSelectedIndex = siblings.findIndex((id) =>
+                selectedBlocks.includes(id),
+              );
+
+              if (remainingSiblings.length > 0) {
+                // Prefer sibling before selection, otherwise first remaining sibling
+                const siblingBefore = siblings[firstSelectedIndex - 1];
+                if (
+                  firstSelectedIndex > 0 &&
+                  siblingBefore &&
+                  !selectedBlocks.includes(siblingBefore)
+                ) {
+                  focusAfterDelete = siblingBefore;
+                } else {
+                  focusAfterDelete = remainingSiblings[0]!;
+                }
+              } else {
+                // No siblings remain, focus on parent
+                focusAfterDelete = parentId;
+              }
+            }
 
             // Delete all selected nodes
             for (const nodeId of selectedBlocks) {
