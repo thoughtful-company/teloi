@@ -673,6 +673,28 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
+
+      if (e.key === "a" && modPressed && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+
+            const childNodeIds = getChildNodeIds();
+            if (childNodeIds.length === 0) return;
+
+            const anchor = childNodeIds[0]!;
+            const focus = childNodeIds[childNodeIds.length - 1]!;
+
+            yield* Buffer.setBlockSelection(
+              bufferId,
+              childNodeIds,
+              anchor,
+              focus,
+            );
+          }),
+        );
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);

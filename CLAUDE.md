@@ -216,8 +216,8 @@ App
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
 - [ ] When you have selected a checkbox node and press enter, it should get marked as done
 - [ ] Implement home node for a workspace
-  Home node should have an icon leftmost in heading and should display top-level workspace nodes.
-  We can also create workspace node explicitly and move top level nodes there.
+  Home node should have an icon leftmost in page header and when you click on it, it opens up a page, that has workspace name and content of it is top-level workspace nodes.
+  We can also create workspace node explicitly and move top level nodes there, this appears to be less hacky. Then sidebar should also show just the children of workspace node.
 - [ ] Block selection (multi-block select)
   - [x] Add visual queues for selected blocks
   - [x] Allow to select blocks with arrow up and arrow down
@@ -229,7 +229,11 @@ App
   - [x] Allow to copy content of selected blocks (Mod+C)
   - [x] When you go down with selected block, it does not scroll into view
   - [x] Feature: when you have in-block selection and have focus offset 0 and press shift+up, you enter buffer-level selection with current block selected
-  - [ ] Select multiple nodes and shift or unshift them
+  - [x] Select multiple nodes and shift or unshift them
+  - [x] Add cmd + a command when buffer is active to select all blocks
+  - [x] Add shift + cmd + down/up to select currently selected blocks + up to start/end
+  - [x] Add cmd + up/down to go to last/first block in buffer or if the block was a child block, then go to first/last sibling
+  - [ ] Bug: when I select a child of a block and delete it, selection goes to the first block in the buffer, however it should go to the first block in the parent's children, or if there are none to parent itself
 - [x] Add spacing between paragraphs
 
 **Bugs**:
@@ -237,9 +241,9 @@ App
   Probably, we can redirect to home
 - [ ] Update export feature to account for tuples and types
 - [ ] When you Shift+Tab a node, it gets very weird animation
-- [ ] Navigation from empty node to previous node is cursed
+- [x] Navigation from empty node to previous node is cursed
 - [ ] When you copy list elements and todo's they should be copied the right way
-- [ ] When you indent node and outline it with "- ", they should be on the same X axis.
+- [x] When you indent node and outline it with "- ", they should be on the same X axis.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
