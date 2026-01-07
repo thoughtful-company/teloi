@@ -51,6 +51,23 @@ export const NODE_HAS_CHILDREN = Effect.fn("Then.NODE_HAS_CHILDREN")(function* (
 });
 
 /**
+ * Asserts that a node's children are in the expected order.
+ */
+export const CHILDREN_ORDER_IS = Effect.fn("Then.CHILDREN_ORDER_IS")(function* (
+  parentId: Id.Node,
+  expectedOrder: readonly Id.Node[],
+) {
+  const Node = yield* NodeT;
+  const actualChildren = yield* Node.getNodeChildren(parentId);
+
+  expect(actualChildren.length).toBe(expectedOrder.length);
+
+  for (let i = 0; i < expectedOrder.length; i++) {
+    expect(actualChildren[i]).toBe(expectedOrder[i]);
+  }
+});
+
+/**
  * Asserts that a node has the expected text content (checks Yjs, not LiveStore).
  */
 export const NODE_HAS_TEXT = Effect.fn("Then.NODE_HAS_TEXT")(function* (
