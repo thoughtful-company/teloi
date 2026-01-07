@@ -234,7 +234,13 @@ App
   - [x] Add shift + cmd + down/up to select currently selected blocks + up to start/end
   - [x] Add cmd + up/down to go to last/first block in buffer or if the block was a child block, then go to first/last sibling
   - [x] Bug: when I select a child of a block and delete it, selection goes to the first block in the buffer, however it should go to the first block in the parent's children, or if there are none to parent itself
+  - [x] Bug: when you have two nodes:
+    - Node A
+    - Node B
+    Selection stays at "Node| A" (In the middle)
+    you go to start of node b, press backspace. Selection is expected to be "Node A|Node B", but it will go to "Node| ANode B"
 - [x] Add spacing between paragraphs
+- [ ] Make system nodes non-editable
 
 **Bugs**:
 - [ ] When you delete a node from sidebar that you currently focus, it stays on the screen
@@ -244,6 +250,7 @@ App
 - [x] Navigation from empty node to previous node is cursed
 - [ ] When you copy list elements and todo's they should be copied the right way
 - [x] When you indent node and outline it with "- ", they should be on the same X axis.
+- [ ] When you try to copy child block (copy, or cut with cmd + x), it is not copied.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

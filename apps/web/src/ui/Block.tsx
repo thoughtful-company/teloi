@@ -11,7 +11,14 @@ import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { Transition } from "solid-transition-group";
 import TextEditor, {
   type EnterKeyInfo,
@@ -135,6 +142,15 @@ export default function Block({ blockId }: BlockProps) {
   // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
   let isTransitioningToBlockSelection = false;
 
+  // Clear click coords when block becomes inactive, so programmatic re-activation
+  // (like backspace merge) doesn't use stale click coords from a previous interaction.
+  createEffect(() => {
+    if (!store.isActive) {
+      clickCoords = null;
+      initialSelection = null;
+    }
+  });
+
   const handleFocus = (e: MouseEvent) => {
     clickCoords = { x: e.clientX, y: e.clientY };
     initialSelection = null;
@@ -179,6 +195,12 @@ export default function Block({ blockId }: BlockProps) {
   // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
+    console.debug("[Block.handleSelectionChange] Called", {
+      blockId,
+      nodeId,
+      selection,
+    });
+
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId] = yield* Id.parseBlockId(blockId);
@@ -191,6 +213,19 @@ export default function Block({ blockId }: BlockProps) {
           existingSelection.value.anchor.nodeId === nodeId;
         const goalX = isSameNode ? existingSelection.value.goalX : null;
         const goalLine = isSameNode ? existingSelection.value.goalLine : null;
+
+        yield* Effect.logDebug(
+          "[Block.handleSelectionChange] Setting selection",
+        ).pipe(
+          Effect.annotateLogs({
+            nodeId,
+            anchor: selection.anchor,
+            head: selection.head,
+            existingOffset: Option.isSome(existingSelection)
+              ? existingSelection.value.anchorOffset
+              : null,
+          }),
+        );
 
         yield* Buffer.setSelection(
           bufferId,
@@ -209,14 +244,24 @@ export default function Block({ blockId }: BlockProps) {
   };
 
   const handleBlur = () => {
+    console.debug("[Block.handleBlur] Called", {
+      blockId,
+      hasFocus: document.hasFocus(),
+      isTransitioning: isTransitioningToBlockSelection,
+    });
+
     // Don't clear selection when window loses focus (alt-tab, tab switch).
     // Only clear when user clicks elsewhere within the document.
     if (!document.hasFocus()) {
+      console.debug("[Block.handleBlur] Document not focused, returning");
       return;
     }
 
     // Don't clear if we're transitioning to block selection mode (Escape was pressed)
     if (isTransitioningToBlockSelection) {
+      console.debug(
+        "[Block.handleBlur] Transitioning to block selection, returning",
+      );
       return;
     }
 
@@ -230,6 +275,11 @@ export default function Block({ blockId }: BlockProps) {
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
+        console.debug("[Block.handleBlur] Checking selection", {
+          nodeId,
+          selNodeId: sel?.anchor.nodeId,
+          willClear: sel && sel.anchor.nodeId === nodeId,
+        });
         if (sel && sel.anchor.nodeId === nodeId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
@@ -486,6 +536,17 @@ export default function Block({ blockId }: BlockProps) {
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+
+        yield* Effect.logDebug(
+          "[Block.handleBackspaceAtStart] Merge complete",
+        ).pipe(
+          Effect.annotateLogs({
+            sourceNodeId: nodeId,
+            targetNodeId,
+            mergePoint,
+            newActiveBlockId: targetBlockId,
+          }),
         );
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
     );

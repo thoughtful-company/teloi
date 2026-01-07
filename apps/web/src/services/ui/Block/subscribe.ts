@@ -52,9 +52,8 @@ export const subscribe = (blockId: Id.Block) =>
       ),
       Stream.changesWith((a, b) => a === b),
       Stream.tap((isActive) =>
-        Effect.logTrace("[Block.Subscribe] Is active updated").pipe(
-          Effect.annotateLogs("isActive", isActive),
-          Effect.annotateLogs("blockId", blockId),
+        Effect.logDebug("[Block.Subscribe] isActive stream emitted").pipe(
+          Effect.annotateLogs({ blockId, isActive }),
         ),
       ),
     );
@@ -217,8 +216,12 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
       }),
       Stream.changesWith(deepEqual),
       Stream.tap((sel) =>
-        Effect.logTrace("[Block.Subscribe] Selection emitted").pipe(
-          Effect.annotateLogs({ nodeId, selection: sel }),
+        Effect.logDebug("[Block.Subscribe] Selection stream emitted").pipe(
+          Effect.annotateLogs({
+            nodeId,
+            selection: sel,
+            isNull: sel === null,
+          }),
         ),
       ),
     );

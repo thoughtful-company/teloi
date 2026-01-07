@@ -144,6 +144,11 @@ export default function TextEditor(props: TextEditorProps) {
   let view: EditorView | undefined;
   // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
   let suppressSelectionChange = false;
+  // When mounting without props.selection but expecting one to arrive (programmatic navigation),
+  // suppress selection changes until createEffect syncs the model selection.
+  // This prevents race conditions where yCollab or default cursor positioning overwrites
+  // a pending selection from the model (e.g., merge point after backspace).
+  let awaitingSelectionFromModel = false;
   // Track whether selection is ready (doc has content and selection is set)
   // Used to hide cursor until we can position it correctly
   const [isSelectionReady, setIsSelectionReady] = createSignal(false);
@@ -172,6 +177,7 @@ export default function TextEditor(props: TextEditorProps) {
 
             if (anchor === head) {
               setTimeout(() => {
+                suppressSelectionChange = true;
                 update.view.dispatch({
                   selection: EditorSelection.create([
                     EditorSelection.cursor(anchor, sel.assoc),
@@ -179,35 +185,60 @@ export default function TextEditor(props: TextEditorProps) {
                 });
                 setIsSelectionReady(true);
                 update.view.focus();
+                suppressSelectionChange = false;
               }, 0);
             } else {
               // Use setTimeout to avoid dispatch during update
               // Set selection ready BEFORE focus to avoid cursor flash
               setTimeout(() => {
+                suppressSelectionChange = true;
                 update.view.dispatch({ selection: { anchor, head } });
                 setIsSelectionReady(true);
                 update.view.focus();
+                suppressSelectionChange = false;
               }, 0);
             }
           } else {
             // No saved selection, just focus now that doc has content
             setTimeout(() => {
               setIsSelectionReady(true);
+              suppressSelectionChange = true;
               update.view.focus();
+              suppressSelectionChange = false;
             }, 0);
           }
+        }
+
+        // Log ALL selection changes for debugging
+        if (update.selectionSet) {
+          const sel = update.state.selection.main;
+          console.debug("[TextEditor.updateListener] Selection changed", {
+            anchor: sel.anchor,
+            head: sel.head,
+            suppressed: suppressSelectionChange,
+            docChanged: update.docChanged,
+          });
         }
 
         // Text changes are handled by Yjs, only track selection
         if (
           update.selectionSet &&
           onSelectionChange &&
-          !suppressSelectionChange
+          !suppressSelectionChange &&
+          !awaitingSelectionFromModel
         ) {
           // Don't save selection when doc is empty - Yjs hasn't synced yet
           if (update.state.doc.length === 0) return;
 
           const sel = update.state.selection.main;
+
+          console.debug("[TextEditor.updateListener] Selection change firing", {
+            anchor: sel.anchor,
+            head: sel.head,
+            docLen: update.state.doc.length,
+            docChanged: update.docChanged,
+          });
+
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
           const coordsAfter = update.view.coordsAtPos(sel.head, 1);
@@ -218,6 +249,9 @@ export default function TextEditor(props: TextEditorProps) {
           onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
         }
         if (update.focusChanged && !update.view.hasFocus && onBlur) {
+          console.debug(
+            "[TextEditor.updateListener] Blur detected, calling onBlur",
+          );
           onBlur();
         }
       }),
@@ -556,9 +590,26 @@ export default function TextEditor(props: TextEditorProps) {
       extensions,
     });
 
+    // Determine if we're mounting without explicit selection (programmatic navigation).
+    // Set awaitingSelectionFromModel BEFORE creating view, so updateListener won't
+    // report selection changes caused by yCollab/CodeMirror during view initialization.
+    const docHasContent = state.doc.length > 0;
+    const hasExplicitSelection =
+      !!initialSelection || !!props.selection || !!initialClickCoords;
+    if (docHasContent && !hasExplicitSelection) {
+      awaitingSelectionFromModel = true;
+    }
+
     view = new EditorView({
       state,
       parent: containerRef,
+    });
+
+    console.debug("[TextEditor.mount] Initial selection state", {
+      propsSelection: props.selection,
+      docLength: view.state.doc.length,
+      willDefault: !hasExplicitSelection,
+      awaitingSelection: awaitingSelectionFromModel,
     });
 
     // Priority: initialSelection (from click with existing selection) >
@@ -619,6 +670,7 @@ export default function TextEditor(props: TextEditorProps) {
           assoc: 0,
         };
         if (pos !== null) {
+          // Don't suppress - user clicks SHOULD save selection to buffer
           view.dispatch({
             selection: EditorSelection.create([
               EditorSelection.cursor(pos, assoc),
@@ -633,6 +685,7 @@ export default function TextEditor(props: TextEditorProps) {
       suppressSelectionChange = true;
       view.dispatch({ selection: { anchor: 0 } });
       suppressSelectionChange = false;
+      // awaitingSelectionFromModel was already set before view creation
     }
 
     // Focus logic: balance cursor flash prevention with immediate focus for new blocks
@@ -641,7 +694,10 @@ export default function TextEditor(props: TextEditorProps) {
     if (docLen > 0) {
       // Content already loaded - focus immediately
       setIsSelectionReady(true);
+      // Suppress selection changes during focus to prevent yCollab cursor restoration
+      suppressSelectionChange = true;
       view.focus();
+      suppressSelectionChange = false;
     } else {
       // Doc is empty - check if we're expecting content from Yjs
       // If saved selection is beyond position 0, there must be content waiting to sync
@@ -650,7 +706,9 @@ export default function TextEditor(props: TextEditorProps) {
       if (!expectingContent) {
         // New empty block or empty block at position 0 - focus immediately
         setIsSelectionReady(true);
+        suppressSelectionChange = true;
         view.focus();
+        suppressSelectionChange = false;
       }
       // else: wait for updateListener to focus after Yjs syncs
     }
@@ -661,6 +719,27 @@ export default function TextEditor(props: TextEditorProps) {
   // Sync selection from model to CodeMirror
   createEffect(() => {
     const selection = props.selection;
+
+    console.debug("[TextEditor.selectionSync] Effect running", {
+      hasView: !!view,
+      selection,
+      docLen: view?.state.doc.length,
+      currentSel: view
+        ? {
+            anchor: view.state.selection.main.anchor,
+            head: view.state.selection.main.head,
+          }
+        : null,
+      awaitingSelection: awaitingSelectionFromModel,
+    });
+
+    // After mount, the first createEffect run gives reactivity a chance to propagate
+    // the model selection. Clear the flag to allow future user selection changes.
+    // If props.selection arrived, we'll sync it below. If not, user can now make changes.
+    if (awaitingSelectionFromModel) {
+      awaitingSelectionFromModel = false;
+    }
+
     if (!view || !selection) return;
 
     const docLen = view.state.doc.length;
@@ -705,6 +784,12 @@ export default function TextEditor(props: TextEditorProps) {
         suppressSelectionChange = true;
         view.dispatch({ selection: EditorSelection.create([newSel]) });
         suppressSelectionChange = false;
+
+        console.debug("[TextEditor.selectionSync] Selection dispatched", {
+          anchor,
+          head,
+          assoc: selection.assoc,
+        });
       }
     }
 
@@ -713,7 +798,9 @@ export default function TextEditor(props: TextEditorProps) {
     // In that case, updateListener will handle focus after sync.
     const expectingContent = docLen === 0 && selection.anchor > 0;
     if (!view.hasFocus && !expectingContent) {
+      suppressSelectionChange = true;
       view.focus();
+      suppressSelectionChange = false;
     }
   });
 
