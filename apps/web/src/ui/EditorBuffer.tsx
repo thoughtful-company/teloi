@@ -224,21 +224,22 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         e.preventDefault();
         runtime.runPromise(
           Effect.gen(function* () {
-            const Window = yield* WindowT;
             const Buffer = yield* BufferT;
 
             const bufferDoc = yield* getBufferDoc;
             const blockSelectionAnchor =
               bufferDoc?.blockSelectionAnchor ?? null;
+            const blockSelectionFocus =
+              bufferDoc?.blockSelectionFocus ?? blockSelectionAnchor;
 
-            if (blockSelectionAnchor) {
+            if (blockSelectionAnchor && blockSelectionFocus) {
               yield* Buffer.setBlockSelection(
                 bufferId,
                 [],
                 blockSelectionAnchor,
+                blockSelectionFocus,
               );
             }
-            yield* Window.setActiveElement(Option.none());
           }),
         );
       }
@@ -255,10 +256,33 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
 
-            const { blockSelectionAnchor, blockSelectionFocus } = bufferDoc;
-            if (!blockSelectionAnchor) return;
+            const {
+              blockSelectionAnchor,
+              blockSelectionFocus,
+              selectedBlocks,
+              lastFocusedBlockId,
+            } = bufferDoc;
 
             const childNodeIds = getChildNodeIds();
+
+            // When selection is empty but we have lastFocusedBlockId, restore selection there
+            const isEmptySelection = selectedBlocks.length === 0;
+            if (isEmptySelection) {
+              if (!lastFocusedBlockId) return;
+              // Verify the block still exists
+              if (!childNodeIds.includes(lastFocusedBlockId)) return;
+
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [lastFocusedBlockId],
+                lastFocusedBlockId,
+                lastFocusedBlockId,
+              );
+              scrollBlockIntoView(Id.makeBlockId(bufferId, lastFocusedBlockId));
+              return;
+            }
+
+            if (!blockSelectionAnchor) return;
 
             const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
             const focusIndex = childNodeIds.indexOf(currentFocus);

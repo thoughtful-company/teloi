@@ -90,7 +90,7 @@ describe("Block Escape key", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Escape when block selected blurs completely", async () => {
+  it("Escape when block selected clears selection but keeps buffer active", async () => {
     await Effect.gen(function* () {
       // Given: A buffer with a block already selected (not in text editing mode)
       const { bufferId, childNodeIds, windowId } =
@@ -137,7 +137,7 @@ describe("Block Escape key", () => {
       // When: User presses Escape again
       yield* When.USER_PRESSES("{Escape}");
 
-      // Then: activeElement = null, selectedBlocks = [], lastFocusedBlockId preserved
+      // Then: buffer stays active, selectedBlocks cleared, lastFocusedBlockId preserved
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -146,7 +146,7 @@ describe("Block Escape key", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const activeEl = Option.getOrThrow(windowDoc).activeElement;
-            expect(activeEl).toBeNull();
+            expect(activeEl?.type).toBe("buffer"); // Buffer stays active for arrow restoration
           },
           { timeout: 2000 },
         ),
@@ -161,7 +161,7 @@ describe("Block Escape key", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]); // Preserved!
+            expect(buf.lastFocusedBlockId).toBe(childNodeIds[0]); // Preserved for arrow restoration
           },
           { timeout: 2000 },
         ),

@@ -52,6 +52,8 @@ export const EditorBuffer = Schema.mutable(
     blockSelectionAnchor: Schema.NullOr(Id.Node),
     /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
     blockSelectionFocus: Schema.NullOr(Id.Node),
+    /** Last focused block - preserved across selection clear for arrow key restoration */
+    lastFocusedBlockId: Schema.NullOr(Id.Node),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     selection: Schema.NullOr(BufferSelection),
   }),

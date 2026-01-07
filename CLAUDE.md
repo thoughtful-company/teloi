@@ -36,6 +36,8 @@ Never write comments like `// Set the text` above `setText(value)`. If the code 
 
 Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
 
+When TypeScript check fails, report the errors to the user. Don't silently fix pre-existing errors or hide issues behind type assertions. If an error is unrelated to your changes, say so explicitly: "There's a pre-existing TypeScript error in X that's blocking the build - not from my changes." Let the user decide how to handle it.
+
 When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
 
 When you are about to make a new feature, ALWAYS consider writing a test first.
@@ -212,6 +214,7 @@ App
 - [ ] Implement delete button for sidebar items that shows up on hover and deletes an element
   button is located on the right side of a list item
 - [ ] When selection is set to wrap place with assoc 0, it causes problems
+- [ ] When you have selected a checkbox node and press enter, it should get marked as done
 - [ ] Implement home node for a workspace
   Home node should have an icon leftmost in heading and should display top-level workspace nodes.
   We can also create workspace node explicitly and move top level nodes there.
@@ -226,21 +229,16 @@ App
   - [x] Allow to copy content of selected blocks (Mod+C)
   - [x] When you go down with selected block, it does not scroll into view
   - [x] Feature: when you have in-block selection and have focus offset 0 and press shift+up, you enter buffer-level selection with current block selected
-    - [x] Basic implementation (Shift+Up from text selection)
-    - [x] Mirror implementation for shift+down (Shift+Down from text selection)
-- [ ] Add spacing between paragraphs
+  - [ ] Select multiple nodes and shift or unshift them
+- [x] Add spacing between paragraphs
 
 **Bugs**:
 - [ ] When you delete a node from sidebar that you currently focus, it stays on the screen
   Probably, we can redirect to home
 - [ ] Update export feature to account for tuples and types
+- [ ] When you Shift+Tab a node, it gets very weird animation
 - [ ] Navigation from empty node to previous node is cursed
-- [ ] Fix spacing between elements
-  - [ ] temporary fix: make spacing with flex and gap
-- [x] When I click on title, block selection in browser is not cleared
-  Fixed: EditorBuffer now clears selectedBlocks when transitioning out of block selection mode
 - [ ] When you copy list elements and todo's they should be copied the right way
-- [ ] When you stay on the first block in selection mode and press up, you need to scroll up to the top of the buffer
 - [ ] When you indent node and outline it with "- ", they should be on the same X axis.
 
 **Text Content Architecture**:

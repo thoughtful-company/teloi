@@ -1,6 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
+import { BufferT } from "@/services/ui/Buffer";
+import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -1286,6 +1288,160 @@ describe("Block selection", () => {
       // And: scrollTop should have been set to scroll up toward 0
       expect(scrollTopSetter).toHaveBeenCalled();
       expect(currentScrollTop).toBeLessThan(100);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("ArrowDown after Escape restores to last focused block, not next block", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "Block A" },
+          { text: "Block B" },
+          { text: "Block C" },
+          { text: "Block D" },
+        ],
+      );
+
+      const [nodeA, nodeB, nodeC] = childNodeIds;
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+      const Buffer = yield* BufferT;
+      const Window = yield* WindowT;
+
+      // Set up block selection: A (anchor) -> B -> C (focus)
+      yield* Buffer.setBlockSelection(
+        bufferId,
+        [nodeA, nodeB, nodeC],
+        nodeA,
+        nodeC,
+      );
+      yield* Window.setActiveElement(
+        Option.some({ type: "buffer" as const, id: bufferId }),
+      );
+
+      // Verify initial state: 3 blocks selected with focus on C
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
+          expect(buf.blockSelectionFocus).toBe(nodeC);
+        }),
+      );
+
+      // When: User presses Escape to clear selection
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Verify selection cleared but lastFocusedBlockId preserved
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([]);
+          expect(buf.lastFocusedBlockId).toBe(nodeC);
+        }),
+      );
+
+      // When: User presses ArrowDown
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Then: Selection should be restored to C (last focused), NOT D (next block)
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([nodeC]);
+          expect(buf.blockSelectionFocus).toBe(nodeC);
+        }),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("ArrowUp after Escape restores to last focused block, not previous block", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "Block A" },
+          { text: "Block B" },
+          { text: "Block C" },
+          { text: "Block D" },
+        ],
+      );
+
+      const [nodeA, nodeB, nodeC] = childNodeIds;
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+      const Buffer = yield* BufferT;
+      const Window = yield* WindowT;
+
+      // Set up block selection: A (anchor) -> B -> C (focus)
+      yield* Buffer.setBlockSelection(
+        bufferId,
+        [nodeA, nodeB, nodeC],
+        nodeA,
+        nodeC,
+      );
+      yield* Window.setActiveElement(
+        Option.some({ type: "buffer" as const, id: bufferId }),
+      );
+
+      // Verify initial state
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
+          expect(buf.blockSelectionFocus).toBe(nodeC);
+        }),
+      );
+
+      // When: User presses Escape to clear selection
+      yield* When.USER_PRESSES("{Escape}");
+
+      // Verify selection cleared
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([]);
+          expect(buf.lastFocusedBlockId).toBe(nodeC);
+        }),
+      );
+
+      // When: User presses ArrowUp
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Then: Selection should be restored to C (last focused), NOT B (previous block)
+      yield* Effect.promise(() =>
+        waitFor(async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+          expect(buf.selectedBlocks).toEqual([nodeC]);
+          expect(buf.blockSelectionFocus).toBe(nodeC);
+        }),
+      );
     }).pipe(runtime.runPromise);
   });
 });

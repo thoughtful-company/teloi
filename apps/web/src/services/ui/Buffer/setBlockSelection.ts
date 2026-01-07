@@ -31,6 +31,7 @@ export const setBlockSelection = (
         selectedBlocks: [...blocks],
         blockSelectionAnchor,
         blockSelectionFocus: blocks.length > 0 ? focus : null,
+        lastFocusedBlockId: focus,
       },
       bufferId,
     ).pipe(Effect.orDie);
@@ -43,6 +44,7 @@ export const setBlockSelection = (
         selectedBlocks: blocks,
         blockSelectionAnchor,
         blockSelectionFocus: focus,
+        lastFocusedBlockId: focus,
       }),
     );
   });
