@@ -252,6 +252,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -263,14 +264,10 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               lastFocusedBlockId,
             } = bufferDoc;
 
-            const childNodeIds = getChildNodeIds();
-
             // When selection is empty but we have lastFocusedBlockId, restore selection there
             const isEmptySelection = selectedBlocks.length === 0;
             if (isEmptySelection) {
               if (!lastFocusedBlockId) return;
-              // Verify the block still exists
-              if (!childNodeIds.includes(lastFocusedBlockId)) return;
 
               yield* Buffer.setBlockSelection(
                 bufferId,
@@ -284,16 +281,17 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             if (!blockSelectionAnchor) return;
 
+            // Get siblings of the current focus (works for nested blocks too)
             const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
-            const focusIndex = childNodeIds.indexOf(currentFocus);
-
-            if (focusIndex === -1) return;
+            const parentId = yield* Node.getParent(currentFocus);
+            const siblings = yield* Node.getNodeChildren(parentId);
+            const focusIndex = siblings.indexOf(currentFocus);
 
             // Move focus up or down
             const newFocusIndex =
               e.key === "ArrowUp"
                 ? Math.max(0, focusIndex - 1)
-                : Math.min(childNodeIds.length - 1, focusIndex + 1);
+                : Math.min(siblings.length - 1, focusIndex + 1);
 
             // ArrowUp on first block: scroll to show top of buffer (skip normal scroll)
             const didScrollToTop =
@@ -302,17 +300,17 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               scrollBufferToTop(bufferId);
             }
 
-            const newFocus = childNodeIds[newFocusIndex];
+            const newFocus = siblings[newFocusIndex];
             if (!newFocus) return;
 
-            const anchorIndex = childNodeIds.indexOf(blockSelectionAnchor);
+            const anchorIndex = siblings.indexOf(blockSelectionAnchor);
             if (anchorIndex === -1) return;
 
             if (e.shiftKey) {
               // Shift+Arrow: extend/contract range from anchor to new focus
               const startIndex = Math.min(anchorIndex, newFocusIndex);
               const endIndex = Math.max(anchorIndex, newFocusIndex);
-              const newSelection = childNodeIds.slice(startIndex, endIndex + 1);
+              const newSelection = siblings.slice(startIndex, endIndex + 1);
 
               yield* Buffer.setBlockSelection(
                 bufferId,
@@ -336,7 +334,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                   ? selectionStart
                   : selectionEnd;
 
-              const clampedFocus = childNodeIds[clampedFocusIndex];
+              const clampedFocus = siblings[clampedFocusIndex];
               if (!clampedFocus) return;
 
               yield* Buffer.setBlockSelection(
@@ -352,6 +350,74 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               }
             }
           }),
+        );
+      }
+
+      if (e.key === "Tab" && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const {
+              selectedBlocks,
+              blockSelectionAnchor,
+              blockSelectionFocus,
+            } = bufferDoc;
+            if (selectedBlocks.length === 0) return;
+
+            // Use selectedBlocks directly - they're already in document order
+            // from when they were selected (can't filter through childNodeIds
+            // because selected blocks might be nested after previous indent)
+            const firstSelected = selectedBlocks[0]!;
+
+            if (e.shiftKey) {
+              // Outdent: move all selected blocks to grandparent, after parent
+              const parentId = yield* Node.getParent(firstSelected);
+              const grandparentId = yield* Node.getParent(parentId);
+
+              // Move in reverse order to maintain relative ordering
+              for (let i = selectedBlocks.length - 1; i >= 0; i--) {
+                yield* Node.insertNode({
+                  nodeId: selectedBlocks[i]!,
+                  parentId: grandparentId,
+                  insert: "after",
+                  siblingId: parentId,
+                });
+              }
+            } else {
+              // Indent: move all selected blocks under the previous sibling
+              const parentId = yield* Node.getParent(firstSelected);
+              const siblings = yield* Node.getNodeChildren(parentId);
+              const firstIndex = siblings.indexOf(firstSelected);
+
+              // Can't indent if first selected is the first sibling
+              if (firstIndex <= 0) return;
+
+              const prevSiblingId = siblings[firstIndex - 1]!;
+
+              // Move all selected blocks to be children of previous sibling
+              for (const nodeId of selectedBlocks) {
+                yield* Node.insertNode({
+                  nodeId,
+                  parentId: prevSiblingId,
+                  insert: "after",
+                });
+              }
+            }
+
+            // Preserve selection
+            yield* Buffer.setBlockSelection(
+              bufferId,
+              selectedBlocks,
+              blockSelectionAnchor!,
+              blockSelectionFocus,
+            );
+          }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
         );
       }
 

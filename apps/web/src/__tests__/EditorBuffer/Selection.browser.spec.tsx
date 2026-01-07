@@ -1444,4 +1444,58 @@ describe("Block selection", () => {
       );
     }).pipe(runtime.runPromise);
   });
+
+  it("ArrowDown navigates among children of a nested parent block", async () => {
+    await Effect.gen(function* () {
+      // Given: Root with one child (Parent), Parent has children A, B, C
+      // Structure:
+      //   Root (buffer assigned)
+      //     └── Parent (top-level block)
+      //           ├── A
+      //           ├── B
+      //           └── C
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Create A, B, C as children of Parent
+      const nodeA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "A",
+      });
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        siblingId: nodeA,
+        text: "B",
+      });
+      const nodeC = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        siblingId: nodeB,
+        text: "C",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Select A (first child of Parent, which is at 2nd indentation level)
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // When: Press ArrowDown
+      yield* When.USER_PRESSES("{ArrowDown}");
+
+      // Then: Selection moves to B
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB]);
+
+      // Press ArrowDown again - moves to C
+      yield* When.USER_PRESSES("{ArrowDown}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeC]);
+    }).pipe(runtime.runPromise);
+  });
 });

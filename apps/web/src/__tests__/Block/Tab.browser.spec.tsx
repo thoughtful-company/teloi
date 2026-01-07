@@ -118,3 +118,123 @@ describe("Block Tab key", () => {
     }).pipe(runtime.runPromise);
   });
 });
+
+describe("Block selection Tab key", () => {
+  it("Tab indents all selected blocks under previous sibling (grouped)", async () => {
+    await Effect.gen(function* () {
+      // Given: root with 3 children A, B, C at same level
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+        ]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Select B and extend selection to C
+      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+
+      // Verify B and C are selected
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+        childNodeIds[1],
+        childNodeIds[2],
+      ]);
+
+      // When: User presses Tab
+      yield* When.USER_PRESSES("{Tab}");
+
+      // Then: Root should have only A, and A should have B and C as children
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+      yield* Then.NODE_HAS_CHILDREN(childNodeIds[0], 2);
+
+      // Verify B and C are now children of A
+      const Node = yield* NodeT;
+      const aChildren = yield* Node.getNodeChildren(childNodeIds[0]);
+      yield* Then.NODE_HAS_TEXT(aChildren[0]!, "B");
+      yield* Then.NODE_HAS_TEXT(aChildren[1]!, "C");
+
+      // Selection should be preserved
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+        childNodeIds[1],
+        childNodeIds[2],
+      ]);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Shift+Tab outdents all selected blocks to parent's level", async () => {
+    await Effect.gen(function* () {
+      // Given: root with 3 children A, B, C - we'll indent B,C first, then outdent
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+        ]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // First, indent B and C under A (setup for outdent test)
+      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* When.USER_PRESSES("{Tab}");
+
+      // Verify B and C are now children of A
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+      yield* Then.NODE_HAS_CHILDREN(childNodeIds[0], 2);
+
+      // Now outdent: B and C are still selected, press Shift+Tab
+      yield* When.USER_PRESSES("{Shift>}{Tab}{/Shift}");
+
+      // Then: A should have no children, root should have A, B, C as children again
+      yield* Then.NODE_HAS_CHILDREN(childNodeIds[0], 0);
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 3);
+
+      // Verify order: A, B, C (B and C moved after A)
+      const Node = yield* NodeT;
+      const rootChildren = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(rootChildren[0]!, "A");
+      yield* Then.NODE_HAS_TEXT(rootChildren[1]!, "B");
+      yield* Then.NODE_HAS_TEXT(rootChildren[2]!, "C");
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Tab does nothing when first selected block has no previous sibling", async () => {
+    await Effect.gen(function* () {
+      // Given: root with 2 children A, B
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+        ]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Select A (first child) and extend to B
+      const blockA = Id.makeBlockId(bufferId, childNodeIds[0]);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+
+      // Verify A and B are selected
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+        childNodeIds[0],
+        childNodeIds[1],
+      ]);
+
+      // When: User presses Tab (should do nothing - A is first child)
+      yield* When.USER_PRESSES("{Tab}");
+
+      // Then: Structure unchanged - root still has both children
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+
+      // Selection should be preserved
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+        childNodeIds[0],
+        childNodeIds[1],
+      ]);
+    }).pipe(runtime.runPromise);
+  });
+});
