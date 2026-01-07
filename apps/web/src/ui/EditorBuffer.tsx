@@ -8,6 +8,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { TransitionGroup } from "solid-transition-group";
 import Block from "./Block";
 import Title from "./Title";
 
@@ -808,9 +809,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             </header>
             <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
               <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
-                <For each={store.childBlockIds}>
-                  {(childId) => <Block blockId={childId} />}
-                </For>
+                <TransitionGroup
+                  moveClass="block-move"
+                  exitActiveClass="block-exit-active"
+                  exitToClass="block-exit-to"
+                >
+                  <For each={store.childBlockIds}>
+                    {(childId) => <Block blockId={childId} />}
+                  </For>
+                </TransitionGroup>
               </div>
               <div
                 data-testid="editor-click-zone"

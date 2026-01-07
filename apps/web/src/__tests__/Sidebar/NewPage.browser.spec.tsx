@@ -1,4 +1,5 @@
 import { tables } from "@/livestore/schema";
+import { System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Stream } from "effect";
@@ -6,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runtime } from "../bdd";
 
 describe("Sidebar New Page", () => {
-  it("createRootNode creates a node with parentId = null", async () => {
+  it("createRootNode creates a node as child of workspace", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;
@@ -22,7 +23,7 @@ describe("Sidebar New Page", () => {
         );
 
         expect(link).not.toBeNull();
-        expect(link?.parentId).toBeNull();
+        expect(link?.parentId).toBe(System.WORKSPACE);
       }),
     );
   });
@@ -46,7 +47,7 @@ describe("Sidebar New Page", () => {
     );
   });
 
-  it("createRootNode positions new node after existing root nodes", async () => {
+  it("createRootNode positions new node after existing workspace pages", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;

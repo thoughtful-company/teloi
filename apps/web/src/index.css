@@ -203,3 +203,16 @@ tfoot th {
     @apply overscroll-none;
   }
 }
+
+/* Block move animation for TransitionGroup */
+.block-move {
+  transition: transform 150ms ease-out;
+}
+
+/* Block exit animation - near-instant removal (needs tiny duration for transitionend event) */
+.block-exit-active {
+  transition: opacity 1ms linear;
+}
+.block-exit-to {
+  opacity: 0;
+}

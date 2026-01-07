@@ -355,6 +355,17 @@ const materializers = State.SQLite.materializers(events, {
         tupleIdsToDelete.add(m.tupleId);
       }
     }
+
+    // Also delete tuples whose type node is being deleted
+    for (const nodeId of allNodeIds) {
+      const tuplesOfType = ctx.query(
+        tables.tuples.select().where({ tupleTypeId: nodeId }),
+      );
+      for (const t of tuplesOfType) {
+        tupleIdsToDelete.add(t.id);
+      }
+    }
+
     const deleteTupleMembersOps = Array.from(tupleIdsToDelete).map((tupleId) =>
       tables.tupleMembers.delete().where({ tupleId }),
     );
@@ -369,6 +380,10 @@ const materializers = State.SQLite.materializers(events, {
     const deleteTupleTypeRoleAllowedTypesOps = allNodeIds.map((nodeId) =>
       tables.tupleTypeRoleAllowedTypes.delete().where({ tupleTypeId: nodeId }),
     );
+    const deleteTupleTypeRoleAllowedTypesByAllowedTypeOps = allNodeIds.map(
+      (nodeId) =>
+        tables.tupleTypeRoleAllowedTypes.delete().where({ allowedTypeId: nodeId }),
+    );
 
     const deleteNodesOps = allNodeIds.map((nodeId) =>
       tables.nodes.delete().where({ id: nodeId }),
@@ -382,6 +397,7 @@ const materializers = State.SQLite.materializers(events, {
       ...deleteTuplesOps,
       ...deleteTupleTypeRolesOps,
       ...deleteTupleTypeRoleAllowedTypesOps,
+      ...deleteTupleTypeRoleAllowedTypesByAllowedTypeOps,
       ...deleteNodesOps,
     ];
   },

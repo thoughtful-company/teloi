@@ -25,7 +25,9 @@ cd apps/web && pnpm tsc --noEmit
 
 Never create type aliases for backwards compatibility (e.g., type OldName = NewName). Either rename the original to the correct name, or update all usages to the correct name. Aliases obscure the codebase and add confusion.
 
-When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Don't put corpo bullshit there (commited with Claude shit). Before committing, review all changed files to ensure no unnecessary comments were added.
+**NEVER use `as` type assertions to mask type errors or missing dependencies.** Type assertions with `as` silence the compiler and hide real issues (missing Effect dependencies, incorrect error types, etc.). If the types don't match, fix the underlying problem—don't cast it away. The only acceptable use of `as` is for unavoidable external library limitations where the types are provably correct but can't be expressed in TypeScript.
+
+When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Remove any auto-generated annotations or irrelevant tool metadata from commit messages. Before committing, review all changed files to ensure no unnecessary comments were added.
 
 Comments should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
 - Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
@@ -34,7 +36,7 @@ Comments should explain **why**, not **what**. The code already shows what it do
 
 Never write comments like `// Set the text` above `setText(value)`. If the code needs a comment to explain what it does, the code should be rewritten to be clearer.
 
-Use the askuserquestiontool to ask as many follow ups as you need to reach clarity.
+Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clarity.
 
 When TypeScript check fails, report the errors to the user. Don't silently fix pre-existing errors or hide issues behind type assertions. If an error is unrelated to your changes, say so explicitly: "There's a pre-existing TypeScript error in X that's blocking the build - not from my changes." Let the user decide how to handle it.
 
@@ -246,11 +248,12 @@ App
 - [ ] When you delete a node from sidebar that you currently focus, it stays on the screen
   Probably, we can redirect to home
 - [ ] Update export feature to account for tuples and types
-- [ ] When you Shift+Tab a node, it gets very weird animation
+- [ ] Tab/Shift+Tab indent animation is janky (block disappears and reappears)
+  Current TransitionGroup only handles same-parent reordering smoothly. Cross-parent moves (indent/outdent) need FLIP animations to track elements across DOM parents. Consider `solid-motionone` or manual FLIP implementation.
 - [x] Navigation from empty node to previous node is cursed
 - [ ] When you copy list elements and todo's they should be copied the right way
 - [x] When you indent node and outline it with "- ", they should be on the same X axis.
-- [ ] When you try to copy child block (copy, or cut with cmd + x), it is not copied.
+- [x] When you try to copy child block (copy, or cut with cmd + x), it is not copied.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

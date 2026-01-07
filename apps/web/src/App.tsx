@@ -1,8 +1,9 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { KeyboardB } from "@/services/browser/KeyboardService";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { StoreT } from "@/services/external/Store";
+import { NavigationT } from "@/services/ui/Navigation";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { Component, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import EditorBuffer from "./ui/EditorBuffer";
@@ -47,6 +48,15 @@ const App: Component = () => {
     localStorage.setItem(STORAGE_KEY, String(next));
   };
 
+  const handleHomeClick = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Navigation = yield* NavigationT;
+        yield* Navigation.navigateTo(System.WORKSPACE);
+      }),
+    );
+  };
+
   const { panes, buffersByPane } = runtime.runSync(
     Effect.gen(function* () {
       // Ensure system nodes exist before anything else
@@ -82,7 +92,24 @@ const App: Component = () => {
       {/* Main area */}
       <div class="flex-1 flex flex-col overflow-hidden">
         {/* Header - always visible, button only when sidebar closed */}
-        <header class="flex items-center h-12 px-2 shrink-0">
+        <header class="flex items-center h-12 px-2 shrink-0 gap-1">
+          {/* Home button - always visible */}
+          <button
+            onClick={handleHomeClick}
+            class="w-8 h-8 flex items-center justify-center rounded hover:bg-sidebar-accent text-sidebar-foreground"
+            aria-label="Go to home"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="w-5 h-5"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </button>
           <Show when={sidebarCollapsed()}>
             <button
               onClick={toggleSidebar}

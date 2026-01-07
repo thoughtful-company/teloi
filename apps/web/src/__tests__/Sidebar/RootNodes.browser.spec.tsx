@@ -1,5 +1,5 @@
 import { events, tables } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
@@ -8,104 +8,104 @@ import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
 import { runtime } from "../bdd";
 
-describe("Sidebar Root Nodes", () => {
-  it("subscribeRootNodes returns nodes created without parentId", async () => {
+describe("Sidebar Workspace Pages", () => {
+  it("subscribeRootNodes returns pages created under workspace", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;
         const Node = yield* NodeT;
         const Yjs = yield* YjsT;
 
-        // Create a root node (no parentId)
-        const rootNodeId = Id.Node.make(nanoid());
+        // Create a page under workspace
+        const pageNodeId = Id.Node.make(nanoid());
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: rootNodeId },
+            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
           }),
         );
 
         // Set some text so we can identify it
-        const ytext = Yjs.getText(rootNodeId);
-        ytext.insert(0, "My Root Page");
+        const ytext = Yjs.getText(pageNodeId);
+        ytext.insert(0, "My Page");
 
-        // Subscribe to root nodes
-        const rootNodesStream = yield* Node.subscribeRootNodes();
+        // Subscribe to workspace pages
+        const pagesStream = yield* Node.subscribeRootNodes();
 
         // Get first emission
-        const rootNodes = yield* rootNodesStream.pipe(
+        const pages = yield* pagesStream.pipe(
           Stream.take(1),
           Stream.runCollect,
           Effect.map((chunk) => [...chunk][0]),
         );
 
-        expect(rootNodes).toBeDefined();
-        expect(rootNodes).toContain(rootNodeId);
+        expect(pages).toBeDefined();
+        expect(pages).toContain(pageNodeId);
       }),
     );
   });
 
-  it("creates parent_links row with null parentId for root nodes", async () => {
+  it("creates parent_links row with workspace parentId for pages", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;
 
-        // Create a root node (no parentId)
-        const rootNodeId = Id.Node.make(nanoid());
+        // Create a page under workspace
+        const pageNodeId = Id.Node.make(nanoid());
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: rootNodeId },
+            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
           }),
         );
 
-        // Check that parent_links row was created
+        // Check that parent_links row was created with workspace as parent
         const link = yield* Store.query(
           tables.parentLinks
             .select()
-            .where({ childId: rootNodeId })
+            .where({ childId: pageNodeId })
             .first({ fallback: () => null }),
         );
 
         expect(link).not.toBeNull();
-        expect(link?.parentId).toBeNull();
+        expect(link?.parentId).toBe(System.WORKSPACE);
       }),
     );
   });
 
-  it("subscribeRootNodes does NOT return child nodes", async () => {
+  it("subscribeRootNodes does NOT return nested children", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;
         const Node = yield* NodeT;
 
-        // Create a root node
-        const rootNodeId = Id.Node.make(nanoid());
+        // Create a page under workspace
+        const pageNodeId = Id.Node.make(nanoid());
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: rootNodeId },
+            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
           }),
         );
 
-        // Create a child node under the root
+        // Create a child node under the page
         const childNodeId = yield* Node.insertNode({
-          parentId: rootNodeId,
+          parentId: pageNodeId,
           insert: "before",
         });
 
-        // Subscribe to root nodes
-        const rootNodesStream = yield* Node.subscribeRootNodes();
+        // Subscribe to workspace pages
+        const pagesStream = yield* Node.subscribeRootNodes();
 
         // Get first emission
-        const rootNodes = yield* rootNodesStream.pipe(
+        const pages = yield* pagesStream.pipe(
           Stream.take(1),
           Stream.runCollect,
           Effect.map((chunk) => [...chunk][0]),
         );
 
-        expect(rootNodes).toContain(rootNodeId);
-        expect(rootNodes).not.toContain(childNodeId);
+        expect(pages).toContain(pageNodeId);
+        expect(pages).not.toContain(childNodeId);
       }),
     );
   });

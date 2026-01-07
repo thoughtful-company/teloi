@@ -19,7 +19,7 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { Transition } from "solid-transition-group";
+import { Transition, TransitionGroup } from "solid-transition-group";
 import TextEditor, {
   type EnterKeyInfo,
   type SelectionInfo,
@@ -97,6 +97,23 @@ export default function Block({ blockId }: BlockProps) {
 
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
+
+  // Flag to prevent blur handler from clearing state during block movement
+  let isMoving = false;
+
+  const waitForDomAndRefocus = Effect.gen(function* () {
+    yield* Effect.promise(
+      () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+    );
+    yield* Effect.sync(() => {
+      const blockEl = document.querySelector(
+        `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
+      );
+      if (blockEl instanceof HTMLElement) {
+        blockEl.focus();
+      }
+    });
+  });
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
 
@@ -265,6 +282,11 @@ export default function Block({ blockId }: BlockProps) {
       return;
     }
 
+    // Don't clear selection during block movement (swap up/down)
+    if (isMoving) {
+      return;
+    }
+
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
@@ -422,6 +444,142 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: parentId,
         });
       }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+    );
+  };
+
+  const handleSwapUp = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't swap if first child
+        if (siblingIndex <= 0) {
+          return;
+        }
+
+        const prevSiblingId = siblings[siblingIndex - 1]!;
+
+        // Move this node before the previous sibling (effectively swapping)
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "before",
+          siblingId: prevSiblingId,
+        });
+
+        yield* waitForDomAndRefocus;
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
+  const handleSwapDown = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Can't swap if last child
+        if (siblingIndex >= siblings.length - 1) {
+          return;
+        }
+
+        const nextSiblingId = siblings[siblingIndex + 1]!;
+
+        // Move this node after the next sibling (effectively swapping)
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "after",
+          siblingId: nextSiblingId,
+        });
+
+        yield* waitForDomAndRefocus;
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
+  const handleMoveToFirst = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Already first child
+        if (siblingIndex === 0) {
+          return;
+        }
+
+        const firstSiblingId = siblings[0]!;
+
+        // Move this node before the first sibling
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "before",
+          siblingId: firstSiblingId,
+        });
+
+        yield* waitForDomAndRefocus;
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
+    );
+  };
+
+  const handleMoveToLast = () => {
+    isMoving = true;
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [, nodeId] = yield* Id.parseBlockId(blockId);
+        const Node = yield* NodeT;
+
+        const parentId = yield* Node.getParent(nodeId);
+        const siblings = yield* Node.getNodeChildren(parentId);
+        const siblingIndex = siblings.indexOf(nodeId);
+
+        // Already last child
+        if (siblingIndex >= siblings.length - 1) {
+          return;
+        }
+
+        const lastSiblingId = siblings[siblings.length - 1]!;
+
+        // Move this node after the last sibling
+        yield* Node.insertNode({
+          nodeId,
+          parentId,
+          insert: "after",
+          siblingId: lastSiblingId,
+        });
+
+        yield* waitForDomAndRefocus;
+      }).pipe(
+        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+        Effect.ensuring(Effect.sync(() => (isMoving = false))),
+      ),
     );
   };
 
@@ -1161,6 +1319,10 @@ export default function Block({ blockId }: BlockProps) {
               onShiftArrowDownFromTextSelection={
                 handleShiftArrowDownFromTextSelection
               }
+              onSwapUp={handleSwapUp}
+              onSwapDown={handleSwapDown}
+              onMoveToFirst={handleMoveToFirst}
+              onMoveToLast={handleMoveToLast}
               onTypeTrigger={handleTypeTrigger}
               initialClickCoords={clickCoords}
               initialSelection={initialSelection}
@@ -1173,9 +1335,15 @@ export default function Block({ blockId }: BlockProps) {
         <Show when={store.childBlockIds.length > 0}>
           <div class="w-max h-0"> </div>
         </Show>
-        <For each={store.childBlockIds}>
-          {(childId) => <Block blockId={childId} />}
-        </For>
+        <TransitionGroup
+          moveClass="block-move"
+          exitActiveClass="block-exit-active"
+          exitToClass="block-exit-to"
+        >
+          <For each={store.childBlockIds}>
+            {(childId) => <Block blockId={childId} />}
+          </For>
+        </TransitionGroup>
       </div>
     </div>
   );

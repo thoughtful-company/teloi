@@ -56,3 +56,9 @@ Run `pnpm -F @teloi/web test` for unit tests or `pnpm -F @teloi/web test:browser
 ## Type Checking
 
 From `apps/web`: `pnpm tsc --noEmit`
+
+## License
+
+This project is licensed under the [PolyForm Shield License 1.0.0](LICENSE). This license allows you to use, modify, and distribute the software for any purpose except providing competing products.
+
+Copyright © 2026 Thoughtful Company
