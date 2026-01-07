@@ -93,6 +93,20 @@ export default function Block({ blockId }: BlockProps) {
   // Flag to prevent blur handler from clearing state during block movement
   let isMoving = false;
 
+  const waitForDomAndRefocus = Effect.gen(function* () {
+    yield* Effect.promise(
+      () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+    );
+    yield* Effect.sync(() => {
+      const blockEl = document.querySelector(
+        `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
+      );
+      if (blockEl instanceof HTMLElement) {
+        blockEl.focus();
+      }
+    });
+  });
+
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
 
   const getActiveDefinitions = () =>
@@ -386,21 +400,7 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: prevSiblingId,
         });
 
-        // Wait for DOM to settle
-        yield* Effect.promise(
-          () =>
-            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        // Re-focus the block's editor after DOM settles
-        yield* Effect.sync(() => {
-          const blockEl = document.querySelector(
-            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
-          );
-          if (blockEl instanceof HTMLElement) {
-            blockEl.focus();
-          }
-        });
+        yield* waitForDomAndRefocus;
       }).pipe(
         Effect.catchTag("NodeHasNoParentError", () => Effect.void),
         Effect.ensuring(Effect.sync(() => (isMoving = false))),
@@ -434,21 +434,7 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: nextSiblingId,
         });
 
-        // Wait for DOM to settle
-        yield* Effect.promise(
-          () =>
-            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        // Re-focus the block's editor after DOM settles
-        yield* Effect.sync(() => {
-          const blockEl = document.querySelector(
-            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
-          );
-          if (blockEl instanceof HTMLElement) {
-            blockEl.focus();
-          }
-        });
+        yield* waitForDomAndRefocus;
       }).pipe(
         Effect.catchTag("NodeHasNoParentError", () => Effect.void),
         Effect.ensuring(Effect.sync(() => (isMoving = false))),
@@ -482,21 +468,7 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: firstSiblingId,
         });
 
-        // Wait for DOM to settle
-        yield* Effect.promise(
-          () =>
-            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        // Re-focus the block's editor after DOM settles
-        yield* Effect.sync(() => {
-          const blockEl = document.querySelector(
-            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
-          );
-          if (blockEl instanceof HTMLElement) {
-            blockEl.focus();
-          }
-        });
+        yield* waitForDomAndRefocus;
       }).pipe(
         Effect.catchTag("NodeHasNoParentError", () => Effect.void),
         Effect.ensuring(Effect.sync(() => (isMoving = false))),
@@ -530,21 +502,7 @@ export default function Block({ blockId }: BlockProps) {
           siblingId: lastSiblingId,
         });
 
-        // Wait for DOM to settle
-        yield* Effect.promise(
-          () =>
-            new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        // Re-focus the block's editor after DOM settles
-        yield* Effect.sync(() => {
-          const blockEl = document.querySelector(
-            `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
-          );
-          if (blockEl instanceof HTMLElement) {
-            blockEl.focus();
-          }
-        });
+        yield* waitForDomAndRefocus;
       }).pipe(
         Effect.catchTag("NodeHasNoParentError", () => Effect.void),
         Effect.ensuring(Effect.sync(() => (isMoving = false))),
