@@ -7,6 +7,7 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
+import { TransitionGroup } from "solid-transition-group";
 import Block from "./Block";
 import Title from "./Title";
 
@@ -61,7 +62,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         const Window = yield* WindowT;
 
         const children = yield* Node.getNodeChildren(nodeId);
-        const lastChildId = children.length > 0 ? children[children.length - 1] : null;
+        const lastChildId =
+          children.length > 0 ? children[children.length - 1] : null;
 
         let targetNodeId: Id.Node;
         let targetBlockId: Id.Block;
@@ -113,14 +115,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
               <Title bufferId={bufferId} nodeId={nodeId} />
             </header>
-            <div
-              data-testid="editor-body"
-              class="flex-1 flex flex-col pt-4"
-            >
+            <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
               <div class="mx-auto max-w-[var(--max-line-width)] w-full">
-                <For each={store.childBlockIds}>
-                  {(childId) => <Block blockId={childId} />}
-                </For>
+                <TransitionGroup moveClass="block-move">
+                  <For each={store.childBlockIds}>
+                    {(childId) => <Block blockId={childId} />}
+                  </For>
+                </TransitionGroup>
               </div>
               <div
                 data-testid="editor-click-zone"

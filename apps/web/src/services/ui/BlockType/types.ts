@@ -22,8 +22,11 @@ export interface TriggerDefinition {
    * Additional effect to run after the type is added.
    * Used for triggers that need to do more than just add a type.
    * e.g., "[x] " trigger adds CHECKBOX type AND creates IS_CHECKED tuple.
+   *
+   * Run via runtime.runPromise which provides all services.
    */
-  onTrigger?: (nodeId: Id.Node) => Effect.Effect<void, unknown, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onTrigger?: (nodeId: Id.Node) => Effect.Effect<void, never, any>;
 }
 
 /**

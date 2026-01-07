@@ -203,3 +203,8 @@ tfoot th {
     @apply overscroll-none;
   }
 }
+
+/* Block move animation for TransitionGroup */
+.block-move {
+  transition: transform 150ms ease-out;
+}
