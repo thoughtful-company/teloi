@@ -1509,6 +1509,84 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("Shift+Cmd+Up extends selection from anchor to first sibling", async () => {
+    await Effect.gen(function* () {
+      // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+          { text: "E" },
+        ],
+      );
+
+      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on C
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+        anchor: childNodeIds[2],
+        focus: childNodeIds[2],
+      });
+
+      // When: User presses Shift+Cmd+Up
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
+
+      // Then: A, B, C selected with anchor=C, focus=A
+      yield* Then.BLOCKS_ARE_SELECTED(
+        bufferId,
+        [childNodeIds[0], childNodeIds[1], childNodeIds[2]],
+        {
+          anchor: childNodeIds[2],
+          focus: childNodeIds[0],
+        },
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Shift+Cmd+Down extends selection from anchor to last sibling", async () => {
+    await Effect.gen(function* () {
+      // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+          { text: "E" },
+        ],
+      );
+
+      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on C
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+        anchor: childNodeIds[2],
+        focus: childNodeIds[2],
+      });
+
+      // When: User presses Shift+Cmd+Down
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
+
+      // Then: C, D, E selected with anchor=C, focus=E
+      yield* Then.BLOCKS_ARE_SELECTED(
+        bufferId,
+        [childNodeIds[2], childNodeIds[3], childNodeIds[4]],
+        {
+          anchor: childNodeIds[2],
+          focus: childNodeIds[4],
+        },
+      );
+    }).pipe(runtime.runPromise);
+  });
+
   it("ArrowDown navigates among children of a nested parent block", async () => {
     await Effect.gen(function* () {
       // Given: Root with one child (Parent), Parent has children A, B, C
