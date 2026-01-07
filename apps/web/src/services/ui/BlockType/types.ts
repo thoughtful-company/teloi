@@ -1,3 +1,4 @@
+import { BrowserRequirements } from "@/runtime";
 import { Id } from "@/schema";
 import { Effect } from "effect";
 import { JSX } from "solid-js";
@@ -23,7 +24,9 @@ export interface TriggerDefinition {
    * Used for triggers that need to do more than just add a type.
    * e.g., "[x] " trigger adds CHECKBOX type AND creates IS_CHECKED tuple.
    */
-  onTrigger?: (nodeId: Id.Node) => Effect.Effect<void, unknown, unknown>;
+  onTrigger?: (
+    nodeId: Id.Node,
+  ) => Effect.Effect<void, never, BrowserRequirements>;
 }
 
 /**
