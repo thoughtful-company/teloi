@@ -1,5 +1,5 @@
 import { Id } from "@/schema";
-import { Context, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
 import * as Y from "yjs";
 
 export class YjsT extends Context.Tag("YjsT")<
@@ -24,46 +24,51 @@ export interface YjsConfig {
 }
 
 export const makeYjsLive = (config: YjsConfig) =>
-  Layer.sync(YjsT, () => {
-    const doc = new Y.Doc();
-    const undoManagers = new Map<string, Y.UndoManager>();
+  Layer.effect(
+    YjsT,
+    Effect.gen(function* () {
+      const doc = new Y.Doc();
+      const undoManagers = new Map<string, Y.UndoManager>();
 
-    // Conditionally load IndexedDB persistence to avoid Vite worker issues in dev
-    if (config.persist === true) {
-      import("y-indexeddb").then(({ IndexeddbPersistence }) => {
-        new IndexeddbPersistence(config.roomName, doc);
-      });
-    }
-
-    const getText = (nodeId: Id.Node): Y.Text => {
-      return doc.getText(nodeId);
-    };
-
-    const deleteText = (nodeId: Id.Node): void => {
-      const ytext = doc.getText(nodeId);
-      ytext.delete(0, ytext.length);
-
-      const undoManager = undoManagers.get(nodeId);
-      if (undoManager) {
-        undoManager.destroy();
-        undoManagers.delete(nodeId);
+      // Wait for IndexedDB persistence to sync before returning
+      if (config.persist === true) {
+        yield* Effect.promise(async () => {
+          const { IndexeddbPersistence } = await import("y-indexeddb");
+          const persistence = new IndexeddbPersistence(config.roomName, doc);
+          await persistence.synced;
+        });
       }
-    };
 
-    const getUndoManager = (nodeId: Id.Node): Y.UndoManager => {
-      let undoManager = undoManagers.get(nodeId);
-      if (!undoManager) {
+      const getText = (nodeId: Id.Node): Y.Text => {
+        return doc.getText(nodeId);
+      };
+
+      const deleteText = (nodeId: Id.Node): void => {
         const ytext = doc.getText(nodeId);
-        undoManager = new Y.UndoManager(ytext);
-        undoManagers.set(nodeId, undoManager);
-      }
-      return undoManager;
-    };
+        ytext.delete(0, ytext.length);
 
-    return {
-      getText,
-      deleteText,
-      getUndoManager,
-      doc,
-    };
-  });
+        const undoManager = undoManagers.get(nodeId);
+        if (undoManager) {
+          undoManager.destroy();
+          undoManagers.delete(nodeId);
+        }
+      };
+
+      const getUndoManager = (nodeId: Id.Node): Y.UndoManager => {
+        let undoManager = undoManagers.get(nodeId);
+        if (!undoManager) {
+          const ytext = doc.getText(nodeId);
+          undoManager = new Y.UndoManager(ytext);
+          undoManagers.set(nodeId, undoManager);
+        }
+        return undoManager;
+      };
+
+      return {
+        getText,
+        deleteText,
+        getUndoManager,
+        doc,
+      };
+    }),
+  );
