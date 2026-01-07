@@ -461,6 +461,16 @@ const materializers = State.SQLite.materializers(events, {
     const deleteTupleOp = tables.tuples.delete().where({ id: data.tupleId });
     return [deleteMembersOp, deleteTupleOp];
   },
+  "v1.NodesReordered": ({ data }) => {
+    return data.moves.map((move) =>
+      parentLinks
+        .update({
+          parentId: move.newParentId,
+          position: move.position,
+        })
+        .where({ childId: move.nodeId }),
+    );
+  },
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

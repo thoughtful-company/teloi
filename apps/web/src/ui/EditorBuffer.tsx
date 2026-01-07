@@ -304,8 +304,92 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // Alt+Cmd+Arrow in block selection mode: swap/move selected blocks
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        e.altKey &&
+        (isMac ? e.metaKey : e.ctrlKey) &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { selectedBlocks, blockSelectionAnchor, blockSelectionFocus } =
+              bufferDoc;
+            if (selectedBlocks.length === 0) return;
+
+            // Get parent and siblings of selected blocks (they're all siblings)
+            const firstSelected = selectedBlocks[0]!;
+            const lastSelected = selectedBlocks[selectedBlocks.length - 1]!;
+            const parentId = yield* Node.getParent(firstSelected);
+            const siblings = yield* Node.getNodeChildren(parentId);
+
+            const firstIndex = siblings.indexOf(firstSelected);
+            const lastIndex = siblings.indexOf(lastSelected);
+
+            if (e.shiftKey) {
+              // Shift+Alt+Cmd+Arrow: Move to first/last
+              if (e.key === "ArrowUp") {
+                if (firstIndex === 0) return; // Already first
+                yield* Node.moveNodes({
+                  nodeIds: selectedBlocks,
+                  parentId,
+                  insert: "before",
+                  siblingId: siblings[0]!,
+                });
+              } else {
+                if (lastIndex === siblings.length - 1) return; // Already last
+                yield* Node.moveNodes({
+                  nodeIds: selectedBlocks,
+                  parentId,
+                  insert: "after",
+                  siblingId: siblings[siblings.length - 1]!,
+                });
+              }
+            } else {
+              // Alt+Cmd+Arrow: Swap with adjacent
+              if (e.key === "ArrowUp") {
+                if (firstIndex === 0) return; // Can't swap up
+                yield* Node.moveNodes({
+                  nodeIds: selectedBlocks,
+                  parentId,
+                  insert: "before",
+                  siblingId: siblings[firstIndex - 1]!,
+                });
+              } else {
+                if (lastIndex === siblings.length - 1) return; // Can't swap down
+                yield* Node.moveNodes({
+                  nodeIds: selectedBlocks,
+                  parentId,
+                  insert: "after",
+                  siblingId: siblings[lastIndex + 1]!,
+                });
+              }
+            }
+
+            // Preserve selection
+            yield* Buffer.setBlockSelection(
+              bufferId,
+              selectedBlocks,
+              blockSelectionAnchor!,
+              blockSelectionFocus,
+            );
+          }).pipe(
+            Effect.catchTag("NodeHasNoParentError", () => Effect.void),
+            Effect.catchTag("NodeNotFoundError", () => Effect.void),
+          ),
+        );
+      }
+
+      if (
+        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        !e.altKey && // Alt+Cmd+Arrow is handled above for swap/move
         isBlockSelectionMode()
       ) {
         e.preventDefault();
