@@ -169,6 +169,17 @@ const ensureSystemNodes = () =>
     if (!(yield* Type.hasType(System.CHECKBOX, System.RENDERING_TYPE))) {
       yield* Type.addType(System.CHECKBOX, System.RENDERING_TYPE);
     }
+
+    // === Workspace Home ===
+    const workspaceExists = yield* nodeExists(System.WORKSPACE);
+    if (!workspaceExists) {
+      const workspacePos = generateKeyBetween(
+        generateKeyBetween(null, null),
+        null,
+      );
+      yield* createRootNode(System.WORKSPACE, workspacePos);
+      yield* setNodeText(System.WORKSPACE, "Home");
+    }
   });
 
 export const BootstrapLive = Layer.effect(

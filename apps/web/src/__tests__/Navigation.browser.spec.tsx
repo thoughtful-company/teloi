@@ -1,5 +1,5 @@
 import "@/index.css";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NavigationT } from "@/services/ui/Navigation";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Option } from "effect";
@@ -57,50 +57,47 @@ describe("Navigation", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("uses fallback nodeId when URL is empty", async () => {
+    it("uses System.WORKSPACE when URL is empty", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId, nodeId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
+        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
           "Test content",
         );
 
         // And: URL is just root (no nodeId)
         history.replaceState({}, "", "/");
 
-        // When: syncUrlToModel runs with fallback
+        // When: syncUrlToModel runs
         const Navigation = yield* NavigationT;
-        yield* Navigation.syncUrlToModel(nodeId);
+        yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId is set to fallback
+        // Then: Buffer's assignedNodeId is set to workspace home
         const Store = yield* StoreT;
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(nodeId);
-
-        // And: URL is updated to include the nodeId
-        expect(window.location.pathname).toBe(`/workspace/${nodeId}`);
+        expect(buffer.assignedNodeId).toBe(System.WORKSPACE);
       }).pipe(runtime.runPromise);
     });
 
-    it("uses fallback when URL has /workspace/ but no nodeId", async () => {
+    it("uses System.WORKSPACE when URL has /workspace/ but no nodeId", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId, nodeId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
+        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
           "Test content",
         );
 
         // And: URL is /workspace/ without a nodeId
         history.replaceState({}, "", "/workspace/");
 
-        // When: syncUrlToModel runs with fallback
+        // When: syncUrlToModel runs
         const Navigation = yield* NavigationT;
-        yield* Navigation.syncUrlToModel(nodeId);
+        yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId is set to fallback
+        // Then: Buffer's assignedNodeId is set to workspace home
         const Store = yield* StoreT;
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(nodeId);
+        expect(buffer.assignedNodeId).toBe(System.WORKSPACE);
       }).pipe(runtime.runPromise);
     });
   });

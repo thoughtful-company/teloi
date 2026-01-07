@@ -53,6 +53,12 @@ export const System = {
    * Rendering type for checkbox elements. Applied when user types "[ ]" at start of line.
    */
   CHECKBOX: "system:checkbox" as Id.Node,
+
+  /**
+   * Root node for user workspace. All user-created pages are children of this node.
+   * Clicking the home icon navigates here. URL: /workspace/
+   */
+  WORKSPACE: "workspace:home" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];
