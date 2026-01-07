@@ -260,6 +260,97 @@ describe("Block Escape key", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("ArrowRight from block with children selects first child", async () => {
+    await Effect.gen(function* () {
+      // Given: A nested structure
+      // Root (buffer assigned)
+      // └── Parent ← selected, press ArrowRight
+      //       ├── A ← becomes selected (first child)
+      //       ├── B
+      //       └── C
+      const { bufferId, childNodeIds, windowId } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+
+      const parentNodeId = childNodeIds[0];
+
+      // Add children A, B, C under Parent
+      const childA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "A",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "B",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "C",
+      });
+
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      // Enter block selection mode with Parent selected
+      yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
+
+      // Verify Parent is selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toContain(parentNodeId);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // When: User presses ArrowRight
+      yield* When.USER_PRESSES("{ArrowRight}");
+
+      // Then: A (first child) becomes selected
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([childA]);
+            expect(buf.blockSelectionAnchor).toBe(childA);
+            expect(buf.blockSelectionFocus).toBe(childA);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Verify we're still in buffer mode (not text editing)
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const activeEl = Option.getOrThrow(windowDoc).activeElement;
+            expect(activeEl?.type).toBe("buffer");
+          },
+          { timeout: 2000 },
+        ),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
   it("Escape from top-level block clears selection", async () => {
     await Effect.gen(function* () {
       // Given: Simple structure Root → [A, B, C], A is direct child of buffer root

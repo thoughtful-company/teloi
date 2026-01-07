@@ -274,6 +274,35 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // ArrowRight in block selection mode: select first child (if any)
+      if (e.key === "ArrowRight" && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            const currentFocus =
+              bufferDoc?.blockSelectionFocus ?? bufferDoc?.blockSelectionAnchor;
+
+            if (!currentFocus) return;
+
+            const children = yield* Node.getNodeChildren(currentFocus);
+
+            if (children.length > 0) {
+              const firstChild = children[0]!;
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [firstChild],
+                firstChild,
+                firstChild,
+              );
+            }
+          }),
+        );
+      }
+
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown") &&
         isBlockSelectionMode()
