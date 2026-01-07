@@ -328,14 +328,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               const selectionEnd = Math.max(anchorIndex, focusIndex);
               const isSingleSelection = selectionStart === selectionEnd;
 
-              // For multi-selection, clamp to selection bounds
-              // For single selection, allow moving outside
+              // For multi-selection, jump to edge (Up→top, Down→bottom)
+              // For single selection, move one step in arrow direction
               const clampedFocusIndex = isSingleSelection
                 ? newFocusIndex
-                : Math.max(
-                    selectionStart,
-                    Math.min(selectionEnd, newFocusIndex),
-                  );
+                : e.key === "ArrowUp"
+                  ? selectionStart
+                  : selectionEnd;
 
               const clampedFocus = childNodeIds[clampedFocusIndex];
               if (!clampedFocus) return;

@@ -560,7 +560,7 @@ describe("Block selection", () => {
       // When: User presses plain ArrowUp (no Shift)
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      // Then: Selection collapses to single block (C - one above focus D)
+      // Then: Selection collapses to single block (B - topmost of selection)
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -570,7 +570,7 @@ describe("Block selection", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selectedBlocks).toHaveLength(1);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[2]]); // C
+            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]); // B (topmost)
           },
           { timeout: 2000 },
         ),
@@ -700,7 +700,7 @@ describe("Block selection", () => {
       // When: User presses plain ArrowDown (no Shift)
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      // Then: Selection collapses to single block (B - one below focus A)
+      // Then: Selection collapses to single block (C - bottommost of selection)
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -710,7 +710,7 @@ describe("Block selection", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selectedBlocks).toHaveLength(1);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]); // B
+            expect(buf.selectedBlocks).toEqual([childNodeIds[2]]); // C (bottommost)
           },
           { timeout: 2000 },
         ),
