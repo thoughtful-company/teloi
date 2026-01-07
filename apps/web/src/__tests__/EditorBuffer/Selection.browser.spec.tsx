@@ -1445,6 +1445,70 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("Cmd+Up jumps to first sibling (skipping intermediate blocks)", async () => {
+    await Effect.gen(function* () {
+      // Given: 5 blocks A, B, C, D, E - C is selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+          { text: "E" },
+        ],
+      );
+
+      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on C
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+
+      // When: User presses Cmd+Up (Meta+ArrowUp)
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: A becomes selected (first sibling, not B - proves it jumped)
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+        anchor: childNodeIds[0],
+        focus: childNodeIds[0],
+      });
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Cmd+Down jumps to last sibling (skipping intermediate blocks)", async () => {
+    await Effect.gen(function* () {
+      // Given: 5 blocks A, B, C, D, E - C is selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+          { text: "E" },
+        ],
+      );
+
+      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on C
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+
+      // When: User presses Cmd+Down (Meta+ArrowDown)
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: E becomes selected (last sibling, not D - proves it jumped)
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[4]], {
+        anchor: childNodeIds[4],
+        focus: childNodeIds[4],
+      });
+    }).pipe(runtime.runPromise);
+  });
+
   it("ArrowDown navigates among children of a nested parent block", async () => {
     await Effect.gen(function* () {
       // Given: Root with one child (Parent), Parent has children A, B, C

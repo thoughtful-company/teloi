@@ -346,9 +346,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const siblings = yield* Node.getNodeChildren(parentId);
             const focusIndex = siblings.indexOf(currentFocus);
 
-            // Move focus up or down
-            const newFocusIndex =
-              e.key === "ArrowUp"
+            // Move focus up or down (Cmd+Arrow jumps to first/last)
+            const newFocusIndex = e.metaKey
+              ? e.key === "ArrowUp"
+                ? 0
+                : siblings.length - 1
+              : e.key === "ArrowUp"
                 ? Math.max(0, focusIndex - 1)
                 : Math.min(siblings.length - 1, focusIndex + 1);
 
