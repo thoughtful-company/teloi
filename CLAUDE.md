@@ -243,6 +243,11 @@ App
     you go to start of node b, press backspace. Selection is expected to be "Node A|Node B", but it will go to "Node| ANode B"
 - [x] Add spacing between paragraphs
 - [ ] Make system nodes non-editable
+- [ ] Refactor code
+  Goal of the refactor is to reduce amount of code and complexity in this code.
+
+**Known Tech Debt**:
+- `goalX` and `goalLine` in buffer selection can be independently null, but logically they should always come together (goalX without goalLine is meaningless). Current workaround uses `|| "last"` fallback. Fixing this requires schema migration.
 
 **Bugs**:
 - [ ] When you delete a node from sidebar that you currently focus, it stays on the screen
@@ -254,6 +259,7 @@ App
 - [ ] When you copy list elements and todo's they should be copied the right way
 - [x] When you indent node and outline it with "- ", they should be on the same X axis.
 - [x] When you try to copy child block (copy, or cut with cmd + x), it is not copied.
+- [ ] When you reload the page, selection is not restored in title
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

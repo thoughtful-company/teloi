@@ -10,6 +10,7 @@ import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
+import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
 import { Effect, Fiber, Option, Stream } from "effect";
 import {
   createEffect,
@@ -1187,6 +1188,8 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "buffer" as const, id: bufferId }),
           );
+          // Clear text selection - when returning from block selection, cursor should start fresh
+          yield* Buffer.setSelection(bufferId, Option.none());
           yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
         }),
       )
@@ -1212,6 +1215,8 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "buffer" as const, id: bufferId }),
           );
+          // Clear text selection - when returning from block selection, cursor should start fresh
+          yield* Buffer.setSelection(bufferId, Option.none());
           yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
         }),
       )
@@ -1237,6 +1242,8 @@ export default function Block({ blockId }: BlockProps) {
           yield* Window.setActiveElement(
             Option.some({ type: "buffer" as const, id: bufferId }),
           );
+          // Clear text selection - when returning from block selection, cursor should start fresh
+          yield* Buffer.setSelection(bufferId, Option.none());
           yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
         }),
       )
@@ -1324,8 +1331,11 @@ export default function Block({ blockId }: BlockProps) {
               onMoveToFirst={handleMoveToFirst}
               onMoveToLast={handleMoveToLast}
               onTypeTrigger={handleTypeTrigger}
-              initialClickCoords={clickCoords}
-              initialSelection={initialSelection}
+              initialStrategy={resolveSelectionStrategy({
+                clickCoords,
+                domSelection: initialSelection,
+                modelSelection: store.selection,
+              })}
               selection={store.selection}
             />
           </Show>

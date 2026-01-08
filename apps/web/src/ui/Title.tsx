@@ -7,6 +7,7 @@ import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
+import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Option, Stream } from "effect";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
@@ -52,8 +53,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         Stream.map((maybeActive) =>
           Option.match(maybeActive, {
             onNone: () => false,
-            onSome: (el) =>
-              el.type === "title" && el.bufferId === bufferId,
+            onSome: (el) => el.type === "title" && el.bufferId === bufferId,
           }),
         ),
         Stream.changesWith((a, b) => a === b),
@@ -70,23 +70,33 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       );
 
       const selectionStream = bufferStream.pipe(
-        Stream.map((buffer): { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null => {
-          if (!buffer?.selection) return null;
+        Stream.map(
+          (
+            buffer,
+          ): {
+            anchor: number;
+            head: number;
+            goalX: number | null;
+            goalLine: "first" | "last" | null;
+            assoc: -1 | 0 | 1;
+          } | null => {
+            if (!buffer?.selection) return null;
 
-          const sel = buffer.selection;
-          // Only return selection if anchor is on this node (the title's node)
-          if (sel.anchor.nodeId !== nodeId) {
-            return null;
-          }
+            const sel = buffer.selection;
+            // Only return selection if anchor is on this node (the title's node)
+            if (sel.anchor.nodeId !== nodeId) {
+              return null;
+            }
 
-          return {
-            anchor: sel.anchorOffset,
-            head: sel.focusOffset,
-            goalX: sel.goalX ?? null,
-            goalLine: sel.goalLine ?? null,
-            assoc: sel.assoc,
-          };
-        }),
+            return {
+              anchor: sel.anchorOffset,
+              head: sel.focusOffset,
+              goalX: sel.goalX ?? null,
+              goalLine: sel.goalLine ?? null,
+              assoc: sel.assoc,
+            };
+          },
+        ),
         Stream.changesWith(deepEqual),
       );
 
@@ -106,7 +116,13 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     project: (v) => v,
     initial: {
       isActive: false,
-      selection: null as { anchor: number; head: number; goalX: number | null; goalLine: "first" | "last" | null; assoc: -1 | 0 | 1 } | null,
+      selection: null as {
+        anchor: number;
+        head: number;
+        goalX: number | null;
+        goalLine: "first" | "last" | null;
+        assoc: -1 | 0 | 1;
+      } | null,
     },
   });
 
@@ -209,9 +225,11 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
         // Preserve existing goalX if set (for chained arrow navigation)
         const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX = Option.isSome(existingSelection) && existingSelection.value.goalX != null
-          ? existingSelection.value.goalX
-          : cursorGoalX;
+        const goalX =
+          Option.isSome(existingSelection) &&
+          existingSelection.value.goalX != null
+            ? existingSelection.value.goalX
+            : cursorGoalX;
 
         const firstChildId = children[0]!;
         const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
@@ -274,7 +292,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   };
 
   return (
-    <div data-element-id={bufferId} data-element-type="title" onClick={handleFocus} class="min-h-[var(--text-title--line-height)]">
+    <div
+      data-element-id={bufferId}
+      data-element-type="title"
+      onClick={handleFocus}
+      class="min-h-[var(--text-title--line-height)]"
+    >
       <Show
         when={store.isActive}
         fallback={
@@ -290,7 +313,11 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           onBlur={handleBlur}
           onArrowRightAtEnd={handleArrowRightAtEnd}
           onArrowDownOnLastLine={handleArrowDownOnLastLine}
-          initialClickCoords={clickCoords}
+          initialStrategy={resolveSelectionStrategy({
+            clickCoords,
+            domSelection: null,
+            modelSelection: store.selection,
+          })}
           selection={store.selection}
           variant="title"
         />

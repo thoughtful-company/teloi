@@ -3,6 +3,7 @@ import { EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { Id } from "@/schema";
 import * as BlockType from "@/services/ui/BlockType";
+import { SelectionStrategy } from "@/utils/selectionStrategy";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
@@ -103,8 +104,9 @@ interface TextEditorProps {
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
   ) => boolean;
-  initialClickCoords?: { x: number; y: number } | null;
-  initialSelection?: { anchor: number; head: number } | null;
+  /** Strategy for initial cursor positioning on mount */
+  initialStrategy: SelectionStrategy;
+  /** Reactive selection from model (for ongoing sync after mount) */
   selection?: {
     anchor: number;
     head: number;
@@ -143,8 +145,7 @@ export default function TextEditor(props: TextEditorProps) {
     onMoveToFirst,
     onMoveToLast,
     onTypeTrigger,
-    initialClickCoords,
-    initialSelection,
+    initialStrategy,
     variant = "block",
   } = props;
 
@@ -659,7 +660,7 @@ export default function TextEditor(props: TextEditorProps) {
     // report selection changes caused by yCollab/CodeMirror during view initialization.
     const docHasContent = state.doc.length > 0;
     const hasExplicitSelection =
-      !!initialSelection || !!props.selection || !!initialClickCoords;
+      initialStrategy.type !== "default" || !!props.selection;
     if (docHasContent && !hasExplicitSelection) {
       awaitingSelectionFromModel = true;
     }
@@ -670,90 +671,79 @@ export default function TextEditor(props: TextEditorProps) {
     });
 
     console.debug("[TextEditor.mount] Initial selection state", {
+      initialStrategy: initialStrategy.type,
       propsSelection: props.selection,
       docLength: view.state.doc.length,
       willDefault: !hasExplicitSelection,
       awaitingSelection: awaitingSelectionFromModel,
     });
 
-    // Priority: initialSelection (from click with existing selection) >
-    // props.selection (from model) > initialClickCoords (from click position)
-    if (initialSelection) {
-      const docLen = view.state.doc.length;
-      const anchor = Math.min(initialSelection.anchor, docLen);
-      const head = Math.min(initialSelection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
-    } else if (
-      props.selection?.goalX != null &&
-      props.selection?.goalLine != null
-    ) {
-      // Use goalX (absolute viewport X) to position cursor on the target line
-      const linePos =
-        props.selection.goalLine === "first" ? 0 : view.state.doc.length;
-      const lineCoords = view.coordsAtPos(linePos);
-      const contentRect = view.contentDOM.getBoundingClientRect();
-      const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
-      const pos = view.posAtCoords({
-        x: props.selection.goalX,
-        y: targetY,
-      });
-
-      if (pos !== null) {
-        suppressSelectionChange = true;
-        view.dispatch({ selection: { anchor: pos } });
-        suppressSelectionChange = false;
-      }
-    } else if (props.selection) {
-      const docLen = view.state.doc.length;
-      // If doc is empty (Yjs hasn't synced yet), the updateListener will apply selection when content arrives
-      if (docLen > 0) {
-        const anchor = Math.min(props.selection.anchor, docLen);
-        const head = Math.min(props.selection.head, docLen);
-
-        // Suppress onSelectionChange - this is syncing FROM model, not user input
-        suppressSelectionChange = true;
+    // Apply initial selection based on strategy type
+    const docLen = view.state.doc.length;
+    switch (initialStrategy.type) {
+      case "range": {
+        const anchor = Math.min(initialStrategy.anchor, docLen);
+        const head = Math.min(initialStrategy.head, docLen);
         if (anchor === head) {
           view.dispatch({
             selection: EditorSelection.create([
-              EditorSelection.cursor(anchor, props.selection.assoc),
+              EditorSelection.cursor(anchor, initialStrategy.assoc),
             ]),
           });
         } else {
           view.dispatch({ selection: { anchor, head } });
         }
-        suppressSelectionChange = false;
+        break;
       }
-    } else if (initialClickCoords) {
-      // Only use click coords if doc has content - clicking on empty doc is meaningless
-      // and the saved selection will be restored when Yjs syncs
-      const docLen = view.state.doc.length;
-
-      if (docLen > 0) {
-        const { pos, assoc } = view.posAndSideAtCoords(initialClickCoords) || {
-          pos: null,
-          assoc: 0,
-        };
-        if (pos !== null) {
-          // Don't suppress - user clicks SHOULD save selection to buffer
-          view.dispatch({
-            selection: EditorSelection.create([
-              EditorSelection.cursor(pos, assoc),
-            ]),
+      case "goalX": {
+        if (docLen > 0) {
+          const linePos = initialStrategy.goalLine === "first" ? 0 : docLen;
+          const lineCoords = view.coordsAtPos(linePos);
+          const contentRect = view.contentDOM.getBoundingClientRect();
+          const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
+          const pos = view.posAtCoords({
+            x: initialStrategy.goalX,
+            y: targetY,
           });
+
+          if (pos !== null) {
+            suppressSelectionChange = true;
+            view.dispatch({ selection: { anchor: pos } });
+            suppressSelectionChange = false;
+          }
         }
+        break;
       }
-    } else if (view.state.doc.length > 0) {
-      // Only default to position 0 if doc has content
-      // Otherwise, let updateListener set selection when Yjs syncs
-      // Suppress onSelectionChange to avoid overwriting pending selection from model
-      suppressSelectionChange = true;
-      view.dispatch({ selection: { anchor: 0 } });
-      suppressSelectionChange = false;
-      // awaitingSelectionFromModel was already set before view creation
+      case "click": {
+        if (docLen > 0) {
+          const result = view.posAndSideAtCoords({
+            x: initialStrategy.x,
+            y: initialStrategy.y,
+          });
+          if (result && result.pos !== null) {
+            // Don't suppress - user clicks SHOULD save selection to buffer
+            view.dispatch({
+              selection: EditorSelection.create([
+                EditorSelection.cursor(result.pos, result.assoc),
+              ]),
+            });
+          }
+        }
+        break;
+      }
+      case "default": {
+        if (docLen > 0) {
+          // Only default to position 0 if doc has content
+          // Otherwise, let updateListener set selection when Yjs syncs
+          suppressSelectionChange = true;
+          view.dispatch({ selection: { anchor: 0 } });
+          suppressSelectionChange = false;
+        }
+        break;
+      }
     }
 
     // Focus logic: balance cursor flash prevention with immediate focus for new blocks
-    const docLen = view.state.doc.length;
 
     if (docLen > 0) {
       // Content already loaded - focus immediately
