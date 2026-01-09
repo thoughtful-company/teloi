@@ -30,6 +30,9 @@ export class BufferT extends Context.Tag("BufferT")<
       Option.Option<Model.BufferSelection>,
       BufferNotFoundError
     >;
+    getAssignedNodeId: (
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<Id.Node | null, BufferNotFoundError>;
     setSelection: (
       bufferId: Id.Buffer,
       selection: Option.Option<Model.BufferSelection>,
@@ -60,6 +63,11 @@ export const BufferLive = Layer.effect(
       getSelection: (bufferId: Id.Buffer) =>
         get(bufferId, "selection").pipe(
           Effect.map(Option.fromNullable),
+          Effect.provideService(StoreT, Store),
+        ),
+      getAssignedNodeId: (bufferId: Id.Buffer) =>
+        get(bufferId, "assignedNodeId").pipe(
+          Effect.map((id) => (id != null ? Id.Node.make(id) : null)),
           Effect.provideService(StoreT, Store),
         ),
       setSelection: withContext(setSelection)(context),

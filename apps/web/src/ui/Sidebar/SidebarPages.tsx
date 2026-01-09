@@ -1,10 +1,12 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { YjsT } from "@/services/external/Yjs";
+import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
+import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount } from "solid-js";
 
 const MAX_TITLE_LENGTH = 30;
@@ -49,7 +51,24 @@ function PageItem(props: PageItemProps) {
     e.stopPropagation();
     runtime.runPromise(
       Effect.gen(function* () {
+        const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
+        const Navigation = yield* NavigationT;
         const Node = yield* NodeT;
+
+        const maybeBufferId = yield* Window.getActiveBufferId();
+        if (Option.isSome(maybeBufferId)) {
+          const assignedNodeId = yield* Buffer.getAssignedNodeId(
+            maybeBufferId.value,
+          ).pipe(
+            Effect.catchTag("BufferNotFoundError", () => Effect.succeed(null)),
+          );
+
+          if (assignedNodeId === props.nodeId) {
+            yield* Navigation.navigateTo(System.WORKSPACE);
+          }
+        }
+
         yield* Node.deleteNode(props.nodeId);
       }),
     );

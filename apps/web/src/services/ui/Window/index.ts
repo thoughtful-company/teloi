@@ -19,6 +19,7 @@ export class WindowT extends Context.Tag("WindowT")<
     setActiveElement: (
       element: Option.Option<Entity.Element>,
     ) => Effect.Effect<void>;
+    getActiveBufferId: () => Effect.Effect<Option.Option<Id.Buffer>>;
   }
 >() {}
 
@@ -75,9 +76,30 @@ export const WindowLive = Layer.effect(
         );
       }).pipe(Effect.orDie);
 
+    const getActiveBufferId = () =>
+      Effect.gen(function* () {
+        const sessionId = yield* Store.getSessionId();
+        const windowId = Id.Window.make(sessionId);
+        const windowDoc = yield* Store.getDocument("window", windowId);
+
+        if (Option.isNone(windowDoc)) return Option.none<Id.Buffer>();
+
+        const paneIds = windowDoc.value.panes;
+        if (paneIds.length === 0) return Option.none<Id.Buffer>();
+
+        const paneDoc = yield* Store.getDocument("pane", paneIds[0]);
+        if (Option.isNone(paneDoc)) return Option.none<Id.Buffer>();
+
+        const firstBuffer = paneDoc.value.buffers[0];
+        if (firstBuffer === undefined) return Option.none<Id.Buffer>();
+
+        return Option.some(firstBuffer);
+      }).pipe(Effect.orDie);
+
     return {
       subscribeActiveElement,
       setActiveElement,
+      getActiveBufferId,
     };
   }),
 );

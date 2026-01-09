@@ -1,7 +1,6 @@
 import { Id, System } from "@/schema";
 import { URLServiceB } from "@/services/browser/URLService";
 import { NodeT } from "@/services/domain/Node";
-import { StoreT } from "@/services/external/Store";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { BufferT } from "../Buffer";
 import { WindowT } from "../Window";
@@ -20,7 +19,9 @@ const parseNodeIdFromPath = (path: string): Option.Option<Id.Node> => {
   }
   // Then check for /workspace/* pattern
   const match = path.match(/^\/workspace\/(.+)$/);
-  return match && match[1] ? Option.some(Id.Node.make(match[1])) : Option.none();
+  return match && match[1]
+    ? Option.some(Id.Node.make(match[1]))
+    : Option.none();
 };
 
 const NODE_TO_PATH: Record<string, string> = {
@@ -57,28 +58,9 @@ export const NavigationLive = Layer.effect(
   NavigationT,
   Effect.gen(function* () {
     const URL = yield* URLServiceB;
-    const Store = yield* StoreT;
     const Buffer = yield* BufferT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
-
-    const getActiveBufferId = Effect.gen(function* () {
-      const sessionId = yield* Store.getSessionId();
-      const windowId = Id.Window.make(sessionId);
-      const windowDoc = yield* Store.getDocument("window", windowId);
-
-      if (Option.isNone(windowDoc)) return Option.none<Id.Buffer>();
-
-      const paneIds = windowDoc.value.panes;
-      if (paneIds.length === 0) return Option.none<Id.Buffer>();
-
-      const paneDoc = yield* Store.getDocument("pane", paneIds[0]);
-      if (Option.isNone(paneDoc) || paneDoc.value.buffers.length === 0) {
-        return Option.none<Id.Buffer>();
-      }
-
-      return Option.some(paneDoc.value.buffers[0]);
-    });
 
     const validateNodeId = (nodeId: Id.Node) =>
       Node.attestExistence(nodeId).pipe(
@@ -99,13 +81,10 @@ export const NavigationLive = Layer.effect(
           nodeIdToUse = System.WORKSPACE;
         }
 
-        const maybeBufferId = yield* getActiveBufferId;
+        const maybeBufferId = yield* Window.getActiveBufferId();
         if (Option.isNone(maybeBufferId)) return;
 
-        yield* Buffer.setAssignedNodeId(
-          maybeBufferId.value as Id.Buffer,
-          nodeIdToUse,
-        );
+        yield* Buffer.setAssignedNodeId(maybeBufferId.value, nodeIdToUse);
 
         yield* Effect.logDebug("[Navigation.syncUrlToModel] Synced").pipe(
           Effect.annotateLogs({ path, nodeIdToUse }),
@@ -121,14 +100,15 @@ export const NavigationLive = Layer.effect(
             Effect.gen(function* () {
               const maybeNodeId = parseNodeIdFromPath(path);
               const validatedNodeId = yield* Option.match(maybeNodeId, {
-                onNone: () => Effect.succeed(System.WORKSPACE as Id.Node | null),
+                onNone: () =>
+                  Effect.succeed(System.WORKSPACE as Id.Node | null),
                 onSome: validateNodeId,
               });
 
-              const maybeBufferId = yield* getActiveBufferId;
+              const maybeBufferId = yield* Window.getActiveBufferId();
               if (Option.isNone(maybeBufferId)) return;
 
-              const bufferId = maybeBufferId.value as Id.Buffer;
+              const bufferId = maybeBufferId.value;
 
               yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
 
@@ -168,13 +148,11 @@ export const NavigationLive = Layer.effect(
       options?: { focusTitle?: boolean },
     ) =>
       Effect.gen(function* () {
-        const maybeBufferId = yield* getActiveBufferId;
+        const maybeBufferId = yield* Window.getActiveBufferId();
         if (Option.isNone(maybeBufferId)) return;
 
-        const bufferId = maybeBufferId.value as Id.Buffer;
-        const validatedNodeId = nodeId
-          ? yield* validateNodeId(nodeId)
-          : null;
+        const bufferId = maybeBufferId.value;
+        const validatedNodeId = nodeId ? yield* validateNodeId(nodeId) : null;
 
         yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
         yield* URL.setPath(makePathFromNodeId(validatedNodeId));
