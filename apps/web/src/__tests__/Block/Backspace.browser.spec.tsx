@@ -3,10 +3,31 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, it } from "vitest";
-import { Given, render, runtime, Then, When } from "../bdd";
+import { afterEach, beforeEach, describe, it } from "vitest";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 describe("Block Backspace key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("merges with previous sibling when Backspace pressed at start", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
@@ -134,9 +155,7 @@ describe("Block Backspace key", () => {
   it("merges first child into parent when Backspace pressed at start", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [
-          { text: "FirstChild" },
-        ]);
+        yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [{ text: "FirstChild" }]);
 
       const [firstChildId] = childNodeIds;
       const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);

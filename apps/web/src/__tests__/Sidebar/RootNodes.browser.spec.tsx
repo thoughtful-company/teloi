@@ -5,10 +5,23 @@ import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { Effect, Stream } from "effect";
 import { nanoid } from "nanoid";
-import { describe, expect, it } from "vitest";
-import { runtime } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Sidebar Workspace Pages", () => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("subscribeRootNodes returns pages created under workspace", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {
@@ -21,7 +34,11 @@ describe("Sidebar Workspace Pages", () => {
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
+            data: {
+              nodeId: pageNodeId,
+              parentId: System.WORKSPACE,
+              position: "a0",
+            },
           }),
         );
 
@@ -55,7 +72,11 @@ describe("Sidebar Workspace Pages", () => {
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
+            data: {
+              nodeId: pageNodeId,
+              parentId: System.WORKSPACE,
+              position: "a0",
+            },
           }),
         );
 
@@ -84,7 +105,11 @@ describe("Sidebar Workspace Pages", () => {
         yield* Store.commit(
           events.nodeCreated({
             timestamp: Date.now(),
-            data: { nodeId: pageNodeId, parentId: System.WORKSPACE, position: "a0" },
+            data: {
+              nodeId: pageNodeId,
+              parentId: System.WORKSPACE,
+              position: "a0",
+            },
           }),
         );
 

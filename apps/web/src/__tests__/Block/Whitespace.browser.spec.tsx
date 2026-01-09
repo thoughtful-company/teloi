@@ -2,10 +2,25 @@ import "@/index.css";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Block whitespace rendering", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   /**
    * Unfocused blocks render with a simple <p> tag.
    * HTML normally collapses whitespace, so we need to preserve it.

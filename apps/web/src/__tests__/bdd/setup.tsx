@@ -3,9 +3,11 @@ import { schema } from "@/livestore/schema";
 import { runtime, type BrowserRuntime } from "@/runtime";
 import { makeKeyboardLive } from "@/services/browser/KeyboardService";
 import { makeURLServiceLive } from "@/services/browser/URLService";
+import { DataPortLive } from "@/services/domain/DataPort";
 import { NodeLive } from "@/services/domain/Node";
 import { TupleLive } from "@/services/domain/Tuple";
 import { TypeLive } from "@/services/domain/Type";
+import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeYjsLive } from "@/services/external/Yjs";
 import { BlockLive } from "@/services/ui/Block";
@@ -82,7 +84,9 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
 
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
   const TestLayer = pipe(
-    TitleLive,
+    NavigationLive,
+    Layer.provideMerge(DataPortLive),
+    Layer.provideMerge(TitleLive),
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(WindowLive),

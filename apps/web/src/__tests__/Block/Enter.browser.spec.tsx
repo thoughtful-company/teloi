@@ -3,10 +3,31 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 describe("Block Enter key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("splits text when Enter pressed in middle of text", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
@@ -115,6 +136,21 @@ describe("Block Enter key", () => {
 });
 
 describe("Title Enter key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   // Document structure:
   // Title: "Document Title" (no children yet)
   //

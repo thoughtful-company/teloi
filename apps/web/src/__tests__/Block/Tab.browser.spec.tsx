@@ -3,10 +3,31 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, it } from "vitest";
-import { Given, render, runtime, Then, When } from "../bdd";
+import { afterEach, beforeEach, describe, it } from "vitest";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 describe("Block Tab key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("indents block to become child of previous sibling when Tab pressed", async () => {
     await Effect.gen(function* () {
       // Setup: root with two children
@@ -120,6 +141,21 @@ describe("Block Tab key", () => {
 });
 
 describe("Block selection Tab key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("Tab indents all selected blocks under previous sibling (grouped)", async () => {
     await Effect.gen(function* () {
       // Given: root with 3 children A, B, C at same level
