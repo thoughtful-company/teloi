@@ -1,7 +1,9 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { YjsT } from "@/services/external/Yjs";
+import { BufferT } from "@/services/ui/Buffer";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
+import { TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -14,6 +16,7 @@ import TextEditor, {
   type EditorAction,
   type SelectionInfo,
 } from "./TextEditor";
+import { TypePicker } from "./TypePicker";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -53,6 +56,21 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       selection: null as TitleSelection | null,
     },
   });
+
+  // Type picker state
+  const [pickerState, setPickerState] = createSignal<{
+    visible: boolean;
+    position: { x: number; y: number };
+    from: number;
+  } | null>(null);
+
+  const getPickerQuery = () => {
+    const state = pickerState();
+    if (!state) return "";
+    const text = textContent();
+    const cursorPos = store.selection?.head ?? text.length;
+    return text.slice(state.from + 1, cursorPos);
+  };
 
   onMount(() => {
     const dispose = start(runtime);
@@ -100,9 +118,125 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
+  const handleTypePickerOpen = (
+    position: { x: number; y: number },
+    from: number,
+  ) => {
+    setPickerState({ visible: true, position, from });
+  };
+
+  const handleTypePickerClose = () => {
+    setPickerState(null);
+  };
+
+  const handleTypePickerSelect = (typeId: Id.Node) => {
+    const state = pickerState();
+    if (!state) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const Buffer = yield* BufferT;
+
+        yield* TypePicker.applyType(nodeId, typeId);
+
+        const cursorPos = store.selection?.head ?? ytext.length;
+        const deleteLength = cursorPos - state.from;
+        if (deleteLength > 0) {
+          ytext.delete(state.from, deleteLength);
+        }
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId },
+            anchorOffset: state.from,
+            focus: { nodeId },
+            focusOffset: state.from,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        yield* Effect.logDebug("[Title] Type selected via picker").pipe(
+          Effect.annotateLogs({ bufferId, nodeId, typeId }),
+        );
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Title] Type picker select failed").pipe(
+            Effect.annotateLogs({ bufferId, nodeId, typeId, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+
+    setPickerState(null);
+  };
+
+  const handleTypePickerCreate = (name: string) => {
+    const state = pickerState();
+    if (!state) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const Buffer = yield* BufferT;
+
+        const typeId = yield* TypePicker.createType(name);
+        yield* TypePicker.applyType(nodeId, typeId);
+
+        const cursorPos = store.selection?.head ?? ytext.length;
+        const deleteLength = cursorPos - state.from;
+        if (deleteLength > 0) {
+          ytext.delete(state.from, deleteLength);
+        }
+
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId },
+            anchorOffset: state.from,
+            focus: { nodeId },
+            focusOffset: state.from,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        yield* Effect.logDebug("[Title] Type created via picker").pipe(
+          Effect.annotateLogs({ bufferId, nodeId, typeId, name }),
+        );
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Title] Type picker create failed").pipe(
+            Effect.annotateLogs({ bufferId, nodeId, name, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+
+    setPickerState(null);
+  };
+
   const handleAction = (action: EditorAction): void => {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => {
+        if (pickerState()) {
+          const TypePicker = runtime.runSync(TypePickerT);
+          const query = getPickerQuery();
+          const types = runtime.runSync(TypePicker.getAvailableTypes());
+          const filtered = TypePicker.filterTypes(types, query);
+          if (filtered.length > 0) {
+            handleTypePickerSelect(filtered[0]!.id);
+          } else if (query) {
+            handleTypePickerCreate(query);
+          }
+          return;
+        }
         runtime.runPromise(
           Effect.gen(function* () {
             const Title = yield* TitleT;
@@ -135,10 +269,18 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
               }),
             );
           }),
-          Match.orElse(() => {}), // Title ignores up/left navigation
+          Match.orElse(() => {}),
         );
       }),
-      Match.orElse(() => {}), // Title ignores other actions
+      Match.tag("Escape", () => handleTypePickerClose()),
+      Match.tag("TypePickerOpen", ({ position, from }) =>
+        handleTypePickerOpen(position, from),
+      ),
+      Match.tag("TypePickerUpdate", () => {
+        // Query is computed reactively from textContent and selection
+      }),
+      Match.tag("TypePickerClose", () => handleTypePickerClose()),
+      Match.orElse(() => {}),
     );
   };
 
@@ -169,6 +311,18 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           selection={store.selection}
           variant="title"
         />
+      </Show>
+      <Show when={pickerState()}>
+        {(state) => (
+          <TypePicker
+            position={state().position}
+            query={getPickerQuery()}
+            nodeId={nodeId}
+            onSelect={handleTypePickerSelect}
+            onCreate={handleTypePickerCreate}
+            onClose={handleTypePickerClose}
+          />
+        )}
       </Show>
     </div>
   );
