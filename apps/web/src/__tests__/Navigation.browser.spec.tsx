@@ -3,22 +3,31 @@ import { Id, System } from "@/schema";
 import { NavigationT } from "@/services/ui/Navigation";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Option } from "effect";
-import { describe, it, beforeEach, expect } from "vitest";
-import { Given, runtime } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
 
 describe("Navigation", () => {
-  beforeEach(() => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
     // Reset URL to root before each test
     history.replaceState({}, "", "/");
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
   });
 
   describe("syncUrlToModel", () => {
     it("sets buffer assignedNodeId from valid nodeId in URL", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy (window → pane → buffer → node)
-        const { bufferId, nodeId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId, nodeId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains that nodeId
         history.replaceState({}, "", `/workspace/${nodeId}`);
@@ -38,9 +47,8 @@ describe("Navigation", () => {
     it("sets buffer assignedNodeId to null for invalid nodeId in URL", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains a non-existent nodeId
         history.replaceState({}, "", "/workspace/non-existent-node-id");
@@ -60,9 +68,8 @@ describe("Navigation", () => {
     it("uses System.WORKSPACE when URL is empty", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is just root (no nodeId)
         history.replaceState({}, "", "/");
@@ -82,9 +89,8 @@ describe("Navigation", () => {
     it("uses System.WORKSPACE when URL has /workspace/ but no nodeId", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is /workspace/ without a nodeId
         history.replaceState({}, "", "/workspace/");
@@ -106,9 +112,8 @@ describe("Navigation", () => {
     it("updates buffer assignedNodeId and URL", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId, nodeId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId, nodeId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: Initial URL is root
         history.replaceState({}, "", "/");
@@ -131,9 +136,8 @@ describe("Navigation", () => {
     it("navigateTo(null) clears buffer and sets URL to /workspace", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy with node assigned via navigateTo
-        const { bufferId, nodeId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId, nodeId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
         const Navigation = yield* NavigationT;
         yield* Navigation.navigateTo(nodeId);
 
@@ -154,9 +158,8 @@ describe("Navigation", () => {
     it("navigateTo with invalid nodeId sets assignedNodeId to null", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } = yield* Given.A_FULL_HIERARCHY_WITH_TEXT(
-          "Test content",
-        );
+        const { bufferId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // When: navigateTo is called with a non-existent nodeId
         const Navigation = yield* NavigationT;

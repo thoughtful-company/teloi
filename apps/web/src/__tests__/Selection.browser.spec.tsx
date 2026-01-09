@@ -5,10 +5,25 @@ import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { cleanup, waitFor } from "solid-testing-library";
-import { describe, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
+import { afterEach, beforeEach, describe, it } from "vitest";
+import { Given, Then, When, setupClientTest, type BrowserRuntime } from "./bdd";
 
 describe("Selection sync", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanupTest: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanupTest = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanupTest();
+  });
+
   it("syncs selection from model to CodeMirror", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(

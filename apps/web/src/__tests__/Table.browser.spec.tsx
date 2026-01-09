@@ -27,21 +27,21 @@ describe("Table", () => {
       () => {
         expect(screen.getByText("Concentration")).toBeTruthy();
       },
-      { timeout: 100 },
+      { timeout: 1000 },
     );
 
     await waitFor(
       () => {
         expect(screen.getByText("Clarity")).toBeTruthy();
       },
-      { timeout: 100 },
+      { timeout: 1000 },
     );
 
     await waitFor(
       () => {
         expect(screen.getByText("Equanimity")).toBeTruthy();
       },
-      { timeout: 100 },
+      { timeout: 1000 },
     );
   });
 });

@@ -6,10 +6,23 @@ import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, runtime } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
 
 describe("DataPort", () => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("exportData", () => {
     it("exports data with correct structure", async () => {
       await Effect.gen(function* () {
@@ -782,12 +795,13 @@ describe("DataPort", () => {
         expect(exportedRole?.name).toBe("from");
         expect(exportedRole?.required).toBe(true);
 
-        const exportedAllowedType = exported.data.tupleTypeRoleAllowedTypes.find(
-          (at) =>
-            at.tupleTypeId === "relation-type" &&
-            at.position === 0 &&
-            at.allowedTypeId === "person-type",
-        );
+        const exportedAllowedType =
+          exported.data.tupleTypeRoleAllowedTypes.find(
+            (at) =>
+              at.tupleTypeId === "relation-type" &&
+              at.position === 0 &&
+              at.allowedTypeId === "person-type",
+          );
         expect(exportedAllowedType).toBeDefined();
       }).pipe(runtime.runPromise);
     });

@@ -3,10 +3,31 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, it } from "vitest";
-import { Given, render, runtime, Then, When } from "../bdd";
+import { afterEach, beforeEach, describe, it } from "vitest";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 describe("Block Delete key", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   /**
    * - First|   <- cursor at end
    * - Second
@@ -57,8 +78,10 @@ describe("Block Delete key", () => {
   it("merges with first child when Delete pressed at end of parent", async () => {
     await Effect.gen(function* () {
       // Create root with one child "Parent"
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
 
       const [parentNodeId] = childNodeIds;
 

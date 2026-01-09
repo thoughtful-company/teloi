@@ -3,10 +3,23 @@ import { events, tables } from "@/livestore/schema";
 import { StoreT } from "@/services/external/Store";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, runtime } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
 
 describe("Node Deletion", () => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("tupleTypeRoleAllowedTypes cleanup", () => {
     it("removes allowedTypeId references when the allowed type node is deleted", async () => {
       await Effect.gen(function* () {
@@ -48,9 +61,7 @@ describe("Node Deletion", () => {
         // Verify the allowed type reference exists
         const beforeDeletion = yield* Store.query(
           queryDb(
-            tables.tupleTypeRoleAllowedTypes
-              .select()
-              .where({ allowedTypeId }),
+            tables.tupleTypeRoleAllowedTypes.select().where({ allowedTypeId }),
           ),
         );
         expect(beforeDeletion).toHaveLength(1);
@@ -67,9 +78,7 @@ describe("Node Deletion", () => {
         // Verify the allowed type reference is cleaned up
         const afterDeletion = yield* Store.query(
           queryDb(
-            tables.tupleTypeRoleAllowedTypes
-              .select()
-              .where({ allowedTypeId }),
+            tables.tupleTypeRoleAllowedTypes.select().where({ allowedTypeId }),
           ),
         );
         expect(afterDeletion).toHaveLength(0);
@@ -116,9 +125,7 @@ describe("Node Deletion", () => {
         // Verify the reference exists
         const beforeDeletion = yield* Store.query(
           queryDb(
-            tables.tupleTypeRoleAllowedTypes
-              .select()
-              .where({ tupleTypeId }),
+            tables.tupleTypeRoleAllowedTypes.select().where({ tupleTypeId }),
           ),
         );
         expect(beforeDeletion).toHaveLength(1);
@@ -134,9 +141,7 @@ describe("Node Deletion", () => {
         // Verify references are cleaned up (this tests the existing tupleTypeId cleanup)
         const afterDeletion = yield* Store.query(
           queryDb(
-            tables.tupleTypeRoleAllowedTypes
-              .select()
-              .where({ tupleTypeId }),
+            tables.tupleTypeRoleAllowedTypes.select().where({ tupleTypeId }),
           ),
         );
         expect(afterDeletion).toHaveLength(0);

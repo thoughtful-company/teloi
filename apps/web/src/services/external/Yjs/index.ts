@@ -30,12 +30,14 @@ export const makeYjsLive = (config: YjsConfig) =>
       const doc = new Y.Doc();
       const undoManagers = new Map<string, Y.UndoManager>();
 
-      // Wait for IndexedDB persistence to sync before returning
+      // Wait for IndexedDB persistence to sync before returning.
+      // Using Effect.promise (untyped errors) intentionally - this is one-time
+      // initialization, and if persistence fails there's no recovery path anyway.
       if (config.persist === true) {
         yield* Effect.promise(async () => {
           const { IndexeddbPersistence } = await import("y-indexeddb");
           const persistence = new IndexeddbPersistence(config.roomName, doc);
-          await persistence.synced;
+          await persistence.whenSynced;
         });
       }
 

@@ -4,12 +4,24 @@ import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, When } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Block blur clears activeElement", () => {
-  // BUG: When block is blurred by clicking outside, activeElement persists.
-  // This causes the block to be focused again on page reload.
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
 
   it("clears activeElement when clicking outside focused block", async () => {
     await Effect.gen(function* () {
@@ -22,10 +34,8 @@ describe("Block blur clears activeElement", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // When: User clicks on the block
       yield* When.USER_CLICKS_BLOCK(blockId);
 
-      // Wait for CodeMirror to be focused
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -45,7 +55,6 @@ describe("Block blur clears activeElement", () => {
         ),
       );
 
-      // Verify: activeElement is set to the block
       const Window = yield* WindowT;
       const stream1 = yield* Window.subscribeActiveElement();
       const activeElement1 = yield* stream1.pipe(Stream.runHead);
@@ -56,23 +65,23 @@ describe("Block blur clears activeElement", () => {
       expect(elementValue1.type).toBe("block");
       expect((elementValue1 as { id: string }).id).toBe(blockId);
 
-      // When: User blurs the CodeMirror (clicks outside the editor)
-      // Note: Dispatch focusout event because CodeMirror's internal focus
-      // tracking doesn't always detect programmatic .blur() in watch mode
       yield* Effect.promise(async () => {
         const blockEl = document.querySelector(
           `[data-element-id="${blockId}"]`,
         );
         const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
         if (!cm) throw new Error("Block CodeMirror not found");
-        cm.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
+        cm.dispatchEvent(
+          new FocusEvent("focusout", {
+            bubbles: true,
+            relatedTarget: document.body,
+          }),
+        );
         cm.blur();
       });
 
-      // Wait for blur to be processed
       yield* Effect.sleep("300 millis");
 
-      // Then: activeElement should be cleared (None)
       const stream2 = yield* Window.subscribeActiveElement();
       const activeElement2 = yield* stream2.pipe(Stream.runHead);
 

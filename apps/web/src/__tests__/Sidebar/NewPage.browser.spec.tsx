@@ -3,10 +3,23 @@ import { System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Stream } from "effect";
-import { describe, expect, it } from "vitest";
-import { runtime } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Sidebar New Page", () => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("createRootNode creates a node as child of workspace", async () => {
     await runtime.runPromise(
       Effect.gen(function* () {

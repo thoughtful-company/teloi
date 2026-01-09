@@ -3,12 +3,26 @@ import { Id } from "@/schema";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
-import { Given, render, runtime, Then, When } from "../bdd";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 describe("Copy selected blocks (Mod+C)", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
   let clipboardContent: string = "";
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+
     clipboardContent = "";
     vi.spyOn(navigator.clipboard, "writeText").mockImplementation(
       async (text) => {
@@ -20,8 +34,9 @@ describe("Copy selected blocks (Mod+C)", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
+    await cleanup();
   });
 
   it("Mod+C copies single selected block text to clipboard", async () => {

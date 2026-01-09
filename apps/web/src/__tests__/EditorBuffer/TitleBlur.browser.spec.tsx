@@ -3,12 +3,24 @@ import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, When } from "../bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Title blur clears activeElement", () => {
-  // BUG: When title is blurred by clicking outside, activeElement persists.
-  // This causes the title to be focused again on page reload.
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
 
   it("clears activeElement when clicking outside focused title", async () => {
     await Effect.gen(function* () {
@@ -19,14 +31,14 @@ describe("Title blur clears activeElement", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // When: User clicks on the title
       yield* When.USER_CLICKS_TITLE(bufferId);
 
-      // Wait for CodeMirror to be focused
       yield* Effect.promise(() =>
         waitFor(
           () => {
-            const titleEl = document.querySelector(`[data-element-type="title"]`);
+            const titleEl = document.querySelector(
+              `[data-element-type="title"]`,
+            );
             const cm = titleEl?.querySelector(".cm-content");
             if (!cm) throw new Error("Title CodeMirror not found");
             if (
@@ -40,7 +52,6 @@ describe("Title blur clears activeElement", () => {
         ),
       );
 
-      // Verify: activeElement is set to the title
       const Window = yield* WindowT;
       const stream1 = yield* Window.subscribeActiveElement();
       const activeElement1 = yield* stream1.pipe(Stream.runHead);
@@ -51,7 +62,6 @@ describe("Title blur clears activeElement", () => {
       expect(elementValue1.type).toBe("title");
       expect((elementValue1 as { bufferId: string }).bufferId).toBe(bufferId);
 
-      // When: User blurs the title's CodeMirror (clicks outside the editor)
       yield* Effect.promise(async () => {
         const titleEl = document.querySelector(`[data-element-type="title"]`);
         const cm = titleEl?.querySelector(".cm-content") as HTMLElement;
@@ -59,10 +69,8 @@ describe("Title blur clears activeElement", () => {
         cm.blur();
       });
 
-      // Wait for blur effect to complete
       yield* Effect.sleep("300 millis");
 
-      // Then: activeElement should be cleared (None)
       const stream2 = yield* Window.subscribeActiveElement();
       const activeElement2 = yield* stream2.pipe(Stream.runHead);
 
