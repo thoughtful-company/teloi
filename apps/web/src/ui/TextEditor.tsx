@@ -10,6 +10,15 @@ import * as Y from "yjs";
 
 export type TextEditorVariant = "block" | "title";
 
+// === Keymap Condition Types ===
+
+type KeymapCondition =
+  | "always"
+  | "atStart" // anchor === 0 && head === 0
+  | "atEnd" // anchor === docLen && head === docLen
+  | "headAtStart" // head === 0
+  | "headAtEnd"; // head === docLen
+
 interface VariantStyles {
   fontSize: string;
   lineHeight: string;
@@ -73,37 +82,73 @@ export interface SelectionInfo {
   assoc: -1 | 0 | 1;
 }
 
+// === Editor Actions (Discriminated Union) ===
+
+export type EditorAction =
+  | { _tag: "Enter"; info: EnterKeyInfo }
+  | { _tag: "Tab" }
+  | { _tag: "ShiftTab" }
+  | { _tag: "BackspaceAtStart" }
+  | { _tag: "DeleteAtEnd" }
+  | {
+      _tag: "Navigate";
+      direction: "left" | "right" | "up" | "down";
+      goalX?: number;
+    }
+  | { _tag: "SelectionChange"; selection: SelectionInfo }
+  | { _tag: "Blur" }
+  | { _tag: "Escape" }
+  | { _tag: "ZoomIn" }
+  | { _tag: "BlockSelect"; direction: "up" | "down" }
+  | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
+  | {
+      _tag: "TypeTrigger";
+      typeId: Id.Node;
+      trigger: BlockType.TriggerDefinition;
+    };
+
+/** Action constructors for type-safe action creation */
+export const Action = {
+  Enter: (info: EnterKeyInfo): EditorAction => ({ _tag: "Enter", info }),
+  Tab: (): EditorAction => ({ _tag: "Tab" }),
+  ShiftTab: (): EditorAction => ({ _tag: "ShiftTab" }),
+  BackspaceAtStart: (): EditorAction => ({ _tag: "BackspaceAtStart" }),
+  DeleteAtEnd: (): EditorAction => ({ _tag: "DeleteAtEnd" }),
+  Navigate: (
+    direction: "left" | "right" | "up" | "down",
+    goalX?: number,
+  ): EditorAction =>
+    goalX !== undefined
+      ? { _tag: "Navigate", direction, goalX }
+      : { _tag: "Navigate", direction },
+  SelectionChange: (selection: SelectionInfo): EditorAction => ({
+    _tag: "SelectionChange",
+    selection,
+  }),
+  Blur: (): EditorAction => ({ _tag: "Blur" }),
+  Escape: (): EditorAction => ({ _tag: "Escape" }),
+  ZoomIn: (): EditorAction => ({ _tag: "ZoomIn" }),
+  BlockSelect: (direction: "up" | "down"): EditorAction => ({
+    _tag: "BlockSelect",
+    direction,
+  }),
+  Move: (action: "swapUp" | "swapDown" | "first" | "last"): EditorAction => ({
+    _tag: "Move",
+    action,
+  }),
+  TypeTrigger: (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ): EditorAction => ({ _tag: "TypeTrigger", typeId, trigger }),
+} as const;
+
 interface TextEditorProps {
   /** Yjs Y.Text instance for collaborative text */
   ytext: Y.Text;
   /** Yjs UndoManager for undo/redo */
   undoManager: Y.UndoManager;
-  onEnter?: (info: EnterKeyInfo) => void;
-  onTab?: () => void;
-  onShiftTab?: () => void;
-  onBackspaceAtStart?: () => void;
-  onDeleteAtEnd?: () => void;
-  onArrowLeftAtStart?: () => void;
-  onArrowRightAtEnd?: () => void;
-  onArrowUpOnFirstLine?: (goalX: number) => void;
-  onArrowDownOnLastLine?: (goalX: number) => void;
-  onSelectionChange?: (selection: SelectionInfo) => void;
-  onBlur?: () => void;
-  onZoomIn?: () => void;
-  onEscape?: () => void;
-  /** Called when Shift+ArrowUp is pressed with focus at offset 0 (transitioning to block selection) */
-  onShiftArrowUpFromTextSelection?: () => void;
-  /** Called when Shift+ArrowDown is pressed with focus at document end (transitioning to block selection) */
-  onShiftArrowDownFromTextSelection?: () => void;
-  onSwapUp?: () => void;
-  onSwapDown?: () => void;
-  onMoveToFirst?: () => void;
-  onMoveToLast?: () => void;
-  /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
-  onTypeTrigger?: (
-    typeId: Id.Node,
-    trigger: BlockType.TriggerDefinition,
-  ) => boolean;
+  /** Single handler for all editor actions */
+  onAction?: (action: EditorAction) => boolean | void;
   /** Strategy for initial cursor positioning on mount */
   initialStrategy: SelectionStrategy;
   /** Reactive selection from model (for ongoing sync after mount) */
@@ -125,29 +170,16 @@ export default function TextEditor(props: TextEditorProps) {
   const {
     ytext,
     undoManager,
-    onEnter,
-    onTab,
-    onShiftTab,
-    onBackspaceAtStart,
-    onDeleteAtEnd,
-    onArrowLeftAtStart,
-    onArrowRightAtEnd,
-    onArrowUpOnFirstLine,
-    onArrowDownOnLastLine,
-    onSelectionChange,
-    onBlur,
-    onZoomIn,
-    onEscape,
-    onShiftArrowUpFromTextSelection,
-    onShiftArrowDownFromTextSelection,
-    onSwapUp,
-    onSwapDown,
-    onMoveToFirst,
-    onMoveToLast,
-    onTypeTrigger,
+    onAction,
     initialStrategy,
     variant = "block",
   } = props;
+
+  /** Emit an action, returning true if handled */
+  const emit = (action: EditorAction): boolean => {
+    const result = onAction?.(action);
+    return result === true;
+  };
 
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
@@ -232,7 +264,6 @@ export default function TextEditor(props: TextEditorProps) {
         // Text changes are handled by Yjs, only track selection
         if (
           update.selectionSet &&
-          onSelectionChange &&
           !suppressSelectionChange &&
           !awaitingSelectionFromModel
         ) {
@@ -255,260 +286,119 @@ export default function TextEditor(props: TextEditorProps) {
             coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
           const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
-          onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
-        }
-        if (update.focusChanged && !update.view.hasFocus && onBlur) {
-          console.debug(
-            "[TextEditor.updateListener] Blur detected, calling onBlur",
+          emit(
+            Action.SelectionChange({
+              anchor: sel.anchor,
+              head: sel.head,
+              assoc,
+            }),
           );
-          onBlur();
+        }
+        if (update.focusChanged && !update.view.hasFocus) {
+          console.debug(
+            "[TextEditor.updateListener] Blur detected, emitting Blur action",
+          );
+          emit(Action.Blur());
         }
       }),
     ];
 
-    // Add Enter key handler if callback provided
-    if (onEnter) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Enter",
-            run: (view) => {
-              const state = view.state;
-              const cursorPos = state.selection.main.head;
-              const doc = state.doc.toString();
-              onEnter({
-                cursorPos,
-                textBefore: doc.slice(0, cursorPos),
-                textAfter: doc.slice(cursorPos),
-              });
-              return true; // Prevent default Enter behavior
-            },
-          },
-        ]),
-      );
+    // Declarative keymap configuration - emits actions
+    interface ActionKeyDef {
+      key: string;
+      action: EditorAction | ((view: EditorView) => EditorAction);
+      condition?: KeymapCondition;
     }
 
-    // Add Tab key handler if callback provided
-    if (onTab) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Tab",
-            run: () => {
-              onTab();
-              return true; // Prevent default Tab behavior
-            },
-          },
-        ]),
-      );
-    }
+    const actionKeyDefs: ActionKeyDef[] = [
+      // Enter - extracts cursor info
+      {
+        key: "Enter",
+        action: (view) => {
+          const cursorPos = view.state.selection.main.head;
+          const doc = view.state.doc.toString();
+          return Action.Enter({
+            cursorPos,
+            textBefore: doc.slice(0, cursorPos),
+            textAfter: doc.slice(cursorPos),
+          });
+        },
+      },
 
-    if (onShiftTab) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Tab",
-            run: () => {
-              onShiftTab();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
+      // Simple keybindings (always fire)
+      { key: "Tab", action: Action.Tab() },
+      { key: "Shift-Tab", action: Action.ShiftTab() },
+      { key: "Mod-.", action: Action.ZoomIn() },
+      { key: "Escape", action: Action.Escape() },
+      { key: "Alt-Mod-ArrowUp", action: Action.Move("swapUp") },
+      { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
+      { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
+      { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
 
-    if (onBackspaceAtStart) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Backspace",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              // Only intercept if cursor is at start and no selection
-              if (sel.anchor === 0 && sel.head === 0) {
-                onBackspaceAtStart();
-                return true;
-              }
-              return false; // Let default handle it
-            },
-          },
-        ]),
-      );
-    }
+      // Position-conditional (anchor AND head at position)
+      {
+        key: "Backspace",
+        action: Action.BackspaceAtStart(),
+        condition: "atStart",
+      },
+      {
+        key: "ArrowLeft",
+        action: Action.Navigate("left"),
+        condition: "atStart",
+      },
+      { key: "Delete", action: Action.DeleteAtEnd(), condition: "atEnd" },
+      {
+        key: "ArrowRight",
+        action: Action.Navigate("right"),
+        condition: "atEnd",
+      },
 
-    if (onDeleteAtEnd) {
+      // Head-only conditional (for extending selection)
+      {
+        key: "Shift-ArrowUp",
+        action: Action.BlockSelect("up"),
+        condition: "headAtStart",
+      },
+      {
+        key: "Shift-ArrowDown",
+        action: Action.BlockSelect("down"),
+        condition: "headAtEnd",
+      },
+    ];
+
+    // Build keymaps from action definitions
+    for (const def of actionKeyDefs) {
       extensions.push(
         keymap.of([
           {
-            key: "Delete",
+            key: def.key,
             run: (view) => {
               const sel = view.state.selection.main;
               const docLen = view.state.doc.length;
-              // Only intercept if cursor is at end and no selection
-              if (sel.anchor === docLen && sel.head === docLen) {
-                onDeleteAtEnd();
-                return true;
+
+              // Check condition
+              switch (def.condition) {
+                case "atStart":
+                  if (sel.anchor !== 0 || sel.head !== 0) return false;
+                  break;
+                case "atEnd":
+                  if (sel.anchor !== docLen || sel.head !== docLen)
+                    return false;
+                  break;
+                case "headAtStart":
+                  if (sel.head !== 0) return false;
+                  break;
+                case "headAtEnd":
+                  if (sel.head !== docLen) return false;
+                  break;
               }
-              return false; // Let default handle it
-            },
-          },
-        ]),
-      );
-    }
 
-    if (onArrowLeftAtStart) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowLeft",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              if (sel.anchor === 0 && sel.head === 0) {
-                onArrowLeftAtStart();
-                return true;
-              }
-              return false;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onArrowRightAtEnd) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowRight",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              const docLen = view.state.doc.length;
-              if (sel.anchor === docLen && sel.head === docLen) {
-                onArrowRightAtEnd();
-                return true;
-              }
-              return false;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onZoomIn) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Mod-.",
-            run: () => {
-              onZoomIn();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onEscape) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Escape",
-            run: () => {
-              onEscape();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onShiftArrowUpFromTextSelection) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-ArrowUp",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              // Trigger callback when focus (head) is at offset 0
-              if (sel.head === 0) {
-                onShiftArrowUpFromTextSelection();
-                return true;
-              }
-              return false; // Let CodeMirror handle normal Shift+ArrowUp selection
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onShiftArrowDownFromTextSelection) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-ArrowDown",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              const docLen = view.state.doc.length;
-              // Trigger callback when focus (head) is at document end
-              if (sel.head === docLen) {
-                onShiftArrowDownFromTextSelection();
-                return true;
-              }
-              return false; // Let CodeMirror handle normal Shift+ArrowDown selection
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onSwapUp) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Alt-Mod-ArrowUp",
-            run: () => {
-              onSwapUp();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onSwapDown) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Alt-Mod-ArrowDown",
-            run: () => {
-              onSwapDown();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onMoveToFirst) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Alt-Mod-ArrowUp",
-            run: () => {
-              onMoveToFirst();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onMoveToLast) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Alt-Mod-ArrowDown",
-            run: () => {
-              onMoveToLast();
+              // Emit action
+              const action =
+                typeof def.action === "function"
+                  ? def.action(view)
+                  : def.action;
+              emit(action);
               return true;
             },
           },
@@ -530,10 +420,10 @@ export default function TextEditor(props: TextEditorProps) {
             const moved = view.moveVertically(sel, false);
             const movedY = view.coordsAtPos(moved.head)?.top;
 
-            if (currentY === movedY && onArrowUpOnFirstLine) {
+            if (currentY === movedY) {
               // On first visual line - delegate to parent
               const cursorCoords = view.coordsAtPos(sel.head, side);
-              onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
+              emit(Action.Navigate("up", cursorCoords?.left ?? 0));
               return true;
             }
 
@@ -575,10 +465,10 @@ export default function TextEditor(props: TextEditorProps) {
             const moved = view.moveVertically(sel, true);
             const movedY = view.coordsAtPos(moved.head)?.top;
 
-            if (currentY === movedY && onArrowDownOnLastLine) {
+            if (currentY === movedY) {
               // On last visual line - delegate to parent
               const cursorCoords = view.coordsAtPos(sel.head, side);
-              onArrowDownOnLastLine(cursorCoords?.left ?? 0);
+              emit(Action.Navigate("down", cursorCoords?.left ?? 0));
               return true;
             }
 
@@ -610,39 +500,38 @@ export default function TextEditor(props: TextEditorProps) {
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
 
-    if (onTypeTrigger) {
-      const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
+    // Type trigger handler (e.g., "- " for list, "[] " for checkbox)
+    const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
+    extensions.push(
+      EditorView.inputHandler.of((view, from, to, text) => {
+        if (text !== " ") return false;
 
-      extensions.push(
-        EditorView.inputHandler.of((view, from, to, text) => {
-          if (text !== " ") return false;
+        const doc = view.state.doc.toString();
 
-          const doc = view.state.doc.toString();
+        for (const { definition, trigger } of triggersWithDefinitions) {
+          const consumeValues = Array.isArray(trigger.consume)
+            ? trigger.consume
+            : [trigger.consume];
 
-          for (const { definition, trigger } of triggersWithDefinitions) {
-            const consumeValues = Array.isArray(trigger.consume)
-              ? trigger.consume
-              : [trigger.consume];
-
-            for (const consume of consumeValues) {
-              if (from === consume && to === consume) {
-                const prefix = doc.slice(0, consume);
-                if (trigger.pattern.test(prefix)) {
-                  if (onTypeTrigger(definition.id, trigger)) {
-                    view.dispatch({
-                      changes: { from: 0, to: consume, insert: "" },
-                      selection: { anchor: 0 },
-                    });
-                    return true;
-                  }
+          for (const consume of consumeValues) {
+            if (from === consume && to === consume) {
+              const prefix = doc.slice(0, consume);
+              if (trigger.pattern.test(prefix)) {
+                // Emit action - if handler returns true, consume the trigger text
+                if (emit(Action.TypeTrigger(definition.id, trigger))) {
+                  view.dispatch({
+                    changes: { from: 0, to: consume, insert: "" },
+                    selection: { anchor: 0 },
+                  });
+                  return true;
                 }
               }
             }
           }
-          return false;
-        }),
-      );
-    }
+        }
+        return false;
+      }),
+    );
 
     // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
     const filteredDefaultKeymap = defaultKeymap.filter(

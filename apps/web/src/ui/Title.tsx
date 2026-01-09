@@ -9,9 +9,9 @@ import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
 import { deepEqual, queryDb } from "@livestore/livestore";
-import { Effect, Option, Stream } from "effect";
+import { Effect, Match, Option, Stream } from "effect";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { EnterKeyInfo } from "./TextEditor";
+import TextEditor, { type EditorAction, type EnterKeyInfo } from "./TextEditor";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -291,6 +291,20 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
+  const handleAction = (action: EditorAction): void =>
+    Match.value(action).pipe(
+      Match.tag("Enter", ({ info }) => handleEnter(info)),
+      Match.tag("Blur", () => handleBlur()),
+      Match.tag("Navigate", ({ direction, goalX }) =>
+        Match.value(direction).pipe(
+          Match.when("right", () => handleArrowRightAtEnd()),
+          Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
+          Match.orElse(() => {}), // Title ignores up/left navigation
+        ),
+      ),
+      Match.orElse(() => {}), // Title ignores other actions
+    );
+
   return (
     <div
       data-element-id={bufferId}
@@ -309,10 +323,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         <TextEditor
           ytext={ytext}
           undoManager={undoManager}
-          onEnter={handleEnter}
-          onBlur={handleBlur}
-          onArrowRightAtEnd={handleArrowRightAtEnd}
-          onArrowDownOnLastLine={handleArrowDownOnLastLine}
+          onAction={handleAction}
           initialStrategy={resolveSelectionStrategy({
             clickCoords,
             domSelection: null,

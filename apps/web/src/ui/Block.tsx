@@ -11,7 +11,7 @@ import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
-import { Effect, Fiber, Option, Stream } from "effect";
+import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
   createEffect,
   createSignal,
@@ -22,6 +22,7 @@ import {
 } from "solid-js";
 import { Transition, TransitionGroup } from "solid-transition-group";
 import TextEditor, {
+  type EditorAction,
   type EnterKeyInfo,
   type SelectionInfo,
 } from "./TextEditor";
@@ -871,6 +872,50 @@ export default function Block({ blockId }: BlockProps) {
     return true;
   };
 
+  const handleAction = (action: EditorAction): boolean | void =>
+    Match.value(action).pipe(
+      Match.tag("Enter", ({ info }) => handleEnter(info)),
+      Match.tag("Tab", () => handleTab()),
+      Match.tag("ShiftTab", () => handleShiftTab()),
+      Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
+      Match.tag("DeleteAtEnd", () => handleDeleteAtEnd()),
+      Match.tag("Navigate", ({ direction, goalX }) =>
+        Match.value(direction).pipe(
+          Match.when("left", () => handleArrowLeftAtStart()),
+          Match.when("right", () => handleArrowRightAtEnd()),
+          Match.when("up", () => handleArrowUpOnFirstLine(goalX ?? 0)),
+          Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
+          Match.exhaustive,
+        ),
+      ),
+      Match.tag("SelectionChange", ({ selection }) =>
+        handleSelectionChange(selection),
+      ),
+      Match.tag("Blur", () => handleBlur()),
+      Match.tag("Escape", () => handleEscape()),
+      Match.tag("ZoomIn", () => handleZoomIn()),
+      Match.tag("BlockSelect", ({ direction }) =>
+        Match.value(direction).pipe(
+          Match.when("up", () => handleShiftArrowUpFromTextSelection()),
+          Match.when("down", () => handleShiftArrowDownFromTextSelection()),
+          Match.exhaustive,
+        ),
+      ),
+      Match.tag("Move", ({ action: moveAction }) =>
+        Match.value(moveAction).pipe(
+          Match.when("swapUp", () => handleSwapUp()),
+          Match.when("swapDown", () => handleSwapDown()),
+          Match.when("first", () => handleMoveToFirst()),
+          Match.when("last", () => handleMoveToLast()),
+          Match.exhaustive,
+        ),
+      ),
+      Match.tag("TypeTrigger", ({ typeId, trigger }) =>
+        handleTypeTrigger(typeId, trigger),
+      ),
+      Match.exhaustive,
+    );
+
   return (
     <div
       data-element-id={blockId}
@@ -908,30 +953,7 @@ export default function Block({ blockId }: BlockProps) {
             <TextEditor
               ytext={ytext}
               undoManager={undoManager}
-              onEnter={handleEnter}
-              onTab={handleTab}
-              onShiftTab={handleShiftTab}
-              onBackspaceAtStart={handleBackspaceAtStart}
-              onDeleteAtEnd={handleDeleteAtEnd}
-              onArrowLeftAtStart={handleArrowLeftAtStart}
-              onArrowRightAtEnd={handleArrowRightAtEnd}
-              onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
-              onArrowDownOnLastLine={handleArrowDownOnLastLine}
-              onSelectionChange={handleSelectionChange}
-              onBlur={handleBlur}
-              onZoomIn={handleZoomIn}
-              onEscape={handleEscape}
-              onShiftArrowUpFromTextSelection={
-                handleShiftArrowUpFromTextSelection
-              }
-              onShiftArrowDownFromTextSelection={
-                handleShiftArrowDownFromTextSelection
-              }
-              onSwapUp={handleSwapUp}
-              onSwapDown={handleSwapDown}
-              onMoveToFirst={handleMoveToFirst}
-              onMoveToLast={handleMoveToLast}
-              onTypeTrigger={handleTypeTrigger}
+              onAction={handleAction}
               initialStrategy={resolveSelectionStrategy({
                 clickCoords,
                 domSelection: initialSelection,
