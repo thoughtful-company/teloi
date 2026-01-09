@@ -1,3 +1,4 @@
+import { BrowserRequirements } from "@/runtime";
 import { Id } from "@/schema";
 import { Effect } from "effect";
 import { JSX } from "solid-js";
@@ -25,8 +26,9 @@ export interface TriggerDefinition {
    *
    * Run via runtime.runPromise which provides all services.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onTrigger?: (nodeId: Id.Node) => Effect.Effect<void, never, any>;
+  onTrigger?: (
+    nodeId: Id.Node,
+  ) => Effect.Effect<void, never, BrowserRequirements>;
 }
 
 /**

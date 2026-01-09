@@ -10,10 +10,23 @@ import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Fiber, Option, Stream } from "effect";
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import {
+  makeCollapsedSelection,
+  resolveSelectionStrategy,
+  updateEditorSelection,
+} from "@/utils/selectionStrategy";
+import { Effect, Fiber, Match, Option, Stream } from "effect";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { Transition, TransitionGroup } from "solid-transition-group";
 import TextEditor, {
+  type EditorAction,
   type EnterKeyInfo,
   type SelectionInfo,
 } from "./TextEditor";
@@ -44,7 +57,6 @@ export default function Block({ blockId }: BlockProps) {
           yield* Store.setDocument(
             "block",
             {
-              isSelected: false,
               isToggled: false,
             },
             blockId,
@@ -65,11 +77,13 @@ export default function Block({ blockId }: BlockProps) {
     stream: blockStream,
     project: (view) => ({
       isActive: view.isActive,
+      isSelected: view.isSelected,
       childBlockIds: view.childBlockIds,
       selection: view.selection,
     }),
     initial: {
       isActive: false,
+      isSelected: false,
       childBlockIds: [] as readonly Id.Block[],
       selection: null as {
         anchor: number;
@@ -148,6 +162,17 @@ export default function Block({ blockId }: BlockProps) {
 
   let clickCoords: { x: number; y: number } | null = null;
   let initialSelection: { anchor: number; head: number } | null = null;
+  // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
+  let isTransitioningToBlockSelection = false;
+
+  // Clear click coords when block becomes inactive, so programmatic re-activation
+  // (like backspace merge) doesn't use stale click coords from a previous interaction.
+  createEffect(() => {
+    if (!store.isActive) {
+      clickCoords = null;
+      initialSelection = null;
+    }
+  });
 
   const handleFocus = (e: MouseEvent) => {
     clickCoords = { x: e.clientX, y: e.clientY };
@@ -176,7 +201,13 @@ export default function Block({ blockId }: BlockProps) {
 
     runtime.runPromise(
       Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
         const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
+
+        // Clear block selection when entering text editing mode
+        yield* Buffer.setBlockSelection(bufferId, [], nodeId);
+
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: blockId }),
         );
@@ -187,30 +218,29 @@ export default function Block({ blockId }: BlockProps) {
   // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
-        const Buffer = yield* BufferT;
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { nodeId },
-            anchorOffset: selection.anchor,
-            focus: { nodeId },
-            focusOffset: selection.head,
-            goalX: null,
-            goalLine: null,
-            assoc: selection.assoc,
-          }),
-        );
-      }),
-    );
+    const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
   const handleBlur = () => {
+    console.debug("[Block.handleBlur] Called", {
+      blockId,
+      hasFocus: document.hasFocus(),
+      isTransitioning: isTransitioningToBlockSelection,
+    });
+
     // Don't clear selection when window loses focus (alt-tab, tab switch).
     // Only clear when user clicks elsewhere within the document.
     if (!document.hasFocus()) {
+      console.debug("[Block.handleBlur] Document not focused, returning");
+      return;
+    }
+
+    // Don't clear if we're transitioning to block selection mode (Escape was pressed)
+    if (isTransitioningToBlockSelection) {
+      console.debug(
+        "[Block.handleBlur] Transitioning to block selection, returning",
+      );
       return;
     }
 
@@ -229,6 +259,11 @@ export default function Block({ blockId }: BlockProps) {
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
+        console.debug("[Block.handleBlur] Checking selection", {
+          nodeId,
+          selNodeId: sel?.anchor.nodeId,
+          willClear: sel && sel.anchor.nodeId === nodeId,
+        });
         if (sel && sel.anchor.nodeId === nodeId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
@@ -240,11 +275,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-        const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
-        const Yjs = yield* YjsT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
 
         // Check if any active type wants to be removed on empty Enter
         if (info.cursorPos === 0 && info.textAfter.length === 0) {
@@ -257,263 +288,77 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        // Get parent of current node
-        const parentId = yield* Node.getParent(nodeId);
+        const Block = yield* BlockT;
+        const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
 
-        const isAtStart = info.cursorPos === 0 && info.textAfter.length > 0;
-
-        // Create new node
-        const newNodeId = yield* Node.insertNode({
-          parentId,
-          insert: isAtStart ? "before" : "after",
-          siblingId: nodeId,
+        const result = yield* Block.split({
+          nodeId,
+          cursorPos: info.cursorPos,
+          textAfter: info.textAfter,
         });
 
         // Propagate types that want to be propagated
         const Type = yield* TypeT;
         for (const def of getActiveDefinitions()) {
           if (def.enter?.propagateToNewBlock) {
-            yield* Type.addType(newNodeId, def.id);
+            yield* Type.addType(result.newNodeId, def.id);
           }
         }
 
-        // Update Y.Text content for split
-        if (isAtStart) {
-          // Cursor at start: new block gets empty, current block keeps content
-          // No Y.Text changes needed - current block already has the text
-        } else {
-          // Normal case: current block keeps text before cursor, new block gets text after
-          // 1. Delete text after cursor from current Y.Text
-          ytext.delete(info.cursorPos, ytext.length - info.cursorPos);
-          // 2. Insert text into new node's Y.Text
-          const newYtext = Yjs.getText(newNodeId);
-          newYtext.insert(0, info.textAfter);
-        }
-
-        const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+        const newBlockId = Id.makeBlockId(bufferId, result.newNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: newNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: newNodeId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(result.newNodeId, result.cursorOffset),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
         );
-      }).pipe(
-        Effect.catchTag(
-          "NodeHasNoParentError",
-          () =>
-            // Root nodes can't be split - do nothing
-            Effect.void,
-        ),
-      ),
+      }),
     );
   };
 
   const handleTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        // Get parent of current node
-        const parentId = yield* Node.getParent(nodeId);
-
-        // Get siblings
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't indent first sibling - no previous sibling to indent into
-        if (siblingIndex <= 0) {
-          return;
-        }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-
-        // Move this node to be a child of the previous sibling
-        yield* Node.insertNode({
-          nodeId, // Existing node - triggers move
-          parentId: prevSiblingId, // New parent is previous sibling
-          insert: "after", // Append at end of previous sibling's children
-        });
-      }).pipe(
-        Effect.catchTag(
-          "NodeHasNoParentError",
-          () =>
-            // Root nodes can't be indented - do nothing
-            Effect.void,
-        ),
-      ),
+        const Block = yield* BlockT;
+        yield* Block.indent(nodeId);
+      }),
     );
   };
 
   const handleShiftTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-
-        const grandparentId = yield* Node.getParent(parentId);
-
-        yield* Node.insertNode({
-          nodeId,
-          parentId: grandparentId,
-          insert: "after",
-          siblingId: parentId,
-        });
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+        const Block = yield* BlockT;
+        yield* Block.outdent(nodeId);
+      }),
     );
   };
 
-  const handleSwapUp = () => {
+  const handleMove = (action: "swapUp" | "swapDown" | "first" | "last") => {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't swap if first child
-        if (siblingIndex <= 0) {
-          return;
+        const Block = yield* BlockT;
+        const moved = yield* Match.value(action).pipe(
+          Match.when("swapUp", () => Block.swap(nodeId, "up")),
+          Match.when("swapDown", () => Block.swap(nodeId, "down")),
+          Match.when("first", () => Block.moveToFirst(nodeId)),
+          Match.when("last", () => Block.moveToLast(nodeId)),
+          Match.exhaustive,
+        );
+        if (moved) {
+          yield* waitForDomAndRefocus;
         }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-
-        // Move this node before the previous sibling (effectively swapping)
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "before",
-          siblingId: prevSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
-    );
-  };
-
-  const handleSwapDown = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't swap if last child
-        if (siblingIndex >= siblings.length - 1) {
-          return;
-        }
-
-        const nextSiblingId = siblings[siblingIndex + 1]!;
-
-        // Move this node after the next sibling (effectively swapping)
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "after",
-          siblingId: nextSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
-    );
-  };
-
-  const handleMoveToFirst = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Already first child
-        if (siblingIndex === 0) {
-          return;
-        }
-
-        const firstSiblingId = siblings[0]!;
-
-        // Move this node before the first sibling
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "before",
-          siblingId: firstSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
-    );
-  };
-
-  const handleMoveToLast = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Already last child
-        if (siblingIndex >= siblings.length - 1) {
-          return;
-        }
-
-        const lastSiblingId = siblings[siblings.length - 1]!;
-
-        // Move this node after the last sibling
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "after",
-          siblingId: lastSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
+      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
     );
   };
 
   const handleBackspaceAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
 
         // Check if any active type wants to be removed on backspace at start
         for (const def of getActiveDefinitions()) {
@@ -524,195 +369,53 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        const Node = yield* NodeT;
-        const Store = yield* StoreT;
+        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
-        const Yjs = yield* YjsT;
+        const Store = yield* StoreT;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
-          ? bufferDoc.value.assignedNodeId
+          ? (bufferDoc.value.assignedNodeId as Id.Node)
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const result = yield* Block.mergeBackward(nodeId, rootNodeId);
+        if (Option.isNone(result)) return;
 
-        // Find the deepest last child of a node (visually previous block)
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const { targetNodeId, cursorOffset, isTitle } = result.value;
 
-        // Get current text from Y.Text
-        const currentText = ytext.toString();
-
-        // First sibling: merge into parent
-        if (siblingIndex === 0) {
-          const parentYtext = Yjs.getText(parentId);
-          const mergePoint = parentYtext.length;
-
-          // Append current text to parent's Y.Text
-          parentYtext.insert(mergePoint, currentText);
-
-          // Delete current node and cleanup Y.Text
-          yield* Node.deleteNode(nodeId);
-          Yjs.deleteText(nodeId);
-
-          // Move focus to parent (title if root, otherwise block)
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: mergePoint,
-              focus: { nodeId: parentId },
-              focusOffset: mergePoint,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
-          return;
-        }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-        const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-        const targetYtext = Yjs.getText(targetNodeId);
-        const mergePoint = targetYtext.length;
-
-        // Append current text to target's Y.Text
-        targetYtext.insert(mergePoint, currentText);
-
-        // Delete current node and cleanup Y.Text
-        yield* Node.deleteNode(nodeId);
-        Yjs.deleteText(nodeId);
-
-        const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: targetNodeId },
-            anchorOffset: mergePoint,
-            focus: { nodeId: targetNodeId },
-            focusOffset: mergePoint,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(targetNodeId, cursorOffset),
         );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+
+        if (isTitle) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        }
+      }),
     );
   };
 
   const handleDeleteAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
-        const Yjs = yield* YjsT;
 
-        const children = yield* Node.getNodeChildren(nodeId);
-
-        // If has children, merge with first child
-        if (children.length > 0) {
-          const firstChildId = children[0]!;
-          const mergePoint = ytext.length;
-          const childYtext = Yjs.getText(firstChildId);
-          const childText = childYtext.toString();
-
-          // Append child text to current Y.Text
-          ytext.insert(mergePoint, childText);
-
-          // Delete child node and cleanup Y.Text
-          yield* Node.deleteNode(firstChildId);
-          Yjs.deleteText(firstChildId);
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId },
-              anchorOffset: mergePoint,
-              focus: { nodeId },
-              focusOffset: mergePoint,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          return;
-        }
-
-        // Find next node in document order (next sibling, or parent's next sibling, etc.)
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
-
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) return;
-
-        const mergePoint = ytext.length;
-        const nextYtext = Yjs.getText(nextNodeId);
-        const nextText = nextYtext.toString();
-
-        // Append next text to current Y.Text
-        ytext.insert(mergePoint, nextText);
-
-        // Delete next node and cleanup Y.Text
-        yield* Node.deleteNode(nextNodeId);
-        Yjs.deleteText(nextNodeId);
+        const result = yield* Block.mergeForward(nodeId);
+        if (Option.isNone(result)) return;
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId },
-            anchorOffset: mergePoint,
-            focus: { nodeId },
-            focusOffset: mergePoint,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nodeId, result.value.cursorOffset),
         );
       }),
     );
@@ -721,114 +424,61 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
+        const Yjs = yield* YjsT;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        if (Option.isNone(targetOpt)) return;
 
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const targetNodeId = targetOpt.value;
+        const targetYtext = Yjs.getText(targetNodeId);
+        const endPos = targetYtext.length;
 
-        const Yjs = yield* YjsT;
+        yield* Buffer.setSelection(
+          bufferId,
+          makeCollapsedSelection(targetNodeId, endPos),
+        );
 
-        if (siblingIndex > 0) {
-          const prevSiblingId = siblings[siblingIndex - 1]!;
-          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-          const targetYtext = Yjs.getText(targetNodeId);
-          const endPos = targetYtext.length;
-
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: targetNodeId },
-              anchorOffset: endPos,
-              focus: { nodeId: targetNodeId },
-              focusOffset: endPos,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+        if (targetNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
           );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else {
-          // Move to parent (title if root, otherwise block)
-          const parentYtext = Yjs.getText(parentId);
-          const endPos = parentYtext.length;
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: endPos,
-              focus: { nodeId: parentId },
-              focusOffset: endPos,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
         }
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+      }),
     );
   };
 
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
+        // If has children, go to first child
         const children = yield* Node.getNodeChildren(nodeId);
-
         if (children.length > 0) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId: firstChildId },
-              anchorOffset: 0,
-              focus: { nodeId: firstChildId },
-              focusOffset: 0,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+            makeCollapsedSelection(firstChildId, 0),
           );
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
@@ -836,43 +486,15 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
+        // Otherwise, find next node in document order
+        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        if (Option.isNone(nextNodeOpt)) return;
 
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) return;
-
+        const nextNodeId = nextNodeOpt.value;
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: nextNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: nextNodeId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nextNodeId, 0),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -884,8 +506,8 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowUpOnFirstLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
@@ -903,76 +525,34 @@ export default function Block({ blockId }: BlockProps) {
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        if (Option.isNone(targetOpt)) return;
 
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const targetNodeId = targetOpt.value;
+        yield* Buffer.setSelection(
+          bufferId,
+          makeCollapsedSelection(targetNodeId, 0, { goalX, goalLine: "last" }),
+        );
 
-        if (siblingIndex > 0) {
-          const prevSiblingId = siblings[siblingIndex - 1]!;
-          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: targetNodeId },
-              anchorOffset: 0,
-              focus: { nodeId: targetNodeId },
-              focusOffset: 0,
-              goalX,
-              goalLine: "last",
-              assoc: 0,
-            }),
+        if (targetNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
           );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else {
-          // First child → go to parent (title if root, otherwise block)
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: 0,
-              focus: { nodeId: parentId },
-              focusOffset: 0,
-              goalX,
-              goalLine: "last",
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
         }
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+      }),
     );
   };
 
   const handleArrowDownOnLastLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
@@ -985,22 +565,16 @@ export default function Block({ blockId }: BlockProps) {
             ? existingSelection.value.goalX
             : cursorGoalX;
 
-        const children = yield* Node.getNodeChildren(nodeId);
-
         // If has children, go to first child
+        const children = yield* Node.getNodeChildren(nodeId);
         if (children.length > 0) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId: firstChildId },
-              anchorOffset: 0,
-              focus: { nodeId: firstChildId },
-              focusOffset: 0,
+            makeCollapsedSelection(firstChildId, 0, {
               goalX,
               goalLine: "first",
-              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -1009,61 +583,24 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        // Find next node in document order (next sibling, or parent's next sibling, etc.)
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
-
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) {
+        // Find next node in document order
+        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        if (Option.isNone(nextNodeOpt)) {
           // No next block - move cursor to end of current block
           const Yjs = yield* YjsT;
           const textLength = Yjs.getText(nodeId).length;
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId },
-              anchorOffset: textLength,
-              focus: { nodeId },
-              focusOffset: textLength,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+            makeCollapsedSelection(nodeId, textLength),
           );
           return;
         }
 
+        const nextNodeId = nextNodeOpt.value;
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: nextNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: nextNodeId },
-            focusOffset: 0,
-            goalX,
-            goalLine: "first",
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nextNodeId, 0, { goalX, goalLine: "first" }),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -1086,6 +623,33 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const enterBlockSelectionMode = () => {
+    // Set flag synchronously to prevent handleBlur from clearing activeElement
+    isTransitioningToBlockSelection = true;
+    // Clear captured selection so Enter returns cursor to model position, not old DOM position
+    initialSelection = null;
+
+    runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+          const Window = yield* WindowT;
+          const Buffer = yield* BufferT;
+
+          // Switch to block selection mode
+          yield* Window.setActiveElement(
+            Option.some({ type: "buffer" as const, id: bufferId }),
+          );
+          // Clear text selection - when returning from block selection, cursor should start fresh
+          yield* Buffer.setSelection(bufferId, Option.none());
+          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+        }),
+      )
+      .finally(() => {
+        isTransitioningToBlockSelection = false;
+      });
+  };
+
   const handleTypeTrigger = (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -1095,16 +659,53 @@ export default function Block({ blockId }: BlockProps) {
       Effect.gen(function* () {
         const Type = yield* TypeT;
         yield* Type.addType(nodeId, typeId);
+        if (trigger.onTrigger) {
+          // onTrigger may have dependencies (e.g., TupleT) which are provided by the runtime
+          yield* trigger.onTrigger(nodeId);
+        }
       }),
     );
-    if (trigger.onTrigger) {
-      runtime.runPromise(trigger.onTrigger(nodeId));
-    }
     return true;
   };
 
+  const handleAction = (action: EditorAction): boolean | void =>
+    Match.value(action).pipe(
+      Match.tag("Enter", ({ info }) => handleEnter(info)),
+      Match.tag("Tab", () => handleTab()),
+      Match.tag("ShiftTab", () => handleShiftTab()),
+      Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
+      Match.tag("DeleteAtEnd", () => handleDeleteAtEnd()),
+      Match.tag("Navigate", ({ direction, goalX }) =>
+        Match.value(direction).pipe(
+          Match.when("left", () => handleArrowLeftAtStart()),
+          Match.when("right", () => handleArrowRightAtEnd()),
+          Match.when("up", () => handleArrowUpOnFirstLine(goalX ?? 0)),
+          Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
+          Match.exhaustive,
+        ),
+      ),
+      Match.tag("SelectionChange", ({ selection }) =>
+        handleSelectionChange(selection),
+      ),
+      Match.tag("Blur", () => handleBlur()),
+      Match.tag("Escape", () => enterBlockSelectionMode()),
+      Match.tag("ZoomIn", () => handleZoomIn()),
+      Match.tag("BlockSelect", () => enterBlockSelectionMode()),
+      Match.tag("Move", ({ action: moveAction }) => handleMove(moveAction)),
+      Match.tag("TypeTrigger", ({ typeId, trigger }) =>
+        handleTypeTrigger(typeId, trigger),
+      ),
+      Match.exhaustive,
+    );
+
   return (
-    <div data-element-id={blockId} data-element-type="block">
+    <div
+      data-element-id={blockId}
+      data-element-type="block"
+      classList={{
+        "ring-2 ring-blue-400 bg-blue-50/50 rounded": store.isSelected,
+      }}
+    >
       <div onClick={handleFocus} class="flex">
         <Transition
           enterActiveClass="transition-all duration-150 ease-out"
@@ -1134,32 +735,26 @@ export default function Block({ blockId }: BlockProps) {
             <TextEditor
               ytext={ytext}
               undoManager={undoManager}
-              onEnter={handleEnter}
-              onTab={handleTab}
-              onShiftTab={handleShiftTab}
-              onBackspaceAtStart={handleBackspaceAtStart}
-              onDeleteAtEnd={handleDeleteAtEnd}
-              onArrowLeftAtStart={handleArrowLeftAtStart}
-              onArrowRightAtEnd={handleArrowRightAtEnd}
-              onArrowUpOnFirstLine={handleArrowUpOnFirstLine}
-              onArrowDownOnLastLine={handleArrowDownOnLastLine}
-              onSelectionChange={handleSelectionChange}
-              onBlur={handleBlur}
-              onZoomIn={handleZoomIn}
-              onSwapUp={handleSwapUp}
-              onSwapDown={handleSwapDown}
-              onMoveToFirst={handleMoveToFirst}
-              onMoveToLast={handleMoveToLast}
-              onTypeTrigger={handleTypeTrigger}
-              initialClickCoords={clickCoords}
-              initialSelection={initialSelection}
+              onAction={handleAction}
+              initialStrategy={resolveSelectionStrategy({
+                clickCoords,
+                domSelection: initialSelection,
+                modelSelection: store.selection,
+              })}
               selection={store.selection}
             />
           </Show>
         </div>
       </div>
-      <div class="pl-4">
-        <TransitionGroup moveClass="block-move">
+      <div class="pl-4 flex flex-col gap-1.5">
+        <Show when={store.childBlockIds.length > 0}>
+          <div class="w-max h-0"> </div>
+        </Show>
+        <TransitionGroup
+          moveClass="block-move"
+          exitActiveClass="block-exit-active"
+          exitToClass="block-exit-to"
+        >
           <For each={store.childBlockIds}>
             {(childId) => <Block blockId={childId} />}
           </For>

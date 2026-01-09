@@ -48,7 +48,8 @@ export const bootstrap = Effect.gen(function* () {
       data: { nodeId },
     }),
   );
-  Yjs.getText(nodeId).insert(0,
+  Yjs.getText(nodeId).insert(
+    0,
     "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
   );
 
@@ -63,7 +64,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(childId1).insert(0,
+  Yjs.getText(childId1).insert(
+    0,
     "Once or twice she had peeped into the book her sister was reading.",
   );
 
@@ -78,7 +80,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(childId2).insert(0,
+  Yjs.getText(childId2).insert(
+    0,
     "But it had no pictures or conversations in it.",
   );
 
@@ -93,7 +96,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(grandchildId).insert(0,
+  Yjs.getText(grandchildId).insert(
+    0,
     "And what is the use of a book without pictures or conversations?",
   );
 
@@ -124,7 +128,10 @@ export const bootstrap = Effect.gen(function* () {
       windowId,
       parent: { id: paneId, type: "pane" },
       assignedNodeId: null,
-      selectedNodes: [],
+      selectedBlocks: [],
+      blockSelectionAnchor: null,
+      blockSelectionFocus: null,
+      lastFocusedBlockId: null,
       toggledNodes: [],
       selection: null,
     },

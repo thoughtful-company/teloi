@@ -11,12 +11,12 @@ import { NavigationT } from "./services/ui/Navigation";
 
 const root = document.getElementById("root");
 
-runtime.runPromise(bootstrap).then((fallbackNodeId) => {
+runtime.runPromise(bootstrap).then(() => {
   // Page load triggers url sync
   runtime.runPromise(
     Effect.gen(function* () {
       const Navigation = yield* NavigationT;
-      yield* Navigation.syncUrlToModel(fallbackNodeId);
+      yield* Navigation.syncUrlToModel();
     }),
   );
 

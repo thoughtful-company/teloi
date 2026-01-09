@@ -2,15 +2,26 @@ import { Id } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
-import { Context, Effect, Layer, Stream } from "effect";
+import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
 import { BlockGoneError, BlockNotFoundError } from "./errors";
+import { indent, outdent } from "./indent";
+import { mergeBackward, mergeForward, type MergeResult } from "./merge";
+import {
+  findDeepestLastChild,
+  findNextNode,
+  findPreviousNode,
+} from "./navigation";
+import { split, type SplitParams, type SplitResult } from "./split";
 import { BlockView, subscribe } from "./subscribe";
+import { moveToFirst, moveToLast, swap } from "./swap";
 
 export { BlockGoneError, BlockNotFoundError } from "./errors";
 export type { BlockView } from "./subscribe";
+export type { MergeResult, SplitParams, SplitResult };
 
 export class BlockT extends Context.Tag("BlockT")<
   BlockT,
@@ -24,6 +35,35 @@ export class BlockT extends Context.Tag("BlockT")<
     attestExistence: (
       blockId: Id.Block,
     ) => Effect.Effect<void, BlockNotFoundError>;
+
+    // Tree navigation
+    findDeepestLastChild: (
+      startNodeId: Id.Node,
+    ) => Effect.Effect<Id.Node, never>;
+    findNextNode: (
+      currentId: Id.Node,
+    ) => Effect.Effect<Option.Option<Id.Node>, never>;
+    findPreviousNode: (
+      currentId: Id.Node,
+    ) => Effect.Effect<Option.Option<Id.Node>, never>;
+
+    // Structural operations
+    split: (params: SplitParams) => Effect.Effect<SplitResult, never>;
+    mergeBackward: (
+      nodeId: Id.Node,
+      rootNodeId: Id.Node | null,
+    ) => Effect.Effect<Option.Option<MergeResult>, never>;
+    mergeForward: (
+      nodeId: Id.Node,
+    ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
+    indent: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+    outdent: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+    swap: (
+      nodeId: Id.Node,
+      direction: "up" | "down",
+    ) => Effect.Effect<boolean, never>;
+    moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+    moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
   }
 >() {}
 
@@ -33,15 +73,32 @@ export const BlockLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
+    const Yjs = yield* YjsT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(WindowT, Window),
+      Context.add(YjsT, Yjs),
     );
 
     return {
       subscribe: withContext(subscribe)(context),
       attestExistence: withContext(attestExistence)(context),
+
+      // Tree navigation
+      findDeepestLastChild: withContext(findDeepestLastChild)(context),
+      findNextNode: withContext(findNextNode)(context),
+      findPreviousNode: withContext(findPreviousNode)(context),
+
+      // Structural operations
+      split: withContext(split)(context),
+      mergeBackward: withContext(mergeBackward)(context),
+      mergeForward: withContext(mergeForward)(context),
+      indent: withContext(indent)(context),
+      outdent: withContext(outdent)(context),
+      swap: withContext(swap)(context),
+      moveToFirst: withContext(moveToFirst)(context),
+      moveToLast: withContext(moveToLast)(context),
     };
   }),
 );

@@ -1,10 +1,12 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { EditorView } from "@codemirror/view";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { screen, waitFor } from "solid-testing-library";
 import { expect } from "vitest";
+import { runtime } from "./setup";
 
 /**
  * Gets the block element ID containing the current DOM selection anchor.
@@ -200,3 +202,55 @@ export const CM_CURSOR_IS_AT = (
       { timeout: 2000 },
     ),
   ).pipe(Effect.withSpan("Then.CM_CURSOR_IS_AT"));
+
+/**
+ * Asserts that the buffer has exactly the specified blocks selected.
+ * Checks both the selectedBlocks array and optionally anchor/focus.
+ */
+export const BLOCKS_ARE_SELECTED = (
+  bufferId: Id.Buffer,
+  expectedNodeIds: Id.Node[],
+  options?: { anchor?: Id.Node; focus?: Id.Node },
+) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    yield* Effect.promise(() =>
+      waitFor(
+        async () => {
+          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            runtime.runPromise,
+          );
+          expect(Option.isSome(bufferDoc)).toBe(true);
+          const buf = Option.getOrThrow(bufferDoc);
+
+          expect(buf.selectedBlocks).toHaveLength(expectedNodeIds.length);
+          for (const nodeId of expectedNodeIds) {
+            expect(buf.selectedBlocks).toContain(nodeId);
+          }
+
+          if (options?.anchor !== undefined) {
+            expect(buf.blockSelectionAnchor).toBe(options.anchor);
+          }
+          if (options?.focus !== undefined) {
+            expect(buf.blockSelectionFocus).toBe(options.focus);
+          }
+        },
+        { timeout: 2000 },
+      ),
+    );
+  }).pipe(Effect.withSpan("Then.BLOCKS_ARE_SELECTED"));
+
+/**
+ * Asserts that the clipboard contains the expected text.
+ * Requires clipboard mock to be set up in the test.
+ */
+export const CLIPBOARD_CONTAINS = (expectedText: string) =>
+  Effect.promise(() =>
+    waitFor(
+      async () => {
+        const clipboardText = await navigator.clipboard.readText();
+        expect(clipboardText).toBe(expectedText);
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.CLIPBOARD_CONTAINS"));

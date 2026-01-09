@@ -1,25 +1,40 @@
+import { useBrowserRuntime } from "@/context/useBrowserRuntime";
+import { Id, System } from "@/schema";
+import { NavigationT } from "@/services/ui/Navigation";
+import { Effect } from "effect";
 import { For } from "solid-js";
 
 interface NavItem {
   label: string;
-  path: string;
+  nodeId: Id.Node;
   icon: "inbox" | "box" | "calendar";
 }
 
 const navItems: NavItem[] = [
-  { label: "Inbox", path: "/inbox", icon: "inbox" },
-  { label: "The Box", path: "/box", icon: "box" },
-  { label: "Calendar", path: "/calendar", icon: "calendar" },
+  { label: "Inbox", nodeId: System.INBOX, icon: "inbox" },
+  { label: "The Box", nodeId: System.THE_BOX, icon: "box" },
+  { label: "Calendar", nodeId: System.CALENDAR, icon: "calendar" },
 ];
 
 export default function SidebarNav() {
+  const runtime = useBrowserRuntime();
+
+  const handleNavClick = (nodeId: Id.Node) => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Navigation = yield* NavigationT;
+        yield* Navigation.navigateTo(nodeId);
+      }),
+    );
+  };
+
   return (
     <nav class="px-1 py-1">
       <For each={navItems}>
         {(item) => (
-          <a
-            href={item.path}
-            class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm"
+          <button
+            onClick={() => handleNavClick(item.nodeId)}
+            class="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm text-left"
           >
             <span class="w-5 h-5 flex items-center justify-center opacity-60">
               {item.icon === "inbox" && (
@@ -63,7 +78,7 @@ export default function SidebarNav() {
               )}
             </span>
             <span>{item.label}</span>
-          </a>
+          </button>
         )}
       </For>
     </nav>

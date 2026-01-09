@@ -90,3 +90,25 @@ export const SELECTION_IS_SET_TO = (
       }),
     );
   }).pipe(Effect.withSpan("When.SELECTION_IS_SET_TO"));
+
+/**
+ * Clicks a block, waits for CodeMirror to be focused, then presses Escape
+ * to enter block selection mode with that block selected.
+ */
+export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
+  Effect.gen(function* () {
+    yield* USER_CLICKS_BLOCK(blockId);
+
+    // Wait for CodeMirror to be mounted and focused
+    yield* Effect.promise(() =>
+      waitFor(
+        () => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        },
+        { timeout: 2000 },
+      ),
+    );
+
+    yield* USER_PRESSES("{Escape}");
+  }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));

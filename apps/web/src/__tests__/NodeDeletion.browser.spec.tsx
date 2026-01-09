@@ -167,10 +167,7 @@ describe("Node Deletion", () => {
             data: {
               tupleId,
               tupleTypeId,
-              members: [
-                { position: 0, nodeId: member1Id },
-                { position: 1, nodeId: member2Id },
-              ],
+              members: [member1Id, member2Id],
             },
           }),
         );

@@ -169,6 +169,38 @@ const ensureSystemNodes = () =>
     if (!(yield* Type.hasType(System.CHECKBOX, System.RENDERING_TYPE))) {
       yield* Type.addType(System.CHECKBOX, System.RENDERING_TYPE);
     }
+
+    // === Workspace Home ===
+    let rootPos = generateKeyBetween(generateKeyBetween(null, null), null);
+    const workspaceExists = yield* nodeExists(System.WORKSPACE);
+    if (!workspaceExists) {
+      yield* createRootNode(System.WORKSPACE, rootPos);
+      yield* setNodeText(System.WORKSPACE, "Home");
+    }
+
+    // === Inbox (root node) ===
+    rootPos = nextPosition(rootPos);
+    const inboxExists = yield* nodeExists(System.INBOX);
+    if (!inboxExists) {
+      yield* createRootNode(System.INBOX, rootPos);
+      yield* setNodeText(System.INBOX, "Inbox");
+    }
+
+    // === The Box (root node) ===
+    rootPos = nextPosition(rootPos);
+    const theBoxExists = yield* nodeExists(System.THE_BOX);
+    if (!theBoxExists) {
+      yield* createRootNode(System.THE_BOX, rootPos);
+      yield* setNodeText(System.THE_BOX, "The Box");
+    }
+
+    // === Calendar (root node) ===
+    rootPos = nextPosition(rootPos);
+    const calendarExists = yield* nodeExists(System.CALENDAR);
+    if (!calendarExists) {
+      yield* createRootNode(System.CALENDAR, rootPos);
+      yield* setNodeText(System.CALENDAR, "Calendar");
+    }
   });
 
 export const BootstrapLive = Layer.effect(

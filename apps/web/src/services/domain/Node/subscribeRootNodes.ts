@@ -1,5 +1,5 @@
 import { tables } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { queryDb } from "@livestore/livestore";
 import { Effect, Stream } from "effect";
@@ -11,9 +11,9 @@ export const subscribeRootNodes = () =>
     const query = queryDb(
       tables.parentLinks
         .select()
-        .where({ parentId: null })
+        .where({ parentId: System.WORKSPACE })
         .orderBy("position", "asc"),
-      { label: "root-nodes" },
+      { label: "workspace-pages" },
     );
 
     const stream = yield* Store.subscribeStream(query);

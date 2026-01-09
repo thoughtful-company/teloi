@@ -17,6 +17,7 @@ import { makeYjsLive } from "./services/external/Yjs";
 import { BlockLive } from "./services/ui/Block";
 import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
+import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
 import { WindowLive } from "./services/ui/Window";
 
@@ -57,6 +58,7 @@ const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(DataPortLive),
   Layer.provideMerge(BootstrapLive),
+  Layer.provideMerge(TitleLive),
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),

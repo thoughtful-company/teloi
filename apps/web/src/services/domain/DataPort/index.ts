@@ -41,10 +41,36 @@ export const DataPortLive = Layer.effect(
           }
         }
 
+        // Query type system
+        const nodeTypes = yield* Store.query(
+          queryDb(tables.nodeTypes.select()),
+        );
+
+        // Query tuple system
+        const tupleTypeRoles = yield* Store.query(
+          queryDb(tables.tupleTypeRoles.select()),
+        );
+        const tupleTypeRoleAllowedTypes = yield* Store.query(
+          queryDb(tables.tupleTypeRoleAllowedTypes.select()),
+        );
+        const tuples = yield* Store.query(queryDb(tables.tuples.select()));
+        const tupleMembers = yield* Store.query(
+          queryDb(tables.tupleMembers.select()),
+        );
+
         return {
           version: 1,
           exportedAt: Date.now(),
-          data: { nodes, parentLinks, textContent },
+          data: {
+            nodes,
+            parentLinks,
+            textContent,
+            nodeTypes,
+            tupleTypeRoles,
+            tupleTypeRoleAllowedTypes,
+            tuples,
+            tupleMembers,
+          },
         } satisfies ExportData;
       });
 
@@ -118,7 +144,134 @@ export const DataPortLive = Layer.effect(
           ytext.insert(0, text);
         }
 
-        // 7. Log import summary
+        // 7. Import nodeTypes (skip existing)
+        const existingNodeTypes = yield* Store.query(
+          queryDb(tables.nodeTypes.select()),
+        );
+        const existingNodeTypeKeys = new Set(
+          existingNodeTypes.map((nt) => `${nt.nodeId}|${nt.typeId}`),
+        );
+
+        let addedNodeTypesCount = 0;
+        let skippedNodeTypesCount = 0;
+        for (const nodeType of data.data.nodeTypes ?? []) {
+          const key = `${nodeType.nodeId}|${nodeType.typeId}`;
+          if (existingNodeTypeKeys.has(key)) {
+            skippedNodeTypesCount++;
+            continue;
+          }
+          yield* Store.commit(
+            events.typeAddedToNode({
+              timestamp: nodeType.createdAt,
+              data: {
+                nodeId: nodeType.nodeId,
+                typeId: nodeType.typeId,
+                position: nodeType.position,
+              },
+            }),
+          );
+          addedNodeTypesCount++;
+        }
+
+        // 8. Import tupleTypeRoles (skip existing)
+        const existingRoles = yield* Store.query(
+          queryDb(tables.tupleTypeRoles.select()),
+        );
+        const existingRoleKeys = new Set(
+          existingRoles.map((r) => `${r.tupleTypeId}|${r.position}`),
+        );
+
+        let addedRolesCount = 0;
+        let skippedRolesCount = 0;
+        for (const role of data.data.tupleTypeRoles ?? []) {
+          const key = `${role.tupleTypeId}|${role.position}`;
+          if (existingRoleKeys.has(key)) {
+            skippedRolesCount++;
+            continue;
+          }
+          yield* Store.commit(
+            events.tupleTypeRoleAdded({
+              timestamp: role.createdAt,
+              data: {
+                tupleTypeId: role.tupleTypeId,
+                position: role.position,
+                name: role.name,
+                required: role.required,
+              },
+            }),
+          );
+          addedRolesCount++;
+        }
+
+        // 9. Import tupleTypeRoleAllowedTypes (skip existing)
+        const existingAllowedTypes = yield* Store.query(
+          queryDb(tables.tupleTypeRoleAllowedTypes.select()),
+        );
+        const existingAllowedTypeKeys = new Set(
+          existingAllowedTypes.map(
+            (at) => `${at.tupleTypeId}|${at.position}|${at.allowedTypeId}`,
+          ),
+        );
+
+        let addedAllowedTypesCount = 0;
+        let skippedAllowedTypesCount = 0;
+        for (const allowedType of data.data.tupleTypeRoleAllowedTypes ?? []) {
+          const key = `${allowedType.tupleTypeId}|${allowedType.position}|${allowedType.allowedTypeId}`;
+          if (existingAllowedTypeKeys.has(key)) {
+            skippedAllowedTypesCount++;
+            continue;
+          }
+          yield* Store.commit(
+            events.tupleTypeRoleAllowedTypeAdded({
+              timestamp: allowedType.createdAt,
+              data: {
+                tupleTypeId: allowedType.tupleTypeId,
+                position: allowedType.position,
+                allowedTypeId: allowedType.allowedTypeId,
+              },
+            }),
+          );
+          addedAllowedTypesCount++;
+        }
+
+        // 10. Import tuples (skip existing)
+        const existingTuples = yield* Store.query(
+          queryDb(tables.tuples.select()),
+        );
+        const existingTupleIds = new Set(existingTuples.map((t) => t.id));
+
+        // Build map of tupleId -> ordered member nodeIds
+        const tupleMembersMap = new Map<string, string[]>();
+        for (const member of data.data.tupleMembers ?? []) {
+          if (!tupleMembersMap.has(member.tupleId)) {
+            tupleMembersMap.set(member.tupleId, []);
+          }
+          const members = tupleMembersMap.get(member.tupleId)!;
+          members[member.position] = member.nodeId;
+        }
+
+        let addedTuplesCount = 0;
+        let skippedTuplesCount = 0;
+        for (const tuple of data.data.tuples ?? []) {
+          if (existingTupleIds.has(tuple.id)) {
+            skippedTuplesCount++;
+            continue;
+          }
+          const members = tupleMembersMap.get(tuple.id) ?? [];
+          yield* Store.commit(
+            events.tupleCreated({
+              timestamp: tuple.createdAt,
+              data: {
+                tupleId: tuple.id,
+                tupleTypeId: tuple.tupleTypeId,
+                members,
+              },
+            }),
+          );
+          addedTuplesCount++;
+        }
+
+        // 11. Log import summary
         if (skippedNodeIds.length > 0) {
           yield* Effect.logWarning(
             `Import: skipped ${skippedNodeIds.length} existing nodes`,
@@ -127,6 +280,18 @@ export const DataPortLive = Layer.effect(
         }
         yield* Effect.logInfo(
           `Import complete: added ${addedNodeIds.length} nodes, skipped ${skippedNodeIds.length}`,
+        );
+        yield* Effect.logInfo(
+          `Import types: added ${addedNodeTypesCount}, skipped ${skippedNodeTypesCount}`,
+        );
+        yield* Effect.logInfo(
+          `Import tuple roles: added ${addedRolesCount}, skipped ${skippedRolesCount}`,
+        );
+        yield* Effect.logInfo(
+          `Import allowed types: added ${addedAllowedTypesCount}, skipped ${skippedAllowedTypesCount}`,
+        );
+        yield* Effect.logInfo(
+          `Import tuples: added ${addedTuplesCount}, skipped ${skippedTuplesCount}`,
         );
       });
 

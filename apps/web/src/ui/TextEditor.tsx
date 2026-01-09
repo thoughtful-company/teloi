@@ -3,11 +3,21 @@ import { EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { Id } from "@/schema";
 import * as BlockType from "@/services/ui/BlockType";
+import { SelectionStrategy } from "@/utils/selectionStrategy";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
 
 export type TextEditorVariant = "block" | "title";
+
+// === Keymap Condition Types ===
+
+type KeymapCondition =
+  | "always"
+  | "atStart" // anchor === 0 && head === 0
+  | "atEnd" // anchor === docLen && head === docLen
+  | "headAtStart" // head === 0
+  | "headAtEnd"; // head === docLen
 
 interface VariantStyles {
   fontSize: string;
@@ -72,34 +82,76 @@ export interface SelectionInfo {
   assoc: -1 | 0 | 1;
 }
 
+// === Editor Actions (Discriminated Union) ===
+
+export type EditorAction =
+  | { _tag: "Enter"; info: EnterKeyInfo }
+  | { _tag: "Tab" }
+  | { _tag: "ShiftTab" }
+  | { _tag: "BackspaceAtStart" }
+  | { _tag: "DeleteAtEnd" }
+  | {
+      _tag: "Navigate";
+      direction: "left" | "right" | "up" | "down";
+      goalX?: number;
+    }
+  | { _tag: "SelectionChange"; selection: SelectionInfo }
+  | { _tag: "Blur" }
+  | { _tag: "Escape" }
+  | { _tag: "ZoomIn" }
+  | { _tag: "BlockSelect"; direction: "up" | "down" }
+  | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
+  | {
+      _tag: "TypeTrigger";
+      typeId: Id.Node;
+      trigger: BlockType.TriggerDefinition;
+    };
+
+/** Action constructors for type-safe action creation */
+export const Action = {
+  Enter: (info: EnterKeyInfo): EditorAction => ({ _tag: "Enter", info }),
+  Tab: (): EditorAction => ({ _tag: "Tab" }),
+  ShiftTab: (): EditorAction => ({ _tag: "ShiftTab" }),
+  BackspaceAtStart: (): EditorAction => ({ _tag: "BackspaceAtStart" }),
+  DeleteAtEnd: (): EditorAction => ({ _tag: "DeleteAtEnd" }),
+  Navigate: (
+    direction: "left" | "right" | "up" | "down",
+    goalX?: number,
+  ): EditorAction =>
+    goalX !== undefined
+      ? { _tag: "Navigate", direction, goalX }
+      : { _tag: "Navigate", direction },
+  SelectionChange: (selection: SelectionInfo): EditorAction => ({
+    _tag: "SelectionChange",
+    selection,
+  }),
+  Blur: (): EditorAction => ({ _tag: "Blur" }),
+  Escape: (): EditorAction => ({ _tag: "Escape" }),
+  ZoomIn: (): EditorAction => ({ _tag: "ZoomIn" }),
+  BlockSelect: (direction: "up" | "down"): EditorAction => ({
+    _tag: "BlockSelect",
+    direction,
+  }),
+  Move: (action: "swapUp" | "swapDown" | "first" | "last"): EditorAction => ({
+    _tag: "Move",
+    action,
+  }),
+  TypeTrigger: (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ): EditorAction => ({ _tag: "TypeTrigger", typeId, trigger }),
+} as const;
+
 interface TextEditorProps {
   /** Yjs Y.Text instance for collaborative text */
   ytext: Y.Text;
   /** Yjs UndoManager for undo/redo */
   undoManager: Y.UndoManager;
-  onEnter?: (info: EnterKeyInfo) => void;
-  onTab?: () => void;
-  onShiftTab?: () => void;
-  onBackspaceAtStart?: () => void;
-  onDeleteAtEnd?: () => void;
-  onArrowLeftAtStart?: () => void;
-  onArrowRightAtEnd?: () => void;
-  onArrowUpOnFirstLine?: (goalX: number) => void;
-  onArrowDownOnLastLine?: (goalX: number) => void;
-  onSelectionChange?: (selection: SelectionInfo) => void;
-  onBlur?: () => void;
-  onZoomIn?: () => void;
-  onSwapUp?: () => void;
-  onSwapDown?: () => void;
-  onMoveToFirst?: () => void;
-  onMoveToLast?: () => void;
-  /** Called when user types a trigger pattern. Return true to handle, false to let normal input through. */
-  onTypeTrigger?: (
-    typeId: Id.Node,
-    trigger: BlockType.TriggerDefinition,
-  ) => boolean;
-  initialClickCoords?: { x: number; y: number } | null;
-  initialSelection?: { anchor: number; head: number } | null;
+  /** Single handler for all editor actions */
+  onAction?: (action: EditorAction) => boolean | void;
+  /** Strategy for initial cursor positioning on mount */
+  initialStrategy: SelectionStrategy;
+  /** Reactive selection from model (for ongoing sync after mount) */
   selection?: {
     anchor: number;
     head: number;
@@ -118,32 +170,26 @@ export default function TextEditor(props: TextEditorProps) {
   const {
     ytext,
     undoManager,
-    onEnter,
-    onTab,
-    onShiftTab,
-    onBackspaceAtStart,
-    onDeleteAtEnd,
-    onArrowLeftAtStart,
-    onArrowRightAtEnd,
-    onArrowUpOnFirstLine,
-    onArrowDownOnLastLine,
-    onSelectionChange,
-    onBlur,
-    onZoomIn,
-    onSwapUp,
-    onSwapDown,
-    onMoveToFirst,
-    onMoveToLast,
-    onTypeTrigger,
-    initialClickCoords,
-    initialSelection,
+    onAction,
+    initialStrategy,
     variant = "block",
   } = props;
+
+  /** Emit an action, returning true if handled */
+  const emit = (action: EditorAction): boolean => {
+    const result = onAction?.(action);
+    return result === true;
+  };
 
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
   // Suppress onSelectionChange for programmatic selection changes (goalX positioning)
   let suppressSelectionChange = false;
+  // When mounting without props.selection but expecting one to arrive (programmatic navigation),
+  // suppress selection changes until createEffect syncs the model selection.
+  // This prevents race conditions where yCollab or default cursor positioning overwrites
+  // a pending selection from the model (e.g., merge point after backspace).
+  let awaitingSelectionFromModel = false;
   // Track whether selection is ready (doc has content and selection is set)
   // Used to hide cursor until we can position it correctly
   const [isSelectionReady, setIsSelectionReady] = createSignal(false);
@@ -172,6 +218,7 @@ export default function TextEditor(props: TextEditorProps) {
 
             if (anchor === head) {
               setTimeout(() => {
+                suppressSelectionChange = true;
                 update.view.dispatch({
                   selection: EditorSelection.create([
                     EditorSelection.cursor(anchor, sel.assoc),
@@ -179,35 +226,59 @@ export default function TextEditor(props: TextEditorProps) {
                 });
                 setIsSelectionReady(true);
                 update.view.focus();
+                suppressSelectionChange = false;
               }, 0);
             } else {
               // Use setTimeout to avoid dispatch during update
               // Set selection ready BEFORE focus to avoid cursor flash
               setTimeout(() => {
+                suppressSelectionChange = true;
                 update.view.dispatch({ selection: { anchor, head } });
                 setIsSelectionReady(true);
                 update.view.focus();
+                suppressSelectionChange = false;
               }, 0);
             }
           } else {
             // No saved selection, just focus now that doc has content
             setTimeout(() => {
               setIsSelectionReady(true);
+              suppressSelectionChange = true;
               update.view.focus();
+              suppressSelectionChange = false;
             }, 0);
           }
+        }
+
+        // Log ALL selection changes for debugging
+        if (update.selectionSet) {
+          const sel = update.state.selection.main;
+          console.debug("[TextEditor.updateListener] Selection changed", {
+            anchor: sel.anchor,
+            head: sel.head,
+            suppressed: suppressSelectionChange,
+            docChanged: update.docChanged,
+          });
         }
 
         // Text changes are handled by Yjs, only track selection
         if (
           update.selectionSet &&
-          onSelectionChange &&
-          !suppressSelectionChange
+          !suppressSelectionChange &&
+          !awaitingSelectionFromModel
         ) {
           // Don't save selection when doc is empty - Yjs hasn't synced yet
           if (update.state.doc.length === 0) return;
 
           const sel = update.state.selection.main;
+
+          console.debug("[TextEditor.updateListener] Selection change firing", {
+            anchor: sel.anchor,
+            head: sel.head,
+            docLen: update.state.doc.length,
+            docChanged: update.docChanged,
+          });
+
           // Detect if we're at a wrap boundary by comparing Y coords with different sides
           const coordsBefore = update.view.coordsAtPos(sel.head, -1);
           const coordsAfter = update.view.coordsAtPos(sel.head, 1);
@@ -215,204 +286,119 @@ export default function TextEditor(props: TextEditorProps) {
             coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
           const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
-          onSelectionChange({ anchor: sel.anchor, head: sel.head, assoc });
+          emit(
+            Action.SelectionChange({
+              anchor: sel.anchor,
+              head: sel.head,
+              assoc,
+            }),
+          );
         }
-        if (update.focusChanged && !update.view.hasFocus && onBlur) {
-          onBlur();
+        if (update.focusChanged && !update.view.hasFocus) {
+          console.debug(
+            "[TextEditor.updateListener] Blur detected, emitting Blur action",
+          );
+          emit(Action.Blur());
         }
       }),
     ];
 
-    // Add Enter key handler if callback provided
-    if (onEnter) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Enter",
-            run: (view) => {
-              const state = view.state;
-              const cursorPos = state.selection.main.head;
-              const doc = state.doc.toString();
-              onEnter({
-                cursorPos,
-                textBefore: doc.slice(0, cursorPos),
-                textAfter: doc.slice(cursorPos),
-              });
-              return true; // Prevent default Enter behavior
-            },
-          },
-        ]),
-      );
+    // Declarative keymap configuration - emits actions
+    interface ActionKeyDef {
+      key: string;
+      action: EditorAction | ((view: EditorView) => EditorAction);
+      condition?: KeymapCondition;
     }
 
-    // Add Tab key handler if callback provided
-    if (onTab) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Tab",
-            run: () => {
-              onTab();
-              return true; // Prevent default Tab behavior
-            },
-          },
-        ]),
-      );
-    }
+    const actionKeyDefs: ActionKeyDef[] = [
+      // Enter - extracts cursor info
+      {
+        key: "Enter",
+        action: (view) => {
+          const cursorPos = view.state.selection.main.head;
+          const doc = view.state.doc.toString();
+          return Action.Enter({
+            cursorPos,
+            textBefore: doc.slice(0, cursorPos),
+            textAfter: doc.slice(cursorPos),
+          });
+        },
+      },
 
-    if (onShiftTab) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Tab",
-            run: () => {
-              onShiftTab();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
+      // Simple keybindings (always fire)
+      { key: "Tab", action: Action.Tab() },
+      { key: "Shift-Tab", action: Action.ShiftTab() },
+      { key: "Mod-.", action: Action.ZoomIn() },
+      { key: "Escape", action: Action.Escape() },
+      { key: "Alt-Mod-ArrowUp", action: Action.Move("swapUp") },
+      { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
+      { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
+      { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
 
-    if (onBackspaceAtStart) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Backspace",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              // Only intercept if cursor is at start and no selection
-              if (sel.anchor === 0 && sel.head === 0) {
-                onBackspaceAtStart();
-                return true;
-              }
-              return false; // Let default handle it
-            },
-          },
-        ]),
-      );
-    }
+      // Position-conditional (anchor AND head at position)
+      {
+        key: "Backspace",
+        action: Action.BackspaceAtStart(),
+        condition: "atStart",
+      },
+      {
+        key: "ArrowLeft",
+        action: Action.Navigate("left"),
+        condition: "atStart",
+      },
+      { key: "Delete", action: Action.DeleteAtEnd(), condition: "atEnd" },
+      {
+        key: "ArrowRight",
+        action: Action.Navigate("right"),
+        condition: "atEnd",
+      },
 
-    if (onDeleteAtEnd) {
+      // Head-only conditional (for extending selection)
+      {
+        key: "Shift-ArrowUp",
+        action: Action.BlockSelect("up"),
+        condition: "headAtStart",
+      },
+      {
+        key: "Shift-ArrowDown",
+        action: Action.BlockSelect("down"),
+        condition: "headAtEnd",
+      },
+    ];
+
+    // Build keymaps from action definitions
+    for (const def of actionKeyDefs) {
       extensions.push(
         keymap.of([
           {
-            key: "Delete",
+            key: def.key,
             run: (view) => {
               const sel = view.state.selection.main;
               const docLen = view.state.doc.length;
-              // Only intercept if cursor is at end and no selection
-              if (sel.anchor === docLen && sel.head === docLen) {
-                onDeleteAtEnd();
-                return true;
+
+              // Check condition
+              switch (def.condition) {
+                case "atStart":
+                  if (sel.anchor !== 0 || sel.head !== 0) return false;
+                  break;
+                case "atEnd":
+                  if (sel.anchor !== docLen || sel.head !== docLen)
+                    return false;
+                  break;
+                case "headAtStart":
+                  if (sel.head !== 0) return false;
+                  break;
+                case "headAtEnd":
+                  if (sel.head !== docLen) return false;
+                  break;
               }
-              return false; // Let default handle it
-            },
-          },
-        ]),
-      );
-    }
 
-    if (onArrowLeftAtStart) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowLeft",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              if (sel.anchor === 0 && sel.head === 0) {
-                onArrowLeftAtStart();
-                return true;
-              }
-              return false;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onArrowRightAtEnd) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "ArrowRight",
-            run: (view) => {
-              const sel = view.state.selection.main;
-              const docLen = view.state.doc.length;
-              if (sel.anchor === docLen && sel.head === docLen) {
-                onArrowRightAtEnd();
-                return true;
-              }
-              return false;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onZoomIn) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Mod-.",
-            run: () => {
-              onZoomIn();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onSwapUp) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Alt-Mod-ArrowUp",
-            run: () => {
-              onSwapUp();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onSwapDown) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Alt-Mod-ArrowDown",
-            run: () => {
-              onSwapDown();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onMoveToFirst) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Alt-Mod-ArrowUp",
-            run: () => {
-              onMoveToFirst();
-              return true;
-            },
-          },
-        ]),
-      );
-    }
-
-    if (onMoveToLast) {
-      extensions.push(
-        keymap.of([
-          {
-            key: "Shift-Alt-Mod-ArrowDown",
-            run: () => {
-              onMoveToLast();
+              // Emit action
+              const action =
+                typeof def.action === "function"
+                  ? def.action(view)
+                  : def.action;
+              emit(action);
               return true;
             },
           },
@@ -434,10 +420,10 @@ export default function TextEditor(props: TextEditorProps) {
             const moved = view.moveVertically(sel, false);
             const movedY = view.coordsAtPos(moved.head)?.top;
 
-            if (currentY === movedY && onArrowUpOnFirstLine) {
+            if (currentY === movedY) {
               // On first visual line - delegate to parent
               const cursorCoords = view.coordsAtPos(sel.head, side);
-              onArrowUpOnFirstLine(cursorCoords?.left ?? 0);
+              emit(Action.Navigate("up", cursorCoords?.left ?? 0));
               return true;
             }
 
@@ -479,10 +465,10 @@ export default function TextEditor(props: TextEditorProps) {
             const moved = view.moveVertically(sel, true);
             const movedY = view.coordsAtPos(moved.head)?.top;
 
-            if (currentY === movedY && onArrowDownOnLastLine) {
+            if (currentY === movedY) {
               // On last visual line - delegate to parent
               const cursorCoords = view.coordsAtPos(sel.head, side);
-              onArrowDownOnLastLine(cursorCoords?.left ?? 0);
+              emit(Action.Navigate("down", cursorCoords?.left ?? 0));
               return true;
             }
 
@@ -514,39 +500,38 @@ export default function TextEditor(props: TextEditorProps) {
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
 
-    if (onTypeTrigger) {
-      const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
+    // Type trigger handler (e.g., "- " for list, "[] " for checkbox)
+    const triggersWithDefinitions = BlockType.getTriggersWithDefinitions();
+    extensions.push(
+      EditorView.inputHandler.of((view, from, to, text) => {
+        if (text !== " ") return false;
 
-      extensions.push(
-        EditorView.inputHandler.of((view, from, to, text) => {
-          if (text !== " ") return false;
+        const doc = view.state.doc.toString();
 
-          const doc = view.state.doc.toString();
+        for (const { definition, trigger } of triggersWithDefinitions) {
+          const consumeValues = Array.isArray(trigger.consume)
+            ? trigger.consume
+            : [trigger.consume];
 
-          for (const { definition, trigger } of triggersWithDefinitions) {
-            const consumeValues = Array.isArray(trigger.consume)
-              ? trigger.consume
-              : [trigger.consume];
-
-            for (const consume of consumeValues) {
-              if (from === consume && to === consume) {
-                const prefix = doc.slice(0, consume);
-                if (trigger.pattern.test(prefix)) {
-                  if (onTypeTrigger(definition.id, trigger)) {
-                    view.dispatch({
-                      changes: { from: 0, to: consume, insert: "" },
-                      selection: { anchor: 0 },
-                    });
-                    return true;
-                  }
+          for (const consume of consumeValues) {
+            if (from === consume && to === consume) {
+              const prefix = doc.slice(0, consume);
+              if (trigger.pattern.test(prefix)) {
+                // Emit action - if handler returns true, consume the trigger text
+                if (emit(Action.TypeTrigger(definition.id, trigger))) {
+                  view.dispatch({
+                    changes: { from: 0, to: consume, insert: "" },
+                    selection: { anchor: 0 },
+                  });
+                  return true;
                 }
               }
             }
           }
-          return false;
-        }),
-      );
-    }
+        }
+        return false;
+      }),
+    );
 
     // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
     const filteredDefaultKeymap = defaultKeymap.filter(
@@ -559,85 +544,103 @@ export default function TextEditor(props: TextEditorProps) {
       extensions,
     });
 
+    // Determine if we're mounting without explicit selection (programmatic navigation).
+    // Set awaitingSelectionFromModel BEFORE creating view, so updateListener won't
+    // report selection changes caused by yCollab/CodeMirror during view initialization.
+    const docHasContent = state.doc.length > 0;
+    const hasExplicitSelection =
+      initialStrategy.type !== "default" || !!props.selection;
+    if (docHasContent && !hasExplicitSelection) {
+      awaitingSelectionFromModel = true;
+    }
+
     view = new EditorView({
       state,
       parent: containerRef,
     });
 
-    // Priority: initialSelection (from click with existing selection) >
-    // props.selection (from model) > initialClickCoords (from click position)
-    if (initialSelection) {
-      const docLen = view.state.doc.length;
-      const anchor = Math.min(initialSelection.anchor, docLen);
-      const head = Math.min(initialSelection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
-    } else if (
-      props.selection?.goalX != null &&
-      props.selection?.goalLine != null
-    ) {
-      // Use goalX (absolute viewport X) to position cursor on the target line
-      // For "first": use position 0 (start of doc) to get Y of first visual line
-      // For "last": use doc.length (end of doc) to get Y of last visual line
-      const linePos =
-        props.selection.goalLine === "first" ? 0 : view.state.doc.length;
-      const lineCoords = view.coordsAtPos(linePos);
-      const contentRect = view.contentDOM.getBoundingClientRect();
-      const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
-      const pos = view.posAtCoords({ x: props.selection.goalX, y: targetY });
-      if (pos !== null) {
-        // Suppress onSelectionChange - this is programmatic positioning for arrow navigation
-        suppressSelectionChange = true;
-        view.dispatch({ selection: { anchor: pos } });
-        suppressSelectionChange = false;
-      }
-    } else if (props.selection) {
-      const docLen = view.state.doc.length;
-      // If doc is empty (Yjs hasn't synced yet), the updateListener will apply selection when content arrives
-      if (docLen > 0) {
-        const anchor = Math.min(props.selection.anchor, docLen);
-        const head = Math.min(props.selection.head, docLen);
+    console.debug("[TextEditor.mount] Initial selection state", {
+      initialStrategy: initialStrategy.type,
+      propsSelection: props.selection,
+      docLength: view.state.doc.length,
+      willDefault: !hasExplicitSelection,
+      awaitingSelection: awaitingSelectionFromModel,
+    });
 
+    // Apply initial selection based on strategy type
+    const docLen = view.state.doc.length;
+    switch (initialStrategy.type) {
+      case "range": {
+        const anchor = Math.min(initialStrategy.anchor, docLen);
+        const head = Math.min(initialStrategy.head, docLen);
         if (anchor === head) {
           view.dispatch({
             selection: EditorSelection.create([
-              EditorSelection.cursor(anchor, props.selection.assoc),
+              EditorSelection.cursor(anchor, initialStrategy.assoc),
             ]),
           });
         } else {
           view.dispatch({ selection: { anchor, head } });
         }
+        break;
       }
-    } else if (initialClickCoords) {
-      // Only use click coords if doc has content - clicking on empty doc is meaningless
-      // and the saved selection will be restored when Yjs syncs
-      const docLen = view.state.doc.length;
-
-      if (docLen > 0) {
-        const { pos, assoc } = view.posAndSideAtCoords(initialClickCoords) || {
-          pos: null,
-          assoc: 0,
-        };
-        if (pos !== null) {
-          view.dispatch({
-            selection: EditorSelection.create([
-              EditorSelection.cursor(pos, assoc),
-            ]),
+      case "goalX": {
+        if (docLen > 0) {
+          const linePos = initialStrategy.goalLine === "first" ? 0 : docLen;
+          const lineCoords = view.coordsAtPos(linePos);
+          const contentRect = view.contentDOM.getBoundingClientRect();
+          const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
+          const pos = view.posAtCoords({
+            x: initialStrategy.goalX,
+            y: targetY,
           });
+
+          if (pos !== null) {
+            suppressSelectionChange = true;
+            view.dispatch({ selection: { anchor: pos } });
+            suppressSelectionChange = false;
+          }
         }
+        break;
       }
-    } else if (view.state.doc.length > 0) {
-      // Only default to position 0 if doc has content
-      // Otherwise, let updateListener set selection when Yjs syncs
-      view.dispatch({ selection: { anchor: 0 } });
+      case "click": {
+        if (docLen > 0) {
+          const result = view.posAndSideAtCoords({
+            x: initialStrategy.x,
+            y: initialStrategy.y,
+          });
+          if (result && result.pos !== null) {
+            // Don't suppress - user clicks SHOULD save selection to buffer
+            view.dispatch({
+              selection: EditorSelection.create([
+                EditorSelection.cursor(result.pos, result.assoc),
+              ]),
+            });
+          }
+        }
+        break;
+      }
+      case "default": {
+        if (docLen > 0) {
+          // Only default to position 0 if doc has content
+          // Otherwise, let updateListener set selection when Yjs syncs
+          suppressSelectionChange = true;
+          view.dispatch({ selection: { anchor: 0 } });
+          suppressSelectionChange = false;
+        }
+        break;
+      }
     }
 
     // Focus logic: balance cursor flash prevention with immediate focus for new blocks
-    const docLen = view.state.doc.length;
 
     if (docLen > 0) {
       // Content already loaded - focus immediately
       setIsSelectionReady(true);
+      // Suppress selection changes during focus to prevent yCollab cursor restoration
+      suppressSelectionChange = true;
       view.focus();
+      suppressSelectionChange = false;
     } else {
       // Doc is empty - check if we're expecting content from Yjs
       // If saved selection is beyond position 0, there must be content waiting to sync
@@ -646,7 +649,9 @@ export default function TextEditor(props: TextEditorProps) {
       if (!expectingContent) {
         // New empty block or empty block at position 0 - focus immediately
         setIsSelectionReady(true);
+        suppressSelectionChange = true;
         view.focus();
+        suppressSelectionChange = false;
       }
       // else: wait for updateListener to focus after Yjs syncs
     }
@@ -657,14 +662,49 @@ export default function TextEditor(props: TextEditorProps) {
   // Sync selection from model to CodeMirror
   createEffect(() => {
     const selection = props.selection;
-    if (!view || !selection) return;
 
-    // Skip syncing when goalX and goalLine are set - positioning is handled by mount using posAtCoords
-    if (selection.goalX != null && selection.goalLine != null) {
-      return;
+    console.debug("[TextEditor.selectionSync] Effect running", {
+      hasView: !!view,
+      selection,
+      docLen: view?.state.doc.length,
+      currentSel: view
+        ? {
+            anchor: view.state.selection.main.anchor,
+            head: view.state.selection.main.head,
+          }
+        : null,
+      awaitingSelection: awaitingSelectionFromModel,
+    });
+
+    // After mount, the first createEffect run gives reactivity a chance to propagate
+    // the model selection. Clear the flag to allow future user selection changes.
+    // If props.selection arrived, we'll sync it below. If not, user can now make changes.
+    if (awaitingSelectionFromModel) {
+      awaitingSelectionFromModel = false;
     }
 
+    if (!view || !selection) return;
+
     const docLen = view.state.doc.length;
+
+    // When goalX and goalLine are set, apply goalX positioning using posAtCoords.
+    // This handles the race condition where goalX arrives after mount.
+    if (selection.goalX != null && selection.goalLine != null) {
+      if (docLen > 0) {
+        const linePos = selection.goalLine === "first" ? 0 : docLen;
+        const lineCoords = view.coordsAtPos(linePos);
+        const contentRect = view.contentDOM.getBoundingClientRect();
+        const targetY = lineCoords ? lineCoords.top + 1 : contentRect.top;
+        const pos = view.posAtCoords({ x: selection.goalX, y: targetY });
+
+        if (pos !== null) {
+          suppressSelectionChange = true;
+          view.dispatch({ selection: { anchor: pos } });
+          suppressSelectionChange = false;
+        }
+      }
+      return;
+    }
 
     // Only sync selection when doc has content - empty doc means Yjs hasn't synced yet
     // (The updateListener will handle selection when Yjs syncs)
@@ -687,6 +727,12 @@ export default function TextEditor(props: TextEditorProps) {
         suppressSelectionChange = true;
         view.dispatch({ selection: EditorSelection.create([newSel]) });
         suppressSelectionChange = false;
+
+        console.debug("[TextEditor.selectionSync] Selection dispatched", {
+          anchor,
+          head,
+          assoc: selection.assoc,
+        });
       }
     }
 
@@ -695,7 +741,9 @@ export default function TextEditor(props: TextEditorProps) {
     // In that case, updateListener will handle focus after sync.
     const expectingContent = docLen === 0 && selection.anchor > 0;
     if (!view.hasFocus && !expectingContent) {
+      suppressSelectionChange = true;
       view.focus();
+      suppressSelectionChange = false;
     }
   });
 
