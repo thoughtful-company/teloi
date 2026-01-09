@@ -17,16 +17,17 @@ export const indent = (nodeId: Id.Node): Effect.Effect<boolean, never, NodeT> =>
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return false;
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
+    if (siblingIndex === -1) return false;
 
     // Can't indent first sibling - no previous sibling to indent into
-    if (siblingIndex <= 0) return false;
+    if (siblingIndex === 0) return false;
 
     const prevSiblingId = siblings[siblingIndex - 1]!;
 
@@ -38,7 +39,14 @@ export const indent = (nodeId: Id.Node): Effect.Effect<boolean, never, NodeT> =>
     });
 
     return true;
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Block.indent] Operation failed").pipe(
+        Effect.annotateLogs({ nodeId, error: String(error) }),
+        Effect.as(false),
+      ),
+    ),
+  );
 
 /**
  * Outdent a node (Shift+Tab) - move it to become a sibling of its parent.
@@ -57,14 +65,14 @@ export const outdent = (
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return false;
 
     const grandparentId = yield* Node.getParent(parentId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!grandparentId) return false;
@@ -77,4 +85,11 @@ export const outdent = (
     });
 
     return true;
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Block.outdent] Operation failed").pipe(
+        Effect.annotateLogs({ nodeId, error: String(error) }),
+        Effect.as(false),
+      ),
+    ),
+  );

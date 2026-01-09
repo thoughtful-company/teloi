@@ -19,16 +19,17 @@ export const swap = (
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return false;
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
+    if (siblingIndex === -1) return false;
 
     if (direction === "up") {
-      if (siblingIndex <= 0) return false;
+      if (siblingIndex === 0) return false;
       const prevSiblingId = siblings[siblingIndex - 1]!;
       yield* Node.insertNode({
         nodeId,
@@ -37,7 +38,7 @@ export const swap = (
         siblingId: prevSiblingId,
       });
     } else {
-      if (siblingIndex >= siblings.length - 1) return false;
+      if (siblingIndex === siblings.length - 1) return false;
       const nextSiblingId = siblings[siblingIndex + 1]!;
       yield* Node.insertNode({
         nodeId,
@@ -48,7 +49,14 @@ export const swap = (
     }
 
     return true;
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Block.swap] Operation failed").pipe(
+        Effect.annotateLogs({ nodeId, direction, error: String(error) }),
+        Effect.as(false),
+      ),
+    ),
+  );
 
 /**
  * Move a node to be the first sibling.
@@ -62,13 +70,14 @@ export const moveToFirst = (
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return false;
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
+    if (siblingIndex === -1) return false;
 
     // Already first
     if (siblingIndex === 0) return false;
@@ -82,7 +91,14 @@ export const moveToFirst = (
     });
 
     return true;
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Block.moveToFirst] Operation failed").pipe(
+        Effect.annotateLogs({ nodeId, error: String(error) }),
+        Effect.as(false),
+      ),
+    ),
+  );
 
 /**
  * Move a node to be the last sibling.
@@ -96,16 +112,17 @@ export const moveToLast = (
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return false;
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
+    if (siblingIndex === -1) return false;
 
     // Already last
-    if (siblingIndex >= siblings.length - 1) return false;
+    if (siblingIndex === siblings.length - 1) return false;
 
     const lastSiblingId = siblings[siblings.length - 1]!;
     yield* Node.insertNode({
@@ -116,4 +133,11 @@ export const moveToLast = (
     });
 
     return true;
-  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Block.moveToLast] Operation failed").pipe(
+        Effect.annotateLogs({ nodeId, error: String(error) }),
+        Effect.as(false),
+      ),
+    ),
+  );

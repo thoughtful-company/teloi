@@ -30,14 +30,23 @@ export const enter = (
       insert: "before",
     });
 
-    // Update Y.Text: title keeps text before cursor, new block gets text after
-    ytext.delete(params.cursorPos, ytext.length - params.cursorPos);
-    const newYtext = Yjs.getText(newNodeId);
-    newYtext.insert(0, params.textAfter);
+    // Update Y.Text atomically: title keeps text before cursor, new block gets text after
+    const clampedPos = Math.max(0, Math.min(params.cursorPos, ytext.length));
+    Yjs.doc.transact(() => {
+      ytext.delete(clampedPos, ytext.length - clampedPos);
+      const newYtext = Yjs.getText(newNodeId);
+      newYtext.insert(0, params.textAfter);
+    });
 
     const newBlockId = Id.makeBlockId(bufferId, newNodeId);
     yield* Buffer.setSelection(bufferId, makeCollapsedSelection(newNodeId, 0));
     yield* Window.setActiveElement(
       Option.some({ type: "block" as const, id: newBlockId }),
     );
-  }).pipe(Effect.catchAll(() => Effect.void));
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logError("[Title.enter] Operation failed").pipe(
+        Effect.annotateLogs({ bufferId, nodeId, error: String(error) }),
+      ),
+    ),
+  );

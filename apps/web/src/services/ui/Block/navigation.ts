@@ -30,13 +30,14 @@ export const findNextNode = (
     const Node = yield* NodeT;
     const parentId = yield* Node.getParent(currentId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return Option.none();
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const idx = siblings.indexOf(currentId);
+    if (idx === -1) return Option.none();
 
     if (idx < siblings.length - 1) {
       return Option.some(siblings[idx + 1]!);
@@ -56,13 +57,14 @@ export const findPreviousNode = (
     const Node = yield* NodeT;
     const parentId = yield* Node.getParent(currentId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
+        Effect.succeed<Id.Node | null>(null),
       ),
     );
     if (!parentId) return Option.none();
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const idx = siblings.indexOf(currentId);
+    if (idx === -1) return Option.none();
 
     if (idx > 0) {
       const prevSiblingId = siblings[idx - 1]!;
