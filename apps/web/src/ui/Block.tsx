@@ -905,6 +905,8 @@ export default function Block({ blockId }: BlockProps) {
                 modelSelection: store.selection,
               })}
               selection={store.selection}
+              inlineTypes={userTypes()}
+              inlineTypesNodeId={nodeId}
             />
           </Show>
         </div>

@@ -1,11 +1,24 @@
 import { defaultKeymap } from "@codemirror/commands";
-import { EditorSelection, EditorState, Extension } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import {
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Extension,
+} from "@codemirror/state";
+import {
+  Decoration,
+  DecorationSet,
+  EditorView,
+  keymap,
+  WidgetType,
+} from "@codemirror/view";
 import { Id } from "@/schema";
 import * as BlockType from "@/services/ui/BlockType";
 import { SelectionStrategy } from "@/utils/selectionStrategy";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
+import { render } from "solid-js/web";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import TypeBadge from "./TypeBadge";
 import * as Y from "yjs";
 
 export type TextEditorVariant = "block" | "title";
@@ -65,6 +78,62 @@ const variantThemes: Record<TextEditorVariant, Extension> = {
   block: createTheme(variantStyles.block),
   title: createTheme(variantStyles.title),
 };
+
+// === Inline Type Badge Widget ===
+
+class InlineTypeBadgeWidget extends WidgetType {
+  private dispose?: () => void;
+
+  constructor(
+    private types: readonly Id.Node[],
+    private nodeId: Id.Node,
+  ) {
+    super();
+  }
+
+  toDOM() {
+    const container = document.createElement("span");
+    container.className = "inline-type-badges ml-1";
+
+    // Mount Solid component into the container
+    this.dispose = render(
+      () => (
+        <For each={this.types}>
+          {(typeId) => <TypeBadge typeId={typeId} nodeId={this.nodeId} />}
+        </For>
+      ),
+      container,
+    );
+
+    return container;
+  }
+
+  destroy() {
+    this.dispose?.();
+  }
+
+  eq(other: InlineTypeBadgeWidget) {
+    if (this.nodeId !== other.nodeId) return false;
+    if (this.types.length !== other.types.length) return false;
+    for (let i = 0; i < this.types.length; i++) {
+      if (this.types[i] !== other.types[i]) return false;
+    }
+    return true;
+  }
+}
+
+function createTypeBadgeDecorations(
+  state: { doc: { length: number } },
+  types: readonly Id.Node[],
+  nodeId: Id.Node,
+): DecorationSet {
+  if (types.length === 0) return Decoration.none;
+  const widget = Decoration.widget({
+    widget: new InlineTypeBadgeWidget(types, nodeId),
+    side: 1,
+  }).range(state.doc.length);
+  return Decoration.set([widget]);
+}
 
 export interface EnterKeyInfo {
   /** Text before the cursor position */
@@ -176,6 +245,10 @@ interface TextEditorProps {
     assoc?: -1 | 0 | 1;
   } | null;
   variant?: TextEditorVariant;
+  /** Type IDs to display as inline badges at end of content */
+  inlineTypes?: readonly Id.Node[];
+  /** Node ID for type badge removal (required if inlineTypes provided) */
+  inlineTypesNodeId?: Id.Node;
 }
 
 /**
@@ -210,10 +283,25 @@ export default function TextEditor(props: TextEditorProps) {
   // Used to hide cursor until we can position it correctly
   const [isSelectionReady, setIsSelectionReady] = createSignal(false);
 
+  // Compartment for inline type badges - allows dynamic reconfiguration
+  const typeBadgeCompartment = new Compartment();
+
   onMount(() => {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
       variantThemes[variant],
+      // Inline type badges widget extension
+      typeBadgeCompartment.of(
+        props.inlineTypes?.length && props.inlineTypesNodeId
+          ? EditorView.decorations.compute(["doc"], (state) =>
+              createTypeBadgeDecorations(
+                state,
+                props.inlineTypes!,
+                props.inlineTypesNodeId!,
+              ),
+            )
+          : [],
+      ),
       // Yjs collaborative editing extension - syncs Y.Text with CodeMirror
       yCollab(ytext, null, { undoManager }),
       EditorView.updateListener.of((update) => {
@@ -781,6 +869,25 @@ export default function TextEditor(props: TextEditorProps) {
       view.focus();
       suppressSelectionChange = false;
     }
+  });
+
+  // Reconfigure type badges when types change
+  createEffect(() => {
+    if (!view) return;
+    const types = props.inlineTypes;
+    const nodeId = props.inlineTypesNodeId;
+    // Trigger reactivity
+    void types?.length;
+
+    view.dispatch({
+      effects: typeBadgeCompartment.reconfigure(
+        types?.length && nodeId
+          ? EditorView.decorations.compute(["doc"], (state) =>
+              createTypeBadgeDecorations(state, types, nodeId),
+            )
+          : [],
+      ),
+    });
   });
 
   // Text sync is now handled by Yjs via yCollab extension
