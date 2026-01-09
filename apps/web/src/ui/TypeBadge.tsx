@@ -1,7 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
-import { YjsT } from "@/services/external/Yjs";
 import { TypeT } from "@/services/domain/Type";
+import { YjsT } from "@/services/external/Yjs";
+import { Badge } from "@kobalte/core/badge";
 import { Effect } from "effect";
 import { createSignal, onCleanup, onMount } from "solid-js";
 
@@ -43,7 +44,10 @@ export default function TypeBadge({ typeId, nodeId, onRemove }: TypeBadgeProps) 
   };
 
   return (
-    <span class="group inline-flex items-center gap-1 px-2 py-0.5 bg-sidebar-accent/80 text-sidebar-foreground text-xs rounded-full">
+    <Badge
+      textValue={`Type: ${name()}`}
+      class="group inline-flex items-center gap-1 px-2 py-0.5 bg-sidebar-accent/80 text-sidebar-foreground text-xs rounded-full whitespace-nowrap"
+    >
       <span class="opacity-60">#</span>
       <span>{name()}</span>
       <button
@@ -61,6 +65,6 @@ export default function TypeBadge({ typeId, nodeId, onRemove }: TypeBadgeProps) 
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
-    </span>
+    </Badge>
   );
 }

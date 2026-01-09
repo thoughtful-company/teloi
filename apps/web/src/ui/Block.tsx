@@ -8,7 +8,7 @@ import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
-import { TypePickerT } from "@/services/ui/TypePicker";
+import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -31,6 +31,7 @@ import TextEditor, {
   type EnterKeyInfo,
   type SelectionInfo,
 } from "./TextEditor";
+import TypeBadge from "./TypeBadge";
 import { TypePicker } from "./TypePicker";
 
 interface BlockProps {
@@ -140,6 +141,7 @@ export default function Block({ blockId }: BlockProps) {
   });
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
+  const userTypes = () => activeTypes().filter((typeId) => !isSystemType(typeId));
 
   const getActiveDefinitions = () =>
     activeTypes()
@@ -887,6 +889,9 @@ export default function Block({ blockId }: BlockProps) {
             fallback={
               <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
                 {textContent() || "\u00A0"}
+                <For each={userTypes()}>
+                  {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
+                </For>
               </p>
             }
           >
