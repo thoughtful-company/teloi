@@ -13,6 +13,7 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
   makeCollapsedSelection,
   resolveSelectionStrategy,
+  updateEditorSelection,
 } from "@/utils/selectionStrategy";
 import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
@@ -217,52 +218,8 @@ export default function Block({ blockId }: BlockProps) {
   // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
-    console.debug("[Block.handleSelectionChange] Called", {
-      blockId,
-      nodeId,
-      selection,
-    });
-
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
-        const Buffer = yield* BufferT;
-
-        // Preserve goalX/goalLine only for same-node selection changes (chained vertical navigation)
-        const existingSelection = yield* Buffer.getSelection(bufferId);
-        const isSameNode =
-          Option.isSome(existingSelection) &&
-          existingSelection.value.anchor.nodeId === nodeId;
-        const goalX = isSameNode ? existingSelection.value.goalX : null;
-        const goalLine = isSameNode ? existingSelection.value.goalLine : null;
-
-        yield* Effect.logDebug(
-          "[Block.handleSelectionChange] Setting selection",
-        ).pipe(
-          Effect.annotateLogs({
-            nodeId,
-            anchor: selection.anchor,
-            head: selection.head,
-            existingOffset: Option.isSome(existingSelection)
-              ? existingSelection.value.anchorOffset
-              : null,
-          }),
-        );
-
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { nodeId },
-            anchorOffset: selection.anchor,
-            focus: { nodeId },
-            focusOffset: selection.head,
-            goalX,
-            goalLine,
-            assoc: selection.assoc,
-          }),
-        );
-      }),
-    );
+    const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
   const handleBlur = () => {

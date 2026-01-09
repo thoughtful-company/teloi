@@ -10,11 +10,16 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
   makeCollapsedSelection,
   resolveSelectionStrategy,
+  updateEditorSelection,
 } from "@/utils/selectionStrategy";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Match, Option, Stream } from "effect";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
-import TextEditor, { type EditorAction, type EnterKeyInfo } from "./TextEditor";
+import TextEditor, {
+  type EditorAction,
+  type EnterKeyInfo,
+  type SelectionInfo,
+} from "./TextEditor";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -184,6 +189,10 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
+  const handleSelectionChange = (selection: SelectionInfo) => {
+    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
+  };
+
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -274,6 +283,9 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => handleEnter(info)),
       Match.tag("Blur", () => handleBlur()),
+      Match.tag("SelectionChange", ({ selection }) =>
+        handleSelectionChange(selection),
+      ),
       Match.tag("Navigate", ({ direction, goalX }) =>
         Match.value(direction).pipe(
           Match.when("right", () => handleArrowRightAtEnd()),

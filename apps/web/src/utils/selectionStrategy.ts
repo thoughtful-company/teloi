@@ -1,5 +1,46 @@
 import { Id } from "@/schema";
-import { Option } from "effect";
+import { BufferT } from "@/services/ui/Buffer";
+import { Effect, Option } from "effect";
+
+/** Selection info from editor (anchor, head, assoc) */
+export interface EditorSelectionInfo {
+  anchor: number;
+  head: number;
+  assoc: -1 | 0 | 1;
+}
+
+/**
+ * Update buffer selection from editor selection change.
+ * Preserves goalX/goalLine for chained vertical navigation when staying on same node.
+ */
+export const updateEditorSelection = (
+  bufferId: Id.Buffer,
+  nodeId: Id.Node,
+  selection: EditorSelectionInfo,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+
+    const existingSelection = yield* Buffer.getSelection(bufferId);
+    const isSameNode =
+      Option.isSome(existingSelection) &&
+      existingSelection.value.anchor.nodeId === nodeId;
+    const goalX = isSameNode ? existingSelection.value.goalX : null;
+    const goalLine = isSameNode ? existingSelection.value.goalLine : null;
+
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { nodeId },
+        anchorOffset: selection.anchor,
+        focus: { nodeId },
+        focusOffset: selection.head,
+        goalX,
+        goalLine,
+        assoc: selection.assoc,
+      }),
+    );
+  });
 
 /** Build a collapsed selection (anchor === focus) for Buffer.setSelection */
 export const makeCollapsedSelection = (
