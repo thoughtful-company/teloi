@@ -314,11 +314,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-        const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
-        const Yjs = yield* YjsT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
 
         // Check if any active type wants to be removed on empty Enter
         if (info.cursorPos === 0 && info.textAfter.length === 0) {
@@ -331,47 +327,32 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        // Get parent of current node
-        const parentId = yield* Node.getParent(nodeId);
+        const Block = yield* BlockT;
+        const Window = yield* WindowT;
+        const Buffer = yield* BufferT;
 
-        const isAtStart = info.cursorPos === 0 && info.textAfter.length > 0;
-
-        // Create new node
-        const newNodeId = yield* Node.insertNode({
-          parentId,
-          insert: isAtStart ? "before" : "after",
-          siblingId: nodeId,
+        const result = yield* Block.split({
+          nodeId,
+          cursorPos: info.cursorPos,
+          textAfter: info.textAfter,
         });
 
         // Propagate types that want to be propagated
         const Type = yield* TypeT;
         for (const def of getActiveDefinitions()) {
           if (def.enter?.propagateToNewBlock) {
-            yield* Type.addType(newNodeId, def.id);
+            yield* Type.addType(result.newNodeId, def.id);
           }
         }
 
-        // Update Y.Text content for split
-        if (isAtStart) {
-          // Cursor at start: new block gets empty, current block keeps content
-          // No Y.Text changes needed - current block already has the text
-        } else {
-          // Normal case: current block keeps text before cursor, new block gets text after
-          // 1. Delete text after cursor from current Y.Text
-          ytext.delete(info.cursorPos, ytext.length - info.cursorPos);
-          // 2. Insert text into new node's Y.Text
-          const newYtext = Yjs.getText(newNodeId);
-          newYtext.insert(0, info.textAfter);
-        }
-
-        const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+        const newBlockId = Id.makeBlockId(bufferId, result.newNodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId: newNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: newNodeId },
-            focusOffset: 0,
+            anchor: { nodeId: result.newNodeId },
+            anchorOffset: result.cursorOffset,
+            focus: { nodeId: result.newNodeId },
+            focusOffset: result.cursorOffset,
             goalX: null,
             goalLine: null,
             assoc: 0,
@@ -380,71 +361,25 @@ export default function Block({ blockId }: BlockProps) {
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
         );
-      }).pipe(
-        Effect.catchTag(
-          "NodeHasNoParentError",
-          () =>
-            // Root nodes can't be split - do nothing
-            Effect.void,
-        ),
-      ),
+      }),
     );
   };
 
   const handleTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        // Get parent of current node
-        const parentId = yield* Node.getParent(nodeId);
-
-        // Get siblings
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't indent first sibling - no previous sibling to indent into
-        if (siblingIndex <= 0) {
-          return;
-        }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-
-        // Move this node to be a child of the previous sibling
-        yield* Node.insertNode({
-          nodeId, // Existing node - triggers move
-          parentId: prevSiblingId, // New parent is previous sibling
-          insert: "after", // Append at end of previous sibling's children
-        });
-      }).pipe(
-        Effect.catchTag(
-          "NodeHasNoParentError",
-          () =>
-            // Root nodes can't be indented - do nothing
-            Effect.void,
-        ),
-      ),
+        const Block = yield* BlockT;
+        yield* Block.indent(nodeId);
+      }),
     );
   };
 
   const handleShiftTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-
-        const grandparentId = yield* Node.getParent(parentId);
-
-        yield* Node.insertNode({
-          nodeId,
-          parentId: grandparentId,
-          insert: "after",
-          siblingId: parentId,
-        });
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+        const Block = yield* BlockT;
+        yield* Block.outdent(nodeId);
+      }),
     );
   };
 
@@ -452,33 +387,12 @@ export default function Block({ blockId }: BlockProps) {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't swap if first child
-        if (siblingIndex <= 0) {
-          return;
+        const Block = yield* BlockT;
+        const moved = yield* Block.swap(nodeId, "up");
+        if (moved) {
+          yield* waitForDomAndRefocus;
         }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-
-        // Move this node before the previous sibling (effectively swapping)
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "before",
-          siblingId: prevSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
+      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
     );
   };
 
@@ -486,33 +400,12 @@ export default function Block({ blockId }: BlockProps) {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Can't swap if last child
-        if (siblingIndex >= siblings.length - 1) {
-          return;
+        const Block = yield* BlockT;
+        const moved = yield* Block.swap(nodeId, "down");
+        if (moved) {
+          yield* waitForDomAndRefocus;
         }
-
-        const nextSiblingId = siblings[siblingIndex + 1]!;
-
-        // Move this node after the next sibling (effectively swapping)
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "after",
-          siblingId: nextSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
+      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
     );
   };
 
@@ -520,33 +413,12 @@ export default function Block({ blockId }: BlockProps) {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Already first child
-        if (siblingIndex === 0) {
-          return;
+        const Block = yield* BlockT;
+        const moved = yield* Block.moveToFirst(nodeId);
+        if (moved) {
+          yield* waitForDomAndRefocus;
         }
-
-        const firstSiblingId = siblings[0]!;
-
-        // Move this node before the first sibling
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "before",
-          siblingId: firstSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
+      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
     );
   };
 
@@ -554,40 +426,19 @@ export default function Block({ blockId }: BlockProps) {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
-        const [, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
-
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
-
-        // Already last child
-        if (siblingIndex >= siblings.length - 1) {
-          return;
+        const Block = yield* BlockT;
+        const moved = yield* Block.moveToLast(nodeId);
+        if (moved) {
+          yield* waitForDomAndRefocus;
         }
-
-        const lastSiblingId = siblings[siblings.length - 1]!;
-
-        // Move this node after the last sibling
-        yield* Node.insertNode({
-          nodeId,
-          parentId,
-          insert: "after",
-          siblingId: lastSiblingId,
-        });
-
-        yield* waitForDomAndRefocus;
-      }).pipe(
-        Effect.catchTag("NodeHasNoParentError", () => Effect.void),
-        Effect.ensuring(Effect.sync(() => (isMoving = false))),
-      ),
+      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
     );
   };
 
   const handleBackspaceAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
 
         // Check if any active type wants to be removed on backspace at start
         for (const def of getActiveDefinitions()) {
@@ -598,202 +449,65 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        const Node = yield* NodeT;
-        const Store = yield* StoreT;
+        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
-        const Yjs = yield* YjsT;
+        const Store = yield* StoreT;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
-          ? bufferDoc.value.assignedNodeId
+          ? (bufferDoc.value.assignedNodeId as Id.Node)
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const result = yield* Block.mergeBackward(nodeId, rootNodeId);
+        if (Option.isNone(result)) return;
 
-        // Find the deepest last child of a node (visually previous block)
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const { targetNodeId, cursorOffset, isTitle } = result.value;
 
-        // Get current text from Y.Text
-        const currentText = ytext.toString();
-
-        // First sibling: merge into parent
-        if (siblingIndex === 0) {
-          const parentYtext = Yjs.getText(parentId);
-          const mergePoint = parentYtext.length;
-
-          // Append current text to parent's Y.Text
-          parentYtext.insert(mergePoint, currentText);
-
-          // Delete current node and cleanup Y.Text
-          yield* Node.deleteNode(nodeId);
-          Yjs.deleteText(nodeId);
-
-          // Move focus to parent (title if root, otherwise block)
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: mergePoint,
-              focus: { nodeId: parentId },
-              focusOffset: mergePoint,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
-          return;
-        }
-
-        const prevSiblingId = siblings[siblingIndex - 1]!;
-        const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-        const targetYtext = Yjs.getText(targetNodeId);
-        const mergePoint = targetYtext.length;
-
-        // Append current text to target's Y.Text
-        targetYtext.insert(mergePoint, currentText);
-
-        // Delete current node and cleanup Y.Text
-        yield* Node.deleteNode(nodeId);
-        Yjs.deleteText(nodeId);
-
-        const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
             anchor: { nodeId: targetNodeId },
-            anchorOffset: mergePoint,
+            anchorOffset: cursorOffset,
             focus: { nodeId: targetNodeId },
-            focusOffset: mergePoint,
+            focusOffset: cursorOffset,
             goalX: null,
             goalLine: null,
             assoc: 0,
           }),
         );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
 
-        yield* Effect.logDebug(
-          "[Block.handleBackspaceAtStart] Merge complete",
-        ).pipe(
-          Effect.annotateLogs({
-            sourceNodeId: nodeId,
-            targetNodeId,
-            mergePoint,
-            newActiveBlockId: targetBlockId,
-          }),
-        );
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+        if (isTitle) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        }
+      }),
     );
   };
 
   const handleDeleteAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
-        const Yjs = yield* YjsT;
 
-        const children = yield* Node.getNodeChildren(nodeId);
-
-        // If has children, merge with first child
-        if (children.length > 0) {
-          const firstChildId = children[0]!;
-          const mergePoint = ytext.length;
-          const childYtext = Yjs.getText(firstChildId);
-          const childText = childYtext.toString();
-
-          // Append child text to current Y.Text
-          ytext.insert(mergePoint, childText);
-
-          // Delete child node and cleanup Y.Text
-          yield* Node.deleteNode(firstChildId);
-          Yjs.deleteText(firstChildId);
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId },
-              anchorOffset: mergePoint,
-              focus: { nodeId },
-              focusOffset: mergePoint,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          return;
-        }
-
-        // Find next node in document order (next sibling, or parent's next sibling, etc.)
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
-
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) return;
-
-        const mergePoint = ytext.length;
-        const nextYtext = Yjs.getText(nextNodeId);
-        const nextText = nextYtext.toString();
-
-        // Append next text to current Y.Text
-        ytext.insert(mergePoint, nextText);
-
-        // Delete next node and cleanup Y.Text
-        yield* Node.deleteNode(nextNodeId);
-        Yjs.deleteText(nextNodeId);
+        const result = yield* Block.mergeForward(nodeId);
+        if (Option.isNone(result)) return;
 
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
             anchor: { nodeId },
-            anchorOffset: mergePoint,
+            anchorOffset: result.value.cursorOffset,
             focus: { nodeId },
-            focusOffset: mergePoint,
+            focusOffset: result.value.cursorOffset,
             goalX: null,
             goalLine: null,
             assoc: 0,
@@ -806,100 +520,63 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
+        const Yjs = yield* YjsT;
 
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         const rootNodeId = Option.isSome(bufferDoc)
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        if (Option.isNone(targetOpt)) return;
 
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const targetNodeId = targetOpt.value;
+        const targetYtext = Yjs.getText(targetNodeId);
+        const endPos = targetYtext.length;
 
-        const Yjs = yield* YjsT;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId: targetNodeId },
+            anchorOffset: endPos,
+            focus: { nodeId: targetNodeId },
+            focusOffset: endPos,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
 
-        if (siblingIndex > 0) {
-          const prevSiblingId = siblings[siblingIndex - 1]!;
-          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-          const targetYtext = Yjs.getText(targetNodeId);
-          const endPos = targetYtext.length;
-
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: targetNodeId },
-              anchorOffset: endPos,
-              focus: { nodeId: targetNodeId },
-              focusOffset: endPos,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+        if (targetNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
           );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else {
-          // Move to parent (title if root, otherwise block)
-          const parentYtext = Yjs.getText(parentId);
-          const endPos = parentYtext.length;
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: endPos,
-              focus: { nodeId: parentId },
-              focusOffset: endPos,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
         }
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+      }),
     );
   };
 
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
+        // If has children, go to first child
         const children = yield* Node.getNodeChildren(nodeId);
-
         if (children.length > 0) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
@@ -921,31 +598,11 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
+        // Otherwise, find next node in document order
+        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        if (Option.isNone(nextNodeOpt)) return;
 
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) return;
-
+        const nextNodeId = nextNodeOpt.value;
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
@@ -969,8 +626,8 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowUpOnFirstLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-        const Node = yield* NodeT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
@@ -988,76 +645,42 @@ export default function Block({ blockId }: BlockProps) {
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const parentId = yield* Node.getParent(nodeId);
-        const siblings = yield* Node.getNodeChildren(parentId);
-        const siblingIndex = siblings.indexOf(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        if (Option.isNone(targetOpt)) return;
 
-        const findDeepestLastChild = (
-          startNodeId: Id.Node,
-        ): Effect.Effect<Id.Node, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const children = yield* Node.getNodeChildren(startNodeId);
-            if (children.length === 0) {
-              return startNodeId;
-            }
-            const lastChild = children[children.length - 1]!;
-            return yield* findDeepestLastChild(lastChild);
-          });
+        const targetNodeId = targetOpt.value;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId: targetNodeId },
+            anchorOffset: 0,
+            focus: { nodeId: targetNodeId },
+            focusOffset: 0,
+            goalX,
+            goalLine: "last",
+            assoc: 0,
+          }),
+        );
 
-        if (siblingIndex > 0) {
-          const prevSiblingId = siblings[siblingIndex - 1]!;
-          const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
-
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: targetNodeId },
-              anchorOffset: 0,
-              focus: { nodeId: targetNodeId },
-              focusOffset: 0,
-              goalX,
-              goalLine: "last",
-              assoc: 0,
-            }),
+        if (targetNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
           );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
           );
-        } else {
-          // First child → go to parent (title if root, otherwise block)
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { nodeId: parentId },
-              anchorOffset: 0,
-              focus: { nodeId: parentId },
-              focusOffset: 0,
-              goalX,
-              goalLine: "last",
-              assoc: 0,
-            }),
-          );
-          if (parentId === rootNodeId) {
-            yield* Window.setActiveElement(
-              Option.some({ type: "title" as const, bufferId }),
-            );
-          } else {
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: parentBlockId }),
-            );
-          }
         }
-      }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+      }),
     );
   };
 
   const handleArrowDownOnLastLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
@@ -1070,9 +693,8 @@ export default function Block({ blockId }: BlockProps) {
             ? existingSelection.value.goalX
             : cursorGoalX;
 
-        const children = yield* Node.getNodeChildren(nodeId);
-
         // If has children, go to first child
+        const children = yield* Node.getNodeChildren(nodeId);
         if (children.length > 0) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
@@ -1094,31 +716,9 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        // Find next node in document order (next sibling, or parent's next sibling, etc.)
-        const findNextNode = (
-          currentId: Id.Node,
-        ): Effect.Effect<Id.Node | null, never, NodeT> =>
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const parentId = yield* Node.getParent(currentId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed(null as Id.Node | null),
-              ),
-            );
-            if (!parentId) return null;
-
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const idx = siblings.indexOf(currentId);
-
-            if (idx < siblings.length - 1) {
-              return siblings[idx + 1]!;
-            }
-
-            return yield* findNextNode(parentId);
-          });
-
-        const nextNodeId = yield* findNextNode(nodeId);
-        if (!nextNodeId) {
+        // Find next node in document order
+        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        if (Option.isNone(nextNodeOpt)) {
           // No next block - move cursor to end of current block
           const Yjs = yield* YjsT;
           const textLength = Yjs.getText(nodeId).length;
@@ -1137,6 +737,7 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
+        const nextNodeId = nextNodeOpt.value;
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
