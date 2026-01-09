@@ -105,7 +105,14 @@ export type EditorAction =
       _tag: "TypeTrigger";
       typeId: Id.Node;
       trigger: BlockType.TriggerDefinition;
-    };
+    }
+  | {
+      _tag: "TypePickerOpen";
+      position: { x: number; y: number };
+      from: number;
+    }
+  | { _tag: "TypePickerUpdate"; query: string }
+  | { _tag: "TypePickerClose" };
 
 /** Action constructors for type-safe action creation */
 export const Action = {
@@ -140,6 +147,15 @@ export const Action = {
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
   ): EditorAction => ({ _tag: "TypeTrigger", typeId, trigger }),
+  TypePickerOpen: (
+    position: { x: number; y: number },
+    from: number,
+  ): EditorAction => ({ _tag: "TypePickerOpen", position, from }),
+  TypePickerUpdate: (query: string): EditorAction => ({
+    _tag: "TypePickerUpdate",
+    query,
+  }),
+  TypePickerClose: (): EditorAction => ({ _tag: "TypePickerClose" }),
 } as const;
 
 interface TextEditorProps {
@@ -529,6 +545,26 @@ export default function TextEditor(props: TextEditorProps) {
             }
           }
         }
+        return false;
+      }),
+    );
+
+    // Type picker "#" detection - opens picker when "#" is typed
+    extensions.push(
+      EditorView.inputHandler.of((view, from, _to, text) => {
+        if (text !== "#") return false;
+
+        // Get cursor position for popup placement
+        const coords = view.coordsAtPos(from);
+        if (coords) {
+          emit(
+            Action.TypePickerOpen(
+              { x: coords.left, y: coords.bottom + 4 },
+              from,
+            ),
+          );
+        }
+        // Don't consume - let "#" be inserted
         return false;
       }),
     );

@@ -74,6 +74,11 @@ export const System = {
    * Calendar node for time-based organization. URL shortcut: /calendar
    */
   CALENDAR: "workspace:calendar" as Id.Node,
+
+  /**
+   * Types node for user-created types. URL shortcut: /types
+   */
+  TYPES: "workspace:types" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];

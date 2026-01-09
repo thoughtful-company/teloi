@@ -11,6 +11,7 @@ import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { TransitionGroup } from "solid-transition-group";
 import Block from "./Block";
 import Title from "./Title";
+import TypeList from "./TypeList";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 
@@ -890,6 +891,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           <>
             <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
               <Title bufferId={bufferId} nodeId={nodeId} />
+              <TypeList nodeId={nodeId} />
             </header>
             <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
               <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">

@@ -9,6 +9,7 @@ const URL_SHORTCUTS: Record<string, Id.Node> = {
   "/inbox": System.INBOX,
   "/box": System.THE_BOX,
   "/calendar": System.CALENDAR,
+  "/types": System.TYPES,
 };
 
 const parseNodeIdFromPath = (path: string): Option.Option<Id.Node> => {
@@ -28,6 +29,7 @@ const NODE_TO_PATH: Record<string, string> = {
   [System.INBOX]: "/inbox",
   [System.THE_BOX]: "/box",
   [System.CALENDAR]: "/calendar",
+  [System.TYPES]: "/types",
 };
 
 const makePathFromNodeId = (nodeId: Id.Node | null): string => {
