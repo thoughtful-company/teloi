@@ -3,10 +3,9 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { EditorView } from "@codemirror/view";
-import { Effect, Option } from "effect";
+import { Data, Effect, Option, Schedule } from "effect";
 import { screen, waitFor } from "solid-testing-library";
 import { expect } from "vitest";
-import { runtime } from "./setup";
 
 /**
  * Gets the block element ID containing the current DOM selection anchor.
@@ -203,9 +202,15 @@ export const CM_CURSOR_IS_AT = (
     ),
   ).pipe(Effect.withSpan("Then.CM_CURSOR_IS_AT"));
 
+/** Typed error for assertion failures that can be retried */
+class AssertionError extends Data.TaggedError("AssertionError")<{
+  cause: unknown;
+}> {}
+
 /**
  * Asserts that the buffer has exactly the specified blocks selected.
  * Checks both the selectedBlocks array and optionally anchor/focus.
+ * Uses Effect-native retry instead of waitFor for proper Effect composition.
  */
 export const BLOCKS_ARE_SELECTED = (
   bufferId: Id.Buffer,
@@ -214,31 +219,31 @@ export const BLOCKS_ARE_SELECTED = (
 ) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    yield* Effect.promise(() =>
-      waitFor(
-        async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
-            runtime.runPromise,
-          );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
+    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
 
-          expect(buf.selectedBlocks).toHaveLength(expectedNodeIds.length);
-          for (const nodeId of expectedNodeIds) {
-            expect(buf.selectedBlocks).toContain(nodeId);
-          }
+    yield* Effect.try({
+      try: () => {
+        expect(Option.isSome(bufferDoc)).toBe(true);
+        const buf = Option.getOrThrow(bufferDoc);
 
-          if (options?.anchor !== undefined) {
-            expect(buf.blockSelectionAnchor).toBe(options.anchor);
-          }
-          if (options?.focus !== undefined) {
-            expect(buf.blockSelectionFocus).toBe(options.focus);
-          }
-        },
-        { timeout: 2000 },
-      ),
-    );
-  }).pipe(Effect.withSpan("Then.BLOCKS_ARE_SELECTED"));
+        expect(buf.selectedBlocks).toHaveLength(expectedNodeIds.length);
+        for (const nodeId of expectedNodeIds) {
+          expect(buf.selectedBlocks).toContain(nodeId);
+        }
+
+        if (options?.anchor !== undefined) {
+          expect(buf.blockSelectionAnchor).toBe(options.anchor);
+        }
+        if (options?.focus !== undefined) {
+          expect(buf.blockSelectionFocus).toBe(options.focus);
+        }
+      },
+      catch: (cause) => new AssertionError({ cause }),
+    });
+  }).pipe(
+    Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
+    Effect.withSpan("Then.BLOCKS_ARE_SELECTED"),
+  );
 
 /**
  * Asserts that the clipboard contains the expected text.
