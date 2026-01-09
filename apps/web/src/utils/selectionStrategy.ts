@@ -1,3 +1,25 @@
+import { Id } from "@/schema";
+import { Option } from "effect";
+
+/** Build a collapsed selection (anchor === focus) for Buffer.setSelection */
+export const makeCollapsedSelection = (
+  targetNodeId: Id.Node,
+  offset: number,
+  opts?: {
+    goalX?: number | null;
+    goalLine?: "first" | "last" | null;
+  },
+) =>
+  Option.some({
+    anchor: { nodeId: targetNodeId },
+    anchorOffset: offset,
+    focus: { nodeId: targetNodeId },
+    focusOffset: offset,
+    goalX: opts?.goalX ?? null,
+    goalLine: opts?.goalLine ?? null,
+    assoc: 0 as const,
+  });
+
 export type SelectionStrategy =
   | { type: "click"; x: number; y: number }
   | { type: "range"; anchor: number; head: number; assoc?: -1 | 0 | 1 }

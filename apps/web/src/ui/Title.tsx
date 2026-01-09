@@ -7,7 +7,10 @@ import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
+import {
+  makeCollapsedSelection,
+  resolveSelectionStrategy,
+} from "@/utils/selectionStrategy";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Match, Option, Stream } from "effect";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
@@ -196,15 +199,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: firstChildId },
-            anchorOffset: 0,
-            focus: { nodeId: firstChildId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(firstChildId, 0),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -236,15 +231,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: firstChildId },
-            anchorOffset: 0,
-            focus: { nodeId: firstChildId },
-            focusOffset: 0,
-            goalX,
-            goalLine: "first",
-            assoc: 0,
-          }),
+          makeCollapsedSelection(firstChildId, 0, { goalX, goalLine: "first" }),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -274,15 +261,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         const newBlockId = Id.makeBlockId(bufferId, newNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: newNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: newNodeId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(newNodeId, 0),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),

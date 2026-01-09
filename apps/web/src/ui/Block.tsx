@@ -10,7 +10,10 @@ import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
+import {
+  makeCollapsedSelection,
+  resolveSelectionStrategy,
+} from "@/utils/selectionStrategy";
 import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
   createEffect,
@@ -349,15 +352,7 @@ export default function Block({ blockId }: BlockProps) {
         const newBlockId = Id.makeBlockId(bufferId, result.newNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: result.newNodeId },
-            anchorOffset: result.cursorOffset,
-            focus: { nodeId: result.newNodeId },
-            focusOffset: result.cursorOffset,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(result.newNodeId, result.cursorOffset),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
@@ -384,51 +379,18 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleSwapUp = () => {
+  const handleMove = (action: "swapUp" | "swapDown" | "first" | "last") => {
     isMoving = true;
     runtime.runPromise(
       Effect.gen(function* () {
         const Block = yield* BlockT;
-        const moved = yield* Block.swap(nodeId, "up");
-        if (moved) {
-          yield* waitForDomAndRefocus;
-        }
-      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
-    );
-  };
-
-  const handleSwapDown = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Block = yield* BlockT;
-        const moved = yield* Block.swap(nodeId, "down");
-        if (moved) {
-          yield* waitForDomAndRefocus;
-        }
-      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
-    );
-  };
-
-  const handleMoveToFirst = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Block = yield* BlockT;
-        const moved = yield* Block.moveToFirst(nodeId);
-        if (moved) {
-          yield* waitForDomAndRefocus;
-        }
-      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
-    );
-  };
-
-  const handleMoveToLast = () => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Block = yield* BlockT;
-        const moved = yield* Block.moveToLast(nodeId);
+        const moved = yield* Match.value(action).pipe(
+          Match.when("swapUp", () => Block.swap(nodeId, "up")),
+          Match.when("swapDown", () => Block.swap(nodeId, "down")),
+          Match.when("first", () => Block.moveToFirst(nodeId)),
+          Match.when("last", () => Block.moveToLast(nodeId)),
+          Match.exhaustive,
+        );
         if (moved) {
           yield* waitForDomAndRefocus;
         }
@@ -467,15 +429,7 @@ export default function Block({ blockId }: BlockProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: targetNodeId },
-            anchorOffset: cursorOffset,
-            focus: { nodeId: targetNodeId },
-            focusOffset: cursorOffset,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(targetNodeId, cursorOffset),
         );
 
         if (isTitle) {
@@ -504,15 +458,7 @@ export default function Block({ blockId }: BlockProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId },
-            anchorOffset: result.value.cursorOffset,
-            focus: { nodeId },
-            focusOffset: result.value.cursorOffset,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nodeId, result.value.cursorOffset),
         );
       }),
     );
@@ -542,15 +488,7 @@ export default function Block({ blockId }: BlockProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: targetNodeId },
-            anchorOffset: endPos,
-            focus: { nodeId: targetNodeId },
-            focusOffset: endPos,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(targetNodeId, endPos),
         );
 
         if (targetNodeId === rootNodeId) {
@@ -583,15 +521,7 @@ export default function Block({ blockId }: BlockProps) {
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId: firstChildId },
-              anchorOffset: 0,
-              focus: { nodeId: firstChildId },
-              focusOffset: 0,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+            makeCollapsedSelection(firstChildId, 0),
           );
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
@@ -607,15 +537,7 @@ export default function Block({ blockId }: BlockProps) {
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: nextNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: nextNodeId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nextNodeId, 0),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -652,15 +574,7 @@ export default function Block({ blockId }: BlockProps) {
         const targetNodeId = targetOpt.value;
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: targetNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: targetNodeId },
-            focusOffset: 0,
-            goalX,
-            goalLine: "last",
-            assoc: 0,
-          }),
+          makeCollapsedSelection(targetNodeId, 0, { goalX, goalLine: "last" }),
         );
 
         if (targetNodeId === rootNodeId) {
@@ -701,14 +615,9 @@ export default function Block({ blockId }: BlockProps) {
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId: firstChildId },
-              anchorOffset: 0,
-              focus: { nodeId: firstChildId },
-              focusOffset: 0,
+            makeCollapsedSelection(firstChildId, 0, {
               goalX,
               goalLine: "first",
-              assoc: 0,
             }),
           );
           yield* Window.setActiveElement(
@@ -725,15 +634,7 @@ export default function Block({ blockId }: BlockProps) {
           const textLength = Yjs.getText(nodeId).length;
           yield* Buffer.setSelection(
             bufferId,
-            Option.some({
-              anchor: { nodeId },
-              anchorOffset: textLength,
-              focus: { nodeId },
-              focusOffset: textLength,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
+            makeCollapsedSelection(nodeId, textLength),
           );
           return;
         }
@@ -742,15 +643,7 @@ export default function Block({ blockId }: BlockProps) {
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          Option.some({
-            anchor: { nodeId: nextNodeId },
-            anchorOffset: 0,
-            focus: { nodeId: nextNodeId },
-            focusOffset: 0,
-            goalX,
-            goalLine: "first",
-            assoc: 0,
-          }),
+          makeCollapsedSelection(nextNodeId, 0, { goalX, goalLine: "first" }),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -773,61 +666,7 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  const handleEscape = () => {
-    // Set flag synchronously to prevent handleBlur from clearing activeElement
-    isTransitioningToBlockSelection = true;
-    // Clear captured selection so Enter returns cursor to model position, not old DOM position
-    initialSelection = null;
-
-    runtime
-      .runPromise(
-        Effect.gen(function* () {
-          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-          const Window = yield* WindowT;
-          const Buffer = yield* BufferT;
-
-          // Switch to block selection mode
-          yield* Window.setActiveElement(
-            Option.some({ type: "buffer" as const, id: bufferId }),
-          );
-          // Clear text selection - when returning from block selection, cursor should start fresh
-          yield* Buffer.setSelection(bufferId, Option.none());
-          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
-        }),
-      )
-      .finally(() => {
-        isTransitioningToBlockSelection = false;
-      });
-  };
-
-  const handleShiftArrowUpFromTextSelection = () => {
-    // Set flag synchronously to prevent handleBlur from clearing activeElement
-    isTransitioningToBlockSelection = true;
-    // Clear captured selection so Enter returns cursor to model position, not old DOM position
-    initialSelection = null;
-
-    runtime
-      .runPromise(
-        Effect.gen(function* () {
-          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
-          const Window = yield* WindowT;
-          const Buffer = yield* BufferT;
-
-          // Switch to block selection mode
-          yield* Window.setActiveElement(
-            Option.some({ type: "buffer" as const, id: bufferId }),
-          );
-          // Clear text selection - when returning from block selection, cursor should start fresh
-          yield* Buffer.setSelection(bufferId, Option.none());
-          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
-        }),
-      )
-      .finally(() => {
-        isTransitioningToBlockSelection = false;
-      });
-  };
-
-  const handleShiftArrowDownFromTextSelection = () => {
+  const enterBlockSelectionMode = () => {
     // Set flag synchronously to prevent handleBlur from clearing activeElement
     isTransitioningToBlockSelection = true;
     // Clear captured selection so Enter returns cursor to model position, not old DOM position
@@ -892,24 +731,10 @@ export default function Block({ blockId }: BlockProps) {
         handleSelectionChange(selection),
       ),
       Match.tag("Blur", () => handleBlur()),
-      Match.tag("Escape", () => handleEscape()),
+      Match.tag("Escape", () => enterBlockSelectionMode()),
       Match.tag("ZoomIn", () => handleZoomIn()),
-      Match.tag("BlockSelect", ({ direction }) =>
-        Match.value(direction).pipe(
-          Match.when("up", () => handleShiftArrowUpFromTextSelection()),
-          Match.when("down", () => handleShiftArrowDownFromTextSelection()),
-          Match.exhaustive,
-        ),
-      ),
-      Match.tag("Move", ({ action: moveAction }) =>
-        Match.value(moveAction).pipe(
-          Match.when("swapUp", () => handleSwapUp()),
-          Match.when("swapDown", () => handleSwapDown()),
-          Match.when("first", () => handleMoveToFirst()),
-          Match.when("last", () => handleMoveToLast()),
-          Match.exhaustive,
-        ),
-      ),
+      Match.tag("BlockSelect", () => enterBlockSelectionMode()),
+      Match.tag("Move", ({ action: moveAction }) => handleMove(moveAction)),
       Match.tag("TypeTrigger", ({ typeId, trigger }) =>
         handleTypeTrigger(typeId, trigger),
       ),
