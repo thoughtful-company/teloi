@@ -19,6 +19,7 @@ import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
+import { TypePickerLive } from "./services/ui/TypePicker";
 import { WindowLive } from "./services/ui/Window";
 
 registerBuiltInTypes();
@@ -58,6 +59,7 @@ const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(DataPortLive),
   Layer.provideMerge(BootstrapLive),
+  Layer.provideMerge(TypePickerLive),
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),

@@ -13,6 +13,7 @@ import { get } from "./get";
 import { getNodeChildren } from "./getNodeChildren";
 import { getParent } from "./getParent";
 import { insertNode, InsertNodeArgs } from "./insertNode";
+import { moveNodes, MoveNodesArgs } from "./moveNodes";
 import { subscribe } from "./subscribe";
 import { subscribeChildren } from "./subscribeChildren";
 import { subscribeEither } from "./subscribeEither";
@@ -68,6 +69,11 @@ export class NodeT extends Context.Tag("NodeT")<
      * Deletes a node and all its descendants.
      */
     deleteNode: (nodeId: Id.Node) => Effect.Effect<void>;
+    /**
+     * Moves multiple nodes in a single atomic operation.
+     * All nodes are moved relative to the same sibling, maintaining their order.
+     */
+    moveNodes: (args: MoveNodesArgs) => Effect.Effect<void, NodeNotFoundError>;
   }
 >() {}
 
@@ -89,8 +95,10 @@ export const NodeLive = Layer.effect(
       getNodeChildren: withContext(getNodeChildren)(context),
       get: withContext(get)(context),
       deleteNode: withContext(deleteNode)(context),
+      moveNodes: withContext(moveNodes)(context),
     };
   }),
 );
 
 export type { InsertNodeArgs } from "./insertNode";
+export type { MoveNodesArgs } from "./moveNodes";

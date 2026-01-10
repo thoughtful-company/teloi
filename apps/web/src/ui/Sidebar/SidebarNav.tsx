@@ -7,13 +7,14 @@ import { For } from "solid-js";
 interface NavItem {
   label: string;
   nodeId: Id.Node;
-  icon: "inbox" | "box" | "calendar";
+  icon: "inbox" | "box" | "calendar" | "tag";
 }
 
 const navItems: NavItem[] = [
   { label: "Inbox", nodeId: System.INBOX, icon: "inbox" },
   { label: "The Box", nodeId: System.THE_BOX, icon: "box" },
   { label: "Calendar", nodeId: System.CALENDAR, icon: "calendar" },
+  { label: "Types", nodeId: System.TYPES, icon: "tag" },
 ];
 
 export default function SidebarNav() {
@@ -74,6 +75,18 @@ export default function SidebarNav() {
                   <line x1="16" y1="2" x2="16" y2="6" />
                   <line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              )}
+              {item.icon === "tag" && (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="w-5 h-5"
+                >
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
                 </svg>
               )}
             </span>

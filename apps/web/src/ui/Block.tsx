@@ -8,6 +8,7 @@ import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
+import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -30,6 +31,8 @@ import TextEditor, {
   type EnterKeyInfo,
   type SelectionInfo,
 } from "./TextEditor";
+import TypeBadge from "./TypeBadge";
+import { TypePicker } from "./TypePicker";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -104,6 +107,22 @@ export default function Block({ blockId }: BlockProps) {
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
+  // Type picker state
+  const [pickerState, setPickerState] = createSignal<{
+    visible: boolean;
+    position: { x: number; y: number };
+    from: number;
+  } | null>(null);
+
+  const getPickerQuery = () => {
+    const state = pickerState();
+    if (!state) return "";
+    const text = textContent();
+    const cursorPos = store.selection?.head ?? text.length;
+    // Extract text after "#" (from + 1) up to cursor
+    return text.slice(state.from + 1, cursorPos);
+  };
+
   // Flag to prevent blur handler from clearing state during block movement
   let isMoving = false;
 
@@ -122,6 +141,7 @@ export default function Block({ blockId }: BlockProps) {
   });
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
+  const userTypes = () => activeTypes().filter((typeId) => !isSystemType(typeId));
 
   const getActiveDefinitions = () =>
     activeTypes()
@@ -668,9 +688,135 @@ export default function Block({ blockId }: BlockProps) {
     return true;
   };
 
+  // Type picker handlers
+  const handleTypePickerOpen = (
+    position: { x: number; y: number },
+    from: number,
+  ) => {
+    setPickerState({ visible: true, position, from });
+  };
+
+  const handleTypePickerClose = () => {
+    setPickerState(null);
+  };
+
+  const handleTypePickerSelect = (typeId: Id.Node) => {
+    const state = pickerState();
+    if (!state) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const Buffer = yield* BufferT;
+
+        yield* TypePicker.applyType(nodeId, typeId);
+
+        const cursorPos = store.selection?.head ?? ytext.length;
+        const deleteLength = cursorPos - state.from;
+        if (deleteLength > 0) {
+          ytext.delete(state.from, deleteLength);
+        }
+
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId },
+            anchorOffset: state.from,
+            focus: { nodeId },
+            focusOffset: state.from,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        yield* Effect.logDebug("[Block] Type selected via picker").pipe(
+          Effect.annotateLogs({ blockId, nodeId, typeId }),
+        );
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Block] Type picker select failed").pipe(
+            Effect.annotateLogs({ blockId, nodeId, typeId, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+
+    setPickerState(null);
+  };
+
+  const handleTypePickerCreate = (name: string) => {
+    const state = pickerState();
+    if (!state) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const Buffer = yield* BufferT;
+
+        const typeId = yield* TypePicker.createType(name);
+        yield* TypePicker.applyType(nodeId, typeId);
+
+        const cursorPos = store.selection?.head ?? ytext.length;
+        const deleteLength = cursorPos - state.from;
+        if (deleteLength > 0) {
+          ytext.delete(state.from, deleteLength);
+        }
+
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId },
+            anchorOffset: state.from,
+            focus: { nodeId },
+            focusOffset: state.from,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        yield* Effect.logDebug("[Block] Type created via picker").pipe(
+          Effect.annotateLogs({ blockId, nodeId, typeId, name }),
+        );
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Block] Type picker create failed").pipe(
+            Effect.annotateLogs({ blockId, nodeId, name, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+
+    setPickerState(null);
+  };
+
   const handleAction = (action: EditorAction): boolean | void =>
     Match.value(action).pipe(
-      Match.tag("Enter", ({ info }) => handleEnter(info)),
+      Match.tag("Enter", ({ info }) => {
+        // If picker is open, select the current item
+        if (pickerState()) {
+          const query = getPickerQuery();
+          const availableTypes = runtime.runSync(
+            Effect.gen(function* () {
+              const TypePicker = yield* TypePickerT;
+              const types = yield* TypePicker.getAvailableTypes();
+              return TypePicker.filterTypes(types, query);
+            }),
+          );
+          if (availableTypes.length > 0) {
+            handleTypePickerSelect(availableTypes[0]!.id);
+          } else if (query) {
+            handleTypePickerCreate(query);
+          }
+          return true;
+        }
+        return handleEnter(info);
+      }),
       Match.tag("Tab", () => handleTab()),
       Match.tag("ShiftTab", () => handleShiftTab()),
       Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
@@ -688,13 +834,27 @@ export default function Block({ blockId }: BlockProps) {
         handleSelectionChange(selection),
       ),
       Match.tag("Blur", () => handleBlur()),
-      Match.tag("Escape", () => enterBlockSelectionMode()),
+      Match.tag("Escape", () => {
+        // If picker is open, close it instead of entering block selection
+        if (pickerState()) {
+          handleTypePickerClose();
+          return;
+        }
+        enterBlockSelectionMode();
+      }),
       Match.tag("ZoomIn", () => handleZoomIn()),
       Match.tag("BlockSelect", () => enterBlockSelectionMode()),
       Match.tag("Move", ({ action: moveAction }) => handleMove(moveAction)),
       Match.tag("TypeTrigger", ({ typeId, trigger }) =>
         handleTypeTrigger(typeId, trigger),
       ),
+      Match.tag("TypePickerOpen", ({ position, from }) =>
+        handleTypePickerOpen(position, from),
+      ),
+      Match.tag("TypePickerUpdate", () => {
+        // Query is computed reactively from textContent and selection
+      }),
+      Match.tag("TypePickerClose", () => handleTypePickerClose()),
       Match.exhaustive,
     );
 
@@ -729,6 +889,9 @@ export default function Block({ blockId }: BlockProps) {
             fallback={
               <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
                 {textContent() || "\u00A0"}
+                <For each={userTypes()}>
+                  {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
+                </For>
               </p>
             }
           >
@@ -742,6 +905,8 @@ export default function Block({ blockId }: BlockProps) {
                 modelSelection: store.selection,
               })}
               selection={store.selection}
+              inlineTypes={userTypes()}
+              inlineTypesNodeId={nodeId}
             />
           </Show>
         </div>
@@ -760,6 +925,19 @@ export default function Block({ blockId }: BlockProps) {
           </For>
         </TransitionGroup>
       </div>
+
+      <Show when={pickerState()}>
+        {(state) => (
+          <TypePicker
+            position={state().position}
+            query={getPickerQuery()}
+            nodeId={nodeId}
+            onSelect={handleTypePickerSelect}
+            onCreate={handleTypePickerCreate}
+            onClose={handleTypePickerClose}
+          />
+        )}
+      </Show>
     </div>
   );
 }

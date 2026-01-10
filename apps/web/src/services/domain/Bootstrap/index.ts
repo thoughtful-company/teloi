@@ -201,6 +201,14 @@ const ensureSystemNodes = () =>
       yield* createRootNode(System.CALENDAR, rootPos);
       yield* setNodeText(System.CALENDAR, "Calendar");
     }
+
+    // === Types (root node for user-created types) ===
+    rootPos = nextPosition(rootPos);
+    const typesExists = yield* nodeExists(System.TYPES);
+    if (!typesExists) {
+      yield* createRootNode(System.TYPES, rootPos);
+      yield* setNodeText(System.TYPES, "Types");
+    }
   });
 
 export const BootstrapLive = Layer.effect(

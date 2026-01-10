@@ -157,3 +157,22 @@ export const tupleDeleted = Events.synced({
 });
 
 export type TupleDeleted = typeof tupleDeleted;
+
+// Batch node reordering event for smooth multi-block animations
+export const nodesReordered = Events.synced({
+  name: "v1.NodesReordered",
+  schema: Schema.Struct({
+    timestamp: Schema.Number,
+    data: Schema.Struct({
+      moves: Schema.Array(
+        Schema.Struct({
+          nodeId: Schema.String,
+          newParentId: Schema.String,
+          position: Schema.String,
+        }),
+      ),
+    }),
+  }),
+});
+
+export type NodesReordered = typeof nodesReordered;
