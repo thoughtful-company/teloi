@@ -60,6 +60,7 @@ const getAvailableTypes = () =>
     const Yjs = yield* YjsT;
 
     // Get all children of the Types node
+    // When selecting a single column, LiveStore returns an array of values
     const childIds = yield* Store.query(
       tables.parentLinks
         .select("childId")

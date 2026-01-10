@@ -3,7 +3,6 @@ import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
-import { NodeNotFoundError } from "../errors";
 
 export type MoveNodesArgs = {
   nodeIds: readonly Id.Node[];
@@ -13,21 +12,19 @@ export type MoveNodesArgs = {
 };
 
 /**
- * Get the position of a sibling node
+ * Get the position of a sibling node, validating it belongs to the expected parent.
+ * Returns null if sibling is not under the specified parent.
  */
-const getSiblingPosition = (siblingId: Id.Node) =>
+const getSiblingPosition = (siblingId: Id.Node, parentId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const link = yield* Store.query(
       tables.parentLinks
         .select()
-        .where({ childId: siblingId })
+        .where({ childId: siblingId, parentId })
         .first({ fallback: () => null }),
     );
-    if (!link) {
-      return yield* Effect.fail(new NodeNotFoundError({ nodeId: siblingId }));
-    }
-    return link.position;
+    return link?.position ?? null;
   });
 
 /**
@@ -79,8 +76,14 @@ export const moveNodes = (args: MoveNodesArgs) =>
 
     if (nodeIds.length === 0) return;
 
-    // Get the reference sibling's position
-    const siblingPos = yield* getSiblingPosition(siblingId);
+    // Validate sibling belongs to specified parent
+    const siblingPos = yield* getSiblingPosition(siblingId, parentId);
+    if (siblingPos === null) {
+      yield* Effect.logError("[Node.moveNodes] Sibling not under specified parent, aborting").pipe(
+        Effect.annotateLogs({ siblingId, parentId, nodeIds: nodeIds.join(",") }),
+      );
+      return;
+    }
 
     const moves: Array<{ nodeId: string; newParentId: string; position: string }> = [];
 

@@ -157,6 +157,7 @@ export default function TypePicker(props: TypePickerProps) {
           <For each={filteredTypes()}>
             {(type, index) => (
               <button
+                type="button"
                 class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
                   index() === selectedIndex()
                     ? "bg-sidebar-accent"
@@ -184,6 +185,7 @@ export default function TypePicker(props: TypePickerProps) {
 
           <Show when={!hasExactMatch() && props.query}>
             <button
+              type="button"
               class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
                 selectedIndex() === filteredTypes().length
                   ? "bg-sidebar-accent"

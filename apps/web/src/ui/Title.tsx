@@ -226,15 +226,19 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => {
         if (pickerState()) {
-          const TypePicker = runtime.runSync(TypePickerT);
           const query = getPickerQuery();
-          const types = runtime.runSync(TypePicker.getAvailableTypes());
-          const filtered = TypePicker.filterTypes(types, query);
-          if (filtered.length > 0) {
-            handleTypePickerSelect(filtered[0]!.id);
-          } else if (query) {
-            handleTypePickerCreate(query);
-          }
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const TypePicker = yield* TypePickerT;
+              const types = yield* TypePicker.getAvailableTypes();
+              const filtered = TypePicker.filterTypes(types, query);
+              if (filtered.length > 0) {
+                handleTypePickerSelect(filtered[0]!.id);
+              } else if (query) {
+                handleTypePickerCreate(query);
+              }
+            }),
+          );
           return;
         }
         runtime.runPromise(
