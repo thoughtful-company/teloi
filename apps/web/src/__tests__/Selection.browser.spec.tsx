@@ -3,10 +3,44 @@ import { Id } from "@/schema";
 import { makeBlockId } from "@/schema/id/id";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
+import { EditorView } from "@codemirror/view";
+import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { cleanup, waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { Given, Then, When, setupClientTest, type BrowserRuntime } from "./bdd";
+
+/**
+ * Find the first wrap boundary in the editor and return coordinates
+ * at the END of the first visual line (where assoc should be -1).
+ */
+function getWrapBoundaryCoords(view: EditorView): {
+  x: number;
+  y: number;
+  wrapPos: number;
+} {
+  const doc = view.state.doc;
+  let prevY: number | null = null;
+
+  for (let pos = 0; pos <= doc.length; pos++) {
+    const coords = view.coordsAtPos(pos, 1);
+    if (!coords) continue;
+
+    if (prevY !== null && coords.top > prevY) {
+      const endOfLineCoords = view.coordsAtPos(pos, -1);
+      if (!endOfLineCoords) throw new Error("Could not get end-of-line coords");
+
+      return {
+        x: endOfLineCoords.right - 2,
+        y: endOfLineCoords.top + 5,
+        wrapPos: pos,
+      };
+    }
+    prevY = coords.top;
+  }
+
+  throw new Error("No wrap boundary found - text may not be wrapping");
+}
 
 describe("Selection sync", () => {
   let runtime: BrowserRuntime;
@@ -179,6 +213,70 @@ describe("Selection sync", () => {
       yield* When.USER_PRESSES("{ArrowDown}");
 
       yield* Then.CM_CURSOR_IS_AT(50, 1);
+    }).pipe(runtime.runPromise);
+  });
+
+  // Regression test for: clicking at end of wrapped line puts cursor at start of next line
+  //
+  // The bug: When clicking at the visual end of a wrapped line (right edge before wrap),
+  // the cursor appears at the START of the next visual line instead of the END of
+  // the current visual line.
+  //
+  // At a wrap boundary, the same character position can render in two places:
+  // - End of visual line N (assoc = -1)
+  // - Start of visual line N+1 (assoc = 1)
+  //
+  // When clicking at the right edge of a line, users expect the cursor to stay
+  // at the end of that line (assoc = -1), not jump to the next line (assoc = 1).
+  it("clicking at end of wrapped line keeps cursor on that line (assoc = -1)", async () => {
+    await Effect.gen(function* () {
+      // Given: A buffer with Ukrainian text that naturally wraps
+      const wrappingText =
+        "Історія Рекі нагадує, що ми не острови, що самотньо дрейфують у темряві. Ми — пов'язані невидимими та таємничими мостами довіри та емпатії. Її порятунок здобувся через нагороду за роки самопожертви, а став даром, отриманим в єдиний момент, коли вона дозволила собі бути вразливою перед кимось. Ми рятуємося не поодинці, а лише разом, стаючи одне для одного тим світлом, яке здатне розвіяти найтемнішу ніч душі.";
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: wrappingText }],
+      );
+
+      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // First click to mount CodeMirror
+      yield* When.USER_CLICKS_BLOCK(blockId);
+
+      // Wait for layout
+      yield* Effect.promise(() => new Promise((r) => setTimeout(r, 100)));
+
+      // Find the wrap boundary position and its coordinates
+      const clickCoords = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmContent = document.querySelector(".cm-content");
+            if (!cmContent) throw new Error("CodeMirror not found");
+            const view = EditorView.findFromDOM(cmContent);
+            if (!view) throw new Error("EditorView not found");
+            return getWrapBoundaryCoords(view);
+          },
+          { timeout: 3000 },
+        ),
+      );
+
+      // Click at the end of the first visual line
+      yield* Effect.promise(async () => {
+        const cmContent = document.querySelector(".cm-content") as HTMLElement;
+        const rect = cmContent.getBoundingClientRect();
+        const relativeX = clickCoords.x - rect.left;
+        const relativeY = clickCoords.y - rect.top;
+
+        await userEvent.click(cmContent, {
+          position: { x: relativeX, y: relativeY },
+        });
+      });
+
+      // Cursor should be at wrap boundary position with assoc = -1 (end of line)
+      // BUG: assoc is 1 (start of next line) instead of -1
+      yield* Then.CM_CURSOR_IS_AT(clickCoords.wrapPos, -1);
     }).pipe(runtime.runPromise);
   });
 

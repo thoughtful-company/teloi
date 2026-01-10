@@ -11,7 +11,9 @@ export interface EditorSelectionInfo {
 
 /**
  * Update buffer selection from editor selection change.
- * Preserves goalX/goalLine for chained vertical navigation when staying on same node.
+ * Always clears goalX/goalLine since this handles "regular" selection changes
+ * (typing, clicking, horizontal navigation). Vertical navigation handlers
+ * set goalX explicitly via makeCollapsedSelection.
  */
 export const updateEditorSelection = (
   bufferId: Id.Buffer,
@@ -21,13 +23,6 @@ export const updateEditorSelection = (
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
 
-    const existingSelection = yield* Buffer.getSelection(bufferId);
-    const isSameNode =
-      Option.isSome(existingSelection) &&
-      existingSelection.value.anchor.nodeId === nodeId;
-    const goalX = isSameNode ? existingSelection.value.goalX : null;
-    const goalLine = isSameNode ? existingSelection.value.goalLine : null;
-
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
@@ -35,8 +30,8 @@ export const updateEditorSelection = (
         anchorOffset: selection.anchor,
         focus: { nodeId },
         focusOffset: selection.head,
-        goalX,
-        goalLine,
+        goalX: null,
+        goalLine: null,
         assoc: selection.assoc,
       }),
     );

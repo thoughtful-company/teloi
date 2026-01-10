@@ -410,4 +410,38 @@ describe("Block ArrowDown key", () => {
       expect(delta).toBeLessThan(10);
     }).pipe(runtime.runPromise);
   });
+
+  it("clears goalX when horizontal navigation (Cmd+Left) is used", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "Text" }, { text: "Long text" }],
+      );
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Step 1: Click on second block, cursor at end (offset 9)
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[1], 9);
+
+      // Step 2: Press ArrowUp → cursor goes to end of "Text" (offset 4), goalX is set
+      yield* When.USER_PRESSES("{ArrowUp}");
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+
+      // Step 3: Press Cmd+Left → cursor goes to start of "Text" (offset 0)
+      yield* When.USER_PRESSES("{Meta>}{ArrowLeft}{/Meta}");
+      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+
+      // Step 4: Press ArrowDown → cursor SHOULD go to start of "Long text" (offset 0)
+      // BUG: goalX wasn't cleared, so it goes to offset ~4 instead
+      yield* When.USER_PRESSES("{ArrowDown}");
+      yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+    }).pipe(runtime.runPromise);
+  });
 });

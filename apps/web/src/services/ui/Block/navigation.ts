@@ -33,16 +33,46 @@ export const findNextNode = (
         Effect.succeed<Id.Node | null>(null),
       ),
     );
-    if (!parentId) return Option.none();
+
+    yield* Effect.logDebug("[Block.findNextNode] Looking for next").pipe(
+      Effect.annotateLogs({
+        currentId,
+        parentId,
+      }),
+    );
+
+    if (!parentId) {
+      yield* Effect.logDebug("[Block.findNextNode] No parent, returning none");
+      return Option.none();
+    }
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const idx = siblings.indexOf(currentId);
-    if (idx === -1) return Option.none();
 
-    if (idx < siblings.length - 1) {
-      return Option.some(siblings[idx + 1]!);
+    yield* Effect.logDebug("[Block.findNextNode] Sibling analysis").pipe(
+      Effect.annotateLogs({
+        siblingCount: siblings.length,
+        currentIndex: idx,
+        siblings: siblings.join(", "),
+      }),
+    );
+
+    if (idx === -1) {
+      yield* Effect.logDebug("[Block.findNextNode] Not found in siblings");
+      return Option.none();
     }
 
+    if (idx < siblings.length - 1) {
+      const nextSibling = siblings[idx + 1]!;
+      yield* Effect.logDebug("[Block.findNextNode] Found next sibling").pipe(
+        Effect.annotateLogs({ nextSibling }),
+      );
+      return Option.some(nextSibling);
+    }
+
+    yield* Effect.logDebug(
+      "[Block.findNextNode] Last sibling, recursing to parent",
+    );
     return yield* findNextNode(parentId);
   });
 

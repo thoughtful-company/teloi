@@ -585,11 +585,28 @@ export default function Block({ blockId }: BlockProps) {
             ? existingSelection.value.goalX
             : cursorGoalX;
 
+        yield* Effect.logDebug("[Block.handleArrowDownOnLastLine] Entered").pipe(
+          Effect.annotateLogs({
+            blockId,
+            nodeId,
+            cursorGoalX,
+            resolvedGoalX: goalX,
+          }),
+        );
+
         // If has children, go to first child
         const children = yield* Node.getNodeChildren(nodeId);
         if (children.length > 0) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+          yield* Effect.logDebug(
+            "[Block.handleArrowDownOnLastLine] Has children, going to first child",
+          ).pipe(
+            Effect.annotateLogs({
+              childrenCount: children.length,
+              targetNodeId: firstChildId,
+            }),
+          );
           yield* Buffer.setSelection(
             bufferId,
             makeCollapsedSelection(firstChildId, 0, {
@@ -605,10 +622,24 @@ export default function Block({ blockId }: BlockProps) {
 
         // Find next node in document order
         const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        yield* Effect.logDebug(
+          "[Block.handleArrowDownOnLastLine] findNextNode result",
+        ).pipe(
+          Effect.annotateLogs({
+            hasNext: Option.isSome(nextNodeOpt),
+            nextNodeId: Option.getOrNull(nextNodeOpt),
+          }),
+        );
+
         if (Option.isNone(nextNodeOpt)) {
           // No next block - move cursor to end of current block
           const Yjs = yield* YjsT;
           const textLength = Yjs.getText(nodeId).length;
+          yield* Effect.logDebug(
+            "[Block.handleArrowDownOnLastLine] No next block, staying at end",
+          ).pipe(
+            Effect.annotateLogs({ textLength }),
+          );
           yield* Buffer.setSelection(
             bufferId,
             makeCollapsedSelection(nodeId, textLength),
@@ -618,6 +649,11 @@ export default function Block({ blockId }: BlockProps) {
 
         const nextNodeId = nextNodeOpt.value;
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
+        yield* Effect.logDebug(
+          "[Block.handleArrowDownOnLastLine] Moving to next node",
+        ).pipe(
+          Effect.annotateLogs({ nextNodeId, targetBlockId }),
+        );
         yield* Buffer.setSelection(
           bufferId,
           makeCollapsedSelection(nextNodeId, 0, { goalX, goalLine: "first" }),
