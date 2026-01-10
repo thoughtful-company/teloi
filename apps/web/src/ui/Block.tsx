@@ -869,6 +869,27 @@ export default function Block({ blockId }: BlockProps) {
       Match.tag("SelectionChange", ({ selection }) =>
         handleSelectionChange(selection),
       ),
+      Match.tag("VerticalMove", ({ anchor, head, assoc, goalX }) => {
+        // Update model with selection + preserved goalX (for intra-block vertical movement)
+        const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { nodeId },
+                anchorOffset: anchor,
+                focus: { nodeId },
+                focusOffset: head,
+                goalX,
+                goalLine: null,
+                assoc,
+              }),
+            );
+          }),
+        );
+      }),
       Match.tag("Blur", () => handleBlur()),
       Match.tag("Escape", () => {
         // If picker is open, close it instead of entering block selection

@@ -165,6 +165,13 @@ export type EditorAction =
       goalX?: number;
     }
   | { _tag: "SelectionChange"; selection: SelectionInfo }
+  | {
+      _tag: "VerticalMove";
+      anchor: number;
+      head: number;
+      assoc: -1 | 0 | 1;
+      goalX: number;
+    }
   | { _tag: "Blur" }
   | { _tag: "Escape" }
   | { _tag: "ZoomIn" }
@@ -200,6 +207,18 @@ export const Action = {
   SelectionChange: (selection: SelectionInfo): EditorAction => ({
     _tag: "SelectionChange",
     selection,
+  }),
+  VerticalMove: (
+    anchor: number,
+    head: number,
+    assoc: -1 | 0 | 1,
+    goalX: number,
+  ): EditorAction => ({
+    _tag: "VerticalMove",
+    anchor,
+    head,
+    assoc,
+    goalX,
   }),
   Blur: (): EditorAction => ({ _tag: "Blur" }),
   Escape: (): EditorAction => ({ _tag: "Escape" }),
@@ -520,34 +539,60 @@ export default function TextEditor(props: TextEditorProps) {
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
             // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
             const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentY = view.coordsAtPos(sel.head, side)?.top;
+            const currentCoords = view.coordsAtPos(sel.head, side);
+            const currentY = currentCoords?.top;
             const moved = view.moveVertically(sel, false);
-            const movedY = view.coordsAtPos(moved.head)?.top;
+            // Use moved.assoc for movedY to get correct line when landing at wrap boundary
+            const movedSide = moved.assoc === 1 ? 1 : -1;
+            const movedY = view.coordsAtPos(moved.head, movedSide)?.top;
 
             if (currentY === movedY) {
               // On first visual line - delegate to parent
-              const cursorCoords = view.coordsAtPos(sel.head, side);
-              emit(Action.Navigate("up", cursorCoords?.left ?? 0));
+              emit(Action.Navigate("up", currentCoords?.left ?? 0));
               return true;
             }
 
             // Moving between visual lines within editor
-            // If we have a goalX, use it instead of CodeMirror's goal column
-            if (
-              props.selection?.goalX != null &&
-              movedY != null &&
-              currentY !== movedY
-            ) {
-              const pos = view.posAtCoords({
-                x: props.selection.goalX,
-                y: movedY + 1,
-              });
-              if (pos !== null) {
-                suppressSelectionChange = true;
-                view.dispatch({ selection: { anchor: pos } });
-                suppressSelectionChange = false;
-                return true;
+            if (movedY != null && currentY !== movedY) {
+              // Preserve existing goalX or use current cursor X
+              const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
+
+              // If we have a goalX, use it to position cursor at that X coordinate
+              let finalPos = moved.head;
+
+              if (props.selection?.goalX != null) {
+                const pos = view.posAtCoords({
+                  x: props.selection.goalX,
+                  y: movedY + 1,
+                });
+                if (pos !== null) {
+                  finalPos = pos;
+                }
               }
+
+              // Determine assoc: if at wrap boundary, pick assoc so cursor stays on target line (movedY)
+              const coordsBefore = view.coordsAtPos(finalPos, -1);
+              const coordsAfter = view.coordsAtPos(finalPos, 1);
+              const isAtWrapBoundary =
+                coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+              let finalAssoc: -1 | 0 | 1 = 0;
+              if (isAtWrapBoundary) {
+                // Pick assoc that keeps cursor on the target visual line
+                finalAssoc = coordsBefore?.top === movedY ? -1 : 1;
+              }
+
+              // Suppress selection change - we'll emit VerticalMove instead
+              suppressSelectionChange = true;
+              view.dispatch({
+                selection: EditorSelection.create([
+                  EditorSelection.cursor(finalPos, finalAssoc),
+                ]),
+              });
+              suppressSelectionChange = false;
+
+              // Emit VerticalMove to update model with goalX preserved
+              emit(Action.VerticalMove(finalPos, finalPos, finalAssoc, goalX));
+              return true;
             }
 
             return false;
@@ -564,35 +609,62 @@ export default function TextEditor(props: TextEditorProps) {
           run: (view) => {
             const sel = view.state.selection.main;
             // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
+            // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
             const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentY = view.coordsAtPos(sel.head, side)?.top;
+            const currentCoords = view.coordsAtPos(sel.head, side);
+            const currentY = currentCoords?.top;
             const moved = view.moveVertically(sel, true);
-            const movedY = view.coordsAtPos(moved.head)?.top;
+            // Use moved.assoc for movedY to get correct line when landing at wrap boundary
+            const movedSide = moved.assoc === 1 ? 1 : -1;
+            const movedY = view.coordsAtPos(moved.head, movedSide)?.top;
 
             if (currentY === movedY) {
               // On last visual line - delegate to parent
-              const cursorCoords = view.coordsAtPos(sel.head, side);
-              emit(Action.Navigate("down", cursorCoords?.left ?? 0));
+              emit(Action.Navigate("down", currentCoords?.left ?? 0));
               return true;
             }
 
             // Moving between visual lines within editor
-            // If we have a goalX, use it instead of CodeMirror's goal column
-            if (
-              props.selection?.goalX != null &&
-              movedY != null &&
-              currentY !== movedY
-            ) {
-              const pos = view.posAtCoords({
-                x: props.selection.goalX,
-                y: movedY + 1,
-              });
-              if (pos !== null) {
-                suppressSelectionChange = true;
-                view.dispatch({ selection: { anchor: pos } });
-                suppressSelectionChange = false;
-                return true;
+            if (movedY != null && currentY !== movedY) {
+              // Preserve existing goalX or use current cursor X
+              const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
+
+              // If we have a goalX, use it to position cursor at that X coordinate
+              let finalPos = moved.head;
+
+              if (props.selection?.goalX != null) {
+                const pos = view.posAtCoords({
+                  x: props.selection.goalX,
+                  y: movedY + 1,
+                });
+                if (pos !== null) {
+                  finalPos = pos;
+                }
               }
+
+              // Determine assoc: if at wrap boundary, pick assoc so cursor stays on target line (movedY)
+              const coordsBefore = view.coordsAtPos(finalPos, -1);
+              const coordsAfter = view.coordsAtPos(finalPos, 1);
+              const isAtWrapBoundary =
+                coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+              let finalAssoc: -1 | 0 | 1 = 0;
+              if (isAtWrapBoundary) {
+                // Pick assoc that keeps cursor on the target visual line
+                finalAssoc = coordsBefore?.top === movedY ? -1 : 1;
+              }
+
+              // Suppress selection change - we'll emit VerticalMove instead
+              suppressSelectionChange = true;
+              view.dispatch({
+                selection: EditorSelection.create([
+                  EditorSelection.cursor(finalPos, finalAssoc),
+                ]),
+              });
+              suppressSelectionChange = false;
+
+              // Emit VerticalMove to update model with goalX preserved
+              emit(Action.VerticalMove(finalPos, finalPos, finalAssoc, goalX));
+              return true;
             }
 
             return false;
@@ -720,8 +792,24 @@ export default function TextEditor(props: TextEditorProps) {
           });
 
           if (pos !== null) {
+            // Detect wrap boundary and set assoc to stay on target visual line
+            const coordsBefore = view.coordsAtPos(pos, -1);
+            const coordsAfter = view.coordsAtPos(pos, 1);
+            const isAtWrapBoundary =
+              coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+            // goalLine: "first" → assoc=-1 (stay on upper/first line), "last" → assoc=1 (stay on lower/last line)
+            const assoc = isAtWrapBoundary
+              ? initialStrategy.goalLine === "first"
+                ? -1
+                : 1
+              : 0;
+
             suppressSelectionChange = true;
-            view.dispatch({ selection: { anchor: pos } });
+            view.dispatch({
+              selection: EditorSelection.create([
+                EditorSelection.cursor(pos, assoc),
+              ]),
+            });
             suppressSelectionChange = false;
           }
         }
@@ -822,8 +910,24 @@ export default function TextEditor(props: TextEditorProps) {
         const pos = view.posAtCoords({ x: selection.goalX, y: targetY });
 
         if (pos !== null) {
+          // Detect wrap boundary and set assoc to stay on target visual line
+          const coordsBefore = view.coordsAtPos(pos, -1);
+          const coordsAfter = view.coordsAtPos(pos, 1);
+          const isAtWrapBoundary =
+            coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+          // goalLine: "first" → assoc=-1 (stay on upper/first line), "last" → assoc=1 (stay on lower/last line)
+          const assoc = isAtWrapBoundary
+            ? selection.goalLine === "first"
+              ? -1
+              : 1
+            : 0;
+
           suppressSelectionChange = true;
-          view.dispatch({ selection: { anchor: pos } });
+          view.dispatch({
+            selection: EditorSelection.create([
+              EditorSelection.cursor(pos, assoc),
+            ]),
+          });
           suppressSelectionChange = false;
         }
       }
