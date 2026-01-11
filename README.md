@@ -1,5 +1,19 @@
 # Teloi
 
+A tool to build your digital home. Early prototype, actively evolving.
+
+## Why Teloi?
+
+Most note-taking tools give you their structure and expect you to fit your life into it. Folders, tags, databases with fixed fields — they assume you already know how to organize your world.
+
+But life doesn't come with a schema. What matters to you — the projects you track, the relationships you nurture, the habits you build — that's personal. The structure that works for a freelance designer looks nothing like what works for a researcher or a parent managing a household.
+
+**Teloi lets you define your own.** Create schemas that match how *you* think. A "Project" can have whatever properties matter to you. A "Person" can link to whatever contexts they appear in. You're not filling in someone else's template — you're building a model of your own life.
+
+**Source-available.** I started this after getting frustrated with Tana — interesting ideas, but closed source and rough edges I couldn't fix. Teloi is built in the open. Read the code, run it locally, shape where it goes.
+
+## What It Is
+
 A local-first block-based text editor. Data lives in the browser via SQLite with event sourcing (LiveStore) and text content synced through Yjs CRDT. Built with SolidJS and CodeMirror.
 
 ## Getting Started
