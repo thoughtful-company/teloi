@@ -39,22 +39,26 @@ import * as Y from "yjs";
 interface TextSegment {
   text: string;
   bold?: boolean;
+  italic?: boolean;
+  code?: boolean;
 }
 
 /** Build segments from Y.Text deltas for formatted rendering */
 function buildSegments(ytext: Y.Text): TextSegment[] {
   const deltas = ytext.toDelta() as Array<{
     insert: string;
-    attributes?: { bold?: true };
+    attributes?: { bold?: true; italic?: true; code?: true };
   }>;
 
   return deltas.map((d) => ({
     text: d.insert,
     bold: d.attributes?.bold === true,
+    italic: d.attributes?.italic === true,
+    code: d.attributes?.code === true,
   }));
 }
 
-/** Renders Y.Text with formatting (bold spans) for unfocused blocks */
+/** Renders Y.Text with formatting for unfocused blocks */
 function FormattedText(props: { ytext: Y.Text }) {
   const [segments, setSegments] = createSignal(buildSegments(props.ytext));
 
@@ -67,13 +71,36 @@ function FormattedText(props: { ytext: Y.Text }) {
 
   return (
     <For each={segments()}>
-      {(segment) =>
-        segment.bold ? (
-          <span class="font-bold">{segment.text}</span>
-        ) : (
-          segment.text
-        )
-      }
+      {(segment) => {
+        // Code gets special treatment (monospace font + background)
+        if (segment.code) {
+          return (
+            <code
+              classList={{
+                "font-mono bg-neutral-100 px-1 rounded": true,
+                "font-bold": segment.bold,
+                italic: segment.italic,
+              }}
+            >
+              {segment.text}
+            </code>
+          );
+        }
+        // Plain text with optional bold/italic
+        if (segment.bold || segment.italic) {
+          return (
+            <span
+              classList={{
+                "font-bold": segment.bold,
+                italic: segment.italic,
+              }}
+            >
+              {segment.text}
+            </span>
+          );
+        }
+        return segment.text;
+      }}
     </For>
   );
 }

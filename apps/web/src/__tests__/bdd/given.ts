@@ -449,13 +449,36 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
     yield* Window.setActiveElement(Option.some(element));
   }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));
 
+/** Mark types for text formatting */
+export type MarkType = "bold" | "italic" | "code";
+
 /**
- * Applies bold formatting to a range in a node's Y.Text.
+ * Applies a formatting mark to a range in a node's Y.Text.
  * Used to set up test state with pre-existing formatting.
  */
-export const NODE_HAS_BOLD = (nodeId: Id.Node, index: number, length: number) =>
+export const NODE_HAS_MARK = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+  mark: MarkType,
+) =>
   Effect.gen(function* () {
     const Yjs = yield* YjsT;
     const ytext = Yjs.getText(nodeId);
-    ytext.format(index, length, { bold: true });
-  }).pipe(Effect.withSpan("Given.NODE_HAS_BOLD"));
+    ytext.format(index, length, { [mark]: true });
+  }).pipe(Effect.withSpan(`Given.NODE_HAS_MARK(${mark})`));
+
+/** Convenience wrapper for bold formatting */
+export const NODE_HAS_BOLD = (nodeId: Id.Node, index: number, length: number) =>
+  NODE_HAS_MARK(nodeId, index, length, "bold");
+
+/** Convenience wrapper for italic formatting */
+export const NODE_HAS_ITALIC = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_MARK(nodeId, index, length, "italic");
+
+/** Convenience wrapper for code formatting */
+export const NODE_HAS_CODE = (nodeId: Id.Node, index: number, length: number) =>
+  NODE_HAS_MARK(nodeId, index, length, "code");

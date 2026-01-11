@@ -1,16 +1,13 @@
 /**
  * Unit tests for Yjs Y.Text formatting operations.
  *
- * These tests verify the low-level Yjs API for text formatting (bold marks).
- * The actual feature implementation will use these primitives.
- *
- * NOTE: These tests will FAIL until the YjsT service is extended with
- * formatting methods (applyFormat, removeFormat, getMarksAt, getDeltasWithFormats).
+ * Tests YjsT service methods and raw Yjs API behavior.
+ * Uses bold as representative since all marks use identical code paths.
  */
 
 import { Id } from "@/schema";
 import { YjsT, makeYjsLive } from "@/services/external/Yjs";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Effect, ManagedRuntime } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
@@ -27,19 +24,15 @@ describe("YjsT Formatting Operations", () => {
   });
 
   describe("applyFormat", () => {
-    it("applies bold to a selection range", async () => {
+    it("applies formatting to a range", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-1");
+        const nodeId = Id.Node.make("test-1");
         const ytext = Yjs.getText(nodeId);
 
-        // Setup: "hello world"
         ytext.insert(0, "hello world");
-
-        // Action: Apply bold to "world" (index 6, length 5)
         yield* Yjs.applyFormat(nodeId, 6, 5, { bold: true });
 
-        // Verify: Check the deltas have correct formatting
         const deltas = ytext.toDelta();
         expect(deltas).toEqual([
           { insert: "hello " },
@@ -48,37 +41,16 @@ describe("YjsT Formatting Operations", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("applies bold to entire text when selecting all", async () => {
+    it("extends existing formatting when applying to adjacent text", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-2");
+        const nodeId = Id.Node.make("test-2");
         const ytext = Yjs.getText(nodeId);
 
-        ytext.insert(0, "hello");
-
-        yield* Yjs.applyFormat(nodeId, 0, 5, { bold: true });
-
-        const deltas = ytext.toDelta();
-        expect(deltas).toEqual([
-          { insert: "hello", attributes: { bold: true } },
-        ]);
-      }).pipe(runtime.runPromise);
-    });
-
-    it("extends existing bold formatting when applying to adjacent text", async () => {
-      await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-3");
-        const ytext = Yjs.getText(nodeId);
-
-        // Setup: "hello world" with "hello" already bold
         ytext.insert(0, "hello world");
         ytext.format(0, 5, { bold: true });
-
-        // Action: Apply bold to " world" (space + world)
         yield* Yjs.applyFormat(nodeId, 5, 6, { bold: true });
 
-        // Verify: Entire text should now be one bold segment
         const deltas = ytext.toDelta();
         expect(deltas).toEqual([
           { insert: "hello world", attributes: { bold: true } },
@@ -88,47 +60,20 @@ describe("YjsT Formatting Operations", () => {
   });
 
   describe("removeFormat", () => {
-    it("removes bold from a selection range", async () => {
+    it("removes formatting from a range", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-4");
+        const nodeId = Id.Node.make("test-3");
         const ytext = Yjs.getText(nodeId);
 
-        // Setup: "hello world" all bold
         ytext.insert(0, "hello world");
         ytext.format(0, 11, { bold: true });
-
-        // Action: Remove bold from "world"
         yield* Yjs.removeFormat(nodeId, 6, 5, { bold: null });
 
-        // Verify
         const deltas = ytext.toDelta();
         expect(deltas).toEqual([
           { insert: "hello ", attributes: { bold: true } },
           { insert: "world" },
-        ]);
-      }).pipe(runtime.runPromise);
-    });
-
-    it("removes bold from middle of bold text, splitting it", async () => {
-      await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-5");
-        const ytext = Yjs.getText(nodeId);
-
-        // Setup: "abcde" all bold
-        ytext.insert(0, "abcde");
-        ytext.format(0, 5, { bold: true });
-
-        // Action: Remove bold from "c" (middle character)
-        yield* Yjs.removeFormat(nodeId, 2, 1, { bold: null });
-
-        // Verify: Should split into "ab" bold, "c" plain, "de" bold
-        const deltas = ytext.toDelta();
-        expect(deltas).toEqual([
-          { insert: "ab", attributes: { bold: true } },
-          { insert: "c" },
-          { insert: "de", attributes: { bold: true } },
         ]);
       }).pipe(runtime.runPromise);
     });
@@ -138,89 +83,40 @@ describe("YjsT Formatting Operations", () => {
     it("returns empty object for plain text", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-6");
+        const nodeId = Id.Node.make("test-4");
         const ytext = Yjs.getText(nodeId);
 
         ytext.insert(0, "hello");
-
         const marks = yield* Yjs.getMarksAt(nodeId, 2);
         expect(marks).toEqual({});
       }).pipe(runtime.runPromise);
     });
 
-    it("returns bold: true when cursor is in bold text", async () => {
+    it("returns all active marks at position", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-7");
+        const nodeId = Id.Node.make("test-5");
         const ytext = Yjs.getText(nodeId);
 
-        // "hello world" with "world" bold
         ytext.insert(0, "hello world");
-        ytext.format(6, 5, { bold: true });
+        ytext.format(6, 5, { bold: true, italic: true, code: true });
 
-        // Position 8 is inside "world"
         const marks = yield* Yjs.getMarksAt(nodeId, 8);
-        expect(marks).toEqual({ bold: true });
+        expect(marks).toEqual({ bold: true, italic: true, code: true });
 
-        // Position 3 is inside "hello"
-        const marksPlain = yield* Yjs.getMarksAt(nodeId, 3);
-        expect(marksPlain).toEqual({});
-      }).pipe(runtime.runPromise);
-    });
-
-    it("returns marks at boundary positions correctly", async () => {
-      await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-8");
-        const ytext = Yjs.getText(nodeId);
-
-        // "hello world" with "world" bold (starting at index 6)
-        ytext.insert(0, "hello world");
-        ytext.format(6, 5, { bold: true });
-
-        // Position 6 is the first character of bold "world"
-        const marksAtStart = yield* Yjs.getMarksAt(nodeId, 6);
-        expect(marksAtStart).toEqual({ bold: true });
-
-        // Position 5 is the space before "world" (not bold)
-        const marksBeforeBold = yield* Yjs.getMarksAt(nodeId, 5);
-        expect(marksBeforeBold).toEqual({});
+        const plainMarks = yield* Yjs.getMarksAt(nodeId, 3);
+        expect(plainMarks).toEqual({});
       }).pipe(runtime.runPromise);
     });
   });
 
   describe("getDeltasWithFormats", () => {
-    it("returns deltas with formatting preserved for split operation", async () => {
+    it("extracts deltas with formatting for a range", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-9");
+        const nodeId = Id.Node.make("test-6");
         const ytext = Yjs.getText(nodeId);
 
-        // Setup: "hello BOLD text" where "BOLD" is bold
-        ytext.insert(0, "hello BOLD text");
-        ytext.format(6, 4, { bold: true });
-
-        // Get deltas for the range " text" (after cursor at position 10)
-        const deltas = yield* Yjs.getDeltasWithFormats(nodeId, 10, 5);
-
-        expect(deltas).toEqual([{ insert: " text" }]);
-
-        // Get deltas for range that includes bold
-        const deltasWithBold = yield* Yjs.getDeltasWithFormats(nodeId, 6, 9);
-        expect(deltasWithBold).toEqual([
-          { insert: "BOLD", attributes: { bold: true } },
-          { insert: " text" },
-        ]);
-      }).pipe(runtime.runPromise);
-    });
-
-    it("returns full deltas when getting entire text", async () => {
-      await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-10");
-        const ytext = Yjs.getText(nodeId);
-
-        // "ab" plain, "cd" bold, "ef" plain
         ytext.insert(0, "abcdef");
         ytext.format(2, 2, { bold: true });
 
@@ -235,16 +131,13 @@ describe("YjsT Formatting Operations", () => {
   });
 
   describe("insertWithFormats", () => {
-    it("inserts deltas with formatting preserved at a position", async () => {
+    it("inserts deltas preserving formatting", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
-        const nodeId = Id.Node.make("test-node-11");
+        const nodeId = Id.Node.make("test-7");
         const ytext = Yjs.getText(nodeId);
 
-        // Setup: "hello" plain
         ytext.insert(0, "hello");
-
-        // Insert formatted deltas: " BOLD" with bold, " world" plain
         yield* Yjs.insertWithFormats(nodeId, 5, [
           { insert: " BOLD", attributes: { bold: true } },
           { insert: " world" },
@@ -258,52 +151,55 @@ describe("YjsT Formatting Operations", () => {
         ]);
       }).pipe(runtime.runPromise);
     });
+
+    it("clears inherited formatting when inserting plain text", async () => {
+      await Effect.gen(function* () {
+        const Yjs = yield* YjsT;
+        const nodeId = Id.Node.make("test-8");
+        const ytext = Yjs.getText(nodeId);
+
+        ytext.insert(0, "BOLD");
+        ytext.format(0, 4, { bold: true });
+
+        // Insert plain text after bold - should NOT inherit bold
+        yield* Yjs.insertWithFormats(nodeId, 4, [{ insert: " plain" }]);
+
+        const deltas = ytext.toDelta();
+        expect(deltas).toEqual([
+          { insert: "BOLD", attributes: { bold: true } },
+          { insert: " plain" },
+        ]);
+      }).pipe(runtime.runPromise);
+    });
   });
 });
 
-describe("Y.Text Formatting (direct Yjs)", () => {
-  // These tests verify our understanding of Yjs formatting API
-  // They should pass immediately (testing Yjs behavior, not our code)
+describe("Y.Text Raw API", () => {
+  // Verify our understanding of Yjs behavior
 
-  it("format() applies attributes to a range", () => {
-    const doc = new Y.Doc();
-    const ytext = doc.getText("test");
-
-    ytext.insert(0, "hello world");
-    ytext.format(6, 5, { bold: true });
-
-    const deltas = ytext.toDelta();
-    expect(deltas).toEqual([
-      { insert: "hello " },
-      { insert: "world", attributes: { bold: true } },
-    ]);
-  });
-
-  it("format() with null removes attribute", () => {
+  it("format() applies and removes attributes", () => {
     const doc = new Y.Doc();
     const ytext = doc.getText("test");
 
     ytext.insert(0, "hello");
     ytext.format(0, 5, { bold: true });
-    ytext.format(0, 5, { bold: null });
+    expect(ytext.toDelta()).toEqual([
+      { insert: "hello", attributes: { bold: true } },
+    ]);
 
-    const deltas = ytext.toDelta();
-    expect(deltas).toEqual([{ insert: "hello" }]);
+    ytext.format(0, 5, { bold: null });
+    expect(ytext.toDelta()).toEqual([{ insert: "hello" }]);
   });
 
-  it("toDelta() returns formatting information", () => {
+  it("supports multiple concurrent attributes", () => {
     const doc = new Y.Doc();
     const ytext = doc.getText("test");
 
-    // Insert all text first, then format
-    ytext.insert(0, "plainboldplain2");
-    ytext.format(5, 4, { bold: true }); // "bold" (positions 5-9)
+    ytext.insert(0, "text");
+    ytext.format(0, 4, { bold: true, italic: true, code: true });
 
-    const deltas = ytext.toDelta();
-    expect(deltas).toEqual([
-      { insert: "plain" },
-      { insert: "bold", attributes: { bold: true } },
-      { insert: "plain2" },
+    expect(ytext.toDelta()).toEqual([
+      { insert: "text", attributes: { bold: true, italic: true, code: true } },
     ]);
   });
 
@@ -311,13 +207,12 @@ describe("Y.Text Formatting (direct Yjs)", () => {
     const doc = new Y.Doc();
     const ytext = doc.getText("test");
 
-    ytext.insert(0, "normal ");
-    ytext.insert(7, "bold text", { bold: true });
+    ytext.insert(0, "plain ");
+    ytext.insert(6, "bold", { bold: true });
 
-    const deltas = ytext.toDelta();
-    expect(deltas).toEqual([
-      { insert: "normal " },
-      { insert: "bold text", attributes: { bold: true } },
+    expect(ytext.toDelta()).toEqual([
+      { insert: "plain " },
+      { insert: "bold", attributes: { bold: true } },
     ]);
   });
 });

@@ -260,77 +260,93 @@ export const CLIPBOARD_CONTAINS = (expectedText: string) =>
     ),
   ).pipe(Effect.withSpan("Then.CLIPBOARD_CONTAINS"));
 
+/** Mark types for text formatting */
+type MarkType = "bold" | "italic" | "code";
+
 /**
- * Asserts that a node has bold formatting at the specified range.
- * Checks the Y.Text deltas to verify bold attribute is present.
+ * Asserts that a node has a specific mark at the specified range.
+ * Checks the Y.Text deltas to verify the attribute is present.
  */
-export const NODE_HAS_BOLD_AT = Effect.fn("Then.NODE_HAS_BOLD_AT")(function* (
+export const NODE_HAS_MARK_AT = (
   nodeId: Id.Node,
   index: number,
   length: number,
-) {
-  const Yjs = yield* YjsT;
-  const ytext = Yjs.getText(nodeId);
-  const deltas = ytext.toDelta();
-
-  // Find if the specified range has bold formatting
-  let pos = 0;
-  let foundBold = false;
-
-  for (const delta of deltas) {
-    const text = delta.insert as string;
-    const deltaEnd = pos + text.length;
-
-    // Check if this delta overlaps with our target range
-    if (deltaEnd > index && pos < index + length) {
-      // This delta overlaps - it should have bold
-      const hasBold = delta.attributes?.bold === true;
-      if (hasBold) {
-        // Check if the bold covers our entire target range within this delta
-        const overlapStart = Math.max(pos, index);
-        const overlapEnd = Math.min(deltaEnd, index + length);
-        if (overlapStart < overlapEnd) {
-          foundBold = true;
-        }
-      }
-    }
-    pos = deltaEnd;
-  }
-
-  expect(foundBold, `Expected bold at index ${index}, length ${length}`).toBe(
-    true,
-  );
-});
-
-/**
- * Asserts that a node does NOT have bold formatting at the specified range.
- */
-export const NODE_HAS_NO_BOLD_AT = Effect.fn("Then.NODE_HAS_NO_BOLD_AT")(
-  function* (nodeId: Id.Node, index: number, length: number) {
+  mark: MarkType,
+) =>
+  Effect.gen(function* () {
     const Yjs = yield* YjsT;
     const ytext = Yjs.getText(nodeId);
     const deltas = ytext.toDelta();
 
-    // Check that the specified range has no bold formatting
+    let pos = 0;
+    let found = false;
+
+    for (const delta of deltas) {
+      const text = delta.insert as string;
+      const deltaEnd = pos + text.length;
+
+      if (deltaEnd > index && pos < index + length) {
+        const hasMark = delta.attributes?.[mark] === true;
+        if (hasMark) {
+          const overlapStart = Math.max(pos, index);
+          const overlapEnd = Math.min(deltaEnd, index + length);
+          if (overlapStart < overlapEnd) {
+            found = true;
+          }
+        }
+      }
+      pos = deltaEnd;
+    }
+
+    expect(found, `Expected ${mark} at index ${index}, length ${length}`).toBe(
+      true,
+    );
+  }).pipe(Effect.withSpan(`Then.NODE_HAS_MARK_AT(${mark})`));
+
+/**
+ * Asserts that a node does NOT have a specific mark at the specified range.
+ */
+export const NODE_HAS_NO_MARK_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+  mark: MarkType,
+) =>
+  Effect.gen(function* () {
+    const Yjs = yield* YjsT;
+    const ytext = Yjs.getText(nodeId);
+    const deltas = ytext.toDelta();
+
     let pos = 0;
 
     for (const delta of deltas) {
       const text = delta.insert as string;
       const deltaEnd = pos + text.length;
 
-      // Check if this delta overlaps with our target range
       if (deltaEnd > index && pos < index + length) {
-        // This delta overlaps - it should NOT have bold
-        const hasBold = delta.attributes?.bold === true;
+        const hasMark = delta.attributes?.[mark] === true;
         expect(
-          hasBold,
-          `Expected no bold at index ${index}, length ${length}, but found bold in delta at ${pos}`,
+          hasMark,
+          `Expected no ${mark} at index ${index}, length ${length}, but found ${mark} in delta at ${pos}`,
         ).toBe(false);
       }
       pos = deltaEnd;
     }
-  },
-);
+  }).pipe(Effect.withSpan(`Then.NODE_HAS_NO_MARK_AT(${mark})`));
+
+/** Convenience wrapper for bold */
+export const NODE_HAS_BOLD_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_MARK_AT(nodeId, index, length, "bold");
+
+/** Convenience wrapper for no bold */
+export const NODE_HAS_NO_BOLD_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_NO_MARK_AT(nodeId, index, length, "bold");
 
 /**
  * Asserts that a node has no formatting at all (plain text).
@@ -369,54 +385,84 @@ export const NODE_IS_ENTIRELY_BOLD = Effect.fn("Then.NODE_IS_ENTIRELY_BOLD")(
   },
 );
 
+/** Style detection config per mark type */
+const markStyleConfig: Record<
+  MarkType,
+  {
+    className: string;
+    tagName?: string;
+    computedCheck?: (style: CSSStyleDeclaration) => boolean;
+  }
+> = {
+  bold: {
+    className: ".font-bold",
+    computedCheck: (s) => s.fontWeight === "700" || s.fontWeight === "bold",
+  },
+  italic: {
+    className: ".italic",
+    computedCheck: (s) => s.fontStyle === "italic",
+  },
+  code: {
+    className: ".font-mono",
+    tagName: "code",
+    computedCheck: (s) =>
+      s.fontFamily.includes("monospace") ||
+      s.fontFamily.includes("mono") ||
+      s.fontFamily.includes("Courier"),
+  },
+};
+
 /**
- * Asserts that an unfocused block renders the specified text with bold styling.
- * Looks for a span with font-bold class or font-weight: 700.
+ * Asserts that an unfocused block renders the specified text with a mark's styling.
  */
-export const UNFOCUSED_BLOCK_HAS_BOLD_TEXT = (
+export const UNFOCUSED_BLOCK_HAS_MARK_TEXT = (
   blockId: Id.Block,
   expectedText: string,
+  mark: MarkType,
 ) =>
   Effect.promise(() =>
     waitFor(
       () => {
-        // Find the block element by block ID
         const blockEl = document.querySelector(
           `[data-element-id="${blockId}"][data-element-type="block"]`,
         );
         expect(blockEl, `Block ${blockId} not found`).not.toBeNull();
 
-        // Look for a span with font-bold class containing the expected text
-        const boldSpan = blockEl!.querySelector(".font-bold");
-        if (boldSpan) {
-          expect(
-            boldSpan.textContent,
-            `Expected bold span to contain "${expectedText}"`,
-          ).toContain(expectedText);
-          return;
+        const config = markStyleConfig[mark];
+
+        // Check class selector
+        const styledEl = blockEl!.querySelector(config.className);
+        if (styledEl?.textContent?.includes(expectedText)) return;
+
+        // Check tag name if applicable
+        if (config.tagName) {
+          const tagEl = blockEl!.querySelector(config.tagName);
+          if (tagEl?.textContent?.includes(expectedText)) return;
         }
 
-        // Fallback: check for element with computed font-weight 700
-        const allSpans = blockEl!.querySelectorAll("span");
-        for (const span of allSpans) {
-          const fontWeight = window.getComputedStyle(span).fontWeight;
-          if (fontWeight === "700" || fontWeight === "bold") {
-            expect(
-              span.textContent,
-              `Expected bold element to contain "${expectedText}"`,
-            ).toContain(expectedText);
-            return;
+        // Fallback: computed style check
+        if (config.computedCheck) {
+          const allElements = blockEl!.querySelectorAll("span, code");
+          for (const el of allElements) {
+            if (config.computedCheck(window.getComputedStyle(el))) {
+              if (el.textContent?.includes(expectedText)) return;
+            }
           }
         }
 
-        // Neither found - fail with descriptive message
         expect.fail(
-          `No bold styling found for text "${expectedText}" in unfocused block ${blockId}`,
+          `No ${mark} styling found for text "${expectedText}" in unfocused block ${blockId}`,
         );
       },
       { timeout: 2000 },
     ),
-  ).pipe(Effect.withSpan("Then.UNFOCUSED_BLOCK_HAS_BOLD_TEXT"));
+  ).pipe(Effect.withSpan(`Then.UNFOCUSED_BLOCK_HAS_MARK_TEXT(${mark})`));
+
+/** Convenience wrapper for bold text in unfocused block */
+export const UNFOCUSED_BLOCK_HAS_BOLD_TEXT = (
+  blockId: Id.Block,
+  expectedText: string,
+) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "bold");
 
 /**
  * Asserts that an unfocused block renders the specified text WITHOUT bold styling.
@@ -465,3 +511,43 @@ export const UNFOCUSED_BLOCK_HAS_PLAIN_TEXT = (
       { timeout: 2000 },
     ),
   ).pipe(Effect.withSpan("Then.UNFOCUSED_BLOCK_HAS_PLAIN_TEXT"));
+
+/** Convenience wrapper for italic */
+export const NODE_HAS_ITALIC_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_MARK_AT(nodeId, index, length, "italic");
+
+/** Convenience wrapper for no italic */
+export const NODE_HAS_NO_ITALIC_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_NO_MARK_AT(nodeId, index, length, "italic");
+
+/** Convenience wrapper for code */
+export const NODE_HAS_CODE_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_MARK_AT(nodeId, index, length, "code");
+
+/** Convenience wrapper for no code */
+export const NODE_HAS_NO_CODE_AT = (
+  nodeId: Id.Node,
+  index: number,
+  length: number,
+) => NODE_HAS_NO_MARK_AT(nodeId, index, length, "code");
+
+/** Convenience wrapper for italic text in unfocused block */
+export const UNFOCUSED_BLOCK_HAS_ITALIC_TEXT = (
+  blockId: Id.Block,
+  expectedText: string,
+) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "italic");
+
+/** Convenience wrapper for code text in unfocused block */
+export const UNFOCUSED_BLOCK_HAS_CODE_TEXT = (
+  blockId: Id.Block,
+  expectedText: string,
+) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "code");

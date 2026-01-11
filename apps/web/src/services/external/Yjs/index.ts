@@ -11,13 +11,15 @@ export interface TextDelta {
 /** Formatting attributes for text marks */
 export interface TextAttributes {
   bold?: true | null;
-  // Future marks: italic?: true | null; code?: true | null;
+  italic?: true | null;
+  code?: true | null;
 }
 
 /** Active marks at a position (null values filtered out) */
 export interface ActiveMarks {
   bold?: true;
-  // Future: italic?: true; code?: true;
+  italic?: true;
+  code?: true;
 }
 
 export class YjsT extends Context.Tag("YjsT")<
@@ -159,6 +161,12 @@ export const makeYjsLive = (config: YjsConfig) =>
               if (delta.attributes?.bold === true) {
                 marks.bold = true;
               }
+              if (delta.attributes?.italic === true) {
+                marks.italic = true;
+              }
+              if (delta.attributes?.code === true) {
+                marks.code = true;
+              }
               return marks;
             }
             currentPos += deltaLength;
@@ -229,7 +237,11 @@ export const makeYjsLive = (config: YjsConfig) =>
           for (const delta of deltas) {
             // Always pass attributes to prevent inheriting from adjacent formatted text.
             // When no attributes, pass explicit null values to clear any inherited formatting.
-            const attrs = delta.attributes ?? { bold: null };
+            const attrs = delta.attributes ?? {
+              bold: null,
+              italic: null,
+              code: null,
+            };
             ytext.insert(insertPos, delta.insert, attrs);
             insertPos += delta.insert.length;
           }

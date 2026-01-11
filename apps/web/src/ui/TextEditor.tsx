@@ -85,11 +85,24 @@ const variantThemes: Record<TextEditorVariant, Extension> = {
 
 /** Mark decoration for bold text */
 const boldMark = Decoration.mark({ class: "cm-bold" });
+/** Mark decoration for italic text */
+const italicMark = Decoration.mark({ class: "cm-italic" });
+/** Mark decoration for code text */
+const codeMark = Decoration.mark({ class: "cm-code" });
 
 /** Theme extension for formatting marks */
 const formattingTheme = EditorView.theme({
   ".cm-bold": {
     fontWeight: "700",
+  },
+  ".cm-italic": {
+    fontStyle: "italic",
+  },
+  ".cm-code": {
+    fontFamily: "var(--font-mono)",
+    backgroundColor: "var(--color-neutral-100)",
+    padding: "0 0.25em",
+    borderRadius: "0.25em",
   },
 });
 
@@ -97,31 +110,46 @@ const formattingTheme = EditorView.theme({
 const rebuildFormattingEffect = StateEffect.define<Y.Text>();
 
 /** Delta from Y.Text with optional formatting attributes */
-type YTextDelta = { insert: string; attributes?: { bold?: true } };
+type YTextDelta = {
+  insert: string;
+  attributes?: { bold?: true; italic?: true; code?: true };
+};
 
-/** Check if a position in Y.Text has bold formatting */
-function isBoldAtPosition(ytext: Y.Text, position: number): boolean {
+/** Mark type for formatting operations */
+type MarkType = "bold" | "italic" | "code";
+
+/** Check if a position in Y.Text has a specific mark */
+function hasMarkAtPosition(
+  ytext: Y.Text,
+  position: number,
+  mark: MarkType,
+): boolean {
   const deltas = ytext.toDelta() as YTextDelta[];
   let pos = 0;
   for (const delta of deltas) {
     const deltaEnd = pos + delta.insert.length;
     if (position >= pos && position < deltaEnd) {
-      return delta.attributes?.bold === true;
+      return delta.attributes?.[mark] === true;
     }
     pos = deltaEnd;
   }
   return false;
 }
 
-/** Check if entire range in Y.Text is bold */
-function isRangeBold(ytext: Y.Text, from: number, to: number): boolean {
+/** Check if entire range in Y.Text has a specific mark */
+function isRangeMarked(
+  ytext: Y.Text,
+  from: number,
+  to: number,
+  mark: MarkType,
+): boolean {
   const deltas = ytext.toDelta() as YTextDelta[];
   let pos = 0;
   for (const delta of deltas) {
     const deltaEnd = pos + delta.insert.length;
     // Check if this delta overlaps with the range
     if (deltaEnd > from && pos < to) {
-      if (!delta.attributes?.bold) return false;
+      if (!delta.attributes?.[mark]) return false;
     }
     pos = deltaEnd;
     if (pos >= to) break;
@@ -137,8 +165,15 @@ function createFormattingDecorations(ytext: Y.Text): DecorationSet {
 
   for (const delta of deltas) {
     const length = delta.insert.length;
-    if (delta.attributes?.bold) {
+    const attrs = delta.attributes;
+    if (attrs?.bold) {
       ranges.push(boldMark.range(pos, pos + length));
+    }
+    if (attrs?.italic) {
+      ranges.push(italicMark.range(pos, pos + length));
+    }
+    if (attrs?.code) {
+      ranges.push(codeMark.range(pos, pos + length));
     }
     pos += length;
   }
@@ -390,11 +425,15 @@ export default function TextEditor(props: TextEditorProps) {
   // Used to hide cursor until we can position it correctly
   const [isSelectionReady, setIsSelectionReady] = createSignal(false);
 
-  // Pending bold state for cursor-only Cmd+B toggle
-  // null = inherit from position, true = force bold, false = force plain
-  let pendingBold: boolean | null = null;
+  // Pending marks for cursor-only format toggles (Cmd+B/I/E)
+  // Each value: null = inherit from position, true = force mark, false = force plain
+  const pendingMarks: Record<MarkType, boolean | null> = {
+    bold: null,
+    italic: null,
+    code: null,
+  };
   // Track cursor position when pending was set - clear if cursor moves
-  let pendingBoldPosition: number | null = null;
+  let pendingMarksPosition: number | null = null;
 
   // Compartment for inline type badges - allows dynamic reconfiguration
   const typeBadgeCompartment = new Compartment();
@@ -470,8 +509,13 @@ export default function TextEditor(props: TextEditorProps) {
           }
         }
 
-        // Handle pending bold formatting after text insertion
-        if (update.docChanged && pendingBold !== null) {
+        // Handle pending marks formatting after text insertion
+        const hasPendingMarks =
+          pendingMarks.bold !== null ||
+          pendingMarks.italic !== null ||
+          pendingMarks.code !== null;
+
+        if (update.docChanged && hasPendingMarks) {
           let shouldClearPending = true;
 
           update.changes.iterChanges((fromA, toA, fromB, toB) => {
@@ -480,9 +524,21 @@ export default function TextEditor(props: TextEditorProps) {
 
             // Only apply formatting to pure insertions (not replacements or deletions)
             if (insertedLength > 0 && deletedLength === 0) {
-              ytext.format(fromB, insertedLength, {
-                bold: pendingBold ? true : null,
-              });
+              const attrs: {
+                bold?: true | null;
+                italic?: true | null;
+                code?: true | null;
+              } = {};
+              if (pendingMarks.bold !== null) {
+                attrs.bold = pendingMarks.bold ? true : null;
+              }
+              if (pendingMarks.italic !== null) {
+                attrs.italic = pendingMarks.italic ? true : null;
+              }
+              if (pendingMarks.code !== null) {
+                attrs.code = pendingMarks.code ? true : null;
+              }
+              ytext.format(fromB, insertedLength, attrs);
               setTimeout(() => {
                 view?.dispatch({
                   effects: rebuildFormattingEffect.of(ytext),
@@ -490,25 +546,29 @@ export default function TextEditor(props: TextEditorProps) {
               }, 0);
               // Keep pending for continued typing
               shouldClearPending = false;
-              pendingBoldPosition = update.state.selection.main.head;
+              pendingMarksPosition = update.state.selection.main.head;
             }
           });
 
           if (shouldClearPending) {
-            pendingBold = null;
-            pendingBoldPosition = null;
+            pendingMarks.bold = null;
+            pendingMarks.italic = null;
+            pendingMarks.code = null;
+            pendingMarksPosition = null;
           }
         }
 
-        // Clear pending bold if cursor moved without typing
+        // Clear pending marks if cursor moved without typing
         if (
           update.selectionSet &&
           !update.docChanged &&
-          pendingBoldPosition !== null &&
-          update.state.selection.main.head !== pendingBoldPosition
+          pendingMarksPosition !== null &&
+          update.state.selection.main.head !== pendingMarksPosition
         ) {
-          pendingBold = null;
-          pendingBoldPosition = null;
+          pendingMarks.bold = null;
+          pendingMarks.italic = null;
+          pendingMarks.code = null;
+          pendingMarksPosition = null;
         }
 
         // Log ALL selection changes for debugging
@@ -667,42 +727,43 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
-    // Cmd+B: Toggle bold formatting on selection or set pending bold for cursor
+    // Helper to create format toggle handler for a given mark type
+    const createFormatHandler = (mark: MarkType) => (view: EditorView) => {
+      const sel = view.state.selection.main;
+      const from = Math.min(sel.anchor, sel.head);
+      const to = Math.max(sel.anchor, sel.head);
+
+      if (from === to) {
+        // Cursor only - toggle pending mark for future typing
+        // Yjs inherits formatting from the character BEFORE the cursor
+        const wouldInherit = hasMarkAtPosition(
+          ytext,
+          from > 0 ? from - 1 : 0,
+          mark,
+        );
+        pendingMarks[mark] =
+          pendingMarks[mark] !== null ? !pendingMarks[mark] : !wouldInherit;
+        pendingMarksPosition = from;
+        return true;
+      }
+
+      // Toggle: if all selected text has mark, remove it; otherwise apply it
+      const shouldRemove = isRangeMarked(ytext, from, to, mark);
+      ytext.format(from, to - from, { [mark]: shouldRemove ? null : true });
+
+      view.dispatch({
+        effects: rebuildFormattingEffect.of(ytext),
+      });
+
+      return true;
+    };
+
+    // Cmd+B: Toggle bold, Cmd+I: Toggle italic, Cmd+E: Toggle code
     extensions.push(
       keymap.of([
-        {
-          key: "Mod-b",
-          run: (view) => {
-            const sel = view.state.selection.main;
-            const from = Math.min(sel.anchor, sel.head);
-            const to = Math.max(sel.anchor, sel.head);
-
-            if (from === to) {
-              // Cursor only - toggle pending bold for future typing
-              // Yjs inherits formatting from the character BEFORE the cursor
-              const wouldInheritBold = isBoldAtPosition(
-                ytext,
-                from > 0 ? from - 1 : 0,
-              );
-              pendingBold =
-                pendingBold !== null ? !pendingBold : !wouldInheritBold;
-              pendingBoldPosition = from;
-              return true;
-            }
-
-            // Toggle: if all selected text is bold, remove bold; otherwise apply bold
-            const shouldRemoveBold = isRangeBold(ytext, from, to);
-            ytext.format(from, to - from, {
-              bold: shouldRemoveBold ? null : true,
-            });
-
-            view.dispatch({
-              effects: rebuildFormattingEffect.of(ytext),
-            });
-
-            return true;
-          },
-        },
+        { key: "Mod-b", run: createFormatHandler("bold") },
+        { key: "Mod-i", run: createFormatHandler("italic") },
+        { key: "Mod-e", run: createFormatHandler("code") },
       ]),
     );
 
@@ -910,9 +971,14 @@ export default function TextEditor(props: TextEditorProps) {
       }),
     );
 
-    // Filter out Mod-[ and Mod-] from defaultKeymap to let browser handle back/forward navigation
+    // Filter out conflicting shortcuts from defaultKeymap:
+    // - Mod-[ and Mod-] for browser back/forward navigation
+    // - Mod-i (selectParentSyntax) conflicts with our italic shortcut
     const filteredDefaultKeymap = defaultKeymap.filter(
-      (binding) => binding.key !== "Mod-[" && binding.key !== "Mod-]",
+      (binding) =>
+        binding.key !== "Mod-[" &&
+        binding.key !== "Mod-]" &&
+        binding.key !== "Mod-i",
     );
     extensions.push(keymap.of(filteredDefaultKeymap));
 
