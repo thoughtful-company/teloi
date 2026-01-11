@@ -3,14 +3,21 @@ import { LiveStoreError, StoreT } from "../../external/Store";
 
 import { Id, Model } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
+import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { get } from "./get";
+import { indent } from "./indent";
+import { mergeBackward, type MergeResult } from "./mergeBackward";
+import { mergeForward } from "./mergeForward";
+import { outdent } from "./outdent";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
 import { BufferView, subscribe } from "./subscribe";
+
+export type { MergeResult };
 
 export class BufferT extends Context.Tag("BufferT")<
   BufferT,
@@ -47,6 +54,24 @@ export class BufferT extends Context.Tag("BufferT")<
       blockSelectionAnchor: Id.Node,
       blockSelectionFocus?: Id.Node | null,
     ) => Effect.Effect<void, BufferNotFoundError>;
+
+    // Structural operations
+    indent: (
+      bufferId: Id.Buffer,
+      nodeIds: readonly Id.Node[],
+    ) => Effect.Effect<Option.Option<Id.Node>, never>;
+    outdent: (
+      bufferId: Id.Buffer,
+      nodeIds: readonly Id.Node[],
+    ) => Effect.Effect<boolean, never>;
+    mergeBackward: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node,
+    ) => Effect.Effect<Option.Option<MergeResult>, never>;
+    mergeForward: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node,
+    ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
   }
 >() {}
 
@@ -55,8 +80,12 @@ export const BufferLive = Layer.effect(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
+    const Yjs = yield* YjsT;
 
-    const context = Context.make(StoreT, Store).pipe(Context.add(NodeT, Node));
+    const context = Context.make(StoreT, Store).pipe(
+      Context.add(NodeT, Node),
+      Context.add(YjsT, Yjs),
+    );
 
     return {
       subscribe: withContext(subscribe)(context),
@@ -87,6 +116,16 @@ export const BufferLive = Layer.effect(
           blockSelectionAnchor,
           blockSelectionFocus,
         ).pipe(Effect.provideService(StoreT, Store)),
+
+      // Structural operations
+      indent: (_bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>
+        indent(nodeIds).pipe(Effect.provideService(NodeT, Node)),
+      outdent: (bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>
+        outdent(bufferId, nodeIds).pipe(Effect.provide(context)),
+      mergeBackward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
+        mergeBackward(bufferId, nodeId).pipe(Effect.provide(context)),
+      mergeForward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
+        mergeForward(bufferId, nodeId).pipe(Effect.provide(context)),
     };
   }),
 );

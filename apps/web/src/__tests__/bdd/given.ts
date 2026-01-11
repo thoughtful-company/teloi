@@ -482,3 +482,101 @@ export const NODE_HAS_ITALIC = (
 /** Convenience wrapper for code formatting */
 export const NODE_HAS_CODE = (nodeId: Id.Node, index: number, length: number) =>
   NODE_HAS_MARK(nodeId, index, length, "code");
+
+export interface BufferWithParentAndChildrenResult<
+  T extends readonly ChildSpec[] = readonly ChildSpec[],
+> {
+  bufferId: Id.Buffer;
+  parentNodeId: Id.Node;
+  rootNodeId: Id.Node;
+  childNodeIds: ToNodeIds<T>;
+  windowId: Id.Window;
+}
+
+/**
+ * Creates a buffer whose root node has a parent (not visible in buffer).
+ * Structure:
+ * - parentNode (not visible in buffer)
+ *   - rootNode (buffer's assignedNodeId)
+ *     - children...
+ *
+ * Useful for testing edge cases where buffer root is not a top-level node.
+ */
+export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
+  const T extends readonly ChildSpec[],
+>(
+  parentText: string,
+  rootText: string,
+  children: T,
+) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Node = yield* NodeT;
+    const Yjs = yield* YjsT;
+
+    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const bufferId = Id.Buffer.make(nanoid());
+    const parentNodeId = Id.Node.make(nanoid());
+
+    // Create parent node in LiveStore (grandparent from buffer's perspective)
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: parentNodeId },
+      }),
+    );
+    Yjs.getText(parentNodeId).insert(0, parentText);
+
+    // Create root node as child of parent
+    const rootNodeId = yield* Node.insertNode({
+      parentId: parentNodeId,
+      insert: "after",
+    });
+    Yjs.getText(rootNodeId).insert(0, rootText);
+
+    // Create window document
+    yield* Store.setDocument(
+      "window",
+      {
+        panes: [],
+        activeElement: null,
+      },
+      windowId,
+    );
+
+    // Create buffer document with assignedNodeId = rootNodeId (not parentNodeId)
+    yield* Store.setDocument(
+      "buffer",
+      {
+        windowId,
+        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+        assignedNodeId: rootNodeId,
+        selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
+        lastFocusedBlockId: null,
+        toggledNodes: [],
+        selection: null,
+      },
+      bufferId,
+    );
+
+    // Create child nodes under root
+    const childNodeIds: Id.Node[] = [];
+    for (const child of children) {
+      const childId = yield* Node.insertNode({
+        parentId: rootNodeId,
+        insert: "after",
+      });
+      Yjs.getText(childId).insert(0, child.text);
+      childNodeIds.push(childId);
+    }
+
+    return {
+      bufferId,
+      parentNodeId,
+      rootNodeId,
+      childNodeIds: childNodeIds as ToNodeIds<T>,
+      windowId,
+    };
+  }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_PARENT_AND_CHILDREN"));

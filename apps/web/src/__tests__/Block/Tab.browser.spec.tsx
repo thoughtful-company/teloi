@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -137,6 +137,40 @@ describe("Block Tab key", () => {
       const rootChildren = yield* Node.getNodeChildren(rootNodeId);
       yield* Then.NODE_HAS_TEXT(rootChildren[0]!, "First child");
       yield* Then.NODE_HAS_TEXT(rootChildren[1]!, "Second child");
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Shift+Tab is no-op on first-level block when buffer root has a parent", async () => {
+    await Effect.gen(function* () {
+      // Structure:
+      // - Grandparent (not visible in buffer)
+      //   - BufferRoot (buffer's assignedNodeId)
+      //     - Child  <- First-level block, Shift+Tab should be no-op
+      const { bufferId, parentNodeId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+          "Grandparent",
+          "Buffer Root",
+          [{ text: "Child" }],
+        );
+
+      const childBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus child and press Shift+Tab
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* When.USER_PRESSES("{Shift>}{Tab}{/Shift}");
+
+      // Child should STILL be under buffer root (no-op, not moved to grandparent)
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      // Verify child's parent is still buffer root
+      const Node = yield* NodeT;
+      const childParent = yield* Node.getParent(childNodeIds[0]);
+      expect(childParent).toBe(rootNodeId);
+
+      // Grandparent should still have only one child (buffer root)
+      yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
     }).pipe(runtime.runPromise);
   });
 });

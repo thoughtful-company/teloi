@@ -2,94 +2,8 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
+import { isBlockExpanded } from "@/services/ui/Block/navigation";
 import { Effect, Option } from "effect";
-import { findDeepestLastChild, isBlockExpanded } from "./navigation";
-
-export interface MergeResult {
-  targetNodeId: Id.Node;
-  cursorOffset: number;
-  isTitle: boolean;
-}
-
-/**
- * Merge current node backward (what happens on Backspace at start).
- *
- * - First sibling: merge into parent
- * - Otherwise: find deepest last child of previous sibling and merge there
- *
- * Deletes the source node and appends its text to the target.
- * Returns the target node ID and cursor position (at merge point).
- * Respects collapsed state - won't merge into hidden children.
- *
- * Key constraint: Can't merge a node that has children (would orphan them).
- */
-export const mergeBackward = (
-  nodeId: Id.Node,
-  rootNodeId: Id.Node | null,
-  bufferId: Id.Buffer,
-): Effect.Effect<Option.Option<MergeResult>, never, NodeT | YjsT | StoreT> =>
-  Effect.gen(function* () {
-    const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
-
-    // Can't delete a node that has children (would orphan them)
-    const nodeChildren = yield* Node.getNodeChildren(nodeId);
-    if (nodeChildren.length > 0) {
-      return Option.none();
-    }
-
-    const parentId = yield* Node.getParent(nodeId).pipe(
-      Effect.catchTag("NodeHasNoParentError", () =>
-        Effect.succeed(null as Id.Node | null),
-      ),
-    );
-    if (!parentId) return Option.none();
-
-    const siblings = yield* Node.getNodeChildren(parentId);
-    const siblingIndex = siblings.indexOf(nodeId);
-    const currentYtext = Yjs.getText(nodeId);
-
-    // Get formatted deltas for current node's text BEFORE any modifications
-    const currentDeltas = yield* Yjs.getDeltasWithFormats(
-      nodeId,
-      0,
-      currentYtext.length,
-    );
-
-    // First sibling: merge into parent
-    if (siblingIndex === 0) {
-      const parentYtext = Yjs.getText(parentId);
-      const mergePoint = parentYtext.length;
-
-      // Insert with formatting preservation
-      yield* Yjs.insertWithFormats(parentId, mergePoint, currentDeltas);
-      yield* Node.deleteNode(nodeId);
-      Yjs.deleteText(nodeId);
-
-      return Option.some({
-        targetNodeId: parentId,
-        cursorOffset: mergePoint,
-        isTitle: parentId === rootNodeId,
-      });
-    }
-
-    // Merge into previous sibling's deepest last child (respects collapsed state)
-    const prevSiblingId = siblings[siblingIndex - 1]!;
-    const targetNodeId = yield* findDeepestLastChild(prevSiblingId, bufferId);
-    const targetYtext = Yjs.getText(targetNodeId);
-    const mergePoint = targetYtext.length;
-
-    // Insert with formatting preservation
-    yield* Yjs.insertWithFormats(targetNodeId, mergePoint, currentDeltas);
-    yield* Node.deleteNode(nodeId);
-    Yjs.deleteText(nodeId);
-
-    return Option.some({
-      targetNodeId,
-      cursorOffset: mergePoint,
-      isTitle: false,
-    });
-  });
 
 /**
  * Merge forward (what happens on Delete at end).
@@ -107,8 +21,8 @@ export const mergeBackward = (
  * Key constraint: Never merge a block that has children (would orphan them).
  */
 export const mergeForward = (
-  nodeId: Id.Node,
   bufferId: Id.Buffer,
+  nodeId: Id.Node,
 ): Effect.Effect<
   Option.Option<{ cursorOffset: number }>,
   never,

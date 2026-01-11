@@ -419,9 +419,10 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Block = yield* BlockT;
+        const Buffer = yield* BufferT;
         const [bufferId] = yield* Id.parseBlockId(blockId);
 
-        const result = yield* Block.indent(nodeId);
+        const result = yield* Buffer.indent(bufferId, [nodeId]);
         if (Option.isSome(result)) {
           // Auto-expand the new parent so the indented block stays visible
           yield* Block.setExpanded(Id.makeBlockId(bufferId, result.value), true);
@@ -433,8 +434,9 @@ export default function Block({ blockId }: BlockProps) {
   const handleShiftTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const Block = yield* BlockT;
-        yield* Block.outdent(nodeId);
+        const Buffer = yield* BufferT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        yield* Buffer.outdent(bufferId, [nodeId]);
       }),
     );
   };
@@ -472,17 +474,10 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
-        const Store = yield* StoreT;
 
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const rootNodeId = Option.isSome(bufferDoc)
-          ? (bufferDoc.value.assignedNodeId as Id.Node)
-          : null;
-
-        const result = yield* Block.mergeBackward(nodeId, rootNodeId, bufferId);
+        const result = yield* Buffer.mergeBackward(bufferId, nodeId);
         if (Option.isNone(result)) return;
 
         const { targetNodeId, cursorOffset, isTitle } = result.value;
@@ -510,10 +505,9 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId] = yield* Id.parseBlockId(blockId);
-        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
 
-        const result = yield* Block.mergeForward(nodeId, bufferId);
+        const result = yield* Buffer.mergeForward(bufferId, nodeId);
         if (Option.isNone(result)) return;
 
         yield* Buffer.setSelection(

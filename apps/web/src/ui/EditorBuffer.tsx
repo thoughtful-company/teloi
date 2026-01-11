@@ -507,7 +507,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
-            const Node = yield* NodeT;
+            const Block = yield* BlockT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -519,49 +519,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
-            // Use selectedBlocks directly - they're already in document order
-            // from when they were selected (can't filter through childNodeIds
-            // because selected blocks might be nested after previous indent)
-            const firstSelected = selectedBlocks[0]!;
-
             if (e.shiftKey) {
-              // Outdent: move all selected blocks to grandparent, after parent
-              const parentId = yield* Node.getParent(firstSelected);
-              const grandparentId = yield* Node.getParent(parentId);
-
-              // Move in reverse order to maintain relative ordering
-              for (let i = selectedBlocks.length - 1; i >= 0; i--) {
-                yield* Node.insertNode({
-                  nodeId: selectedBlocks[i]!,
-                  parentId: grandparentId,
-                  insert: "after",
-                  siblingId: parentId,
-                });
-              }
+              yield* Buffer.outdent(bufferId, selectedBlocks);
             } else {
-              // Indent: move all selected blocks under the previous sibling
-              const parentId = yield* Node.getParent(firstSelected);
-              const siblings = yield* Node.getNodeChildren(parentId);
-              const firstIndex = siblings.indexOf(firstSelected);
-
-              // Can't indent if first selected is the first sibling
-              if (firstIndex <= 0) return;
-
-              const prevSiblingId = siblings[firstIndex - 1]!;
-
-              // Move all selected blocks to be children of previous sibling
-              for (const nodeId of selectedBlocks) {
-                yield* Node.insertNode({
-                  nodeId,
-                  parentId: prevSiblingId,
-                  insert: "after",
-                });
+              const newParent = yield* Buffer.indent(bufferId, selectedBlocks);
+              if (Option.isSome(newParent)) {
+                // Auto-expand the new parent so indented blocks stay visible
+                const newParentBlockId = Id.makeBlockId(bufferId, newParent.value);
+                yield* Block.setExpanded(newParentBlockId, true);
               }
-
-              // Auto-expand the new parent so indented blocks stay visible
-              const Block = yield* BlockT;
-              const newParentBlockId = Id.makeBlockId(bufferId, prevSiblingId);
-              yield* Block.setExpanded(newParentBlockId, true);
             }
 
             // Preserve selection
@@ -571,7 +537,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               blockSelectionAnchor!,
               blockSelectionFocus,
             );
-          }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+          }),
         );
       }
 

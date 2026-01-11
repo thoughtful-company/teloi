@@ -8,8 +8,6 @@ import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
 import { BlockGoneError, BlockNotFoundError } from "./errors";
-import { indent, outdent } from "./indent";
-import { mergeBackward, mergeForward, type MergeResult } from "./merge";
 import {
   findDeepestLastChild,
   findNextNode,
@@ -21,7 +19,7 @@ import { moveToFirst, moveToLast, swap } from "./swap";
 
 export { BlockGoneError, BlockNotFoundError } from "./errors";
 export type { BlockView } from "./subscribe";
-export type { MergeResult, SplitParams, SplitResult };
+export type { SplitParams, SplitResult };
 
 export class BlockT extends Context.Tag("BlockT")<
   BlockT,
@@ -55,17 +53,6 @@ export class BlockT extends Context.Tag("BlockT")<
 
     // Structural operations
     split: (params: SplitParams) => Effect.Effect<SplitResult, never>;
-    mergeBackward: (
-      nodeId: Id.Node,
-      rootNodeId: Id.Node | null,
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<MergeResult>, never>;
-    mergeForward: (
-      nodeId: Id.Node,
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
-    indent: (nodeId: Id.Node) => Effect.Effect<Option.Option<Id.Node>, never>;
-    outdent: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
     swap: (
       nodeId: Id.Node,
       direction: "up" | "down",
@@ -102,10 +89,6 @@ export const BlockLive = Layer.effect(
 
       // Structural operations
       split: withContext(split)(context),
-      mergeBackward: withContext(mergeBackward)(context),
-      mergeForward: withContext(mergeForward)(context),
-      indent: withContext(indent)(context),
-      outdent: withContext(outdent)(context),
       swap: withContext(swap)(context),
       moveToFirst: withContext(moveToFirst)(context),
       moveToLast: withContext(moveToLast)(context),
