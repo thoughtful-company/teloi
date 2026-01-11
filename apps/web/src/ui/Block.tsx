@@ -1008,19 +1008,14 @@ export default function Block({ blockId }: BlockProps) {
           Effect.gen(function* () {
             const Block = yield* BlockT;
             const Node = yield* NodeT;
-            const Store = yield* StoreT;
             const Buffer = yield* BufferT;
             const Window = yield* WindowT;
             const [bufferId] = yield* Id.parseBlockId(blockId);
 
-            // Check if current block can be collapsed (has children AND is expanded)
             const children = yield* Node.getNodeChildren(nodeId);
-            const blockDoc = yield* Store.getDocument("block", blockId);
-            const isCurrentExpanded =
-              Option.isNone(blockDoc) || blockDoc.value.isExpanded;
+            const isCurrentExpanded = yield* Block.isExpanded(blockId);
 
             if (children.length > 0 && isCurrentExpanded) {
-              // Block has children and is expanded - collapse it
               yield* Block.setExpanded(blockId, false);
               return;
             }
@@ -1031,16 +1026,13 @@ export default function Block({ blockId }: BlockProps) {
                 Effect.succeed<Id.Node | null>(null),
               ),
             );
+            if (!parentId) return;
 
-            if (!parentId) return; // No parent to collapse
-
-            // Preserve goalX from current selection for proper cursor positioning
             const goalX = store.selection?.goalX ?? null;
 
             // Check if parent is the buffer root (first-level block)
             const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
             if (parentId === assignedNodeId) {
-              // First-level block - move focus to Title (like ArrowUp would)
               yield* Buffer.setSelection(
                 bufferId,
                 makeCollapsedSelection(parentId, 0, { goalX, goalLine: "last" }),
@@ -1051,10 +1043,9 @@ export default function Block({ blockId }: BlockProps) {
               return;
             }
 
-            // Collapse parent and move focus to it (like ArrowUp would)
+            // Collapse parent and move focus to it
             const parentBlockId = Id.makeBlockId(bufferId, parentId);
             yield* Block.setExpanded(parentBlockId, false);
-
             yield* Buffer.setSelection(
               bufferId,
               makeCollapsedSelection(parentId, 0, { goalX, goalLine: "last" }),
@@ -1070,63 +1061,43 @@ export default function Block({ blockId }: BlockProps) {
           Effect.gen(function* () {
             const Block = yield* BlockT;
             const Node = yield* NodeT;
-            const Store = yield* StoreT;
             const [bufferId] = yield* Id.parseBlockId(blockId);
 
-            // Check if current block is expanded
-            const blockDoc = yield* Store.getDocument("block", blockId);
-            const isCurrentExpanded =
-              Option.isNone(blockDoc) || blockDoc.value.isExpanded;
-
+            const isCurrentExpanded = yield* Block.isExpanded(blockId);
             if (!isCurrentExpanded) {
-              // Block is collapsed, just expand it
               yield* Block.setExpanded(blockId, true);
               return;
             }
 
-            // Block is already expanded - drill down to first collapsed descendant with children
-            // Depth-first search through expanded children
+            // Depth-first search for first collapsed descendant with children
             const findFirstCollapsedExpandable = (
               targetNodeId: Id.Node,
-            ): Effect.Effect<Option.Option<Id.Node>, never, NodeT | StoreT> =>
+            ): Effect.Effect<Option.Option<Id.Node>, never, NodeT | BlockT> =>
               Effect.gen(function* () {
                 const children = yield* Node.getNodeChildren(targetNodeId);
 
                 for (const childId of children) {
                   const childChildren = yield* Node.getNodeChildren(childId);
-                  if (childChildren.length === 0) continue; // Skip leaf nodes
+                  if (childChildren.length === 0) continue;
 
                   const childBlockId = Id.makeBlockId(bufferId, childId);
-                  const childBlockDoc = yield* Store.getDocument(
-                    "block",
-                    childBlockId,
-                  );
-                  const isChildExpanded =
-                    Option.isNone(childBlockDoc) || childBlockDoc.value.isExpanded;
+                  const isChildExpanded = yield* Block.isExpanded(childBlockId);
 
-                  if (!isChildExpanded) {
-                    // Found first collapsed child with children
-                    return Option.some(childId);
-                  }
+                  if (!isChildExpanded) return Option.some(childId);
 
-                  // Child is expanded - recurse into it
                   const deeperResult =
                     yield* findFirstCollapsedExpandable(childId);
-                  if (Option.isSome(deeperResult)) {
-                    return deeperResult;
-                  }
+                  if (Option.isSome(deeperResult)) return deeperResult;
                 }
 
                 return Option.none();
               });
 
             const targetNode = yield* findFirstCollapsedExpandable(nodeId);
-
             if (Option.isSome(targetNode)) {
               const targetBlockId = Id.makeBlockId(bufferId, targetNode.value);
               yield* Block.setExpanded(targetBlockId, true);
             }
-            // If no collapsed expandable found, do nothing
           }),
         );
       }),

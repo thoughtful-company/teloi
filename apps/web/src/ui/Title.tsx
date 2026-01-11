@@ -1,7 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
@@ -288,107 +287,83 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       }),
       Match.tag("TypePickerClose", () => handleTypePickerClose()),
       Match.tag("Collapse", () => {
-        // Cmd+Up on Title: collapse from deepest level up
-        // Find all expanded nodes where NONE of their children are expanded, collapse those
+        // Find all expanded nodes with no expanded children, collapse them
         runtime.runPromise(
           Effect.gen(function* () {
             const Node = yield* NodeT;
-            const Store = yield* StoreT;
             const Block = yield* BlockT;
 
-            // Helper to check if a node is expanded
-            const isNodeExpanded = (nodeId: Id.Node) =>
-              Effect.gen(function* () {
-                const blockId = Id.makeBlockId(bufferId, nodeId);
-                const blockDoc = yield* Store.getDocument("block", blockId);
-                return Option.isNone(blockDoc) || blockDoc.value.isExpanded;
-              });
-
-            // Find all "leaf-adjacent" expanded nodes (expanded, but no expanded children)
+            // Find "leaf-adjacent" expanded nodes (expanded, but no expanded children)
             const findLeafAdjacentExpanded = (
-              startNodes: readonly Id.Node[],
-            ): Effect.Effect<Id.Node[], never, NodeT | StoreT> =>
+              nodes: readonly Id.Node[],
+            ): Effect.Effect<Id.Node[], never, NodeT | BlockT> =>
               Effect.gen(function* () {
                 const result: Id.Node[] = [];
 
-                const traverse = (
-                  nodes: readonly Id.Node[],
-                ): Effect.Effect<void, never, NodeT | StoreT> =>
-                  Effect.gen(function* () {
-                    for (const currentId of nodes) {
-                      const children = yield* Node.getNodeChildren(currentId);
-                      if (children.length === 0) continue; // Leaf node, skip
+                for (const currentId of nodes) {
+                  const children = yield* Node.getNodeChildren(currentId);
+                  if (children.length === 0) continue;
 
-                      const isExpanded = yield* isNodeExpanded(currentId);
-                      if (!isExpanded) continue; // Collapsed, skip
+                  const currentBlockId = Id.makeBlockId(bufferId, currentId);
+                  const isExpanded = yield* Block.isExpanded(currentBlockId);
+                  if (!isExpanded) continue;
 
-                      // Check if any children are expanded
-                      let hasExpandedChild = false;
-                      for (const childId of children) {
-                        const childChildren =
-                          yield* Node.getNodeChildren(childId);
-                        if (childChildren.length === 0) continue; // Leaf
-                        const childExpanded = yield* isNodeExpanded(childId);
-                        if (childExpanded) {
-                          hasExpandedChild = true;
-                          break;
-                        }
-                      }
+                  // Check if any expandable children are expanded
+                  let hasExpandedChild = false;
+                  for (const childId of children) {
+                    const childChildren = yield* Node.getNodeChildren(childId);
+                    if (childChildren.length === 0) continue;
 
-                      if (!hasExpandedChild) {
-                        // This node is expanded but has no expanded children - it's leaf-adjacent
-                        result.push(currentId);
-                      } else {
-                        // Has expanded children - recurse into them
-                        yield* traverse(children);
-                      }
+                    const childBlockId = Id.makeBlockId(bufferId, childId);
+                    if (yield* Block.isExpanded(childBlockId)) {
+                      hasExpandedChild = true;
+                      break;
                     }
-                  });
+                  }
 
-                const firstLevel = yield* Node.getNodeChildren(nodeId);
-                yield* traverse(firstLevel);
+                  if (hasExpandedChild) {
+                    result.push(...(yield* findLeafAdjacentExpanded(children)));
+                  } else {
+                    result.push(currentId);
+                  }
+                }
+
                 return result;
               });
 
-            const toCollapse = yield* findLeafAdjacentExpanded([]);
+            const firstLevel = yield* Node.getNodeChildren(nodeId);
+            const toCollapse = yield* findLeafAdjacentExpanded(firstLevel);
 
             for (const collapseId of toCollapse) {
-              const blockId = Id.makeBlockId(bufferId, collapseId);
-              yield* Block.setExpanded(blockId, false);
+              const collapseBlockId = Id.makeBlockId(bufferId, collapseId);
+              yield* Block.setExpanded(collapseBlockId, false);
             }
           }),
         );
       }),
       Match.tag("Expand", () => {
-        // Cmd+Down on Title: drill down level by level, expanding all collapsed nodes at each level
+        // Drill down level by level, expanding all collapsed nodes at each level
         runtime.runPromise(
           Effect.gen(function* () {
             const Node = yield* NodeT;
-            const Store = yield* StoreT;
             const Block = yield* BlockT;
 
-            // Start with first-level children
             let currentLevel = yield* Node.getNodeChildren(nodeId);
 
             while (currentLevel.length > 0) {
-              // Find all collapsed expandable nodes at this level
               const collapsedExpandable: Id.Node[] = [];
 
               for (const childId of currentLevel) {
                 const grandchildren = yield* Node.getNodeChildren(childId);
-                if (grandchildren.length === 0) continue; // Skip leaf nodes
+                if (grandchildren.length === 0) continue;
 
                 const childBlockId = Id.makeBlockId(bufferId, childId);
-                const blockDoc = yield* Store.getDocument("block", childBlockId);
-                const isExpanded =
-                  Option.isNone(blockDoc) || blockDoc.value.isExpanded;
-
+                const isExpanded = yield* Block.isExpanded(childBlockId);
                 if (!isExpanded) {
                   collapsedExpandable.push(childId);
                 }
               }
 
-              // If we found collapsed expandable nodes, expand them all and stop
               if (collapsedExpandable.length > 0) {
                 for (const childId of collapsedExpandable) {
                   const childBlockId = Id.makeBlockId(bufferId, childId);
@@ -397,8 +372,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
                 return;
               }
 
-              // No collapsed nodes at this level - go deeper
-              // Collect all children of expanded nodes at this level
+              // Go deeper - collect all children
               const nextLevel: Id.Node[] = [];
               for (const childId of currentLevel) {
                 const grandchildren = yield* Node.getNodeChildren(childId);
@@ -406,7 +380,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
               }
               currentLevel = nextLevel;
             }
-            // Reached bottom of tree, nothing to expand
           }),
         );
       }),

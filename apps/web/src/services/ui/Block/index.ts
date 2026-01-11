@@ -37,6 +37,7 @@ export class BlockT extends Context.Tag("BlockT")<
       blockId: Id.Block,
       isExpanded: boolean,
     ) => Effect.Effect<void, never>;
+    isExpanded: (blockId: Id.Block) => Effect.Effect<boolean, never>;
 
     // Tree navigation
     findDeepestLastChild: (
@@ -81,6 +82,10 @@ export const BlockLive = Layer.effect(
       attestExistence: withContext(attestExistence)(context),
       setExpanded: (blockId: Id.Block, isExpanded: boolean) =>
         Store.setDocument("block", { isExpanded }, blockId),
+      isExpanded: (blockId: Id.Block) =>
+        Store.getDocument("block", blockId).pipe(
+          Effect.map((doc) => Option.isNone(doc) || doc.value.isExpanded),
+        ),
 
       // Tree navigation
       findDeepestLastChild: withContext(findDeepestLastChild)(context),
