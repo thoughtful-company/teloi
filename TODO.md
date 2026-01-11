@@ -4,11 +4,6 @@
   This is a complicated feature that requires revamping how Enter, Delete, Backspace and arrow navigation work.
   Problem appears: how to combine toggles with list elements.
 - [ ] Breadcrumbs (needs design)
-- [ ] Dev script: ccusage for ~/.claude and ~/.clancy
-- [ ] Fix failing tests
-- [ ] Implement move block below and move block above
-- [ ] Implement different document types (see `docs/ontology.md`)
-- [ ] Remove new node creation upon buffer initialization
 - [ ] Bug: if the whole node is selected, upon reload, selection is lost
 - [ ] Bug: if you select part of a node and press enter, the selected part does not get deleted
 - [ ] Remove all `Effect.sleep` with arbitrary durations from tests (see Testing Anti-Patterns below)

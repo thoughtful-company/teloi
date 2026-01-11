@@ -1463,7 +1463,8 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up jumps to first sibling (skipping intermediate blocks)", async () => {
+  // TODO: Cmd+Up/Down now collapse/expand blocks. Re-implement as long-press gesture.
+  it.skip("Cmd+Up jumps to first sibling (skipping intermediate blocks)", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -1495,7 +1496,8 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Down jumps to last sibling (skipping intermediate blocks)", async () => {
+  // TODO: Cmd+Up/Down now collapse/expand blocks. Re-implement as long-press gesture.
+  it.skip("Cmd+Down jumps to last sibling (skipping intermediate blocks)", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -1527,7 +1529,8 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Shift+Cmd+Up extends selection from anchor to first sibling", async () => {
+  // TODO: Cmd+Up/Down now collapse/expand blocks. Re-implement as long-press gesture.
+  it.skip("Shift+Cmd+Up extends selection from anchor to first sibling", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -1566,7 +1569,8 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Shift+Cmd+Down extends selection from anchor to last sibling", async () => {
+  // TODO: Cmd+Up/Down now collapse/expand blocks. Re-implement as long-press gesture.
+  it.skip("Shift+Cmd+Down extends selection from anchor to last sibling", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(

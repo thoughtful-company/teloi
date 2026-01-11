@@ -389,9 +389,38 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // Cmd+ArrowUp/Down in block selection mode: collapse/expand selected blocks
+      if (
+        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        !e.altKey &&
+        !e.shiftKey &&
+        (isMac ? e.metaKey : e.ctrlKey) &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Block = yield* BlockT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { selectedBlocks } = bufferDoc;
+            const isCollapse = e.key === "ArrowUp";
+
+            for (const nodeId of selectedBlocks) {
+              const blockId = Id.makeBlockId(bufferId, nodeId);
+              yield* Block.setExpanded(blockId, !isCollapse);
+            }
+          }),
+        );
+        return;
+      }
+
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown") &&
         !e.altKey && // Alt+Cmd+Arrow is handled above for swap/move
+        !(isMac ? e.metaKey : e.ctrlKey) && // Cmd+Arrow is handled above for collapse/expand
         isBlockSelectionMode()
       ) {
         e.preventDefault();
@@ -433,12 +462,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const siblings = yield* Node.getNodeChildren(parentId);
             const focusIndex = siblings.indexOf(currentFocus);
 
-            // Move focus up or down (Cmd+Arrow jumps to first/last)
-            const newFocusIndex = e.metaKey
-              ? e.key === "ArrowUp"
-                ? 0
-                : siblings.length - 1
-              : e.key === "ArrowUp"
+            // Move focus up or down by one step
+            const newFocusIndex =
+              e.key === "ArrowUp"
                 ? Math.max(0, focusIndex - 1)
                 : Math.min(siblings.length - 1, focusIndex + 1);
 

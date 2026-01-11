@@ -301,6 +301,8 @@ export type EditorAction =
   | { _tag: "ZoomIn" }
   | { _tag: "BlockSelect"; direction: "up" | "down" }
   | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
+  | { _tag: "Collapse" }
+  | { _tag: "Expand" }
   | {
       _tag: "TypeTrigger";
       typeId: Id.Node;
@@ -355,6 +357,8 @@ export const Action = {
     _tag: "Move",
     action,
   }),
+  Collapse: (): EditorAction => ({ _tag: "Collapse" }),
+  Expand: (): EditorAction => ({ _tag: "Expand" }),
   TypeTrigger: (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -656,6 +660,8 @@ export default function TextEditor(props: TextEditorProps) {
       { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
       { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
       { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
+      { key: "Mod-ArrowUp", action: Action.Collapse() },
+      { key: "Mod-ArrowDown", action: Action.Expand() },
 
       // Position-conditional (anchor AND head at position)
       {
