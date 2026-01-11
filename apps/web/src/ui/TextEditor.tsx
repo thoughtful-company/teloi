@@ -4,6 +4,8 @@ import {
   EditorSelection,
   EditorState,
   Extension,
+  StateEffect,
+  StateField,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -78,6 +80,92 @@ const variantThemes: Record<TextEditorVariant, Extension> = {
   block: createTheme(variantStyles.block),
   title: createTheme(variantStyles.title),
 };
+
+// === Text Formatting Marks ===
+
+/** Mark decoration for bold text */
+const boldMark = Decoration.mark({ class: "cm-bold" });
+
+/** Theme extension for formatting marks */
+const formattingTheme = EditorView.theme({
+  ".cm-bold": {
+    fontWeight: "700",
+  },
+});
+
+/** Effect to trigger a full rebuild of formatting decorations from Y.Text */
+const rebuildFormattingEffect = StateEffect.define<Y.Text>();
+
+/** Delta from Y.Text with optional formatting attributes */
+type YTextDelta = { insert: string; attributes?: { bold?: true } };
+
+/** Check if a position in Y.Text has bold formatting */
+function isBoldAtPosition(ytext: Y.Text, position: number): boolean {
+  const deltas = ytext.toDelta() as YTextDelta[];
+  let pos = 0;
+  for (const delta of deltas) {
+    const deltaEnd = pos + delta.insert.length;
+    if (position >= pos && position < deltaEnd) {
+      return delta.attributes?.bold === true;
+    }
+    pos = deltaEnd;
+  }
+  return false;
+}
+
+/** Check if entire range in Y.Text is bold */
+function isRangeBold(ytext: Y.Text, from: number, to: number): boolean {
+  const deltas = ytext.toDelta() as YTextDelta[];
+  let pos = 0;
+  for (const delta of deltas) {
+    const deltaEnd = pos + delta.insert.length;
+    // Check if this delta overlaps with the range
+    if (deltaEnd > from && pos < to) {
+      if (!delta.attributes?.bold) return false;
+    }
+    pos = deltaEnd;
+    if (pos >= to) break;
+  }
+  return true;
+}
+
+/** Build decorations from Y.Text formatting deltas */
+function createFormattingDecorations(ytext: Y.Text): DecorationSet {
+  const deltas = ytext.toDelta() as YTextDelta[];
+  const ranges: ReturnType<typeof boldMark.range>[] = [];
+  let pos = 0;
+
+  for (const delta of deltas) {
+    const length = delta.insert.length;
+    if (delta.attributes?.bold) {
+      ranges.push(boldMark.range(pos, pos + length));
+    }
+    pos += length;
+  }
+
+  return Decoration.set(ranges, true);
+}
+
+/**
+ * StateField that holds formatting decorations and maps them through changes.
+ * - On text changes: maps existing decorations to new positions (O(1) per change)
+ * - On rebuildFormattingEffect: rebuilds from Y.Text deltas (O(n) but only on format change)
+ */
+const createFormattingField = (ytext: Y.Text) =>
+  StateField.define<DecorationSet>({
+    create: () => createFormattingDecorations(ytext),
+    update: (decorations, tr) => {
+      // Check if we need to rebuild from Y.Text (formatting changed)
+      for (const effect of tr.effects) {
+        if (effect.is(rebuildFormattingEffect)) {
+          return createFormattingDecorations(effect.value);
+        }
+      }
+      // Otherwise, just map through document changes (fast!)
+      return decorations.map(tr.changes);
+    },
+    provide: (field) => EditorView.decorations.from(field),
+  });
 
 // === Inline Type Badge Widget ===
 
@@ -302,6 +390,12 @@ export default function TextEditor(props: TextEditorProps) {
   // Used to hide cursor until we can position it correctly
   const [isSelectionReady, setIsSelectionReady] = createSignal(false);
 
+  // Pending bold state for cursor-only Cmd+B toggle
+  // null = inherit from position, true = force bold, false = force plain
+  let pendingBold: boolean | null = null;
+  // Track cursor position when pending was set - clear if cursor moves
+  let pendingBoldPosition: number | null = null;
+
   // Compartment for inline type badges - allows dynamic reconfiguration
   const typeBadgeCompartment = new Compartment();
 
@@ -309,6 +403,9 @@ export default function TextEditor(props: TextEditorProps) {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
       variantThemes[variant],
+      formattingTheme,
+      // Text formatting decorations - StateField maps through changes automatically
+      createFormattingField(ytext),
       // Inline type badges widget extension
       typeBadgeCompartment.of(
         props.inlineTypes?.length && props.inlineTypesNodeId
@@ -371,6 +468,47 @@ export default function TextEditor(props: TextEditorProps) {
               suppressSelectionChange = false;
             }, 0);
           }
+        }
+
+        // Handle pending bold formatting after text insertion
+        if (update.docChanged && pendingBold !== null) {
+          let shouldClearPending = true;
+
+          update.changes.iterChanges((fromA, toA, fromB, toB) => {
+            const insertedLength = toB - fromB;
+            const deletedLength = toA - fromA;
+
+            // Only apply formatting to pure insertions (not replacements or deletions)
+            if (insertedLength > 0 && deletedLength === 0) {
+              ytext.format(fromB, insertedLength, {
+                bold: pendingBold ? true : null,
+              });
+              setTimeout(() => {
+                view?.dispatch({
+                  effects: rebuildFormattingEffect.of(ytext),
+                });
+              }, 0);
+              // Keep pending for continued typing
+              shouldClearPending = false;
+              pendingBoldPosition = update.state.selection.main.head;
+            }
+          });
+
+          if (shouldClearPending) {
+            pendingBold = null;
+            pendingBoldPosition = null;
+          }
+        }
+
+        // Clear pending bold if cursor moved without typing
+        if (
+          update.selectionSet &&
+          !update.docChanged &&
+          pendingBoldPosition !== null &&
+          update.state.selection.main.head !== pendingBoldPosition
+        ) {
+          pendingBold = null;
+          pendingBoldPosition = null;
         }
 
         // Log ALL selection changes for debugging
@@ -529,6 +667,45 @@ export default function TextEditor(props: TextEditorProps) {
       );
     }
 
+    // Cmd+B: Toggle bold formatting on selection or set pending bold for cursor
+    extensions.push(
+      keymap.of([
+        {
+          key: "Mod-b",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            const from = Math.min(sel.anchor, sel.head);
+            const to = Math.max(sel.anchor, sel.head);
+
+            if (from === to) {
+              // Cursor only - toggle pending bold for future typing
+              // Yjs inherits formatting from the character BEFORE the cursor
+              const wouldInheritBold = isBoldAtPosition(
+                ytext,
+                from > 0 ? from - 1 : 0,
+              );
+              pendingBold =
+                pendingBold !== null ? !pendingBold : !wouldInheritBold;
+              pendingBoldPosition = from;
+              return true;
+            }
+
+            // Toggle: if all selected text is bold, remove bold; otherwise apply bold
+            const shouldRemoveBold = isRangeBold(ytext, from, to);
+            ytext.format(from, to - from, {
+              bold: shouldRemoveBold ? null : true,
+            });
+
+            view.dispatch({
+              effects: rebuildFormattingEffect.of(ytext),
+            });
+
+            return true;
+          },
+        },
+      ]),
+    );
+
     // ArrowUp handler - handles both inter-block navigation and goalX-aware intra-editor navigation
     extensions.push(
       keymap.of([
@@ -574,7 +751,9 @@ export default function TextEditor(props: TextEditorProps) {
               const coordsBefore = view.coordsAtPos(finalPos, -1);
               const coordsAfter = view.coordsAtPos(finalPos, 1);
               const isAtWrapBoundary =
-                coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+                coordsBefore &&
+                coordsAfter &&
+                coordsBefore.top !== coordsAfter.top;
               let finalAssoc: -1 | 0 | 1 = 0;
               if (isAtWrapBoundary) {
                 // Pick assoc that keeps cursor on the target visual line
@@ -646,7 +825,9 @@ export default function TextEditor(props: TextEditorProps) {
               const coordsBefore = view.coordsAtPos(finalPos, -1);
               const coordsAfter = view.coordsAtPos(finalPos, 1);
               const isAtWrapBoundary =
-                coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+                coordsBefore &&
+                coordsAfter &&
+                coordsBefore.top !== coordsAfter.top;
               let finalAssoc: -1 | 0 | 1 = 0;
               if (isAtWrapBoundary) {
                 // Pick assoc that keeps cursor on the target visual line
@@ -796,7 +977,9 @@ export default function TextEditor(props: TextEditorProps) {
             const coordsBefore = view.coordsAtPos(pos, -1);
             const coordsAfter = view.coordsAtPos(pos, 1);
             const isAtWrapBoundary =
-              coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
+              coordsBefore &&
+              coordsAfter &&
+              coordsBefore.top !== coordsAfter.top;
             // goalLine: "first" → assoc=-1 (stay on upper/first line), "last" → assoc=1 (stay on lower/last line)
             const assoc = isAtWrapBoundary
               ? initialStrategy.goalLine === "first"
@@ -868,7 +1051,32 @@ export default function TextEditor(props: TextEditorProps) {
       // else: wait for updateListener to focus after Yjs syncs
     }
 
-    onCleanup(() => view?.destroy());
+    // Observe Y.Text changes to update formatting decorations
+    // This handles format changes from Cmd+B, undo/redo, and remote collaboration
+    // Note: Must defer dispatch to avoid "update during update" error from CodeMirror
+    const formatObserver = (event: Y.YTextEvent) => {
+      // Only rebuild decorations if formatting attributes changed.
+      // Skip pure text insertions/deletions - the StateField maps positions through changes.
+      const hasFormatChange = event.delta.some((d) => "attributes" in d);
+      if (!hasFormatChange) {
+        return; // Just text change, StateField handles position mapping
+      }
+
+      if (view) {
+        const v = view;
+        setTimeout(() => {
+          v.dispatch({
+            effects: rebuildFormattingEffect.of(ytext),
+          });
+        }, 0);
+      }
+    };
+    ytext.observe(formatObserver);
+
+    onCleanup(() => {
+      ytext.unobserve(formatObserver);
+      view?.destroy();
+    });
   });
 
   // Sync selection from model to CodeMirror

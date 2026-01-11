@@ -33,6 +33,50 @@ import TextEditor, {
 } from "./TextEditor";
 import TypeBadge from "./TypeBadge";
 import { TypePicker } from "./TypePicker";
+import * as Y from "yjs";
+
+/** Text segment with optional formatting */
+interface TextSegment {
+  text: string;
+  bold?: boolean;
+}
+
+/** Build segments from Y.Text deltas for formatted rendering */
+function buildSegments(ytext: Y.Text): TextSegment[] {
+  const deltas = ytext.toDelta() as Array<{
+    insert: string;
+    attributes?: { bold?: true };
+  }>;
+
+  return deltas.map((d) => ({
+    text: d.insert,
+    bold: d.attributes?.bold === true,
+  }));
+}
+
+/** Renders Y.Text with formatting (bold spans) for unfocused blocks */
+function FormattedText(props: { ytext: Y.Text }) {
+  const [segments, setSegments] = createSignal(buildSegments(props.ytext));
+
+  // Observe Y.Text changes to update segments
+  onMount(() => {
+    const observer = () => setSegments(buildSegments(props.ytext));
+    props.ytext.observe(observer);
+    onCleanup(() => props.ytext.unobserve(observer));
+  });
+
+  return (
+    <For each={segments()}>
+      {(segment) =>
+        segment.bold ? (
+          <span class="font-bold">{segment.text}</span>
+        ) : (
+          segment.text
+        )
+      }
+    </For>
+  );
+}
 
 interface BlockProps {
   blockId: Id.Block;
@@ -141,7 +185,8 @@ export default function Block({ blockId }: BlockProps) {
   });
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
-  const userTypes = () => activeTypes().filter((typeId) => !isSystemType(typeId));
+  const userTypes = () =>
+    activeTypes().filter((typeId) => !isSystemType(typeId));
 
   const getActiveDefinitions = () =>
     activeTypes()
@@ -585,7 +630,9 @@ export default function Block({ blockId }: BlockProps) {
             ? existingSelection.value.goalX
             : cursorGoalX;
 
-        yield* Effect.logDebug("[Block.handleArrowDownOnLastLine] Entered").pipe(
+        yield* Effect.logDebug(
+          "[Block.handleArrowDownOnLastLine] Entered",
+        ).pipe(
           Effect.annotateLogs({
             blockId,
             nodeId,
@@ -637,9 +684,7 @@ export default function Block({ blockId }: BlockProps) {
           const textLength = Yjs.getText(nodeId).length;
           yield* Effect.logDebug(
             "[Block.handleArrowDownOnLastLine] No next block, staying at end",
-          ).pipe(
-            Effect.annotateLogs({ textLength }),
-          );
+          ).pipe(Effect.annotateLogs({ textLength }));
           yield* Buffer.setSelection(
             bufferId,
             makeCollapsedSelection(nodeId, textLength),
@@ -651,9 +696,7 @@ export default function Block({ blockId }: BlockProps) {
         const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
         yield* Effect.logDebug(
           "[Block.handleArrowDownOnLastLine] Moving to next node",
-        ).pipe(
-          Effect.annotateLogs({ nextNodeId, targetBlockId }),
-        );
+        ).pipe(Effect.annotateLogs({ nextNodeId, targetBlockId }));
         yield* Buffer.setSelection(
           bufferId,
           makeCollapsedSelection(nextNodeId, 0, { goalX, goalLine: "first" }),
@@ -773,7 +816,12 @@ export default function Block({ blockId }: BlockProps) {
       }).pipe(
         Effect.tapError((err) =>
           Effect.logError("[Block] Type picker select failed").pipe(
-            Effect.annotateLogs({ blockId, nodeId, typeId, error: String(err) }),
+            Effect.annotateLogs({
+              blockId,
+              nodeId,
+              typeId,
+              error: String(err),
+            }),
           ),
         ),
         Effect.catchAll(() => Effect.void),
@@ -945,7 +993,9 @@ export default function Block({ blockId }: BlockProps) {
             when={store.isActive}
             fallback={
               <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
-                {textContent() || "\u00A0"}
+                <Show when={textContent()} fallback={"\u00A0"}>
+                  <FormattedText ytext={ytext} />
+                </Show>
                 <For each={userTypes()}>
                   {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
                 </For>

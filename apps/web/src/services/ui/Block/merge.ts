@@ -37,14 +37,21 @@ export const mergeBackward = (
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
     const currentYtext = Yjs.getText(nodeId);
-    const currentText = currentYtext.toString();
+
+    // Get formatted deltas for current node's text BEFORE any modifications
+    const currentDeltas = yield* Yjs.getDeltasWithFormats(
+      nodeId,
+      0,
+      currentYtext.length,
+    );
 
     // First sibling: merge into parent
     if (siblingIndex === 0) {
       const parentYtext = Yjs.getText(parentId);
       const mergePoint = parentYtext.length;
 
-      parentYtext.insert(mergePoint, currentText);
+      // Insert with formatting preservation
+      yield* Yjs.insertWithFormats(parentId, mergePoint, currentDeltas);
       yield* Node.deleteNode(nodeId);
       Yjs.deleteText(nodeId);
 
@@ -61,7 +68,8 @@ export const mergeBackward = (
     const targetYtext = Yjs.getText(targetNodeId);
     const mergePoint = targetYtext.length;
 
-    targetYtext.insert(mergePoint, currentText);
+    // Insert with formatting preservation
+    yield* Yjs.insertWithFormats(targetNodeId, mergePoint, currentDeltas);
     yield* Node.deleteNode(nodeId);
     Yjs.deleteText(nodeId);
 
@@ -101,9 +109,16 @@ export const mergeForward = (
     if (children.length > 0) {
       const firstChildId = children[0]!;
       const childYtext = Yjs.getText(firstChildId);
-      const childText = childYtext.toString();
 
-      currentYtext.insert(mergePoint, childText);
+      // Get formatted deltas before modification
+      const childDeltas = yield* Yjs.getDeltasWithFormats(
+        firstChildId,
+        0,
+        childYtext.length,
+      );
+
+      // Insert with formatting preservation
+      yield* Yjs.insertWithFormats(nodeId, mergePoint, childDeltas);
       yield* Node.deleteNode(firstChildId);
       Yjs.deleteText(firstChildId);
 
@@ -116,9 +131,16 @@ export const mergeForward = (
 
     const nextNodeId = nextNodeOpt.value;
     const nextYtext = Yjs.getText(nextNodeId);
-    const nextText = nextYtext.toString();
 
-    currentYtext.insert(mergePoint, nextText);
+    // Get formatted deltas before modification
+    const nextDeltas = yield* Yjs.getDeltasWithFormats(
+      nextNodeId,
+      0,
+      nextYtext.length,
+    );
+
+    // Insert with formatting preservation
+    yield* Yjs.insertWithFormats(nodeId, mergePoint, nextDeltas);
     yield* Node.deleteNode(nextNodeId);
     Yjs.deleteText(nextNodeId);
 

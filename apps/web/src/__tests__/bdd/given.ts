@@ -448,3 +448,14 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
     const Window = yield* WindowT;
     yield* Window.setActiveElement(Option.some(element));
   }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));
+
+/**
+ * Applies bold formatting to a range in a node's Y.Text.
+ * Used to set up test state with pre-existing formatting.
+ */
+export const NODE_HAS_BOLD = (nodeId: Id.Node, index: number, length: number) =>
+  Effect.gen(function* () {
+    const Yjs = yield* YjsT;
+    const ytext = Yjs.getText(nodeId);
+    ytext.format(index, length, { bold: true });
+  }).pipe(Effect.withSpan("Given.NODE_HAS_BOLD"));
