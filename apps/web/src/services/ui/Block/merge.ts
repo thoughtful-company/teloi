@@ -1,8 +1,9 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { Effect, Option } from "effect";
-import { findDeepestLastChild, findNextNode } from "./navigation";
+import { findDeepestLastChild, isBlockExpanded } from "./navigation";
 
 export interface MergeResult {
   targetNodeId: Id.Node;
@@ -18,14 +19,24 @@ export interface MergeResult {
  *
  * Deletes the source node and appends its text to the target.
  * Returns the target node ID and cursor position (at merge point).
+ * Respects collapsed state - won't merge into hidden children.
+ *
+ * Key constraint: Can't merge a node that has children (would orphan them).
  */
 export const mergeBackward = (
   nodeId: Id.Node,
   rootNodeId: Id.Node | null,
-): Effect.Effect<Option.Option<MergeResult>, never, NodeT | YjsT> =>
+  bufferId: Id.Buffer,
+): Effect.Effect<Option.Option<MergeResult>, never, NodeT | YjsT | StoreT> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
     const Yjs = yield* YjsT;
+
+    // Can't delete a node that has children (would orphan them)
+    const nodeChildren = yield* Node.getNodeChildren(nodeId);
+    if (nodeChildren.length > 0) {
+      return Option.none();
+    }
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
@@ -62,9 +73,9 @@ export const mergeBackward = (
       });
     }
 
-    // Merge into previous sibling's deepest last child
+    // Merge into previous sibling's deepest last child (respects collapsed state)
     const prevSiblingId = siblings[siblingIndex - 1]!;
-    const targetNodeId = yield* findDeepestLastChild(prevSiblingId);
+    const targetNodeId = yield* findDeepestLastChild(prevSiblingId, bufferId);
     const targetYtext = Yjs.getText(targetNodeId);
     const mergePoint = targetYtext.length;
 
@@ -83,18 +94,25 @@ export const mergeBackward = (
 /**
  * Merge forward (what happens on Delete at end).
  *
- * - Has children: merge first child into current
- * - No children: find next node in document order and merge it in
+ * Decision tree:
+ * - Has VISIBLE children (expanded AND has children)?
+ *   - YES: First child has no children? → merge first child
+ *   - NO: no-op (would orphan grandchildren)
+ * - No visible children (collapsed OR no children)?
+ *   - Has next sibling?
+ *     - YES: Next sibling has no children? → merge next sibling
+ *     - NO: no-op (would orphan nieces/nephews)
+ *   - No next sibling: no-op (don't cross hierarchy)
  *
- * Deletes the source node and appends its text to the current node.
- * Returns cursor position (at merge point) - target is always the current node.
+ * Key constraint: Never merge a block that has children (would orphan them).
  */
 export const mergeForward = (
   nodeId: Id.Node,
+  bufferId: Id.Buffer,
 ): Effect.Effect<
   Option.Option<{ cursorOffset: number }>,
   never,
-  NodeT | YjsT
+  NodeT | YjsT | StoreT
 > =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
@@ -104,10 +122,18 @@ export const mergeForward = (
     const mergePoint = currentYtext.length;
 
     const children = yield* Node.getNodeChildren(nodeId);
+    const isExpanded = yield* isBlockExpanded(bufferId, nodeId);
 
-    // If has children, merge first child into current
-    if (children.length > 0) {
+    // Path 1: Has VISIBLE children (expanded AND has children)
+    if (children.length > 0 && isExpanded) {
       const firstChildId = children[0]!;
+      const firstChildChildren = yield* Node.getNodeChildren(firstChildId);
+
+      // Can only merge if first child has no children (would orphan them)
+      if (firstChildChildren.length > 0) {
+        return Option.none();
+      }
+
       const childYtext = Yjs.getText(firstChildId);
 
       // Get formatted deltas before modification
@@ -125,24 +151,44 @@ export const mergeForward = (
       return Option.some({ cursorOffset: mergePoint });
     }
 
-    // Find next node in document order
-    const nextNodeOpt = yield* findNextNode(nodeId);
-    if (Option.isNone(nextNodeOpt)) return Option.none();
+    // Path 2: No visible children (collapsed OR no children)
+    // Only look at next SIBLING, not next node in doc order (don't cross hierarchy)
+    const parentId = yield* Node.getParent(nodeId).pipe(
+      Effect.catchTag("NodeHasNoParentError", () =>
+        Effect.succeed(null as Id.Node | null),
+      ),
+    );
+    if (!parentId) return Option.none();
 
-    const nextNodeId = nextNodeOpt.value;
-    const nextYtext = Yjs.getText(nextNodeId);
+    const siblings = yield* Node.getNodeChildren(parentId);
+    const siblingIndex = siblings.indexOf(nodeId);
+
+    // No next sibling (last child of parent) → no-op
+    if (siblingIndex === -1 || siblingIndex === siblings.length - 1) {
+      return Option.none();
+    }
+
+    const nextSiblingId = siblings[siblingIndex + 1]!;
+    const nextSiblingChildren = yield* Node.getNodeChildren(nextSiblingId);
+
+    // Next sibling has children → no-op (would orphan them)
+    if (nextSiblingChildren.length > 0) {
+      return Option.none();
+    }
+
+    const nextYtext = Yjs.getText(nextSiblingId);
 
     // Get formatted deltas before modification
     const nextDeltas = yield* Yjs.getDeltasWithFormats(
-      nextNodeId,
+      nextSiblingId,
       0,
       nextYtext.length,
     );
 
     // Insert with formatting preservation
     yield* Yjs.insertWithFormats(nodeId, mergePoint, nextDeltas);
-    yield* Node.deleteNode(nextNodeId);
-    Yjs.deleteText(nextNodeId);
+    yield* Node.deleteNode(nextSiblingId);
+    Yjs.deleteText(nextSiblingId);
 
     return Option.some({ cursorOffset: mergePoint });
   });

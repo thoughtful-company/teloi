@@ -1,6 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -271,6 +272,95 @@ describe("Block selection Tab key", () => {
         childNodeIds[0],
         childNodeIds[1],
       ]);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure before:
+   * - Root
+   *   - A (collapsed, has child B)
+   *     - B
+   *   - C
+   *
+   * User focuses C and presses Tab to indent.
+   * A auto-expands after Tab so C remains visible.
+   */
+  it("auto-expands collapsed parent when indenting single block", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "C" },
+        ]);
+
+      const [nodeA, nodeC] = childNodeIds;
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockC = Id.makeBlockId(bufferId, nodeC);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+
+      yield* When.USER_CLICKS_BLOCK(blockC);
+      yield* When.USER_PRESSES("{Tab}");
+
+      yield* Then.NODE_HAS_CHILDREN(nodeA, 2);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure before:
+   * - Root
+   *   - A (collapsed, has child B)
+   *     - B
+   *   - C
+   *   - D
+   *
+   * User selects C and D in block selection mode, presses Tab.
+   * A auto-expands so C and D remain visible.
+   */
+  it("auto-expands collapsed parent when indenting selected blocks", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "C" },
+          { text: "D" },
+        ]);
+
+      const [nodeA, nodeC] = childNodeIds;
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockC = Id.makeBlockId(bufferId, nodeC);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* When.USER_PRESSES("{Tab}");
+
+      yield* Then.NODE_HAS_CHILDREN(nodeA, 3);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
     }).pipe(runtime.runPromise);
   });
 });

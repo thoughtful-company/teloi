@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 
 /**
  * Indent a node (Tab) - move it to become a child of its previous sibling.
@@ -9,9 +9,11 @@ import { Effect } from "effect";
  * - Root nodes (no parent)
  * - First siblings (no previous sibling to indent into)
  *
- * Returns true if indentation succeeded, false otherwise.
+ * Returns Some(newParentId) on success, None on failure.
  */
-export const indent = (nodeId: Id.Node): Effect.Effect<boolean, never, NodeT> =>
+export const indent = (
+  nodeId: Id.Node,
+): Effect.Effect<Option.Option<Id.Node>, never, NodeT> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
 
@@ -20,14 +22,14 @@ export const indent = (nodeId: Id.Node): Effect.Effect<boolean, never, NodeT> =>
         Effect.succeed<Id.Node | null>(null),
       ),
     );
-    if (!parentId) return false;
+    if (!parentId) return Option.none();
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
-    if (siblingIndex === -1) return false;
+    if (siblingIndex === -1) return Option.none();
 
     // Can't indent first sibling - no previous sibling to indent into
-    if (siblingIndex === 0) return false;
+    if (siblingIndex === 0) return Option.none();
 
     const prevSiblingId = siblings[siblingIndex - 1]!;
 
@@ -38,12 +40,12 @@ export const indent = (nodeId: Id.Node): Effect.Effect<boolean, never, NodeT> =>
       insert: "after",
     });
 
-    return true;
+    return Option.some(prevSiblingId);
   }).pipe(
     Effect.catchAll((error) =>
       Effect.logError("[Block.indent] Operation failed").pipe(
         Effect.annotateLogs({ nodeId, error: String(error) }),
-        Effect.as(false),
+        Effect.as(Option.none()),
       ),
     ),
   );

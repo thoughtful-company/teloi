@@ -3,6 +3,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
+import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -556,6 +557,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                   insert: "after",
                 });
               }
+
+              // Auto-expand the new parent so indented blocks stay visible
+              const Block = yield* BlockT;
+              const newParentBlockId = Id.makeBlockId(bufferId, prevSiblingId);
+              yield* Block.setExpanded(newParentBlockId, true);
             }
 
             // Preserve selection

@@ -35,16 +35,22 @@ export class BlockT extends Context.Tag("BlockT")<
     attestExistence: (
       blockId: Id.Block,
     ) => Effect.Effect<void, BlockNotFoundError>;
+    setExpanded: (
+      blockId: Id.Block,
+      isExpanded: boolean,
+    ) => Effect.Effect<void, never>;
 
     // Tree navigation
     findDeepestLastChild: (
       startNodeId: Id.Node,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Id.Node, never>;
     findNextNode: (
       currentId: Id.Node,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     findPreviousNode: (
       currentId: Id.Node,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
 
     // Structural operations
@@ -52,11 +58,13 @@ export class BlockT extends Context.Tag("BlockT")<
     mergeBackward: (
       nodeId: Id.Node,
       rootNodeId: Id.Node | null,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<MergeResult>, never>;
     mergeForward: (
       nodeId: Id.Node,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
-    indent: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+    indent: (nodeId: Id.Node) => Effect.Effect<Option.Option<Id.Node>, never>;
     outdent: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
     swap: (
       nodeId: Id.Node,
@@ -84,6 +92,8 @@ export const BlockLive = Layer.effect(
     return {
       subscribe: withContext(subscribe)(context),
       attestExistence: withContext(attestExistence)(context),
+      setExpanded: (blockId: Id.Block, isExpanded: boolean) =>
+        Store.setDocument("block", { isExpanded }, blockId),
 
       // Tree navigation
       findDeepestLastChild: withContext(findDeepestLastChild)(context),

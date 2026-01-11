@@ -1,22 +1,48 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { StoreT } from "@/services/external/Store";
 import { Effect, Option } from "effect";
+
+/**
+ * Check if a block is expanded (showing children).
+ * Returns true if expanded or if block document doesn't exist yet.
+ */
+export const isBlockExpanded = (
+  bufferId: Id.Buffer,
+  nodeId: Id.Node,
+): Effect.Effect<boolean, never, StoreT> =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const blockId = Id.makeBlockId(bufferId, nodeId);
+    const blockDoc = yield* Store.getDocument("block", blockId);
+    if (Option.isNone(blockDoc)) return true; // Default to expanded if no doc
+    return blockDoc.value.isExpanded;
+  });
 
 /**
  * Find the deepest last child of a node (visually previous block).
  * Used for backward navigation - ArrowLeft at start, ArrowUp on first line, Backspace merge.
+ * Respects collapsed state - won't descend into collapsed nodes.
  */
 export const findDeepestLastChild = (
   startNodeId: Id.Node,
-): Effect.Effect<Id.Node, never, NodeT> =>
+  bufferId: Id.Buffer,
+): Effect.Effect<Id.Node, never, NodeT | StoreT> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
+
+    // Check if this node is expanded before descending
+    const expanded = yield* isBlockExpanded(bufferId, startNodeId);
+    if (!expanded) {
+      return startNodeId;
+    }
+
     const children = yield* Node.getNodeChildren(startNodeId);
     if (children.length === 0) {
       return startNodeId;
     }
     const lastChild = children[children.length - 1]!;
-    return yield* findDeepestLastChild(lastChild);
+    return yield* findDeepestLastChild(lastChild, bufferId);
   });
 
 /**
@@ -79,10 +105,12 @@ export const findNextNode = (
 /**
  * Find previous node in document order (previous sibling's deepest child, or parent).
  * Used for backward navigation.
+ * Respects collapsed state - won't descend into collapsed nodes.
  */
 export const findPreviousNode = (
   currentId: Id.Node,
-): Effect.Effect<Option.Option<Id.Node>, never, NodeT> =>
+  bufferId: Id.Buffer,
+): Effect.Effect<Option.Option<Id.Node>, never, NodeT | StoreT> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
     const parentId = yield* Node.getParent(currentId).pipe(
@@ -98,7 +126,7 @@ export const findPreviousNode = (
 
     if (idx > 0) {
       const prevSiblingId = siblings[idx - 1]!;
-      const deepest = yield* findDeepestLastChild(prevSiblingId);
+      const deepest = yield* findDeepestLastChild(prevSiblingId, bufferId);
       return Option.some(deepest);
     }
 

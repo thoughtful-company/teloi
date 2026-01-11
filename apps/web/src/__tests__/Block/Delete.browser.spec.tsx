@@ -1,6 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -69,7 +70,7 @@ describe("Block Delete key", () => {
   });
 
   /**
-   * - Parent|     <- cursor at end
+   * - Parent|     <- cursor at end (expanded)
    *   - FirstChild
    *
    * After Delete, should merge with first child:
@@ -96,6 +97,10 @@ describe("Block Delete key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
+      // Expand parent so its children are visible for merge target
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(parentBlockId, true);
+
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
       yield* When.USER_MOVES_CURSOR_TO(6); // "Parent" has 6 characters
       yield* When.USER_PRESSES("{Delete}");
@@ -113,14 +118,13 @@ describe("Block Delete key", () => {
 
   /**
    * - A
-   *   - B|   <- cursor at end
+   *   - B|   <- cursor at end, last child of A
    * - C
    *
-   * After Delete, should merge with parent's next sibling:
-   * - A
-   *   - BC   <- cursor after "B"
+   * Delete at last child should NOT cross hierarchy - it's a no-op.
+   * Structure stays the same, cursor stays at position 1.
    */
-  it("merges with parent's next sibling when Delete pressed at end of last child", async () => {
+  it("does nothing when Delete pressed at end of last child (no hierarchy crossing)", async () => {
     await Effect.gen(function* () {
       // Create base structure: root with children A and C
       const { bufferId, rootNodeId, childNodeIds } =
@@ -129,7 +133,7 @@ describe("Block Delete key", () => {
           { text: "C" },
         ]);
 
-      const [nodeA] = childNodeIds;
+      const [nodeA, nodeC] = childNodeIds;
 
       // Add child B to node A
       const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -138,30 +142,32 @@ describe("Block Delete key", () => {
         text: "B",
       });
 
+      const blockA = Id.makeBlockId(bufferId, nodeA);
       const blockB = Id.makeBlockId(bufferId, nodeB);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Expand A so B is visible
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, true);
 
       yield* When.USER_CLICKS_BLOCK(blockB);
       yield* When.USER_MOVES_CURSOR_TO(1); // "B" has 1 character
       yield* When.USER_PRESSES("{Delete}");
 
-      // Should have 1 top-level child now (A only, C merged into B)
-      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
-
-      // A should still have child B (now with merged text)
-      yield* Then.NODE_HAS_CHILDREN(nodeA, 1);
+      // Structure should be UNCHANGED - no hierarchy crossing
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2); // A and C still both exist
+      yield* Then.NODE_HAS_CHILDREN(nodeA, 1); // B is still the only child
       yield* Then.NODE_HAS_TEXT(nodeA, "A");
+      yield* Then.NODE_HAS_TEXT(nodeB, "B");
+      yield* Then.NODE_HAS_TEXT(nodeC, "C");
 
-      // B should have merged text "BC"
-      yield* Then.NODE_HAS_TEXT(nodeB, "BC");
-
-      // Cursor should be at merge point (after "B")
+      // Cursor should stay at position 1
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(1);
     }).pipe(runtime.runPromise);
   });
 
-  it("merges with next sibling when Cmd+Delete pressed at end", async () => {
+it("merges with next sibling when Cmd+Delete pressed at end", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -205,6 +211,141 @@ describe("Block Delete key", () => {
       const Node = yield* NodeT;
       const children = yield* Node.getNodeChildren(rootNodeId);
       yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure:
+   * Root
+   * ├── First (collapsed, with child Hidden)
+   * │   └── Hidden (NOT visible)
+   * └── Second
+   *
+   * Cursor at end of First, press Delete.
+   * Should merge Second (NOT Hidden which is collapsed).
+   */
+  it("merges next sibling when collapsed with children", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First" },
+          { text: "Second" },
+        ]);
+
+      const [firstNodeId] = childNodeIds;
+
+      const hiddenChildId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: firstNodeId,
+        insert: "after",
+        text: "Hidden",
+      });
+
+      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(firstBlockId, false);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* When.USER_PRESSES("{End}");
+      yield* When.USER_PRESSES("{Delete}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(firstNodeId, "FirstSecond");
+      yield* Then.NODE_HAS_CHILDREN(firstNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(hiddenChildId, "Hidden");
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure:
+   * Root
+   * └── Parent (expanded, with child that has grandchildren)
+   *     └── Child
+   *         └── Grandchild
+   *
+   * Cursor at end of Parent, press Delete.
+   * Should be no-op because merging Child would orphan Grandchild.
+   */
+  it("no-op when first child has grandchildren (would orphan them)", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [{ text: "Parent" }]);
+
+      const [parentNodeId] = childNodeIds;
+
+      const childId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      const grandchildId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: childId,
+        insert: "after",
+        text: "Grandchild",
+      });
+
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+      yield* When.USER_PRESSES("{End}");
+      yield* When.USER_PRESSES("{Delete}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(parentNodeId, "Parent");
+      yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(childId, "Child");
+      yield* Then.NODE_HAS_CHILDREN(childId, 1);
+      yield* Then.NODE_HAS_TEXT(grandchildId, "Grandchild");
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure:
+   * Root
+   * ├── First|        <- cursor at end
+   * └── Second
+   *     └── Nephew
+   *
+   * Cursor at end of First, press Delete.
+   * Should be no-op because merging Second would orphan Nephew.
+   */
+  it("no-op when next sibling has children (would orphan nieces/nephews)", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First" },
+          { text: "Second" },
+        ]);
+
+      const [firstNodeId, secondNodeId] = childNodeIds;
+
+      const nephewId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: secondNodeId,
+        insert: "after",
+        text: "Nephew",
+      });
+
+      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* When.USER_PRESSES("{End}");
+      yield* When.USER_PRESSES("{Delete}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+      yield* Then.NODE_HAS_TEXT(firstNodeId, "First");
+      yield* Then.NODE_HAS_TEXT(secondNodeId, "Second");
+      yield* Then.NODE_HAS_CHILDREN(secondNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(nephewId, "Nephew");
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
     }).pipe(runtime.runPromise);
   });

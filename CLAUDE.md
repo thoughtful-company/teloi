@@ -71,6 +71,12 @@ This is a pnpm monorepo with:
 - **Testing**: Vitest with Playwright for browser tests
 - **State**: LiveStore (local-first SQLite with event sourcing)
 
+### Commands
+- `pnpm -F @teloi/web dev` - Start dev server
+- `pnpm -F @teloi/web dev --port 3001` - Dev server on specific port
+- `pnpm -F @teloi/web build` - Build (also runs typecheck)
+- `pnpm -F @teloi/web test:browser` - Run browser tests
+
 ## Architecture Overview
 
 **Component Hierarchy**:

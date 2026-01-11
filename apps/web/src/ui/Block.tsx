@@ -131,7 +131,7 @@ export default function Block({ blockId }: BlockProps) {
           yield* Store.setDocument(
             "block",
             {
-              isToggled: false,
+              isExpanded: true,
             },
             blockId,
           );
@@ -152,12 +152,14 @@ export default function Block({ blockId }: BlockProps) {
     project: (view) => ({
       isActive: view.isActive,
       isSelected: view.isSelected,
+      isExpanded: view.isExpanded,
       childBlockIds: view.childBlockIds,
       selection: view.selection,
     }),
     initial: {
       isActive: false,
       isSelected: false,
+      isExpanded: true,
       childBlockIds: [] as readonly Id.Block[],
       selection: null as {
         anchor: number;
@@ -177,6 +179,9 @@ export default function Block({ blockId }: BlockProps) {
 
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
+
+  // Hover state for chevron visibility on childless nodes
+  const [isHovered, setIsHovered] = createSignal(false);
 
   // Type picker state
   const [pickerState, setPickerState] = createSignal<{
@@ -414,7 +419,13 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Block = yield* BlockT;
-        yield* Block.indent(nodeId);
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+
+        const result = yield* Block.indent(nodeId);
+        if (Option.isSome(result)) {
+          // Auto-expand the new parent so the indented block stays visible
+          yield* Block.setExpanded(Id.makeBlockId(bufferId, result.value), true);
+        }
       }),
     );
   };
@@ -471,7 +482,7 @@ export default function Block({ blockId }: BlockProps) {
           ? (bufferDoc.value.assignedNodeId as Id.Node)
           : null;
 
-        const result = yield* Block.mergeBackward(nodeId, rootNodeId);
+        const result = yield* Block.mergeBackward(nodeId, rootNodeId, bufferId);
         if (Option.isNone(result)) return;
 
         const { targetNodeId, cursorOffset, isTitle } = result.value;
@@ -502,7 +513,7 @@ export default function Block({ blockId }: BlockProps) {
         const Block = yield* BlockT;
         const Buffer = yield* BufferT;
 
-        const result = yield* Block.mergeForward(nodeId);
+        const result = yield* Block.mergeForward(nodeId, bufferId);
         if (Option.isNone(result)) return;
 
         yield* Buffer.setSelection(
@@ -528,7 +539,7 @@ export default function Block({ blockId }: BlockProps) {
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId, bufferId);
         if (Option.isNone(targetOpt)) return;
 
         const targetNodeId = targetOpt.value;
@@ -563,9 +574,9 @@ export default function Block({ blockId }: BlockProps) {
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
-        // If has children, go to first child
+        // If has visible children (expanded), go to first child
         const children = yield* Node.getNodeChildren(nodeId);
-        if (children.length > 0) {
+        if (children.length > 0 && store.isExpanded) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
@@ -578,7 +589,7 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        // Otherwise, find next node in document order
+        // Otherwise (no children or collapsed), find next node in document order
         const nextNodeOpt = yield* Block.findNextNode(nodeId);
         if (Option.isNone(nextNodeOpt)) return;
 
@@ -617,7 +628,7 @@ export default function Block({ blockId }: BlockProps) {
           ? bufferDoc.value.assignedNodeId
           : null;
 
-        const targetOpt = yield* Block.findPreviousNode(nodeId);
+        const targetOpt = yield* Block.findPreviousNode(nodeId, bufferId);
         if (Option.isNone(targetOpt)) return;
 
         const targetNodeId = targetOpt.value;
@@ -668,17 +679,18 @@ export default function Block({ blockId }: BlockProps) {
           }),
         );
 
-        // If has children, go to first child
+        // If has visible children (expanded), go to first child
         const children = yield* Node.getNodeChildren(nodeId);
-        if (children.length > 0) {
+        if (children.length > 0 && store.isExpanded) {
           const firstChildId = children[0]!;
           const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
           yield* Effect.logDebug(
-            "[Block.handleArrowDownOnLastLine] Has children, going to first child",
+            "[Block.handleArrowDownOnLastLine] Has visible children, going to first child",
           ).pipe(
             Effect.annotateLogs({
               childrenCount: children.length,
               targetNodeId: firstChildId,
+              isExpanded: store.isExpanded,
             }),
           );
           yield* Buffer.setSelection(
@@ -694,7 +706,7 @@ export default function Block({ blockId }: BlockProps) {
           return;
         }
 
-        // Find next node in document order
+        // Find next node in document order (no children or collapsed)
         const nextNodeOpt = yield* Block.findNextNode(nodeId);
         yield* Effect.logDebug(
           "[Block.handleArrowDownOnLastLine] findNextNode result",
@@ -745,6 +757,16 @@ export default function Block({ blockId }: BlockProps) {
         yield* Window.setActiveElement(
           Option.some({ type: "title" as const, bufferId }),
         );
+      }),
+    );
+  };
+
+  const handleToggleExpand = (e: MouseEvent) => {
+    e.stopPropagation();
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(blockId, !store.isExpanded);
       }),
     );
   };
@@ -990,14 +1012,35 @@ export default function Block({ blockId }: BlockProps) {
       Match.exhaustive,
     );
 
+  const hasChildren = () => store.childBlockIds.length > 0;
+  const showChevron = () => hasChildren() || isHovered();
+
   return (
     <div
       data-element-id={blockId}
       data-element-type="block"
+      class="relative"
       classList={{
         "ring-2 ring-blue-400 bg-blue-50/50 rounded": store.isSelected,
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
+      <Show when={showChevron()}>
+        <button
+          type="button"
+          class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
+          onClick={handleToggleExpand}
+          tabIndex={-1}
+        >
+          <span
+            class="block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[6px] border-l-gray-400 hover:border-l-gray-600"
+            classList={{
+              "rotate-90": store.isExpanded,
+            }}
+          />
+        </button>
+      </Show>
       <div onClick={handleFocus} class="flex">
         <Transition
           enterActiveClass="transition-all duration-150 ease-out"
@@ -1045,20 +1088,22 @@ export default function Block({ blockId }: BlockProps) {
           </Show>
         </div>
       </div>
-      <div class="pl-4 flex flex-col gap-1.5">
-        <Show when={store.childBlockIds.length > 0}>
-          <div class="w-max h-0"> </div>
-        </Show>
-        <TransitionGroup
-          moveClass="block-move"
-          exitActiveClass="block-exit-active"
-          exitToClass="block-exit-to"
-        >
-          <For each={store.childBlockIds}>
-            {(childId) => <Block blockId={childId} />}
-          </For>
-        </TransitionGroup>
-      </div>
+      <Show when={store.isExpanded}>
+        <div class="pl-4 flex flex-col gap-1.5">
+          <Show when={store.childBlockIds.length > 0}>
+            <div class="w-max h-0"> </div>
+          </Show>
+          <TransitionGroup
+            moveClass="block-move"
+            exitActiveClass="block-exit-active"
+            exitToClass="block-exit-to"
+          >
+            <For each={store.childBlockIds}>
+              {(childId) => <Block blockId={childId} />}
+            </For>
+          </TransitionGroup>
+        </div>
+      </Show>
 
       <Show when={pickerState()}>
         {(state) => (

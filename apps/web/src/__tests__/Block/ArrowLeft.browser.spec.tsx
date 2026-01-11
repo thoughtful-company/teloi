@@ -1,8 +1,10 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { BlockT } from "@/services/ui/Block";
+import { StoreT } from "@/services/external/Store";
 import EditorBuffer from "@/ui/EditorBuffer";
-import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { Effect, Option } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -147,6 +149,70 @@ describe("Block ArrowLeft key", () => {
 
       // Cursor should be at end of "Document Title" (position 14)
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(14);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("skips hidden children when previous sibling is collapsed", async () => {
+    await Effect.gen(function* () {
+      // Structure:
+      // Root
+      // ├── First (with child, collapsed)
+      // │   └── Nested (hidden)
+      // └── Second (cursor here at start)
+      //
+      // When pressing ArrowLeft from Second, cursor should go to First,
+      // NOT to Nested (which is hidden because First is collapsed)
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "First" }, { text: "Second" }],
+      );
+
+      // Add child to First: First -> [Nested]
+      const nestedChildId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: childNodeIds[0],
+        insert: "after",
+        text: "Nested",
+      });
+
+      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+
+      // Collapse the first block (hide its children)
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(firstBlockId, false);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus second block at start
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(0);
+
+      // Press ArrowLeft - should navigate to previous visible block
+      yield* When.USER_PRESSES("{ArrowLeft}");
+
+      // Verify model state: selection should point to First, not Nested
+      const Store = yield* StoreT;
+      const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+      const buffer = Option.getOrThrow(bufferDoc);
+
+      expect(buffer.selection).not.toBeNull();
+      const actualNodeId = buffer.selection!.focus.nodeId;
+
+      // Selection should NOT be on the hidden nested child
+      expect(
+        actualNodeId,
+        `Selection went to hidden Nested child instead of visible First block`,
+      ).not.toBe(nestedChildId);
+
+      // Selection should be on the visible First block
+      expect(
+        actualNodeId,
+        "Selection should be on First block (visible)",
+      ).toBe(childNodeIds[0]);
+
+      // Cursor should be at end of "First" text
+      expect(buffer.selection!.focusOffset).toBe(5);
     }).pipe(runtime.runPromise);
   });
 });

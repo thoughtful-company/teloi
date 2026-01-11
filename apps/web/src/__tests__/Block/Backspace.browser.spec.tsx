@@ -1,6 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -122,9 +123,14 @@ describe("Block Backspace key", () => {
         text: "B",
       });
 
+      const blockA = Id.makeBlockId(bufferId, nodeA);
       const blockC = Id.makeBlockId(bufferId, nodeC);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Expand A so its children are visible for merge target
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, true);
 
       yield* When.USER_CLICKS_BLOCK(blockC);
       yield* When.USER_MOVES_CURSOR_TO(0);
@@ -177,7 +183,7 @@ describe("Block Backspace key", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
+it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -222,6 +228,58 @@ describe("Block Backspace key", () => {
       const children = yield* Node.getNodeChildren(rootNodeId);
       yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Structure:
+   * Root
+   * ├── First
+   * ├── Second (cursor at start, HAS children)
+   * │   └── Child
+   * └── Third
+   *
+   * Cursor at start of Second, press Backspace.
+   * Should be no-op because Second has children - deleting would orphan Child.
+   */
+  it("no-op when block has children (would orphan them)", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First" },
+          { text: "Second" },
+          { text: "Third" },
+        ]);
+
+      const [firstNodeId, secondNodeId, thirdNodeId] = childNodeIds;
+
+      // Add Child to Second
+      const childId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: secondNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+      yield* When.USER_PRESSES("{Home}");
+      yield* When.USER_PRESSES("{Backspace}");
+
+      // Structure should be unchanged
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 3);
+      yield* Then.NODE_HAS_TEXT(firstNodeId, "First");
+      yield* Then.NODE_HAS_TEXT(secondNodeId, "Second");
+      yield* Then.NODE_HAS_TEXT(thirdNodeId, "Third");
+
+      // Child should still exist under Second
+      yield* Then.NODE_HAS_CHILDREN(secondNodeId, 1);
+      yield* Then.NODE_HAS_TEXT(childId, "Child");
+
+      // Cursor should still be at start of Second
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
   });
 });

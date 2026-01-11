@@ -551,3 +551,50 @@ export const UNFOCUSED_BLOCK_HAS_CODE_TEXT = (
   blockId: Id.Block,
   expectedText: string,
 ) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "code");
+
+/**
+ * Asserts that a block is expanded (showing its children).
+ * Uses the BlockT service to check the actual model state.
+ */
+export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const blockDoc = yield* Store.getDocument("block", blockId);
+
+    yield* Effect.try({
+      try: () => {
+        // Default state (no doc) is expanded
+        if (Option.isNone(blockDoc)) {
+          return; // Pass - no doc means expanded by default
+        }
+        const doc = Option.getOrThrow(blockDoc);
+        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(true);
+      },
+      catch: (cause) => new AssertionError({ cause }),
+    });
+  }).pipe(
+    Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
+    Effect.withSpan("Then.BLOCK_IS_EXPANDED"),
+  );
+
+/**
+ * Asserts that a block is collapsed (hiding its children).
+ * Uses the BlockT service to check the actual model state.
+ */
+export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const blockDoc = yield* Store.getDocument("block", blockId);
+
+    yield* Effect.try({
+      try: () => {
+        expect(Option.isSome(blockDoc), `Block ${blockId} should have a document`).toBe(true);
+        const doc = Option.getOrThrow(blockDoc);
+        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(false);
+      },
+      catch: (cause) => new AssertionError({ cause }),
+    });
+  }).pipe(
+    Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
+    Effect.withSpan("Then.BLOCK_IS_COLLAPSED"),
+  );

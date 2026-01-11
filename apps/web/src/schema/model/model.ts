@@ -61,7 +61,7 @@ export const EditorBuffer = Schema.mutable(
 export type EditorBuffer = typeof EditorBuffer.Type;
 
 export const Block = Schema.Struct({
-  isToggled: Schema.Boolean,
+  isExpanded: Schema.Boolean,
 });
 export type Block = typeof Block.Type;
 

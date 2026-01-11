@@ -22,7 +22,7 @@ export interface BlockView {
   childBlockIds: readonly Id.Block[];
   isActive: boolean;
   isSelected: boolean;
-  isToggled: boolean;
+  isExpanded: boolean;
   selection: BlockSelection | null;
 }
 
@@ -120,7 +120,7 @@ export const subscribe = (blockId: Id.Block) =>
 //   Internal Functions
 // ===============================
 
-type BlockDoc = { isToggled: boolean };
+type BlockDoc = { isExpanded: boolean };
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
   Effect.gen(function* () {
