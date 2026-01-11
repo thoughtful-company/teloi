@@ -301,8 +301,8 @@ export type EditorAction =
   | { _tag: "ZoomIn" }
   | { _tag: "BlockSelect"; direction: "up" | "down" }
   | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
-  | { _tag: "Collapse" }
-  | { _tag: "Expand" }
+  | { _tag: "Collapse"; goalX?: number }
+  | { _tag: "Expand"; goalX?: number }
   | {
       _tag: "TypeTrigger";
       typeId: Id.Node;
@@ -357,8 +357,10 @@ export const Action = {
     _tag: "Move",
     action,
   }),
-  Collapse: (): EditorAction => ({ _tag: "Collapse" }),
-  Expand: (): EditorAction => ({ _tag: "Expand" }),
+  Collapse: (goalX?: number): EditorAction =>
+    goalX !== undefined ? { _tag: "Collapse", goalX } : { _tag: "Collapse" },
+  Expand: (goalX?: number): EditorAction =>
+    goalX !== undefined ? { _tag: "Expand", goalX } : { _tag: "Expand" },
   TypeTrigger: (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -660,8 +662,7 @@ export default function TextEditor(props: TextEditorProps) {
       { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
       { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
       { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
-      { key: "Mod-ArrowUp", action: Action.Collapse() },
-      { key: "Mod-ArrowDown", action: Action.Expand() },
+      // Mod-ArrowUp/Down handled below with custom goalX calculation
 
       // Position-conditional (anchor AND head at position)
       {
@@ -917,6 +918,35 @@ export default function TextEditor(props: TextEditorProps) {
             }
 
             return false;
+          },
+        },
+      ]),
+    );
+
+    // Mod-ArrowUp/Down pass goalX to preserve cursor X position when drilling up/down.
+    // Prefer stored goalX over fresh calculation to avoid drift on round-trips.
+    extensions.push(
+      keymap.of([
+        {
+          key: "Mod-ArrowUp",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            const side = props.selection?.assoc === 1 ? 1 : -1;
+            const currentCoords = view.coordsAtPos(sel.head, side);
+            const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
+            emit(Action.Collapse(goalX));
+            return true;
+          },
+        },
+        {
+          key: "Mod-ArrowDown",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            const side = props.selection?.assoc === 1 ? 1 : -1;
+            const currentCoords = view.coordsAtPos(sel.head, side);
+            const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
+            emit(Action.Expand(goalX));
+            return true;
           },
         },
       ]),

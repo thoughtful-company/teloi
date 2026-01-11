@@ -180,9 +180,6 @@ export default function Block({ blockId }: BlockProps) {
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
-  // Hover state for chevron visibility on childless nodes
-  const [isHovered, setIsHovered] = createSignal(false);
-
   // Type picker state
   const [pickerState, setPickerState] = createSignal<{
     visible: boolean;
@@ -1003,7 +1000,7 @@ export default function Block({ blockId }: BlockProps) {
         // Query is computed reactively from textContent and selection
       }),
       Match.tag("TypePickerClose", () => handleTypePickerClose()),
-      Match.tag("Collapse", () => {
+      Match.tag("Collapse", ({ goalX: actionGoalX }) => {
         runtime.runPromise(
           Effect.gen(function* () {
             const Block = yield* BlockT;
@@ -1028,7 +1025,8 @@ export default function Block({ blockId }: BlockProps) {
             );
             if (!parentId) return;
 
-            const goalX = store.selection?.goalX ?? null;
+            // Prefer goalX from action (current cursor X), fall back to stored goalX
+            const goalX = actionGoalX ?? store.selection?.goalX ?? null;
 
             // Check if parent is the buffer root (first-level block)
             const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
@@ -1056,48 +1054,43 @@ export default function Block({ blockId }: BlockProps) {
           }),
         );
       }),
-      Match.tag("Expand", () => {
+      Match.tag("Expand", ({ goalX: actionGoalX }) => {
         runtime.runPromise(
           Effect.gen(function* () {
             const Block = yield* BlockT;
             const Node = yield* NodeT;
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
             const [bufferId] = yield* Id.parseBlockId(blockId);
 
-            const isCurrentExpanded = yield* Block.isExpanded(blockId);
-            if (!isCurrentExpanded) {
-              yield* Block.setExpanded(blockId, true);
-              return;
-            }
+            // Prefer goalX from action (current cursor X), fall back to stored goalX
+            const goalX = actionGoalX ?? store.selection?.goalX ?? null;
 
-            // Depth-first search for first collapsed descendant with children
-            const findFirstCollapsedExpandable = (
-              targetNodeId: Id.Node,
-            ): Effect.Effect<Option.Option<Id.Node>, never, NodeT | BlockT> =>
-              Effect.gen(function* () {
-                const children = yield* Node.getNodeChildren(targetNodeId);
+            const children = yield* Node.getNodeChildren(nodeId);
 
-                for (const childId of children) {
-                  const childChildren = yield* Node.getNodeChildren(childId);
-                  if (childChildren.length === 0) continue;
+            // If childless, create a new empty child
+            const firstChildId =
+              children.length === 0
+                ? yield* Node.insertNode({
+                    parentId: nodeId,
+                    insert: "before",
+                  })
+                : children[0]!;
 
-                  const childBlockId = Id.makeBlockId(bufferId, childId);
-                  const isChildExpanded = yield* Block.isExpanded(childBlockId);
+            // Ensure expanded and focus first child
+            yield* Block.setExpanded(blockId, true);
 
-                  if (!isChildExpanded) return Option.some(childId);
-
-                  const deeperResult =
-                    yield* findFirstCollapsedExpandable(childId);
-                  if (Option.isSome(deeperResult)) return deeperResult;
-                }
-
-                return Option.none();
-              });
-
-            const targetNode = yield* findFirstCollapsedExpandable(nodeId);
-            if (Option.isSome(targetNode)) {
-              const targetBlockId = Id.makeBlockId(bufferId, targetNode.value);
-              yield* Block.setExpanded(targetBlockId, true);
-            }
+            const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
+            yield* Buffer.setSelection(
+              bufferId,
+              makeCollapsedSelection(firstChildId, 0, {
+                goalX,
+                goalLine: "first",
+              }),
+            );
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: firstChildBlockId }),
+            );
           }),
         );
       }),
@@ -1105,7 +1098,6 @@ export default function Block({ blockId }: BlockProps) {
     );
 
   const hasChildren = () => store.childBlockIds.length > 0;
-  const showChevron = () => hasChildren() || isHovered();
 
   return (
     <div
@@ -1115,10 +1107,8 @@ export default function Block({ blockId }: BlockProps) {
       classList={{
         "ring-2 ring-blue-400 bg-blue-50/50 rounded": store.isSelected,
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      <Show when={showChevron()}>
+      <Show when={hasChildren()}>
         <button
           type="button"
           class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"

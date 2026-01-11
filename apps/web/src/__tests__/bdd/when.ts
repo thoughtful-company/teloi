@@ -6,11 +6,11 @@ import { waitFor } from "solid-testing-library";
 
 /**
  * Waits for a block element to appear and clicks its text area.
- * Uses > div:first-child to target the text area, not the children container.
+ * Uses .flex to target the text content div (works whether chevron is present or not).
  */
 export const USER_CLICKS_BLOCK = (blockId: Id.Block) =>
   Effect.gen(function* () {
-    const selector = `[data-element-id="${blockId}"] > div:first-child`;
+    const selector = `[data-element-id="${blockId}"] > .flex`;
     const element = yield* Effect.promise(() =>
       waitFor(
         () => {
