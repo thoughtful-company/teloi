@@ -187,9 +187,9 @@ describe("Block expand/collapse - Text editing mode", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up on collapsed first-level block moves focus to title", async () => {
+  it("Cmd+Shift+Up on first-level block drills out to title", async () => {
     await Effect.gen(function* () {
-      // Given: A first-level block that is collapsed (has a child)
+      // Given: A first-level block
       const { bufferId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
@@ -205,11 +205,6 @@ describe("Block expand/collapse - Text editing mode", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // Collapse the first-level block
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(parentBlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-
       // Focus on the first-level block by clicking its text
       yield* Effect.promise(async () => {
         const parentText = await waitFor(() => screen.getByText("Parent"));
@@ -224,15 +219,15 @@ describe("Block expand/collapse - Text editing mode", () => {
         }),
       );
 
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+      // When: Cmd+Shift+Up pressed (drill out)
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
 
       // Then: Focus moves to Title
       yield* Then.SELECTION_IS_ON_TITLE(bufferId);
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up on collapsed block collapses parent and moves focus to parent", async () => {
+  it("Cmd+Shift+Up collapses current block and drills out to parent", async () => {
     await Effect.gen(function* () {
       // Given: Parent has child "A", Child A has grandchild
       const { bufferId, childNodeIds } =
@@ -261,11 +256,6 @@ describe("Block expand/collapse - Text editing mode", () => {
       // Wait for hierarchy to render
       yield* Then.TEXT_IS_VISIBLE("Child A");
 
-      // Collapse Child A first
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(childABlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(childABlockId);
-
       // Focus on Child A by clicking its text content
       yield* Effect.promise(async () => {
         const childAText = await waitFor(() => screen.getByText("Child A"));
@@ -280,18 +270,18 @@ describe("Block expand/collapse - Text editing mode", () => {
         }),
       );
 
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+      // When: Cmd+Shift+Up pressed (drill out)
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
 
-      // Then: Parent gets collapsed
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      // Then: Child A is collapsed
+      yield* Then.BLOCK_IS_COLLAPSED(childABlockId);
 
       // Then: Focus moves to Parent (cursor is in Parent's text editor)
       yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Down preserves goalX when drilling into first child", async () => {
+  it("Cmd+Shift+Down preserves goalX when drilling into first child", async () => {
     await Effect.gen(function* () {
       // Given: A parent block with a child that has longer text
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -336,8 +326,8 @@ describe("Block expand/collapse - Text editing mode", () => {
         return sel.getRangeAt(0).getBoundingClientRect().left;
       });
 
-      // When: Cmd+Down to drill into child
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      // When: Cmd+Shift+Down to drill into child
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
 
       // Then: Focus is on child block
       yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
@@ -356,7 +346,7 @@ describe("Block expand/collapse - Text editing mode", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up then Cmd+Down round-trip preserves cursor position", async () => {
+  it("Cmd+Shift+Up then Cmd+Shift+Down round-trip preserves cursor position", async () => {
     await Effect.gen(function* () {
       const { BufferT } = yield* Effect.promise(() =>
         import("@/services/ui/Buffer"),
@@ -364,7 +354,7 @@ describe("Block expand/collapse - Text editing mode", () => {
       const Buffer = yield* BufferT;
 
       // Given: Parent "Serial Lain Experiments" with child "ss"
-      // User bug: cursor at "ss|" → Cmd+Up → Cmd+Down → cursor lands at "s|s"
+      // User bug: cursor at "ss|" → Cmd+Shift+Up → Cmd+Shift+Down → cursor lands at "s|s"
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root",
         [{ text: "Serial Lain Experiments" }],
@@ -402,10 +392,10 @@ describe("Block expand/collapse - Text editing mode", () => {
         Option.getOrElse(() => -1),
       );
 
-      // When: Cmd+Up then Cmd+Down (round-trip)
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+      // When: Cmd+Shift+Up then Cmd+Shift+Down (drill round-trip)
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
       yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
       yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
 
       // Get actual DOM cursor offset after round-trip
@@ -505,6 +495,292 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       // Then: Block expands AND selection is preserved
       yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Cmd+Down expands only the selected block on first press", async () => {
+    await Effect.gen(function* () {
+      // Given: A -> B (collapsed), B -> C (collapsed)
+      // A is selected in block selection mode, both A and B are collapsed
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+
+      // Add B as child of A
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+      const blockB = Id.makeBlockId(bufferId, nodeB);
+
+      // Add C as child of B (makes B expandable)
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "C",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for hierarchy to render (A expanded by default, so B and C mount)
+      yield* Then.TEXT_IS_VISIBLE("B");
+      yield* Then.TEXT_IS_VISIBLE("C");
+
+      // Now collapse both A and B
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Wait for DOM to update after collapse (B should no longer be visible since A is collapsed)
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const bText = document.body.textContent;
+            if (bText?.includes("B"))
+              throw new Error("B should be hidden when A is collapsed");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Click on A text to focus it
+      yield* Effect.promise(async () => {
+        const aText = await waitFor(() => screen.getByText("A"));
+        await userEvent.click(aText);
+      });
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // Press Escape to enter block selection mode
+      yield* When.USER_PRESSES("{Escape}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // When: Cmd+Down pressed once
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: A expanded, B still collapsed
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Cmd+Down expands children on second press", async () => {
+    await Effect.gen(function* () {
+      // Given: A -> B (collapsed), B -> C, A is expanded
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+
+      // Add B as child of A
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+      const blockB = Id.makeBlockId(bufferId, nodeB);
+
+      // Add C as child of B (makes B expandable)
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "C",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for hierarchy to render (A expanded by default, so B and C mount)
+      yield* Then.TEXT_IS_VISIBLE("B");
+      yield* Then.TEXT_IS_VISIBLE("C");
+
+      // Collapse B (A stays expanded)
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Wait for DOM to update (C should be hidden since B is collapsed)
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const bodyText = document.body.textContent;
+            if (bodyText?.includes("C"))
+              throw new Error("C should be hidden when B is collapsed");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Click on A text to focus it
+      yield* Effect.promise(async () => {
+        const aText = await waitFor(() => screen.getByText("A"));
+        await userEvent.click(aText);
+      });
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // Press Escape to enter block selection mode
+      yield* When.USER_PRESSES("{Escape}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // When: Cmd+Down pressed once (A already expanded, should expand B)
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: B expanded (one level deeper)
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Cmd+Up collapses deepest expanded descendants first", async () => {
+    await Effect.gen(function* () {
+      // Given: A -> B -> C, all expanded
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+
+      // Add B as child of A
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+      const blockB = Id.makeBlockId(bufferId, nodeB);
+
+      // Add C as child of B (makes B expandable)
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "C",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for hierarchy to render (all blocks expanded by default)
+      yield* Then.TEXT_IS_VISIBLE("B");
+      yield* Then.TEXT_IS_VISIBLE("C");
+
+      // Verify both A and B are expanded (default state)
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+
+      // Click on A text to focus it
+      yield* Effect.promise(async () => {
+        const aText = await waitFor(() => screen.getByText("A"));
+        await userEvent.click(aText);
+      });
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // Press Escape to enter block selection mode
+      yield* When.USER_PRESSES("{Escape}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // When: Cmd+Up pressed once
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: B collapsed (deepest with children), A still expanded
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Cmd+Up collapses the block itself when no expanded descendants", async () => {
+    await Effect.gen(function* () {
+      // Given: A -> B -> C, where B is collapsed (no expanded descendants under A)
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+
+      // Add B as child of A
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+      const blockB = Id.makeBlockId(bufferId, nodeB);
+
+      // Add C as child of B (makes B expandable/collapsible)
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "C",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for hierarchy to render (A and B expanded by default)
+      yield* Then.TEXT_IS_VISIBLE("B");
+      yield* Then.TEXT_IS_VISIBLE("C");
+
+      // Collapse B (so A has no expanded descendants)
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Wait for DOM to update (C should be hidden since B is collapsed)
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const bodyText = document.body.textContent;
+            if (bodyText?.includes("C"))
+              throw new Error("C should be hidden when B is collapsed");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Click on A text to focus it
+      yield* Effect.promise(async () => {
+        const aText = await waitFor(() => screen.getByText("A"));
+        await userEvent.click(aText);
+      });
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // Press Escape to enter block selection mode
+      yield* When.USER_PRESSES("{Escape}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // When: Cmd+Up pressed once
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: A collapsed (no expanded descendants, so collapse itself)
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
     }).pipe(runtime.runPromise);
   });
 });

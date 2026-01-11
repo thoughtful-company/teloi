@@ -51,7 +51,7 @@ export class BufferT extends Context.Tag("BufferT")<
     setBlockSelection: (
       bufferId: Id.Buffer,
       blocks: readonly Id.Node[],
-      blockSelectionAnchor: Id.Node,
+      blockSelectionAnchor: Id.Node | null,
       blockSelectionFocus?: Id.Node | null,
     ) => Effect.Effect<void, BufferNotFoundError>;
 
@@ -107,7 +107,7 @@ export const BufferLive = Layer.effect(
       setBlockSelection: (
         bufferId: Id.Buffer,
         blocks: readonly Id.Node[],
-        blockSelectionAnchor: Id.Node,
+        blockSelectionAnchor: Id.Node | null,
         blockSelectionFocus?: Id.Node | null,
       ) =>
         setBlockSelection(

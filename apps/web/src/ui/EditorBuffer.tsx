@@ -401,6 +401,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Block = yield* BlockT;
+            const Node = yield* NodeT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -408,9 +409,153 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const { selectedBlocks } = bufferDoc;
             const isCollapse = e.key === "ArrowUp";
 
+            // Expand one level: if collapsed, expand; else expand first collapsed child
+            const expandOneLevel = (
+              nodeId: Id.Node,
+            ): Effect.Effect<boolean> =>
+              Effect.gen(function* () {
+                const blockId = Id.makeBlockId(bufferId, nodeId);
+                const isExpanded = yield* Block.isExpanded(blockId);
+
+                if (!isExpanded) {
+                  yield* Block.setExpanded(blockId, true);
+                  return true;
+                }
+
+                // Already expanded - try to expand children
+                const children = yield* Node.getNodeChildren(nodeId);
+                for (const childId of children) {
+                  const didExpand = yield* expandOneLevel(childId);
+                  if (didExpand) return true;
+                }
+
+                return false;
+              });
+
+            // Collapse one level: collapse deepest expanded descendants first
+            const collapseOneLevel = (
+              nodeId: Id.Node,
+            ): Effect.Effect<boolean> =>
+              Effect.gen(function* () {
+                const blockId = Id.makeBlockId(bufferId, nodeId);
+                const isExpanded = yield* Block.isExpanded(blockId);
+                const children = yield* Node.getNodeChildren(nodeId);
+
+                // Leaf nodes (no children) can't be collapsed
+                if (children.length === 0) {
+                  return false;
+                }
+
+                if (!isExpanded) {
+                  return false;
+                }
+
+                // Check if any children are expanded - collapse deepest first
+                let childWasCollapsed = false;
+
+                for (const childId of children) {
+                  const didCollapse = yield* collapseOneLevel(childId);
+                  if (didCollapse) childWasCollapsed = true;
+                }
+
+                if (childWasCollapsed) {
+                  return true;
+                }
+
+                // No expanded descendants - collapse this block
+                yield* Block.setExpanded(blockId, false);
+                return true;
+              });
+
             for (const nodeId of selectedBlocks) {
-              const blockId = Id.makeBlockId(bufferId, nodeId);
-              yield* Block.setExpanded(blockId, !isCollapse);
+              if (isCollapse) {
+                yield* collapseOneLevel(nodeId);
+              } else {
+                yield* expandOneLevel(nodeId);
+              }
+            }
+          }),
+        );
+        return;
+      }
+
+      // Cmd+Shift+ArrowUp/Down in block selection mode: drill in/out
+      // Stays in block selection mode, just moves selection to parent/child
+      if (
+        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        !e.altKey &&
+        e.shiftKey &&
+        (isMac ? e.metaKey : e.ctrlKey) &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Block = yield* BlockT;
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+            const Window = yield* WindowT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { selectedBlocks } = bufferDoc;
+            if (selectedBlocks.length === 0) return;
+
+            const nodeId = selectedBlocks[0]!;
+            const blockId = Id.makeBlockId(bufferId, nodeId);
+            const isDrillOut = e.key === "ArrowUp";
+
+            if (isDrillOut) {
+              // DrillOut: collapse current, select parent (stay in block selection mode)
+              yield* Block.setExpanded(blockId, false);
+
+              const parentId = yield* Node.getParent(nodeId).pipe(
+                Effect.catchTag("NodeHasNoParentError", () =>
+                  Effect.succeed<Id.Node | null>(null),
+                ),
+              );
+              if (!parentId) return;
+
+              // Check if parent is the buffer root
+              const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
+              if (parentId === assignedNodeId) {
+                // Navigate to title (exit block selection mode)
+                yield* Buffer.setBlockSelection(bufferId, [], null, null);
+                yield* Window.setActiveElement(
+                  Option.some({ type: "title" as const, bufferId }),
+                );
+                return;
+              }
+
+              // Select parent block (stay in block selection mode)
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [parentId],
+                parentId,
+                parentId,
+              );
+            } else {
+              // DrillIn: select first child (stay in block selection mode)
+              const children = yield* Node.getNodeChildren(nodeId);
+
+              const firstChildId =
+                children.length === 0
+                  ? yield* Node.insertNode({
+                      parentId: nodeId,
+                      insert: "before",
+                    })
+                  : children[0]!;
+
+              yield* Block.setExpanded(blockId, true);
+
+              // Select first child (stay in block selection mode)
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [firstChildId],
+                firstChildId,
+                firstChildId,
+              );
             }
           }),
         );

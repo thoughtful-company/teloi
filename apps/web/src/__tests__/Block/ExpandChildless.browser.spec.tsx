@@ -13,7 +13,7 @@ import {
   type BrowserRuntime,
 } from "../bdd";
 
-describe("Block Cmd+Down on childless block", () => {
+describe("Block Cmd+Shift+Down drill into childless block", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -29,7 +29,7 @@ describe("Block Cmd+Down on childless block", () => {
     await cleanup();
   });
 
-  it("Cmd+Down on childless block creates new child and focuses it", async () => {
+  it("Cmd+Shift+Down on childless block creates new child and focuses it", async () => {
     await Effect.gen(function* () {
       // Given: A block with no children
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -45,8 +45,8 @@ describe("Block Cmd+Down on childless block", () => {
       // Focus on the leaf block
       yield* When.USER_CLICKS_BLOCK(leafBlockId);
 
-      // When: Cmd+Down pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      // When: Cmd+Shift+Down pressed
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
 
       // Then: A new child block is created and focused
       const Node = yield* NodeT;
@@ -59,7 +59,7 @@ describe("Block Cmd+Down on childless block", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("new child from Cmd+Down is a real node in the tree", async () => {
+  it("new child from Cmd+Shift+Down is a real node in the tree", async () => {
     await Effect.gen(function* () {
       // Given: A block with no children
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -77,9 +77,9 @@ describe("Block Cmd+Down on childless block", () => {
       const childrenBefore = yield* Node.getNodeChildren(parentNodeId);
       expect(childrenBefore.length).toBe(0);
 
-      // Focus and press Cmd+Down
+      // Focus and press Cmd+Shift+Down
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
 
       // Then: The new child is a proper node
       const childrenAfter = yield* Node.getNodeChildren(parentNodeId);
@@ -96,7 +96,7 @@ describe("Block Cmd+Down on childless block", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("can type in newly created child from Cmd+Down", async () => {
+  it("can type in newly created child from Cmd+Shift+Down", async () => {
     await Effect.gen(function* () {
       // Given: A block with no children
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -109,9 +109,9 @@ describe("Block Cmd+Down on childless block", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      // Focus and press Cmd+Down to create new child
+      // Focus and press Cmd+Shift+Down to create new child
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
 
       // Get the newly created child
       const Node = yield* NodeT;

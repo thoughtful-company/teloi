@@ -73,10 +73,17 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Escape` - Exit text editing / clear selection
 - `ArrowUp/Down` - Navigate between blocks
 - `Shift+ArrowUp/Down` - Extend block selection
+- `ArrowLeft/Right` - Select parent/first child block
+- `Mod+ArrowUp/Down` - Level-by-level collapse/expand
+- `Mod+Shift+ArrowUp/Down` - Drill out to parent / drill into first child
 - `Enter` - Start editing focused block
 - `Delete/Backspace` - Delete selected blocks
+- `Tab/Shift+Tab` - Indent/outdent selected blocks
+- `Alt+Mod+ArrowUp/Down` - Swap selected blocks with sibling
+- `Shift+Alt+Mod+ArrowUp/Down` - Move selected blocks to first/last
 - `Mod+C` - Copy selected blocks
 - `Mod+X` - Cut selected blocks
+- `Mod+A` - Select all blocks
 
 ## 3. Editor Shortcuts (CodeMirror)
 
@@ -129,3 +136,25 @@ When adding a new shortcut:
 
 3. **Is it for text manipulation within the editor?**
    → Add to CodeMirror keymap (Editor Shortcuts)
+
+## Block Expand/Collapse vs Drill Navigation
+
+Two separate concerns are handled with different shortcuts:
+
+### Toggle Expand/Collapse (Mod+ArrowUp/Down)
+
+**No navigation** - cursor/selection stays on current block.
+
+- `Mod+Down` (Expand): First press expands the block (shows direct children). Next press expands collapsed children (one level deeper). Continue until all descendants are expanded.
+- `Mod+Up` (Collapse): First press collapses deepest expanded descendants. Continue pressing to collapse upward level by level. Last press collapses the block itself.
+
+Works identically in both text editing and block selection modes.
+
+### Drill Navigation (Mod+Shift+ArrowUp/Down)
+
+**Moves cursor/selection** to a different block.
+
+- `Mod+Shift+Down` (Drill In): If block has children, focus first child. If childless, create empty child and focus it.
+- `Mod+Shift+Up` (Drill Out): Collapse current block and focus parent. If at root level, focus title.
+
+**Mode preservation:** In text editing mode, stays in text editing mode. In block selection mode, stays in block selection mode. Preserves goalX for cursor positioning in text editing mode.

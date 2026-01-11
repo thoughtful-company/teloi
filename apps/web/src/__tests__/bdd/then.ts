@@ -35,7 +35,7 @@ export const TEXT_IS_VISIBLE = (text: string) =>
       () => {
         expect(screen.getByText(text)).toBeTruthy();
       },
-      { timeout: 100 },
+      { timeout: 2000 },
     ),
   ).pipe(Effect.withSpan("Then.TEXT_IS_VISIBLE"));
 

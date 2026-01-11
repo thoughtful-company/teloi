@@ -6,7 +6,7 @@ import { BufferNotFoundError } from "../errors";
 export const setBlockSelection = (
   bufferId: Id.Buffer,
   blocks: readonly Id.Node[],
-  blockSelectionAnchor: Id.Node,
+  blockSelectionAnchor: Id.Node | null,
   blockSelectionFocus?: Id.Node | null,
 ): Effect.Effect<void, BufferNotFoundError, StoreT> =>
   Effect.gen(function* () {
