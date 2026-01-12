@@ -513,6 +513,66 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleForceDelete = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+        const Store = yield* StoreT;
+        const Node = yield* NodeT;
+        const Yjs = yield* YjsT;
+
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        const rootNodeId = Option.isSome(bufferDoc)
+          ? (bufferDoc.value.assignedNodeId as Id.Node)
+          : null;
+
+        // Collect all descendants BEFORE deletion (they'll be gone from DB after)
+        const descendants = yield* Node.getAllDescendants(nodeId);
+        const allNodesToDelete = [nodeId, ...descendants];
+
+        // Find focus target before deletion
+        const prevNodeOpt = yield* Block.findPreviousNode(nodeId);
+        const focusNodeId = Option.isSome(prevNodeOpt)
+          ? prevNodeOpt.value
+          : rootNodeId;
+
+        if (!focusNodeId) return;
+
+        // Delete the node (materializer cascades to descendants in DB)
+        yield* Node.deleteNode(nodeId);
+
+        // Clean up Yjs text for all deleted nodes
+        for (const deletedId of allNodesToDelete) {
+          Yjs.deleteText(deletedId);
+        }
+
+        // Set cursor at end of focus target
+        const targetYtext = Yjs.getText(focusNodeId);
+        const cursorOffset = targetYtext.length;
+
+        yield* Buffer.setSelection(
+          bufferId,
+          makeCollapsedSelection(focusNodeId, cursorOffset),
+        );
+
+        // Update active element
+        if (focusNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, focusNodeId);
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        }
+      }),
+    );
+  };
+
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -932,6 +992,7 @@ export default function Block({ blockId }: BlockProps) {
       Match.tag("ShiftTab", () => handleShiftTab()),
       Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
       Match.tag("DeleteAtEnd", () => handleDeleteAtEnd()),
+      Match.tag("ForceDelete", () => handleForceDelete()),
       Match.tag("Navigate", ({ direction, goalX }) =>
         Match.value(direction).pipe(
           Match.when("left", () => handleArrowLeftAtStart()),

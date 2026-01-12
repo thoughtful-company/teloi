@@ -75,6 +75,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Shift+ArrowUp/Down` - Extend block selection
 - `Enter` - Start editing focused block
 - `Delete/Backspace` - Delete selected blocks
+- `Mod+Shift+Delete/Backspace` - Force-delete selected blocks and all children
 - `Mod+C` - Copy selected blocks
 - `Mod+X` - Cut selected blocks
 
@@ -105,6 +106,13 @@ const keymap = Prec.highest(
 - Text formatting shortcuts
 
 **Note:** Events that reach CodeMirror are NOT handled by EditorBuffer (checked via `.cm-editor` selector). This prevents double-handling of shortcuts.
+
+**Examples:**
+- `Backspace` (at start) - Merge with previous block
+- `Delete` (at end) - Merge with next block
+- `Mod+Shift+Backspace` - Force-delete block and all children
+- `Tab` - Indent block
+- `Shift+Tab` - Outdent block
 
 ## Mod Key Pattern
 

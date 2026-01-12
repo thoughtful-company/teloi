@@ -19,6 +19,7 @@ import { subscribeChildren } from "./subscribeChildren";
 import { subscribeEither } from "./subscribeEither";
 import { createRootNode } from "./createRootNode";
 import { deleteNode } from "./deleteNode";
+import { getAllDescendants } from "./getAllDescendants";
 import { subscribeRootNodes } from "./subscribeRootNodes";
 
 export class NodeT extends Context.Tag("NodeT")<
@@ -70,6 +71,11 @@ export class NodeT extends Context.Tag("NodeT")<
      */
     deleteNode: (nodeId: Id.Node) => Effect.Effect<void>;
     /**
+     * Recursively collects all descendant node IDs in depth-first pre-order.
+     * Does NOT include the root nodeId itself.
+     */
+    getAllDescendants: (nodeId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
+    /**
      * Moves multiple nodes in a single atomic operation.
      * All nodes are moved relative to the same sibling, maintaining their order.
      */
@@ -95,6 +101,7 @@ export const NodeLive = Layer.effect(
       getNodeChildren: withContext(getNodeChildren)(context),
       get: withContext(get)(context),
       deleteNode: withContext(deleteNode)(context),
+      getAllDescendants: withContext(getAllDescendants)(context),
       moveNodes: withContext(moveNodes)(context),
     };
   }),
