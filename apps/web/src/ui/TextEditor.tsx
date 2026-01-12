@@ -4,6 +4,7 @@ import {
   EditorSelection,
   EditorState,
   Extension,
+  Prec,
   StateEffect,
   StateField,
 } from "@codemirror/state";
@@ -981,6 +982,38 @@ export default function TextEditor(props: TextEditorProps) {
         binding.key !== "Mod-i",
     );
     extensions.push(keymap.of(filteredDefaultKeymap));
+
+    // Lowest-priority fallback for Backspace/Delete with ANY modifier combination.
+    // When Cmd+Backspace is pressed at cursor position 0, the default handler
+    // deletes to line start (no-op at pos 0). This fallback triggers merge instead.
+    extensions.push(
+      Prec.lowest(
+        EditorView.domEventHandlers({
+          keydown(event, view) {
+            const sel = view.state.selection.main;
+            const docLen = view.state.doc.length;
+
+            if (event.key === "Backspace") {
+              if (sel.anchor === 0 && sel.head === 0) {
+                emit(Action.BackspaceAtStart());
+                event.preventDefault();
+                return true;
+              }
+            }
+
+            if (event.key === "Delete") {
+              if (sel.anchor === docLen && sel.head === docLen) {
+                emit(Action.DeleteAtEnd());
+                event.preventDefault();
+                return true;
+              }
+            }
+
+            return false;
+          },
+        }),
+      ),
+    );
 
     const state = EditorState.create({
       doc: ytext.toString(),
