@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
+import { TupleT } from "@/services/domain/Tuple";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
@@ -858,6 +859,20 @@ export default function Block({ blockId }: BlockProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Type = yield* TypeT;
+
+            // Clean up checkbox-specific data when removing checkbox type
+            if (existingDecorativeId === System.CHECKBOX) {
+              const Tuple = yield* TupleT;
+              const isCheckedTuples = yield* Tuple.findByPosition(
+                System.IS_CHECKED,
+                0,
+                nodeId,
+              );
+              for (const tuple of isCheckedTuples) {
+                yield* Tuple.delete(tuple.id);
+              }
+            }
+
             yield* Type.removeType(nodeId, existingDecorativeId);
             yield* Type.addType(nodeId, typeId);
             if (trigger.onTrigger) {

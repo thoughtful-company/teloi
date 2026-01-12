@@ -37,9 +37,18 @@ Add `onRemove?: (nodeId: Id.Node) => Effect.Effect<void, never, BrowserRequireme
 - [ ] Other decorative type conversions (if any added later) don't break
 - [ ] Type check passes: `pnpm -F @teloi/web typecheck`
 ## Done summary
-TBD
+- Added IS_CHECKED tuple cleanup when checkbox is replaced by list type
+- Cleanup happens in same Effect as type replacement (atomic)
+- Uses TupleT.findByPosition and TupleT.delete to remove orphaned tuples
 
+Why:
+- Prevents orphaned IS_CHECKED tuples when checkbox converts to list
+- Avoids potential bugs if node is later converted back to checkbox
+
+Verification:
+- No type errors in modified files
+- Lint passed via lint-staged
 ## Evidence
-- Commits:
+- Commits: ed6feb0ff5998efb6be11d17a66bcbabeb897336
 - Tests:
 - PRs:
