@@ -1082,7 +1082,8 @@ export default function Block({ blockId }: BlockProps) {
           }),
         );
       }),
-      // DrillOut: navigate to parent (collapse current, focus parent)
+      // DrillOut: navigate to parent (collapse PARENT, focus parent)
+      // We're "drilling out" of the parent level, so collapse it
       Match.tag("DrillOut", ({ goalX: actionGoalX }) => {
         isDrilling = true;
         runtime
@@ -1094,16 +1095,18 @@ export default function Block({ blockId }: BlockProps) {
               const Window = yield* WindowT;
               const [bufferId] = yield* Id.parseBlockId(blockId);
 
-              // Collapse current block
-              yield* Block.setExpanded(blockId, false);
-
-              // Navigate to parent
+              // Get parent first
               const parentId = yield* Node.getParent(nodeId).pipe(
                 Effect.catchTag("NodeHasNoParentError", () =>
                   Effect.succeed<Id.Node | null>(null),
                 ),
               );
               if (!parentId) return;
+
+              const parentBlockId = Id.makeBlockId(bufferId, parentId);
+
+              // Collapse the PARENT (not the current block)
+              yield* Block.setExpanded(parentBlockId, false);
 
               const goalX = actionGoalX ?? store.selection?.goalX ?? null;
 
@@ -1121,7 +1124,6 @@ export default function Block({ blockId }: BlockProps) {
               }
 
               // Focus parent
-              const parentBlockId = Id.makeBlockId(bufferId, parentId);
               yield* Buffer.setSelection(
                 bufferId,
                 makeCollapsedSelection(parentId, 0, { goalX, goalLine: "last" }),

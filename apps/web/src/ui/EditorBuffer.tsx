@@ -507,15 +507,19 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const isDrillOut = e.key === "ArrowUp";
 
             if (isDrillOut) {
-              // DrillOut: collapse current, select parent (stay in block selection mode)
-              yield* Block.setExpanded(blockId, false);
-
+              // DrillOut: collapse PARENT, select parent (stay in block selection mode)
+              // We're "drilling out" of the parent level, so collapse it
               const parentId = yield* Node.getParent(nodeId).pipe(
                 Effect.catchTag("NodeHasNoParentError", () =>
                   Effect.succeed<Id.Node | null>(null),
                 ),
               );
               if (!parentId) return;
+
+              const parentBlockId = Id.makeBlockId(bufferId, parentId);
+
+              // Collapse the PARENT (not the current block)
+              yield* Block.setExpanded(parentBlockId, false);
 
               // Check if parent is the buffer root
               const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
