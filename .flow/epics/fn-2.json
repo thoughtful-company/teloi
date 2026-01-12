@@ -1,0 +1,13 @@
+{
+  "branch_name": "fn-2",
+  "created_at": "2026-01-12T23:15:36.233628Z",
+  "depends_on_epics": [],
+  "id": "fn-2",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-2.md",
+  "status": "open",
+  "title": "Cross-parent node movement on Cmd+Option+Up/Down",
+  "updated_at": "2026-01-12T23:17:29.733491Z"
+}

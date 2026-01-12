@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-12T23:17:52.556226Z",
+  "depends_on": [
+    "fn-2.1"
+  ],
+  "epic": "fn-2",
+  "id": "fn-2.2",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-2.2.md",
+  "status": "todo",
+  "title": "Implement cross-parent movement in swap service",
+  "updated_at": "2026-01-12T23:18:44.695474Z"
+}

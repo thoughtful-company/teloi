@@ -1,0 +1,23 @@
+{
+  "assignee": "44.5.53.6.k@gmail.com",
+  "claim_note": "",
+  "claimed_at": "2026-01-12T23:28:32.132227Z",
+  "created_at": "2026-01-12T23:17:52.488146Z",
+  "depends_on": [],
+  "epic": "fn-2",
+  "evidence": {
+    "commits": [
+      "8bf8127ba45a57c7c7e01f7c0433b1dd11b1fe43"
+    ],
+    "prs": [],
+    "tests": [
+      "pnpm -F @teloi/web test:browser src/__tests__/Block/Movement.browser.spec.tsx"
+    ]
+  },
+  "id": "fn-2.1",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-2.1.md",
+  "status": "done",
+  "title": "Write browser tests for cross-parent movement",
+  "updated_at": "2026-01-12T23:33:52.029260Z"
+}
