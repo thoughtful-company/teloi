@@ -10,7 +10,8 @@
     "build": "vite build",
     "serve": "vite preview",
     "test": "vitest",
-    "test:browser": "vitest --project browser"
+    "test:browser": "vitest --project browser",
+    "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
   "dependencies": {

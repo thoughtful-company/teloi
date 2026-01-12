@@ -20,6 +20,7 @@ Review all staged and modified files before commit. For each changed file:
    - [ ] TypeScript compiles without new errors
      When TypeScript check fails, report the errors to the user. Don't silently fix pre-existing errors or hide issues behind type assertions. If an error is unrelated to your changes, say so explicitly: "There's a pre-existing TypeScript error in X that's blocking the build - not from my changes." Let the user decide how to handle it.
    - [ ] Tests pass
+   - [ ] **All new/modified functionality is covered by tests** — DO NOT commit if there is untested functionality. If tests are missing, stop and use the `test-architect` agent to write them first.
    - [ ] No debug code left behind (console.log, debugger, etc.)
    - [ ] Changes match what was requested (not over-engineered)
 
@@ -27,6 +28,8 @@ If any issues are found in steps 1-4, show findings and ask for confirmation bef
 
 If everything passes (or after issues are resolved), proceed to commit:
 5. Stage all relevant changes
-6. Create a commit with a properly formatted message following the repo's commit style (check `git log -5 --format=full` for reference)
+6. Create a commit with a properly formatted message following the repo's commit style (check `git log -5 --format=full` for reference). If the commit closes a GitHub issue, include `Closes #<issue-number>` in the commit message body.
 
 When making commits, use `git log -5 --format=full` to see actual commit messages (not `--oneline` which only shows titles). Commits have a subject line + body explaining what changed and why. Match the existing style. Remove any auto-generated annotations or irrelevant tool metadata from commit messages. Before committing, review all changed files to ensure no unnecessary comments were added.
+
+**Commit message style**: Write for humans. Start with a readable paragraph explaining the change, not a bullet list. Use lists only when enumerating specific items (files, features, flags), and keep them compact. The message should flow naturally when read aloud.

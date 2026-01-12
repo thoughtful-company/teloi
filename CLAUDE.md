@@ -21,6 +21,24 @@ You should **ALWAYS** proactively update this file when:
 
 Updates should be minimal and surgical—add only what's necessary to keep the document accurate and useful. Don't duplicate information that can be easily discovered from the code itself.
 
+## Commands
+
+```bash
+# Development (not recommended for AI - prefer testing and typecheck)
+pnpm dev:web              # Start web app dev server (localhost:3003)
+
+# Testing - ALWAYS specify filename first to avoid scanning all files
+pnpm -F @teloi/web test:browser src/path/to/file.test.tsx
+pnpm -F @teloi/web test:browser src/path/to/file.test.tsx -t "test name pattern"
+pnpm -F @teloi/web test:browser      # Run ALL browser tests (slow, avoid unless needed)
+
+# Type checking
+pnpm -F @teloi/web typecheck
+
+# Linting
+pnpm eslint .             # Lint entire repo
+```
+
 ## Rules
 
 **Comments** should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
@@ -32,13 +50,13 @@ Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clar
 
 When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
 
-When you are about to write a new code, ALWAYS start by writing tests. Use testing agent to do that.
+**TDD-first**: Write tests **before** implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
 
-**TDD-first**: With all other things being equal, start by write tests **before** implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
+**ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly.
 
-**Always** use Testing sub-agent for writing tests.
+**Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 
-**Always** strictly follow logging standarts `docs/logging.md`. Use "Wide Events" and `Effect.annotateLogs`.
+**Always** strictly follow logging standards in `docs/logging.md`. Use "Wide Events" and `Effect.annotateLogs`.
 
 ## Project Structure
 This is a pnpm monorepo with:
