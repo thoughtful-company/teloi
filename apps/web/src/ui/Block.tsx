@@ -855,12 +855,17 @@ export default function Block({ blockId }: BlockProps) {
     if (typeDef?.isDecorative) {
       const existingDecorativeId = getExistingDecorativeTypeId();
       if (existingDecorativeId) {
-        // Replace: remove existing decorative type, then add new one
+        // Add new type BEFORE removing old to avoid a "no decoration" gap
+        // that would trigger both exit and enter animations
         runtime.runPromise(
           Effect.gen(function* () {
             const Type = yield* TypeT;
 
-            // Clean up checkbox-specific data when removing checkbox type
+            yield* Type.addType(nodeId, typeId);
+            if (trigger.onTrigger) {
+              yield* trigger.onTrigger(nodeId);
+            }
+
             if (existingDecorativeId === System.CHECKBOX) {
               const Tuple = yield* TupleT;
               const isCheckedTuples = yield* Tuple.findByPosition(
@@ -874,10 +879,6 @@ export default function Block({ blockId }: BlockProps) {
             }
 
             yield* Type.removeType(nodeId, existingDecorativeId);
-            yield* Type.addType(nodeId, typeId);
-            if (trigger.onTrigger) {
-              yield* trigger.onTrigger(nodeId);
-            }
           }),
         );
         return true;
