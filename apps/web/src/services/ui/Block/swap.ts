@@ -8,6 +8,10 @@ import { Effect } from "effect";
  * - "up": swap with previous sibling
  * - "down": swap with next sibling
  *
+ * When at boundary (first/last sibling), attempts cross-parent movement:
+ * - "up" at first position: move to last child of parent's previous sibling
+ * - "down" at last position: move to first child of parent's next sibling
+ *
  * Returns true if swap succeeded, false otherwise.
  */
 export const swap = (
@@ -29,7 +33,10 @@ export const swap = (
     if (siblingIndex === -1) return false;
 
     if (direction === "up") {
-      if (siblingIndex === 0) return false;
+      if (siblingIndex === 0) {
+        // At first position - try cross-parent movement
+        return yield* crossParentMove(nodeId, parentId, "up");
+      }
       const prevSiblingId = siblings[siblingIndex - 1]!;
       yield* Node.insertNode({
         nodeId,
@@ -38,7 +45,10 @@ export const swap = (
         siblingId: prevSiblingId,
       });
     } else {
-      if (siblingIndex === siblings.length - 1) return false;
+      if (siblingIndex === siblings.length - 1) {
+        // At last position - try cross-parent movement
+        return yield* crossParentMove(nodeId, parentId, "down");
+      }
       const nextSiblingId = siblings[siblingIndex + 1]!;
       yield* Node.insertNode({
         nodeId,
@@ -57,6 +67,72 @@ export const swap = (
       ),
     ),
   );
+
+/**
+ * Cross-parent movement: move a node to an adjacent parent's children.
+ *
+ * - "up": move to become last child of parent's previous sibling
+ * - "down": move to become first child of parent's next sibling
+ *
+ * Returns true if move succeeded, false if no valid target exists.
+ */
+const crossParentMove = (
+  nodeId: Id.Node,
+  parentId: Id.Node,
+  direction: "up" | "down",
+): Effect.Effect<boolean, never, NodeT> =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+
+    // Get grandparent (parent's parent)
+    const grandparentId = yield* Node.getParent(parentId).pipe(
+      Effect.catchTag("NodeHasNoParentError", () =>
+        Effect.succeed<Id.Node | null>(null),
+      ),
+    );
+    if (!grandparentId) return false;
+
+    // Get parent's siblings
+    const parentSiblings = yield* Node.getNodeChildren(grandparentId);
+    const parentIndex = parentSiblings.indexOf(parentId);
+    if (parentIndex === -1) return false;
+
+    if (direction === "up") {
+      // Find previous parent sibling
+      if (parentIndex === 0) return false;
+      const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
+
+      // Move to become last child of previous parent sibling
+      yield* Node.insertNode({
+        nodeId,
+        parentId: prevParentSiblingId,
+        insert: "after", // "after" with no siblingId = append at end
+      });
+    } else {
+      // Find next parent sibling
+      if (parentIndex === parentSiblings.length - 1) return false;
+      const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
+
+      // Move to become first child of next parent sibling
+      const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
+      if (targetChildren.length > 0) {
+        yield* Node.insertNode({
+          nodeId,
+          parentId: nextParentSiblingId,
+          insert: "before",
+          siblingId: targetChildren[0],
+        });
+      } else {
+        yield* Node.insertNode({
+          nodeId,
+          parentId: nextParentSiblingId,
+          insert: "after", // Empty parent - just insert
+        });
+      }
+    }
+
+    return true;
+  });
 
 /**
  * Move a node to be the first sibling.

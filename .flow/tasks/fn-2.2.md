@@ -60,9 +60,14 @@ return false
 - [ ] All existing movement tests still pass
 - [ ] Type check passes: `pnpm -F @teloi/web typecheck`
 ## Done summary
-TBD
-
+- Added `crossParentMove` helper function to swap.ts
+- Modified `swap()` to call crossParentMove when at boundary instead of returning false
+- Move Down at last position → first child of parent's next sibling
+- Move Up at first position → last child of parent's previous sibling
+- Text editing mode tests now pass (2/2)
+- All 18 existing movement tests still pass
+- Block selection mode handled separately in fn-2.3
 ## Evidence
-- Commits:
-- Tests:
+- Commits: dc8b31d02f3172be21bb2e941a48417db110287f
+- Tests: pnpm -F @teloi/web test:browser src/__tests__/Block/Movement.browser.spec.tsx
 - PRs:
