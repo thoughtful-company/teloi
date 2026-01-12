@@ -56,9 +56,18 @@ pnpm -F @teloi/web test:browser src/__tests__/type-triggers.browser.spec.tsx
 - [ ] Test: `[x]` on list creates checked checkbox
 - [ ] All tests pass: `pnpm -F @teloi/web test:browser src/__tests__/type-triggers.browser.spec.tsx`
 ## Done summary
-TBD
+- Created browser test file for type trigger replacement behavior
+- Added 6 tests covering all acceptance criteria scenarios
+- Tests verify list↔checkbox conversion, same-type literal insertion, user type preservation, and [x] checked checkbox creation
 
+Why:
+- Ensures type trigger replacement behavior is verified
+- Catches regressions in decorative type mutual exclusivity
+
+Verification:
+- All 6 tests pass: `pnpm -F @teloi/web test:browser src/__tests__/type-triggers.browser.spec.tsx`
+- Lint passed via lint-staged
 ## Evidence
-- Commits:
-- Tests:
+- Commits: d1669260c61e6fe461c311dcffb768a2eb193113
+- Tests: pnpm -F @teloi/web test:browser src/__tests__/type-triggers.browser.spec.tsx
 - PRs:
