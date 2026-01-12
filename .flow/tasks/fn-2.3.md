@@ -41,9 +41,11 @@ After cross-parent move, selection should be preserved:
 - [ ] All existing tests still pass
 - [ ] Type check passes: `pnpm -F @teloi/web typecheck`
 ## Done summary
-TBD
-
+- Added `crossParentMoveBlocks` helper function to EditorBuffer.tsx
+- Modified block selection mode handler to call crossParentMove at boundary
+- Works for single and multi-block selection
+- All 27 movement tests pass (9 cross-parent + 18 existing)
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 12aa7fd3bfbfd3b8158d7cb630a8892f341896d2
+- Tests: pnpm -F @teloi/web test:browser src/__tests__/Block/Movement.browser.spec.tsx
 - PRs:

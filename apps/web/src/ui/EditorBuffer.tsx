@@ -120,6 +120,79 @@ function scrollBufferToTop(bufferId: Id.Buffer) {
   });
 }
 
+/**
+ * Cross-parent movement for block selection mode.
+ * Moves selected blocks to adjacent parent sibling.
+ *
+ * - "up": move to become last children of parent's previous sibling
+ * - "down": move to become first children of parent's next sibling
+ *
+ * Returns true if move succeeded, false if no valid target exists.
+ */
+const crossParentMoveBlocks = (
+  nodeIds: readonly Id.Node[],
+  parentId: Id.Node,
+  direction: "up" | "down",
+): Effect.Effect<boolean, never, NodeT> =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+
+    // Get grandparent (parent's parent)
+    const grandparentId = yield* Node.getParent(parentId).pipe(
+      Effect.catchTag("NodeHasNoParentError", () =>
+        Effect.succeed<Id.Node | null>(null),
+      ),
+    );
+    if (!grandparentId) return false;
+
+    // Get parent's siblings
+    const parentSiblings = yield* Node.getNodeChildren(grandparentId);
+    const parentIndex = parentSiblings.indexOf(parentId);
+    if (parentIndex === -1) return false;
+
+    if (direction === "up") {
+      // Find previous parent sibling
+      if (parentIndex === 0) return false;
+      const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
+
+      // Move all nodes to become last children of previous parent sibling
+      for (const nodeId of nodeIds) {
+        yield* Node.insertNode({
+          nodeId,
+          parentId: prevParentSiblingId,
+          insert: "after", // "after" with no siblingId = append at end
+        });
+      }
+    } else {
+      // Find next parent sibling
+      if (parentIndex === parentSiblings.length - 1) return false;
+      const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
+
+      // Move all nodes to become first children of next parent sibling
+      const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
+      if (targetChildren.length > 0) {
+        // Insert before first child, maintaining order
+        yield* Node.moveNodes({
+          nodeIds,
+          parentId: nextParentSiblingId,
+          insert: "before",
+          siblingId: targetChildren[0]!,
+        });
+      } else {
+        // Empty parent - insert nodes one by one
+        for (const nodeId of nodeIds) {
+          yield* Node.insertNode({
+            nodeId,
+            parentId: nextParentSiblingId,
+            insert: "after",
+          });
+        }
+      }
+    }
+
+    return true;
+  });
+
 interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
@@ -355,23 +428,41 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 });
               }
             } else {
-              // Alt+Cmd+Arrow: Swap with adjacent
+              // Alt+Cmd+Arrow: Swap with adjacent (or cross-parent at boundary)
               if (e.key === "ArrowUp") {
-                if (firstIndex === 0) return; // Can't swap up
-                yield* Node.moveNodes({
-                  nodeIds: selectedBlocks,
-                  parentId,
-                  insert: "before",
-                  siblingId: siblings[firstIndex - 1]!,
-                });
+                if (firstIndex === 0) {
+                  // At first position - try cross-parent movement
+                  const moved = yield* crossParentMoveBlocks(
+                    selectedBlocks,
+                    parentId,
+                    "up",
+                  );
+                  if (!moved) return;
+                } else {
+                  yield* Node.moveNodes({
+                    nodeIds: selectedBlocks,
+                    parentId,
+                    insert: "before",
+                    siblingId: siblings[firstIndex - 1]!,
+                  });
+                }
               } else {
-                if (lastIndex === siblings.length - 1) return; // Can't swap down
-                yield* Node.moveNodes({
-                  nodeIds: selectedBlocks,
-                  parentId,
-                  insert: "after",
-                  siblingId: siblings[lastIndex + 1]!,
-                });
+                if (lastIndex === siblings.length - 1) {
+                  // At last position - try cross-parent movement
+                  const moved = yield* crossParentMoveBlocks(
+                    selectedBlocks,
+                    parentId,
+                    "down",
+                  );
+                  if (!moved) return;
+                } else {
+                  yield* Node.moveNodes({
+                    nodeIds: selectedBlocks,
+                    parentId,
+                    insert: "after",
+                    siblingId: siblings[lastIndex + 1]!,
+                  });
+                }
               }
             }
 
