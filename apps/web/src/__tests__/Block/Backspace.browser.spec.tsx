@@ -200,4 +200,28 @@ describe("Block Backspace key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
     }).pipe(runtime.runPromise);
   });
+
+  it("merges with previous sibling when Alt+Backspace pressed at start", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First" },
+          { text: "Second" },
+        ]);
+
+      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      const Node = yield* NodeT;
+      const children = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
 });

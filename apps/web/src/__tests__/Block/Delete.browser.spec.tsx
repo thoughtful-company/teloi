@@ -184,4 +184,28 @@ describe("Block Delete key", () => {
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
     }).pipe(runtime.runPromise);
   });
+
+  it("merges with next sibling when Alt+Delete pressed at end", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          { text: "First" },
+          { text: "Second" },
+        ]);
+
+      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+      const Node = yield* NodeT;
+      const children = yield* Node.getNodeChildren(rootNodeId);
+      yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
 });

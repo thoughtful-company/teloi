@@ -975,11 +975,17 @@ export default function TextEditor(props: TextEditorProps) {
     // Filter out conflicting shortcuts from defaultKeymap:
     // - Mod-[ and Mod-] for browser back/forward navigation
     // - Mod-i (selectParentSyntax) conflicts with our italic shortcut
+    // - Mac Mod-Backspace/Delete and Alt-Backspace/Delete so our Prec.lowest()
+    //   fallback can handle merge at boundaries (these are no-ops at pos 0/end anyway)
     const filteredDefaultKeymap = defaultKeymap.filter(
       (binding) =>
         binding.key !== "Mod-[" &&
         binding.key !== "Mod-]" &&
-        binding.key !== "Mod-i",
+        binding.key !== "Mod-i" &&
+        binding.mac !== "Mod-Backspace" &&
+        binding.mac !== "Mod-Delete" &&
+        binding.mac !== "Alt-Backspace" &&
+        binding.mac !== "Alt-Delete",
     );
     extensions.push(keymap.of(filteredDefaultKeymap));
 
