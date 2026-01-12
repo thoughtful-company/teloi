@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-01-12T17:50:12.211826Z",
+  "depends_on": [
+    "fn-1.6"
+  ],
+  "epic": "fn-1",
+  "id": "fn-1.7",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-1.7.md",
+  "status": "todo",
+  "title": "Add IS_CHECKED tuple cleanup on checkbox removal",
+  "updated_at": "2026-01-12T17:52:30.053874Z"
+}

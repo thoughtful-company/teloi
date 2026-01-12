@@ -9,6 +9,7 @@ const ListBullet = () => (
 
 export const listElementDefinition: BlockTypeDefinition = {
   id: System.LIST_ELEMENT,
+  isDecorative: true,
 
   renderDecoration: () => <ListBullet />,
 
