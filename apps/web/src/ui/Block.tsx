@@ -836,11 +836,40 @@ export default function Block({ blockId }: BlockProps) {
       });
   };
 
+  const getExistingDecorativeTypeId = (): Id.Node | undefined => {
+    const decorativeIds = BlockType.getDecorativeTypeIds();
+    return activeTypes().find((typeId) => decorativeIds.includes(typeId));
+  };
+
   const handleTypeTrigger = (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
   ): boolean => {
+    // If node already has THIS exact type, don't trigger (insert literal text)
     if (hasType(typeId)) return false;
+
+    const typeDef = BlockType.get(typeId);
+
+    // If this is a decorative type and node has a DIFFERENT decorative type, replace it
+    if (typeDef?.isDecorative) {
+      const existingDecorativeId = getExistingDecorativeTypeId();
+      if (existingDecorativeId) {
+        // Replace: remove existing decorative type, then add new one
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Type = yield* TypeT;
+            yield* Type.removeType(nodeId, existingDecorativeId);
+            yield* Type.addType(nodeId, typeId);
+            if (trigger.onTrigger) {
+              yield* trigger.onTrigger(nodeId);
+            }
+          }),
+        );
+        return true;
+      }
+    }
+
+    // Normal case: no decorative type conflict, just add
     runtime.runPromise(
       Effect.gen(function* () {
         const Type = yield* TypeT;

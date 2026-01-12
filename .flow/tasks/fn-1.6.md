@@ -73,9 +73,18 @@ const handleTypeTrigger = (typeId: Id.Node, trigger: BlockType.TriggerDefinition
 - [ ] Same-type check (`hasType(typeId)`) still returns false (literal text insertion)
 - [ ] Type check passes: `pnpm -F @teloi/web typecheck`
 ## Done summary
-TBD
+- Added `getExistingDecorativeTypeId` helper to find any existing decorative type on a node
+- Modified `handleTypeTrigger` to replace existing decorative type when adding a new one
+- Exported `getDecorativeTypeIds` from BlockType index
 
+Why:
+- Enables list ↔ checkbox conversion via type triggers
+- Decorative types are now mutually exclusive as intended
+
+Verification:
+- No type errors in modified files
+- Lint passed via lint-staged
 ## Evidence
-- Commits:
+- Commits: f97dffffdf7427fc9bcef9c3144ae7537c525b46
 - Tests:
 - PRs:

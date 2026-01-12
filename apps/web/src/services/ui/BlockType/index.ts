@@ -4,5 +4,6 @@ export {
   get,
   getAll,
   getTriggersWithDefinitions,
+  getDecorativeTypeIds,
   type TriggerWithDefinition,
 } from "./registry";
