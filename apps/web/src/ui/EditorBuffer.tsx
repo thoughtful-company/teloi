@@ -761,22 +761,45 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      const modPressed = isMac ? e.metaKey : e.ctrlKey;
+
       if (
         (e.key === "Delete" || e.key === "Backspace") &&
         isBlockSelectionMode()
       ) {
         e.preventDefault();
+
+        // Force-delete with Cmd+Shift (Mac) / Ctrl+Shift (Win/Linux) includes descendants
+        const isForceDelete = e.shiftKey && modPressed;
+
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
             const Window = yield* WindowT;
             const Node = yield* NodeT;
+            const Yjs = yield* YjsT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
 
             const { selectedBlocks } = bufferDoc;
             if (selectedBlocks.length === 0) return;
+
+            // Collect ALL nodes to delete (including descendants for force-delete)
+            let allNodesToDelete: Id.Node[];
+
+            if (isForceDelete) {
+              // Force-delete: include all descendants
+              allNodesToDelete = [];
+              for (const blockId of selectedBlocks) {
+                allNodesToDelete.push(blockId);
+                const descendants = yield* Node.getAllDescendants(blockId);
+                allNodesToDelete.push(...descendants);
+              }
+            } else {
+              // Regular delete: only selected blocks
+              allNodesToDelete = [...selectedBlocks];
+            }
 
             // Determine focus after deletion - works for nested blocks too
             const firstSelectedBlock = selectedBlocks[0]!;
@@ -824,6 +847,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               yield* Node.deleteNode(nodeId);
             }
 
+            // Clean up Yjs text for ALL deleted nodes (fixes previous bug)
+            for (const deletedId of allNodesToDelete) {
+              Yjs.deleteText(deletedId);
+            }
+
             // Stay in block selection mode with the next block selected
             if (focusAfterDelete) {
               yield* Buffer.setBlockSelection(
@@ -839,8 +867,6 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
-
-      const modPressed = isMac ? e.metaKey : e.ctrlKey;
 
       if (e.key === "c" && modPressed && isBlockSelectionMode()) {
         e.preventDefault();

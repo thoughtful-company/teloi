@@ -54,3 +54,13 @@ export const getTriggersWithDefinitions =
     }
     return result;
   };
+
+/**
+ * Get IDs of all decorative types.
+ * Decorative types are mutually exclusive - only one can be active on a node at a time.
+ */
+export const getDecorativeTypeIds = (): readonly Id.Node[] => {
+  return Array.from(definitions.values())
+    .filter((def) => def.isDecorative)
+    .map((def) => def.id);
+};

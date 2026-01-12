@@ -283,6 +283,7 @@ export type EditorAction =
   | { _tag: "ShiftTab" }
   | { _tag: "BackspaceAtStart" }
   | { _tag: "DeleteAtEnd" }
+  | { _tag: "ForceDelete" }
   | {
       _tag: "Navigate";
       direction: "left" | "right" | "up" | "down";
@@ -325,6 +326,7 @@ export const Action = {
   ShiftTab: (): EditorAction => ({ _tag: "ShiftTab" }),
   BackspaceAtStart: (): EditorAction => ({ _tag: "BackspaceAtStart" }),
   DeleteAtEnd: (): EditorAction => ({ _tag: "DeleteAtEnd" }),
+  ForceDelete: (): EditorAction => ({ _tag: "ForceDelete" }),
   Navigate: (
     direction: "left" | "right" | "up" | "down",
     goalX?: number,
@@ -664,6 +666,7 @@ export default function TextEditor(props: TextEditorProps) {
       { key: "Shift-Tab", action: Action.ShiftTab() },
       { key: "Mod-.", action: Action.ZoomIn() },
       { key: "Escape", action: Action.Escape() },
+      { key: "Mod-Shift-Backspace", action: Action.ForceDelete() },
       { key: "Alt-Mod-ArrowUp", action: Action.Move("swapUp") },
       { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
       { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },

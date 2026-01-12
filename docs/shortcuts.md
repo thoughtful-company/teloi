@@ -81,6 +81,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Tab/Shift+Tab` - Indent/outdent selected blocks
 - `Alt+Mod+ArrowUp/Down` - Swap selected blocks with sibling
 - `Shift+Alt+Mod+ArrowUp/Down` - Move selected blocks to first/last
+- `Mod+Shift+Delete/Backspace` - Force-delete selected blocks and all children
 - `Mod+C` - Copy selected blocks
 - `Mod+X` - Cut selected blocks
 - `Mod+A` - Select all blocks
@@ -112,6 +113,13 @@ const keymap = Prec.highest(
 - Text formatting shortcuts
 
 **Note:** Events that reach CodeMirror are NOT handled by EditorBuffer (checked via `.cm-editor` selector). This prevents double-handling of shortcuts.
+
+**Examples:**
+- `Backspace` (at start) - Merge with previous block
+- `Delete` (at end) - Merge with next block
+- `Mod+Shift+Backspace` - Force-delete block and all children
+- `Tab` - Indent block
+- `Shift+Tab` - Outdent block
 
 ## Mod Key Pattern
 

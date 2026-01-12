@@ -1,0 +1,25 @@
+{
+  "assignee": "44.5.53.6.k@gmail.com",
+  "claim_note": "",
+  "claimed_at": "2026-01-12T18:20:14.700997Z",
+  "created_at": "2026-01-12T17:37:01.116219Z",
+  "depends_on": [
+    "fn-1.7"
+  ],
+  "epic": "fn-1",
+  "evidence": {
+    "commits": [
+      "d1669260c61e6fe461c311dcffb768a2eb193113"
+    ],
+    "prs": [],
+    "tests": [
+      "pnpm -F @teloi/web test:browser src/__tests__/type-triggers.browser.spec.tsx"
+    ]
+  },
+  "id": "fn-1.4",
+  "priority": null,
+  "spec_path": ".flow/tasks/fn-1.4.md",
+  "status": "done",
+  "title": "Write browser tests for type trigger replacement",
+  "updated_at": "2026-01-12T19:07:54.078079Z"
+}

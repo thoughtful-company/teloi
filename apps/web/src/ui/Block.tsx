@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
+import { TupleT } from "@/services/domain/Tuple";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
@@ -523,6 +524,66 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleForceDelete = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Block = yield* BlockT;
+        const Buffer = yield* BufferT;
+        const Window = yield* WindowT;
+        const Store = yield* StoreT;
+        const Node = yield* NodeT;
+        const Yjs = yield* YjsT;
+
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        const rootNodeId = Option.isSome(bufferDoc)
+          ? (bufferDoc.value.assignedNodeId as Id.Node)
+          : null;
+
+        // Collect all descendants BEFORE deletion (they'll be gone from DB after)
+        const descendants = yield* Node.getAllDescendants(nodeId);
+        const allNodesToDelete = [nodeId, ...descendants];
+
+        // Find focus target before deletion
+        const prevNodeOpt = yield* Block.findPreviousNode(nodeId);
+        const focusNodeId = Option.isSome(prevNodeOpt)
+          ? prevNodeOpt.value
+          : rootNodeId;
+
+        if (!focusNodeId) return;
+
+        // Delete the node (materializer cascades to descendants in DB)
+        yield* Node.deleteNode(nodeId);
+
+        // Clean up Yjs text for all deleted nodes
+        for (const deletedId of allNodesToDelete) {
+          Yjs.deleteText(deletedId);
+        }
+
+        // Set cursor at end of focus target
+        const targetYtext = Yjs.getText(focusNodeId);
+        const cursorOffset = targetYtext.length;
+
+        yield* Buffer.setSelection(
+          bufferId,
+          makeCollapsedSelection(focusNodeId, cursorOffset),
+        );
+
+        // Update active element
+        if (focusNodeId === rootNodeId) {
+          yield* Window.setActiveElement(
+            Option.some({ type: "title" as const, bufferId }),
+          );
+        } else {
+          const targetBlockId = Id.makeBlockId(bufferId, focusNodeId);
+          yield* Window.setActiveElement(
+            Option.some({ type: "block" as const, id: targetBlockId }),
+          );
+        }
+      }),
+    );
+  };
+
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -797,11 +858,55 @@ export default function Block({ blockId }: BlockProps) {
       });
   };
 
+  const getExistingDecorativeTypeId = (): Id.Node | undefined => {
+    const decorativeIds = BlockType.getDecorativeTypeIds();
+    return activeTypes().find((typeId) => decorativeIds.includes(typeId));
+  };
+
   const handleTypeTrigger = (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
   ): boolean => {
+    // If node already has THIS exact type, don't trigger (insert literal text)
     if (hasType(typeId)) return false;
+
+    const typeDef = BlockType.get(typeId);
+
+    // If this is a decorative type and node has a DIFFERENT decorative type, replace it
+    if (typeDef?.isDecorative) {
+      const existingDecorativeId = getExistingDecorativeTypeId();
+      if (existingDecorativeId) {
+        // Add new type BEFORE removing old to avoid a "no decoration" gap
+        // that would trigger both exit and enter animations
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Type = yield* TypeT;
+
+            yield* Type.addType(nodeId, typeId);
+            if (trigger.onTrigger) {
+              yield* trigger.onTrigger(nodeId);
+            }
+
+            if (existingDecorativeId === System.CHECKBOX) {
+              const Tuple = yield* TupleT;
+              const isCheckedTuples = yield* Tuple.findByPosition(
+                System.IS_CHECKED,
+                0,
+                nodeId,
+              );
+              for (const tuple of isCheckedTuples) {
+                yield* Tuple.delete(tuple.id);
+              }
+            }
+
+            yield* Type.removeType(nodeId, existingDecorativeId);
+          }),
+        );
+        return true;
+      }
+    }
+
+    // Normal case: no decorative type conflict, just add
     runtime.runPromise(
       Effect.gen(function* () {
         const Type = yield* TypeT;
@@ -953,6 +1058,7 @@ export default function Block({ blockId }: BlockProps) {
       Match.tag("ShiftTab", () => handleShiftTab()),
       Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
       Match.tag("DeleteAtEnd", () => handleDeleteAtEnd()),
+      Match.tag("ForceDelete", () => handleForceDelete()),
       Match.tag("Navigate", ({ direction, goalX }) =>
         Match.value(direction).pipe(
           Match.when("left", () => handleArrowLeftAtStart()),

@@ -95,6 +95,7 @@ const CheckboxDecoration = (props: CheckboxDecorationProps) => {
 
 export const checkboxDefinition: BlockTypeDefinition = {
   id: System.CHECKBOX,
+  isDecorative: true,
 
   renderDecoration: (props) => <CheckboxDecoration nodeId={props.nodeId} />,
 

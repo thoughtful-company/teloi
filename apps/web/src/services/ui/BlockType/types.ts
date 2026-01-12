@@ -40,6 +40,13 @@ export interface BlockTypeDefinition {
   id: Id.Node;
 
   /**
+   * Decorative types are mutually exclusive - only one can be active on a node at a time.
+   * When a new decorative type is triggered, any existing decorative type is replaced.
+   * e.g., list bullets and checkboxes are decorative; user-created types (#tags) are not.
+   */
+  isDecorative?: boolean;
+
+  /**
    * Renders a decoration before the block content (e.g., bullet point, checkbox).
    * Return null to render nothing. Only the first active type with a decoration is rendered.
    */
