@@ -224,6 +224,7 @@ tfoot th {
   --text-badge--font-weight: 500;
   --text-badge--letter-spacing: 0.2px;
   --inline-type-gap: 0.25rem;
+  --type-badge-spacing: 0.375rem;
 }
 
 @layer base {

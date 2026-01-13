@@ -217,7 +217,7 @@ class InlineTypeBadgeWidget extends WidgetType {
 
   toDOM() {
     const container = document.createElement("span");
-    container.className = "inline-type-badges ml-[var(--inline-type-gap)]";
+    container.className = "inline-type-badges inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]";
 
     // Mount Solid component into the container
     this.dispose = render(

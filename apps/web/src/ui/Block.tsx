@@ -1381,7 +1381,7 @@ export default function Block({ blockId }: BlockProps) {
                   <FormattedText ytext={ytext} />
                 </Show>
                 <Show when={userTypes().length > 0}>
-                  <span class="ml-[var(--inline-type-gap)]">
+                  <span class="inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]">
                     <For each={userTypes()}>
                       {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
                     </For>
