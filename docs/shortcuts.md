@@ -77,6 +77,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Mod+ArrowUp/Down` - Level-by-level collapse/expand
 - `Mod+Shift+ArrowUp/Down` - Drill out to parent / drill into first child
 - `Enter` - Start editing focused block
+- `Space` - Create new sibling block and start editing
 - `Delete/Backspace` - Delete selected blocks
 - `Tab/Shift+Tab` - Indent/outdent selected blocks
 - `Alt+Mod+ArrowUp/Down` - Swap selected blocks with sibling

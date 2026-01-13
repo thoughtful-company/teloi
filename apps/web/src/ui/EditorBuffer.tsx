@@ -851,6 +851,51 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // Space in block selection mode: create new sibling and enter text editing
+      if (e.key === " " && isBlockSelectionMode()) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
+            const Node = yield* NodeT;
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { blockSelectionAnchor, blockSelectionFocus } = bufferDoc;
+            const targetBlock = blockSelectionFocus ?? blockSelectionAnchor;
+            if (!targetBlock) return;
+
+            const parentId = yield* Node.getParent(targetBlock);
+            const newNodeId = yield* Node.insertNode({
+              parentId,
+              insert: "after",
+              siblingId: targetBlock,
+            });
+
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { nodeId: newNodeId },
+                anchorOffset: 0,
+                focus: { nodeId: newNodeId },
+                focusOffset: 0,
+                goalX: null,
+                goalLine: null,
+                assoc: 0,
+              }),
+            );
+            yield* Buffer.setBlockSelection(bufferId, [], newNodeId);
+
+            const blockId = Id.makeBlockId(bufferId, newNodeId);
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: blockId }),
+            );
+          }).pipe(Effect.catchTag("NodeHasNoParentError", () => Effect.void)),
+        );
+      }
+
       const modPressed = isMac ? e.metaKey : e.ctrlKey;
 
       if (
