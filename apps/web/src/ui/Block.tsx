@@ -26,7 +26,7 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { Transition, TransitionGroup } from "solid-transition-group";
+import { Transition } from "solid-transition-group";
 import TextEditor, {
   type EditorAction,
   type EnterKeyInfo,
@@ -1412,15 +1412,9 @@ export default function Block({ blockId }: BlockProps) {
           <Show when={store.childBlockIds.length > 0}>
             <div class="w-max h-0"> </div>
           </Show>
-          <TransitionGroup
-            moveClass="block-move"
-            exitActiveClass="block-exit-active"
-            exitToClass="block-exit-to"
-          >
-            <For each={store.childBlockIds}>
-              {(childId) => <Block blockId={childId} />}
-            </For>
-          </TransitionGroup>
+          <For each={store.childBlockIds}>
+            {(childId) => <Block blockId={childId} />}
+          </For>
         </div>
       </Show>
 
