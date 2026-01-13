@@ -1127,6 +1127,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           }),
         );
       }
+
+      // Prevent browser default scroll for arrow keys in all cases
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
