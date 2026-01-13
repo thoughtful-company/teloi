@@ -148,4 +148,69 @@ describe("Space in block selection mode", () => {
       yield* Then.NODE_HAS_TEXT(newSibling, "");
     }).pipe(runtime.runPromise);
   });
+
+  it("does nothing when no block is focused", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, rootNodeId, childNodeIds, windowId } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          { text: "Block A" },
+          { text: "Block B" },
+        ]);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      const Store = yield* StoreT;
+
+      yield* Store.setDocument(
+        "buffer",
+        {
+          windowId,
+          parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+          assignedNodeId: rootNodeId,
+          selectedBlocks: [],
+          blockSelectionAnchor: null,
+          blockSelectionFocus: null,
+          lastFocusedBlockId: childNodeIds[0],
+          toggledNodes: [],
+          selection: null,
+          activeViewId: null,
+        },
+        bufferId,
+      );
+
+      yield* Store.setDocument(
+        "window",
+        {
+          panes: [],
+          activeElement: { type: "buffer" as const, id: bufferId },
+        },
+        windowId,
+      );
+
+      yield* Effect.promise(() =>
+        waitFor(
+          async () => {
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const activeEl = Option.getOrThrow(windowDoc).activeElement;
+            expect(activeEl?.type).toBe("buffer");
+
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([]);
+            expect(Option.getOrThrow(bufferDoc).blockSelectionAnchor).toBeNull();
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      yield* When.USER_PRESSES(" ");
+
+      yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+    }).pipe(runtime.runPromise);
+  });
 });

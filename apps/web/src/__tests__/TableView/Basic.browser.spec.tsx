@@ -240,9 +240,9 @@ describe("TableView", () => {
               expect(rows.length, "Expected 3 rows").toBe(3);
 
               // Check each row has the expected status
-              const row1Text = rows[0]!.textContent;
-              const row2Text = rows[1]!.textContent;
-              const row3Text = rows[2]!.textContent;
+              const row1Text = rows[0]?.textContent;
+              const row2Text = rows[1]?.textContent;
+              const row3Text = rows[2]?.textContent;
 
               expect(row1Text, "Row 1 should contain 'Done'").toContain("Done");
               expect(row2Text, "Row 2 should contain 'In Progress'").toContain(

@@ -750,8 +750,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 : Math.min(siblings.length - 1, focusIndex + 1);
 
             // ArrowUp on first block: scroll to show top of buffer (skip normal scroll)
+            // Only trigger for first child at buffer root, not nested blocks
             const didScrollToTop =
-              e.key === "ArrowUp" && focusIndex === 0 && !e.shiftKey;
+              e.key === "ArrowUp" &&
+              focusIndex === 0 &&
+              !e.shiftKey &&
+              parentId === bufferDoc.assignedNodeId;
             if (didScrollToTop) {
               scrollBufferToTop(bufferId);
             }

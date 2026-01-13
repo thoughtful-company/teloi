@@ -1312,6 +1312,107 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("ArrowUp on first nested child does NOT scroll to top of buffer", async () => {
+    await Effect.gen(function* () {
+      // Given: Root with one child (Parent), Parent has children A, B, C
+      // Structure:
+      //   Root (buffer assigned)
+      //     └── Parent (top-level block)
+      //           ├── A  <-- first child of Parent, but NOT first child of Root
+      //           ├── B
+      //           └── C
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Create A, B, C as children of Parent
+      const nodeA = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "A",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        siblingId: nodeA,
+        text: "B",
+      });
+
+      render(() => (
+        <div class="overflow-y-auto" style={{ height: "500px" }}>
+          <EditorBuffer bufferId={bufferId} />
+        </div>
+      ));
+
+      // Select A (first child of Parent, which is NOT the buffer root's first child)
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // Set up scroll mocking
+      const scrollContainer =
+        document.querySelector<HTMLElement>(".overflow-y-auto");
+      if (!scrollContainer) throw new Error("Scroll container not found");
+
+      // Simulate that user has scrolled down
+      let currentScrollTop = 100;
+      const scrollTopSetter = vi.fn((value: number) => {
+        currentScrollTop = value;
+      });
+      Object.defineProperty(scrollContainer, "scrollTop", {
+        get: () => currentScrollTop,
+        set: scrollTopSetter,
+        configurable: true,
+      });
+
+      // Mock container rect
+      vi.spyOn(scrollContainer, "getBoundingClientRect").mockReturnValue({
+        top: 0,
+        bottom: 500,
+        left: 0,
+        right: 800,
+        width: 800,
+        height: 500,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+      // Mock block A as being visible
+      const blockAEl = document.querySelector(`[data-element-id="${blockA}"]`);
+      vi.spyOn(blockAEl as Element, "getBoundingClientRect").mockReturnValue({
+        top: 150,
+        bottom: 180,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 30,
+        x: 0,
+        y: 150,
+        toJSON: () => ({}),
+      });
+
+      // When: User presses ArrowUp (while on first nested child A)
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Then: Selection stays on A (no previous sibling to navigate to)
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+
+      // Wait for potential scroll animation
+      yield* Effect.promise(
+        () => new Promise((resolve) => setTimeout(resolve, 200)),
+      );
+
+      // And: scrollTop should NOT have been changed (no scroll-to-header behavior)
+      // The bug is that scroll-to-header triggers for ANY first child, not just root's first child
+      expect(scrollTopSetter).not.toHaveBeenCalled();
+      expect(currentScrollTop).toBe(100); // Should remain unchanged
+    }).pipe(runtime.runPromise);
+  });
+
   it("ArrowDown after Escape restores to last focused block, not next block", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
