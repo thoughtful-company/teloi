@@ -821,6 +821,46 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleZoomOut = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const Store = yield* StoreT;
+        const Node = yield* NodeT;
+        const Navigation = yield* NavigationT;
+        const Window = yield* WindowT;
+        const Block = yield* BlockT;
+
+        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+        if (Option.isNone(bufferDoc) || !bufferDoc.value.assignedNodeId) return;
+
+        const rootNodeId = Id.Node.make(bufferDoc.value.assignedNodeId);
+        const parentId = yield* Node.getParent(rootNodeId).pipe(
+          Effect.catchTag("NodeHasNoParentError", () =>
+            Effect.succeed<Id.Node | null>(null),
+          ),
+        );
+
+        if (!parentId) return;
+
+        yield* Navigation.navigateTo(parentId);
+
+        // Check if the previous root (now a block) is expanded
+        const rootBlockId = Id.makeBlockId(bufferId, rootNodeId);
+        const isRootExpanded = yield* Block.isExpanded(rootBlockId);
+
+        // If expanded, select the original node; if collapsed, select the root block
+        const targetBlockId = isRootExpanded
+          ? Id.makeBlockId(bufferId, nodeId)
+          : rootBlockId;
+
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: targetBlockId }),
+        );
+      }),
+    );
+  };
+
   const handleToggleExpand = (e: MouseEvent) => {
     e.stopPropagation();
     runtime.runPromise(
@@ -1102,6 +1142,7 @@ export default function Block({ blockId }: BlockProps) {
         enterBlockSelectionMode();
       }),
       Match.tag("ZoomIn", () => handleZoomIn()),
+      Match.tag("ZoomOut", () => handleZoomOut()),
       Match.tag("BlockSelect", () => enterBlockSelectionMode()),
       Match.tag("Move", ({ action: moveAction }) => handleMove(moveAction)),
       Match.tag("TypeTrigger", ({ typeId, trigger }) =>

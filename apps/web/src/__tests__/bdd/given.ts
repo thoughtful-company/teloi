@@ -515,6 +515,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
     const Yjs = yield* YjsT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
+    const paneId = Id.Pane.make(nanoid());
     const bufferId = Id.Buffer.make(nanoid());
     const parentNodeId = Id.Node.make(nanoid());
 
@@ -534,14 +535,24 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
     });
     Yjs.getText(rootNodeId).insert(0, rootText);
 
-    // Create window document
+    // Create window document with pane reference
     yield* Store.setDocument(
       "window",
       {
-        panes: [],
+        panes: [paneId],
         activeElement: null,
       },
       windowId,
+    );
+
+    // Create pane document with buffer reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        buffers: [bufferId],
+      },
+      paneId,
     );
 
     // Create buffer document with assignedNodeId = rootNodeId (not parentNodeId)
@@ -549,7 +560,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
       "buffer",
       {
         windowId,
-        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+        parent: { id: paneId, type: "pane" },
         assignedNodeId: rootNodeId,
         selectedBlocks: [],
         blockSelectionAnchor: null,

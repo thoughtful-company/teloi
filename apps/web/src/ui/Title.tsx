@@ -6,6 +6,7 @@ import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
 import { TypePickerT } from "@/services/ui/TypePicker";
+import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -224,6 +225,32 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     setPickerState(null);
   };
 
+  const handleZoomOut = () => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Node = yield* NodeT;
+        const Navigation = yield* NavigationT;
+        const Window = yield* WindowT;
+
+        const parentId = yield* Node.getParent(nodeId).pipe(
+          Effect.catchTag("NodeHasNoParentError", () =>
+            Effect.succeed<Id.Node | null>(null),
+          ),
+        );
+
+        if (!parentId) return;
+
+        yield* Navigation.navigateTo(parentId);
+
+        // Preserve selection: title's nodeId becomes a block in the parent view
+        const newBlockId = Id.makeBlockId(bufferId, nodeId);
+        yield* Window.setActiveElement(
+          Option.some({ type: "block" as const, id: newBlockId }),
+        );
+      }),
+    );
+  };
+
   const handleAction = (action: EditorAction): void => {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => {
@@ -383,6 +410,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           }),
         );
       }),
+      Match.tag("ZoomOut", () => handleZoomOut()),
       Match.orElse(() => {}),
     );
   };

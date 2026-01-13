@@ -300,6 +300,7 @@ export type EditorAction =
   | { _tag: "Blur" }
   | { _tag: "Escape" }
   | { _tag: "ZoomIn" }
+  | { _tag: "ZoomOut" }
   | { _tag: "BlockSelect"; direction: "up" | "down" }
   | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
   | { _tag: "Collapse"; goalX?: number }
@@ -353,6 +354,7 @@ export const Action = {
   Blur: (): EditorAction => ({ _tag: "Blur" }),
   Escape: (): EditorAction => ({ _tag: "Escape" }),
   ZoomIn: (): EditorAction => ({ _tag: "ZoomIn" }),
+  ZoomOut: (): EditorAction => ({ _tag: "ZoomOut" }),
   BlockSelect: (direction: "up" | "down"): EditorAction => ({
     _tag: "BlockSelect",
     direction,
@@ -665,6 +667,7 @@ export default function TextEditor(props: TextEditorProps) {
       { key: "Tab", action: Action.Tab() },
       { key: "Shift-Tab", action: Action.ShiftTab() },
       { key: "Mod-.", action: Action.ZoomIn() },
+      { key: "Mod-,", action: Action.ZoomOut() },
       { key: "Escape", action: Action.Escape() },
       { key: "Mod-Shift-Backspace", action: Action.ForceDelete() },
       { key: "Alt-Mod-ArrowUp", action: Action.Move("swapUp") },
