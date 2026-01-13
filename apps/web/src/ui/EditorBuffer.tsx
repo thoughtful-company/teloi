@@ -932,6 +932,89 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
+      // Enter/Space with no selection: focus or create last block, then enter editing mode
+      // Existing handlers above return early if no block is selected
+      if (e.key === "Enter" || e.key === " ") {
+        const target = e.target;
+        if (target instanceof HTMLElement && target.closest(".cm-editor")) {
+          return;
+        }
+
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+            const Window = yield* WindowT;
+            const Store = yield* StoreT;
+            const Yjs = yield* YjsT;
+
+            const sessionId = yield* Store.getSessionId();
+            const windowId = Id.Window.make(sessionId);
+            const windowDoc = yield* Store.getDocument("window", windowId);
+            if (Option.isNone(windowDoc)) return;
+
+            // Only handle when activeElement is null or this buffer (not a block/title)
+            const ae = windowDoc.value.activeElement;
+            if (ae !== null && (ae.type !== "buffer" || ae.id !== bufferId)) {
+              return;
+            }
+
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+            if (bufferDoc.selectedBlocks.length > 0) return;
+
+            const rootNodeId = bufferDoc.assignedNodeId as Id.Node;
+            const children = yield* Node.getNodeChildren(rootNodeId);
+
+            let targetNodeId: Id.Node;
+
+            if (children.length === 0) {
+              targetNodeId = yield* Node.insertNode({
+                parentId: rootNodeId,
+                insert: "after",
+              });
+            } else {
+              const lastChildId = children[children.length - 1]!;
+              const lastChildText = Yjs.getText(lastChildId).toString();
+
+              if (lastChildText === "") {
+                targetNodeId = lastChildId;
+              } else {
+                targetNodeId = yield* Node.insertNode({
+                  parentId: rootNodeId,
+                  insert: "after",
+                  siblingId: lastChildId,
+                });
+              }
+            }
+
+            const textLength = Yjs.getText(targetNodeId).toString().length;
+
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                anchor: { nodeId: targetNodeId },
+                anchorOffset: textLength,
+                focus: { nodeId: targetNodeId },
+                focusOffset: textLength,
+                goalX: null,
+                goalLine: null,
+                assoc: 0,
+              }),
+            );
+
+            yield* Buffer.setBlockSelection(bufferId, [], targetNodeId);
+
+            const blockId = Id.makeBlockId(bufferId, targetNodeId);
+            yield* Window.setActiveElement(
+              Option.some({ type: "block" as const, id: blockId }),
+            );
+          }),
+        );
+
+        e.preventDefault();
+      }
+
       const modPressed = isMac ? e.metaKey : e.ctrlKey;
 
       if (
