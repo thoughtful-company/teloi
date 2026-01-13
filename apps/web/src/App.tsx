@@ -6,15 +6,19 @@ import { StoreT } from "@/services/external/Store";
 import { NavigationT } from "@/services/ui/Navigation";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { Component, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import CommandPalette from "./ui/CommandPalette";
 import EditorBuffer from "./ui/EditorBuffer";
 import PaneWrapper from "./ui/PaneWrapper";
 import { Sidebar } from "./ui/Sidebar";
+import type { CommandContext } from "./commands";
 
 const STORAGE_KEY = "teloi:sidebar:collapsed";
 
 const App: Component = () => {
   const runtime = useBrowserRuntime();
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false);
+  const [commandContext, setCommandContext] = createSignal<CommandContext | null>(null);
 
   onMount(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -31,6 +35,9 @@ const App: Component = () => {
               case "ToggleSidebar":
                 toggleSidebar();
                 break;
+              case "OpenCommandPalette":
+                openCommandPalette();
+                break;
             }
           }),
         );
@@ -41,6 +48,41 @@ const App: Component = () => {
       runtime.runFork(Fiber.interrupt(fiber));
     });
   });
+
+  const openCommandPalette = () => {
+    // Get context from first buffer (MVP simplification)
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Store = yield* StoreT;
+        const sessionId = yield* Store.getSessionId();
+        const windowId = Id.Window.make(sessionId);
+
+        const windowDoc = yield* Store.getDocument("window", windowId);
+        if (Option.isNone(windowDoc)) return;
+
+        const firstPaneId = windowDoc.value.panes[0];
+        if (!firstPaneId) return;
+
+        const paneDoc = yield* Store.getDocument("pane", firstPaneId);
+        if (Option.isNone(paneDoc)) return;
+
+        const firstBufferId = paneDoc.value.buffers[0];
+        if (!firstBufferId) return;
+
+        const bufferDoc = yield* Store.getDocument("buffer", firstBufferId);
+        if (Option.isNone(bufferDoc)) return;
+
+        const nodeId = bufferDoc.value.assignedNodeId;
+        if (!nodeId) return;
+
+        setCommandContext({
+          bufferId: firstBufferId,
+          nodeId: nodeId as Id.Node,
+        });
+        setCommandPaletteOpen(true);
+      }),
+    );
+  };
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed();
@@ -84,6 +126,13 @@ const App: Component = () => {
 
   return (
     <div class="flex h-full w-full">
+      {/* Command Palette */}
+      <CommandPalette
+        open={commandPaletteOpen()}
+        onClose={() => setCommandPaletteOpen(false)}
+        context={commandContext()}
+      />
+
       {/* Sidebar - full height when open */}
       <Show when={!sidebarCollapsed()}>
         <Sidebar onToggle={toggleSidebar} />

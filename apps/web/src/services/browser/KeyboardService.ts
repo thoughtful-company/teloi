@@ -5,6 +5,7 @@ import { Context, Data, Effect, Layer, Stream } from "effect";
  */
 export type AppShortcut = Data.TaggedEnum<{
   ToggleSidebar: {};
+  OpenCommandPalette: {};
 }>;
 
 export const AppShortcut = Data.taggedEnum<AppShortcut>();
@@ -18,6 +19,7 @@ interface KeyBinding {
 
 const BINDINGS: ReadonlyArray<{ binding: KeyBinding; shortcut: AppShortcut }> = [
   { binding: { key: "\\", mod: true }, shortcut: AppShortcut.ToggleSidebar() },
+  { binding: { key: "k", mod: true }, shortcut: AppShortcut.OpenCommandPalette() },
 ];
 
 export class KeyboardB extends Context.Tag("KeyboardB")<

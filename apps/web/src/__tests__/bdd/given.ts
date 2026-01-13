@@ -65,6 +65,7 @@ export const A_BUFFER_WITH_TEXT = (textContent: string) =>
         lastFocusedBlockId: null,
         toggledNodes: [],
         selection: null,
+        activeViewId: null,
       },
       bufferId,
     );
@@ -145,6 +146,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
         lastFocusedBlockId: null,
         toggledNodes: [],
         selection: null,
+        activeViewId: null,
       },
       bufferId,
     );
@@ -273,6 +275,7 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
         lastFocusedBlockId: null,
         toggledNodes: [],
         selection: null,
+        activeViewId: null,
       },
       bufferId,
     );
@@ -361,6 +364,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
         lastFocusedBlockId: null,
         toggledNodes: [],
         selection: null,
+        activeViewId: null,
       },
       bufferId,
     );
@@ -569,6 +573,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
         lastFocusedBlockId: null,
         toggledNodes: [],
         selection: null,
+        activeViewId: null,
       },
       bufferId,
     );

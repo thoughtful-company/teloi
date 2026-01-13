@@ -10,8 +10,10 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
+import TableView from "./TableView";
 import Title from "./Title";
 import TypeList from "./TypeList";
+import ViewTabs from "./ViewTabs";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 
@@ -222,10 +224,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
       childBlockIds: v.childBlockIds.map((childId) =>
         Id.makeBlockId(bufferId, Id.Node.make(childId)),
       ),
+      activeViewId: v.activeViewId,
     }),
     initial: {
       nodeId: null as Id.Node | null,
       childBlockIds: [] as Id.Block[],
+      activeViewId: null as Id.Node | null,
     },
   });
 
@@ -1319,18 +1323,36 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               <Title bufferId={bufferId} nodeId={nodeId} />
               <TypeList nodeId={nodeId} />
             </header>
-            <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
-              <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
-                <For each={store.childBlockIds}>
-                  {(childId) => <Block blockId={childId} />}
-                </For>
+            <ViewTabs
+              bufferId={bufferId}
+              nodeId={nodeId}
+              activeViewId={store.activeViewId}
+            />
+            <Show
+              when={store.activeViewId}
+              fallback={
+                <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
+                  <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
+                    <For each={store.childBlockIds}>
+                      {(childId) => <Block blockId={childId} />}
+                    </For>
+                  </div>
+                  <div
+                    data-testid="editor-click-zone"
+                    class="flex-1 min-h-[25vh] cursor-text"
+                    onClick={(e) => handleClickZone(e, nodeId)}
+                  />
+                </div>
+              }
+            >
+              <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
+                <TableView
+                  bufferId={bufferId}
+                  nodeId={nodeId}
+                  childNodeIds={getChildNodeIds()}
+                />
               </div>
-              <div
-                data-testid="editor-click-zone"
-                class="flex-1 min-h-[25vh] cursor-text"
-                onClick={(e) => handleClickZone(e, nodeId)}
-              />
-            </div>
+            </Show>
           </>
         )}
       </Show>

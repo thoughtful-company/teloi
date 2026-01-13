@@ -134,6 +134,7 @@ export const bootstrap = Effect.gen(function* () {
       lastFocusedBlockId: null,
       toggledNodes: [],
       selection: null,
+      activeViewId: null,
     },
     bufferId,
   );

@@ -8,6 +8,7 @@ import { NodeT } from "../../domain/Node";
 export interface BufferView {
   nodeData: TeloiNode;
   childBlockIds: readonly string[];
+  activeViewId: Id.Node | null;
 }
 
 export const subscribe = (bufferId: Id.Buffer) =>
@@ -15,8 +16,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
     const Store = yield* StoreT;
     const Node = yield* NodeT;
 
-    // Subscribe to buffer document to watch for assignedNodeId changes
-    // Using exact same query pattern as Block/subscribe's selection stream
+    // Subscribe to buffer document to watch for assignedNodeId and activeViewId changes
     const bufferQuery = queryDb(
       tables.buffer
         .select("value")
@@ -27,21 +27,25 @@ export const subscribe = (bufferId: Id.Buffer) =>
       Effect.orDie,
     );
 
-    // Extract assignedNodeId from buffer, filter out nulls
-    // Use changesWith for proper deduplication after filterMap
-    const assignedNodeIdStream = bufferStream.pipe(
-      Stream.map((buffer) => buffer?.assignedNodeId ?? null),
-      Stream.filterMap((nodeId) =>
-        nodeId != null ? Option.some(nodeId as Id.Node) : Option.none(),
+    // Create a stream that emits {nodeId, activeViewId} pairs
+    // Filter out cases where nodeId is null
+    const bufferDataStream = bufferStream.pipe(
+      Stream.map((buffer) => ({
+        nodeId: buffer?.assignedNodeId ?? null,
+        activeViewId: (buffer?.activeViewId as Id.Node | null) ?? null,
+      })),
+      Stream.filterMap(({ nodeId, activeViewId }) =>
+        nodeId != null
+          ? Option.some({ nodeId: nodeId as Id.Node, activeViewId })
+          : Option.none(),
       ),
-      Stream.changesWith((a, b) => a === b),
     );
 
-    // For each assignedNodeId, create streams for the node and its children
+    // For each buffer state, create streams for the node and its children
     // switch: true ensures we cancel the old stream when assignedNodeId changes
     return Stream.flatMap(
-      assignedNodeIdStream,
-      (nodeId) =>
+      bufferDataStream,
+      ({ nodeId, activeViewId }) =>
         Stream.unwrap(
           Effect.gen(function* () {
             const nodeStream = yield* Node.subscribe(nodeId);
@@ -50,7 +54,11 @@ export const subscribe = (bufferId: Id.Buffer) =>
             return Stream.zipLatestWith(
               nodeStream,
               childrenStream,
-              (nodeData, childBlockIds) => ({ nodeData, childBlockIds }),
+              (nodeData, childBlockIds) => ({
+                nodeData,
+                childBlockIds,
+                activeViewId,
+              }),
             );
           }),
         ),

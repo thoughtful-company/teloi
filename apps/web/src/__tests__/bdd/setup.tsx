@@ -88,8 +88,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
   const TestLayer = pipe(
     NavigationLive,
-    Layer.provideMerge(DataPortLive),
     Layer.provideMerge(BootstrapLive),
+    Layer.provideMerge(DataPortLive),
     Layer.provideMerge(TypePickerLive),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(TitleLive),

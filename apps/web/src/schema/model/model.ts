@@ -56,6 +56,8 @@ export const EditorBuffer = Schema.mutable(
     lastFocusedBlockId: Schema.NullOr(Id.Node),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     selection: Schema.NullOr(BufferSelection),
+    /** Active view node ID - null means default page/tree view */
+    activeViewId: Schema.NullOr(Id.Node),
   }),
 );
 export type EditorBuffer = typeof EditorBuffer.Type;
