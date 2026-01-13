@@ -94,7 +94,7 @@ const codeMark = Decoration.mark({ class: "cm-code" });
 /** Theme extension for formatting marks */
 const formattingTheme = EditorView.theme({
   ".cm-bold": {
-    fontWeight: "700",
+    fontWeight: "var(--font-weight-bold)",
   },
   ".cm-italic": {
     fontStyle: "italic",
@@ -217,7 +217,8 @@ class InlineTypeBadgeWidget extends WidgetType {
 
   toDOM() {
     const container = document.createElement("span");
-    container.className = "inline-type-badges inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]";
+    container.className =
+      "inline-type-badges inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]";
 
     // Mount Solid component into the container
     this.dispose = render(
