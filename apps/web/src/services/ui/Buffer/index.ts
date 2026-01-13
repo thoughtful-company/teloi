@@ -115,7 +115,7 @@ export const BufferLive = Layer.effect(
           blocks,
           blockSelectionAnchor,
           blockSelectionFocus,
-        ).pipe(Effect.provideService(StoreT, Store)),
+        ).pipe(Effect.provide(context)),
 
       // Structural operations
       indent: (_bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>

@@ -1,6 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
+import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
@@ -1158,5 +1159,311 @@ describe("Title expand/collapse", () => {
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
       yield* Then.BLOCK_IS_COLLAPSED(blockA);
     }).pipe(runtime.runPromise);
+  });
+});
+
+/**
+ * Tests for auto-expanding ancestor blocks when selection is set.
+ *
+ * When selection (text or block) is set to a node, we need to expand all
+ * ancestor blocks between the buffer's assignedNodeId (excluded) and
+ * target node(s) (excluded). This ensures selected nodes are always visible.
+ */
+describe("Auto-expand ancestors on selection", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  describe("Text selection", () => {
+    it("expands collapsed parent when setting text selection to child node", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> Parent -> Child, where Parent is collapsed
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
+
+        const parentNodeId = childNodeIds[0];
+        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+        // Create Child under Parent
+        const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: "Child content",
+        });
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Verify Parent initially expanded (default state)
+        yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+        // Collapse the Parent
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(parentBlockId, false);
+        yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+        // When: Set text selection to the Child node
+        const Buffer = yield* BufferT;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId: childNodeId },
+            anchorOffset: 0,
+            focus: { nodeId: childNodeId },
+            focusOffset: 0,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        // Then: Parent should be expanded so Child is visible
+        yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("expands multiple collapsed ancestors for deeply nested node", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> A -> B -> C (deeply nested)
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "A" }],
+        );
+
+        const nodeA = childNodeIds[0];
+        const blockA = Id.makeBlockId(bufferId, nodeA);
+
+        // Create B as child of A
+        const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeA,
+          insert: "after",
+          text: "B",
+        });
+        const blockB = Id.makeBlockId(bufferId, nodeB);
+
+        // Create C as child of B
+        const nodeC = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeB,
+          insert: "after",
+          text: "C",
+        });
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Collapse both A and B
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(blockA, false);
+        yield* Block.setExpanded(blockB, false);
+        yield* Then.BLOCK_IS_COLLAPSED(blockA);
+        yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+        // When: Set text selection to C (deeply nested)
+        const Buffer = yield* BufferT;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId: nodeC },
+            anchorOffset: 0,
+            focus: { nodeId: nodeC },
+            focusOffset: 0,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        // Then: Both A and B should be expanded so C is visible
+        yield* Then.BLOCK_IS_EXPANDED(blockA);
+        yield* Then.BLOCK_IS_EXPANDED(blockB);
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Block selection", () => {
+    it("expands collapsed parent when setting block selection to child", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> Parent -> Child, where Parent is collapsed
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
+
+        const parentNodeId = childNodeIds[0];
+        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+        // Create Child under Parent
+        const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: "Child content",
+        });
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Collapse the Parent
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(parentBlockId, false);
+        yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+        // When: Set block selection to the Child node
+        const Buffer = yield* BufferT;
+        yield* Buffer.setBlockSelection(
+          bufferId,
+          [childNodeId],
+          childNodeId,
+          childNodeId,
+        );
+
+        // Then: Parent should be expanded so Child is visible
+        yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("expands all necessary ancestors for multiple nodes at different depths", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> A -> A1, Root -> B -> B1 -> B1a
+        // Both paths have collapsed ancestors
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "A" }, { text: "B" }],
+        );
+
+        const [nodeA, nodeB] = childNodeIds;
+        const blockA = Id.makeBlockId(bufferId, nodeA);
+        const blockB = Id.makeBlockId(bufferId, nodeB);
+
+        // Create A1 under A
+        const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeA,
+          insert: "after",
+          text: "A1",
+        });
+
+        // Create B1 under B
+        const nodeB1 = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeB,
+          insert: "after",
+          text: "B1",
+        });
+        const blockB1 = Id.makeBlockId(bufferId, nodeB1);
+
+        // Create B1a under B1
+        const nodeB1a = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeB1,
+          insert: "after",
+          text: "B1a",
+        });
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Collapse A, B, and B1
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(blockA, false);
+        yield* Block.setExpanded(blockB, false);
+        yield* Block.setExpanded(blockB1, false);
+        yield* Then.BLOCK_IS_COLLAPSED(blockA);
+        yield* Then.BLOCK_IS_COLLAPSED(blockB);
+        yield* Then.BLOCK_IS_COLLAPSED(blockB1);
+
+        // When: Set block selection to A1 and B1a (different depths)
+        const Buffer = yield* BufferT;
+        yield* Buffer.setBlockSelection(
+          bufferId,
+          [nodeA1, nodeB1a],
+          nodeA1,
+          nodeB1a,
+        );
+
+        // Then: All necessary ancestors should be expanded
+        // A expanded (for A1)
+        yield* Then.BLOCK_IS_EXPANDED(blockA);
+        // B and B1 expanded (for B1a)
+        yield* Then.BLOCK_IS_EXPANDED(blockB);
+        yield* Then.BLOCK_IS_EXPANDED(blockB1);
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Edge cases", () => {
+    it("does not expand anything when selecting direct child of buffer root", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> Child (direct child, no ancestors to expand)
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Direct child" }],
+        );
+
+        const childNodeId = childNodeIds[0];
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // When: Set text selection to direct child
+        const Buffer = yield* BufferT;
+        yield* Buffer.setSelection(
+          bufferId,
+          Option.some({
+            anchor: { nodeId: childNodeId },
+            anchorOffset: 0,
+            focus: { nodeId: childNodeId },
+            focusOffset: 0,
+            goalX: null,
+            goalLine: null,
+            assoc: 0,
+          }),
+        );
+
+        // Then: No crash, selection is set (no ancestors to expand between root and direct child)
+        // This test mainly ensures we don't have off-by-one errors
+        const selection = yield* Buffer.getSelection(bufferId);
+        expect(Option.isSome(selection)).toBe(true);
+        expect(Option.getOrThrow(selection).anchor.nodeId).toBe(childNodeId);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("does not expand anything when clearing selection (null)", async () => {
+      await Effect.gen(function* () {
+        // Given: Root -> Parent -> Child, Parent collapsed
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
+
+        const parentNodeId = childNodeIds[0];
+        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+        // Create Child under Parent
+        yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: "Child content",
+        });
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Collapse the Parent
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(parentBlockId, false);
+        yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+        // When: Clear selection (set to None)
+        const Buffer = yield* BufferT;
+        yield* Buffer.setSelection(bufferId, Option.none());
+
+        // Then: Parent should remain collapsed (no expansion on clear)
+        yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      }).pipe(runtime.runPromise);
+    });
   });
 });

@@ -424,15 +424,12 @@ export default function Block({ blockId }: BlockProps) {
   const handleTab = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const [bufferId] = yield* Id.parseBlockId(blockId);
-
-        const result = yield* Buffer.indent(bufferId, [nodeId]);
-        if (Option.isSome(result)) {
-          // Auto-expand the new parent so the indented block stays visible
-          yield* Block.setExpanded(Id.makeBlockId(bufferId, result.value), true);
-        }
+        yield* Buffer.indent(bufferId, [nodeId]);
+        // Re-set selection to trigger ancestor expansion for new tree structure
+        const selection = yield* Buffer.getSelection(bufferId);
+        yield* Buffer.setSelection(bufferId, selection);
       }),
     );
   };
@@ -1288,7 +1285,6 @@ export default function Block({ blockId }: BlockProps) {
       Match.tag("DrillIn", ({ goalX: actionGoalX }) => {
         runtime.runPromise(
           Effect.gen(function* () {
-            const Block = yield* BlockT;
             const Node = yield* NodeT;
             const Buffer = yield* BufferT;
             const Window = yield* WindowT;
@@ -1305,9 +1301,6 @@ export default function Block({ blockId }: BlockProps) {
                     insert: "before",
                   })
                 : children[0]!;
-
-            // Ensure expanded and focus first child
-            yield* Block.setExpanded(blockId, true);
 
             const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
             yield* Buffer.setSelection(

@@ -808,7 +808,6 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
-            const Block = yield* BlockT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -823,12 +822,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             if (e.shiftKey) {
               yield* Buffer.outdent(bufferId, selectedBlocks);
             } else {
-              const newParent = yield* Buffer.indent(bufferId, selectedBlocks);
-              if (Option.isSome(newParent)) {
-                // Auto-expand the new parent so indented blocks stay visible
-                const newParentBlockId = Id.makeBlockId(bufferId, newParent.value);
-                yield* Block.setExpanded(newParentBlockId, true);
-              }
+              yield* Buffer.indent(bufferId, selectedBlocks);
             }
 
             // Preserve selection

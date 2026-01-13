@@ -1,14 +1,16 @@
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
 import { BufferNotFoundError } from "../errors";
+import { expandAncestorsForNodes } from "./expandAncestors";
 
 export const setBlockSelection = (
   bufferId: Id.Buffer,
   blocks: readonly Id.Node[],
   blockSelectionAnchor: Id.Node | null,
   blockSelectionFocus?: Id.Node | null,
-): Effect.Effect<void, BufferNotFoundError, StoreT> =>
+): Effect.Effect<void, BufferNotFoundError, StoreT | NodeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -21,8 +23,14 @@ export const setBlockSelection = (
     }
 
     const currentBuffer = bufferDoc.value;
+    const assignedNodeId = currentBuffer.assignedNodeId;
     // Default focus to anchor if not provided
     const focus = blockSelectionFocus ?? blockSelectionAnchor;
+
+    if (blocks.length > 0 && assignedNodeId) {
+      const rootNodeId = Id.Node.make(assignedNodeId);
+      yield* expandAncestorsForNodes(bufferId, rootNodeId, blocks);
+    }
 
     yield* Store.setDocument(
       "buffer",

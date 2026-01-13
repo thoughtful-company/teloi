@@ -1,12 +1,14 @@
 import { Id, Model } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
 import { BufferNotFoundError } from "../errors";
+import { expandAncestors } from "./expandAncestors";
 
 export const setSelection = (
   bufferId: Id.Buffer,
   selection: Option.Option<Model.BufferSelection>,
-): Effect.Effect<void, BufferNotFoundError, StoreT> =>
+): Effect.Effect<void, BufferNotFoundError, StoreT | NodeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -19,6 +21,18 @@ export const setSelection = (
     }
 
     const currentBuffer = bufferDoc.value;
+    const assignedNodeId = currentBuffer.assignedNodeId;
+
+    if (Option.isSome(selection) && assignedNodeId) {
+      const rootNodeId = Id.Node.make(assignedNodeId);
+      const { anchor, focus } = selection.value;
+
+      yield* expandAncestors(bufferId, rootNodeId, anchor.nodeId);
+
+      if (focus.nodeId !== anchor.nodeId) {
+        yield* expandAncestors(bufferId, rootNodeId, focus.nodeId);
+      }
+    }
 
     yield* Store.setDocument(
       "buffer",
