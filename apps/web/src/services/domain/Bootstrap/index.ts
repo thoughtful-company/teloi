@@ -77,6 +77,41 @@ const setNodeText = (nodeId: Id.Node, text: string) =>
 const nextPosition = (prevPos: string | null) =>
   generateKeyBetween(prevPos, null);
 
+// Helper to create a full color node with bg/fg values and tuples
+const createColorNode = (
+  colorId: Id.Node,
+  bgId: Id.Node,
+  fgId: Id.Node,
+  name: string,
+  hue: number,
+) =>
+  Effect.gen(function* () {
+    const Type = yield* TypeT;
+    const Tuple = yield* TupleT;
+
+    // Create color node
+    let pos = generateKeyBetween(null, null);
+    yield* createChildNode(colorId, System.ROOT, pos);
+    yield* setNodeText(colorId, name);
+    yield* Type.addType(colorId, System.COLOR);
+
+    // Create background value node
+    pos = nextPosition(pos);
+    yield* createChildNode(bgId, System.ROOT, pos);
+    yield* setNodeText(bgId, `oklch(0.92 0.05 ${hue})`);
+
+    // Create foreground value node
+    pos = nextPosition(pos);
+    yield* createChildNode(fgId, System.ROOT, pos);
+    yield* setNodeText(fgId, `oklch(0.35 0.12 ${hue})`);
+
+    // Create COLOR_HAS_BACKGROUND tuple
+    yield* Tuple.create(System.COLOR_HAS_BACKGROUND, [colorId, bgId]);
+
+    // Create COLOR_HAS_FOREGROUND tuple
+    yield* Tuple.create(System.COLOR_HAS_FOREGROUND, [colorId, fgId]);
+  });
+
 const ensureSystemNodes = () =>
   Effect.gen(function* () {
     const Type = yield* TypeT;
@@ -168,6 +203,137 @@ const ensureSystemNodes = () =>
     }
     if (!(yield* Type.hasType(System.CHECKBOX, System.RENDERING_TYPE))) {
       yield* Type.addType(System.CHECKBOX, System.RENDERING_TYPE);
+    }
+
+    // === Color (meta-type for color nodes) ===
+    pos = nextPosition(pos);
+    const colorExists = yield* nodeExists(System.COLOR);
+    if (!colorExists) {
+      yield* createChildNode(System.COLOR, System.ROOT, pos);
+      yield* setNodeText(System.COLOR, "Color");
+    }
+
+    // === COLOR_HAS_BACKGROUND (tuple type) ===
+    pos = nextPosition(pos);
+    const colorHasBgExists = yield* nodeExists(System.COLOR_HAS_BACKGROUND);
+    if (!colorHasBgExists) {
+      yield* createChildNode(System.COLOR_HAS_BACKGROUND, System.ROOT, pos);
+      yield* setNodeText(System.COLOR_HAS_BACKGROUND, "Color Has Background");
+      yield* Type.addType(System.COLOR_HAS_BACKGROUND, System.TUPLE_TYPE);
+      // Schema: position 0 = color node, position 1 = value node (CSS string)
+      yield* Tuple.addRole(System.COLOR_HAS_BACKGROUND, 0, "color", true);
+      yield* Tuple.addRole(System.COLOR_HAS_BACKGROUND, 1, "value", true);
+    }
+
+    // === COLOR_HAS_FOREGROUND (tuple type) ===
+    pos = nextPosition(pos);
+    const colorHasFgExists = yield* nodeExists(System.COLOR_HAS_FOREGROUND);
+    if (!colorHasFgExists) {
+      yield* createChildNode(System.COLOR_HAS_FOREGROUND, System.ROOT, pos);
+      yield* setNodeText(System.COLOR_HAS_FOREGROUND, "Color Has Foreground");
+      yield* Type.addType(System.COLOR_HAS_FOREGROUND, System.TUPLE_TYPE);
+      // Schema: position 0 = color node, position 1 = value node (CSS string)
+      yield* Tuple.addRole(System.COLOR_HAS_FOREGROUND, 0, "color", true);
+      yield* Tuple.addRole(System.COLOR_HAS_FOREGROUND, 1, "value", true);
+    }
+
+    // === TYPE_HAS_COLOR (tuple type) ===
+    pos = nextPosition(pos);
+    const typeHasColorExists = yield* nodeExists(System.TYPE_HAS_COLOR);
+    if (!typeHasColorExists) {
+      yield* createChildNode(System.TYPE_HAS_COLOR, System.ROOT, pos);
+      yield* setNodeText(System.TYPE_HAS_COLOR, "Type Has Color");
+      yield* Type.addType(System.TYPE_HAS_COLOR, System.TUPLE_TYPE);
+      // Schema: position 0 = type node, position 1 = color (node or direct value)
+      yield* Tuple.addRole(System.TYPE_HAS_COLOR, 0, "type", true);
+      yield* Tuple.addRole(System.TYPE_HAS_COLOR, 1, "color", true);
+    }
+
+    // === DEFAULT_TYPE_COLOR (color node with green hue 145) ===
+    pos = nextPosition(pos);
+    const defaultColorExists = yield* nodeExists(System.DEFAULT_TYPE_COLOR);
+    if (!defaultColorExists) {
+      yield* createChildNode(System.DEFAULT_TYPE_COLOR, System.ROOT, pos);
+      yield* setNodeText(System.DEFAULT_TYPE_COLOR, "Default Type Color");
+      yield* Type.addType(System.DEFAULT_TYPE_COLOR, System.COLOR);
+
+      // Create background value node
+      pos = nextPosition(pos);
+      yield* createChildNode(System.DEFAULT_TYPE_COLOR_BG, System.ROOT, pos);
+      yield* setNodeText(System.DEFAULT_TYPE_COLOR_BG, "oklch(0.92 0.05 145)");
+
+      // Create foreground value node
+      pos = nextPosition(pos);
+      yield* createChildNode(System.DEFAULT_TYPE_COLOR_FG, System.ROOT, pos);
+      yield* setNodeText(System.DEFAULT_TYPE_COLOR_FG, "oklch(0.35 0.12 145)");
+
+      // Create COLOR_HAS_BACKGROUND tuple
+      yield* Tuple.create(System.COLOR_HAS_BACKGROUND, [
+        System.DEFAULT_TYPE_COLOR,
+        System.DEFAULT_TYPE_COLOR_BG,
+      ]);
+
+      // Create COLOR_HAS_FOREGROUND tuple
+      yield* Tuple.create(System.COLOR_HAS_FOREGROUND, [
+        System.DEFAULT_TYPE_COLOR,
+        System.DEFAULT_TYPE_COLOR_FG,
+      ]);
+    }
+
+    // === Color Palette (5 additional colors for auto-assignment) ===
+    // Blue (hue 250)
+    if (!(yield* nodeExists(System.COLOR_BLUE))) {
+      yield* createColorNode(
+        System.COLOR_BLUE,
+        System.COLOR_BLUE_BG,
+        System.COLOR_BLUE_FG,
+        "Blue",
+        250,
+      );
+    }
+
+    // Purple (hue 300)
+    if (!(yield* nodeExists(System.COLOR_PURPLE))) {
+      yield* createColorNode(
+        System.COLOR_PURPLE,
+        System.COLOR_PURPLE_BG,
+        System.COLOR_PURPLE_FG,
+        "Purple",
+        300,
+      );
+    }
+
+    // Pink (hue 350)
+    if (!(yield* nodeExists(System.COLOR_PINK))) {
+      yield* createColorNode(
+        System.COLOR_PINK,
+        System.COLOR_PINK_BG,
+        System.COLOR_PINK_FG,
+        "Pink",
+        350,
+      );
+    }
+
+    // Orange (hue 70)
+    if (!(yield* nodeExists(System.COLOR_ORANGE))) {
+      yield* createColorNode(
+        System.COLOR_ORANGE,
+        System.COLOR_ORANGE_BG,
+        System.COLOR_ORANGE_FG,
+        "Orange",
+        70,
+      );
+    }
+
+    // Teal (hue 180)
+    if (!(yield* nodeExists(System.COLOR_TEAL))) {
+      yield* createColorNode(
+        System.COLOR_TEAL,
+        System.COLOR_TEAL_BG,
+        System.COLOR_TEAL_FG,
+        "Teal",
+        180,
+      );
     }
 
     // === Workspace Home ===

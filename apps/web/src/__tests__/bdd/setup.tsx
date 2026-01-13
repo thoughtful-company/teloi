@@ -3,6 +3,7 @@ import { schema } from "@/livestore/schema";
 import { runtime, type BrowserRuntime } from "@/runtime";
 import { makeKeyboardLive } from "@/services/browser/KeyboardService";
 import { makeURLServiceLive } from "@/services/browser/URLService";
+import { BootstrapLive } from "@/services/domain/Bootstrap";
 import { DataPortLive } from "@/services/domain/DataPort";
 import { NodeLive } from "@/services/domain/Node";
 import { TupleLive } from "@/services/domain/Tuple";
@@ -13,6 +14,8 @@ import { makeYjsLive } from "@/services/external/Yjs";
 import { BlockLive } from "@/services/ui/Block";
 import { BufferLive } from "@/services/ui/Buffer";
 import { TitleLive } from "@/services/ui/Title";
+import { TypeColorLive } from "@/services/ui/TypeColor";
+import { TypePickerLive } from "@/services/ui/TypePicker";
 import { WindowLive } from "@/services/ui/Window";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { Store } from "@livestore/livestore";
@@ -86,6 +89,9 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   const TestLayer = pipe(
     NavigationLive,
     Layer.provideMerge(DataPortLive),
+    Layer.provideMerge(BootstrapLive),
+    Layer.provideMerge(TypePickerLive),
+    Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(BufferLive),

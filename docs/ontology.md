@@ -27,19 +27,69 @@ User-defined types for organizing content:
 - `#task`, `#project`, `#person`, `#meeting`
 - These don't affect rendering directly but enable filtering, queries, and structured views
 
-## Tuples (deferred)
+## Tuples
 
-Tuples are structured relationships between nodes with defined roles. For example, a "Meeting" tuple might have roles: `attendees`, `date`, `agenda`, `notes`.
+Tuples are structured relationships between nodes with defined roles. A TupleType defines the schema (positions, constraints), and Tuple instances store actual relationships.
 
-This is deferred until the basic type system is working.
+**Example: IS_CHECKED**
+```
+IS_CHECKED(subject: Node, value: Boolean)
+```
+A checkbox uses this tuple to store its checked state. Position 0 = the checkbox node, position 1 = TRUE or FALSE.
+
+**Tuple Tables:**
+- `tuple_type_roles` — Schema definitions (position, name, required)
+- `tuple_type_role_allowed_types` — Type constraints per position
+- `tuples` — Tuple instances (id, tupleTypeId)
+- `tuple_members` — Member values (tupleId, position, nodeId)
+
+**Service API (`TupleT`):**
+- `addRole()` — Define a position in a TupleType schema
+- `addAllowedType()` — Add type constraint to a position
+- `create()` — Create tuple instance with members
+- `findByPosition()` — Find tuples where position has value
+- `subscribeByPosition()` — Stream of tuples matching criteria
+
+## Type Display Configuration
+
+Types can have their visual appearance configured via tuples.
+
+### Color Configuration
+
+**Tuple Types:**
+- `TYPE_HAS_COLOR(type: Node, color: Node)` — Links a type to its display color
+- `COLOR_HAS_BACKGROUND(color: Node, value: Node)` — Links color node to background CSS
+- `COLOR_HAS_FOREGROUND(color: Node, value: Node)` — Links color node to foreground CSS
+
+**Full Color Node** (explicit bg + fg):
+```
+System.COLOR_GREEN
+  ├─ COLOR_HAS_BACKGROUND ──▶ node("oklch(0.92 0.05 145)")
+  └─ COLOR_HAS_FOREGROUND ──▶ node("oklch(0.35 0.12 145)")
+
+System.LIST_ELEMENT ──TYPE_HAS_COLOR──▶ System.COLOR_GREEN
+```
+
+**Direct Value** (single color, derive complement):
+```
+TYPE_HAS_COLOR(MyType, node("oklch(0.92 0.05 250)"))
+```
+When only background is specified, foreground is derived: `oklch(0.35 0.12 H)` where H is the hue from the background.
+
+**Fallback Chain:**
+1. Look up `TYPE_HAS_COLOR(typeId, ?)` for the type
+2. If not found → use `System.DEFAULT_TYPE_COLOR` (green hue 145)
+
+**Service:** `TypeColorT` provides `getColors(typeId)` and `subscribeColors(typeId)` for resolving type colors.
 
 ## Implementation Status
 
-- [ ] Basic type assignment to nodes
+- [x] Basic type assignment to nodes
 - [ ] Type inheritance (supertypes)
-- [ ] Meta-types (types that classify other types)
-- [ ] Rendering type → component mapping
-- [ ] Tuples and TupleTypes
+- [x] Meta-types (types that classify other types)
+- [x] Rendering type → component mapping (BlockType registry)
+- [x] Tuples and TupleTypes
+- [x] Type color configuration
 
 ---
 

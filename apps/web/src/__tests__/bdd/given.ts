@@ -1,6 +1,7 @@
 import { events } from "@/livestore/schema";
-import { Entity, Id } from "@/schema";
+import { Entity, Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
@@ -591,3 +592,162 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
       windowId,
     };
   }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_PARENT_AND_CHILDREN"));
+
+export interface TypeWithNoColorResult {
+  typeId: Id.Node;
+}
+
+/**
+ * Creates a type without any color configuration.
+ * Used for testing TypeColorT fallback to default colors.
+ * NOTE: Creates a raw type node (not via TypePicker) to avoid auto-color assignment.
+ */
+export const A_TYPE_WITHOUT_COLOR = () =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Yjs = yield* YjsT;
+
+    // Create the type as a raw node (not via TypePicker to avoid auto-color)
+    const typeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: typeId, parentId: System.TYPES },
+      }),
+    );
+    Yjs.getText(typeId).insert(0, `NoColorType_${nanoid(6)}`);
+
+    return { typeId } satisfies TypeWithNoColorResult;
+  }).pipe(Effect.withSpan("Given.A_TYPE_WITHOUT_COLOR"));
+
+export interface TypeWithFullColorResult {
+  typeId: Id.Node;
+  colorNodeId: Id.Node;
+  bgValueNodeId: Id.Node;
+  fgValueNodeId: Id.Node;
+  expectedBg: string;
+  expectedFg: string;
+}
+
+/**
+ * Creates a type with a full color node (has both COLOR_HAS_BACKGROUND and COLOR_HAS_FOREGROUND tuples).
+ * Used for testing TypeColorT when colors are explicitly defined.
+ * NOTE: Creates a raw type node (not via TypePicker) to avoid auto-color assignment.
+ */
+export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Tuple = yield* TupleT;
+    const Yjs = yield* YjsT;
+
+    // Create the type as a raw node (not via TypePicker to avoid auto-color)
+    const typeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: typeId, parentId: System.TYPES },
+      }),
+    );
+    Yjs.getText(typeId).insert(0, `ColoredType_${nanoid(6)}`);
+
+    // Create color node
+    const colorNodeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: colorNodeId },
+      }),
+    );
+    Yjs.getText(colorNodeId).insert(0, "Custom Color");
+
+    // Create background value node
+    const bgValueNodeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: bgValueNodeId },
+      }),
+    );
+    Yjs.getText(bgValueNodeId).insert(0, colors.bg);
+
+    // Create foreground value node
+    const fgValueNodeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: fgValueNodeId },
+      }),
+    );
+    Yjs.getText(fgValueNodeId).insert(0, colors.fg);
+
+    // Create COLOR_HAS_BACKGROUND tuple
+    yield* Tuple.create(System.COLOR_HAS_BACKGROUND, [
+      colorNodeId,
+      bgValueNodeId,
+    ]);
+
+    // Create COLOR_HAS_FOREGROUND tuple
+    yield* Tuple.create(System.COLOR_HAS_FOREGROUND, [
+      colorNodeId,
+      fgValueNodeId,
+    ]);
+
+    // Create TYPE_HAS_COLOR tuple linking type to color node
+    yield* Tuple.create(System.TYPE_HAS_COLOR, [typeId, colorNodeId]);
+
+    return {
+      typeId,
+      colorNodeId,
+      bgValueNodeId,
+      fgValueNodeId,
+      expectedBg: colors.bg,
+      expectedFg: colors.fg,
+    } satisfies TypeWithFullColorResult;
+  }).pipe(Effect.withSpan("Given.A_TYPE_WITH_FULL_COLOR"));
+
+export interface TypeWithDirectColorResult {
+  typeId: Id.Node;
+  colorValueNodeId: Id.Node;
+  expectedBg: string;
+}
+
+/**
+ * Creates a type with a direct color value node (text content is the oklch color).
+ * Foreground will be derived from the background by TypeColorT.
+ * NOTE: Creates a raw type node (not via TypePicker) to avoid auto-color assignment.
+ */
+export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Tuple = yield* TupleT;
+    const Yjs = yield* YjsT;
+
+    // Create the type as a raw node (not via TypePicker to avoid auto-color)
+    const typeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: typeId, parentId: System.TYPES },
+      }),
+    );
+    Yjs.getText(typeId).insert(0, `DirectColorType_${nanoid(6)}`);
+
+    // Create direct color value node (text content is the color)
+    const colorValueNodeId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: colorValueNodeId },
+      }),
+    );
+    Yjs.getText(colorValueNodeId).insert(0, bgColor);
+
+    // Create TYPE_HAS_COLOR tuple linking type to value node directly
+    yield* Tuple.create(System.TYPE_HAS_COLOR, [typeId, colorValueNodeId]);
+
+    return {
+      typeId,
+      colorValueNodeId,
+      expectedBg: bgColor,
+    } satisfies TypeWithDirectColorResult;
+  }).pipe(Effect.withSpan("Given.A_TYPE_WITH_DIRECT_COLOR"));

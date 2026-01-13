@@ -3,8 +3,10 @@ import { Id } from "@/schema";
 import { TypeT } from "@/services/domain/Type";
 import { YjsT } from "@/services/external/Yjs";
 import { NavigationT } from "@/services/ui/Navigation";
+import { TypeColorT, TypeColors } from "@/services/ui/TypeColor";
+import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { Badge } from "@kobalte/core/badge";
-import { Effect } from "effect";
+import { Effect, Stream } from "effect";
 import { createSignal, onCleanup, onMount } from "solid-js";
 
 interface TypeBadgeProps {
@@ -20,6 +22,7 @@ export default function TypeBadge({
 }: TypeBadgeProps) {
   const runtime = useBrowserRuntime();
   const [name, setName] = createSignal("");
+  const [colors, setColors] = createSignal<TypeColors>(DEFAULT_COLORS);
 
   onMount(() => {
     const Yjs = runtime.runSync(YjsT);
@@ -29,8 +32,25 @@ export default function TypeBadge({
     const observer = () => setName(ytext.toString());
     ytext.observe(observer);
 
+    // Subscribe to color changes
+    const colorAbortController = new AbortController();
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const TypeColor = yield* TypeColorT;
+        const colorStream = yield* TypeColor.subscribeColors(typeId);
+
+        yield* colorStream.pipe(
+          Stream.runForEach((newColors) =>
+            Effect.sync(() => setColors(newColors)),
+          ),
+        );
+      }),
+      { signal: colorAbortController.signal },
+    );
+
     onCleanup(() => {
       ytext.unobserve(observer);
+      colorAbortController.abort();
     });
   });
 
@@ -61,7 +81,11 @@ export default function TypeBadge({
   return (
     <Badge
       textValue={`Type: ${name()}`}
-      class="group inline-flex items-baseline text-xs whitespace-nowrap rounded bg-type-badge text-type-badge-foreground hover:bg-transparent cursor-pointer"
+      class="group inline-flex items-baseline text-xs whitespace-nowrap rounded hover:bg-transparent cursor-pointer"
+      style={{
+        "background-color": colors().bg,
+        color: colors().fg,
+      }}
     >
       <button
         onClick={handleRemove}
@@ -81,7 +105,11 @@ export default function TypeBadge({
       </button>
       <button
         onClick={handleNavigate}
-        class="pr-1 pl-0.5 rounded bg-type-badge text-type-badge-foreground group-hover:shadow-sm cursor-pointer"
+        class="pr-1 pl-0.5 rounded group-hover:shadow-sm cursor-pointer"
+        style={{
+          "background-color": colors().bg,
+          color: colors().fg,
+        }}
       >
         {name()}
       </button>

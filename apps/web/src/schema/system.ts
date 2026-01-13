@@ -55,6 +55,76 @@ export const System = {
   CHECKBOX: "system:checkbox" as Id.Node,
 
   /**
+   * Meta-type for color nodes. A node with this type represents a color definition.
+   */
+  COLOR: "system:color" as Id.Node,
+
+  /**
+   * TupleType linking a color node to its background CSS value.
+   * Schema: COLOR_HAS_BACKGROUND(color: Node, value: Node)
+   */
+  COLOR_HAS_BACKGROUND: "system:color-has-background" as Id.Node,
+
+  /**
+   * TupleType linking a color node to its foreground CSS value.
+   * Schema: COLOR_HAS_FOREGROUND(color: Node, value: Node)
+   */
+  COLOR_HAS_FOREGROUND: "system:color-has-foreground" as Id.Node,
+
+  /**
+   * TupleType linking a type node to its display color.
+   * Schema: TYPE_HAS_COLOR(type: Node, color: Node)
+   * If color is a full color node (has COLOR_HAS_BACKGROUND/FOREGROUND), use those values.
+   * If color is a direct value node, treat as background and derive foreground.
+   */
+  TYPE_HAS_COLOR: "system:type-has-color" as Id.Node,
+
+  /**
+   * Default color for type badges (green hue 145).
+   * Used when a type doesn't have TYPE_HAS_COLOR configured.
+   */
+  DEFAULT_TYPE_COLOR: "system:default-type-color" as Id.Node,
+
+  /**
+   * Value node storing the default background CSS value: oklch(0.92 0.05 145)
+   */
+  DEFAULT_TYPE_COLOR_BG: "system:default-type-color-bg" as Id.Node,
+
+  /**
+   * Value node storing the default foreground CSS value: oklch(0.35 0.12 145)
+   */
+  DEFAULT_TYPE_COLOR_FG: "system:default-type-color-fg" as Id.Node,
+
+  // === Color Palette for Auto-Assignment ===
+  // These colors are randomly assigned to user-created types.
+  // Each has _BG and _FG value nodes linked via tuples.
+
+  /** Blue color (hue 250) */
+  COLOR_BLUE: "system:color-blue" as Id.Node,
+  COLOR_BLUE_BG: "system:color-blue-bg" as Id.Node,
+  COLOR_BLUE_FG: "system:color-blue-fg" as Id.Node,
+
+  /** Purple color (hue 300) */
+  COLOR_PURPLE: "system:color-purple" as Id.Node,
+  COLOR_PURPLE_BG: "system:color-purple-bg" as Id.Node,
+  COLOR_PURPLE_FG: "system:color-purple-fg" as Id.Node,
+
+  /** Pink color (hue 350) */
+  COLOR_PINK: "system:color-pink" as Id.Node,
+  COLOR_PINK_BG: "system:color-pink-bg" as Id.Node,
+  COLOR_PINK_FG: "system:color-pink-fg" as Id.Node,
+
+  /** Orange color (hue 70) */
+  COLOR_ORANGE: "system:color-orange" as Id.Node,
+  COLOR_ORANGE_BG: "system:color-orange-bg" as Id.Node,
+  COLOR_ORANGE_FG: "system:color-orange-fg" as Id.Node,
+
+  /** Teal color (hue 180) */
+  COLOR_TEAL: "system:color-teal" as Id.Node,
+  COLOR_TEAL_BG: "system:color-teal-bg" as Id.Node,
+  COLOR_TEAL_FG: "system:color-teal-fg" as Id.Node,
+
+  /**
    * Root node for user workspace. All user-created pages are children of this node.
    * Clicking the home icon navigates here. URL: /workspace/
    */
@@ -82,3 +152,16 @@ export const System = {
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];
+
+/**
+ * Color palette for auto-assignment to user-created types.
+ * Includes DEFAULT_TYPE_COLOR (green) plus 5 additional colors.
+ */
+export const COLOR_PALETTE = [
+  System.DEFAULT_TYPE_COLOR, // Green (145)
+  System.COLOR_BLUE, // Blue (250)
+  System.COLOR_PURPLE, // Purple (300)
+  System.COLOR_PINK, // Pink (350)
+  System.COLOR_ORANGE, // Orange (70)
+  System.COLOR_TEAL, // Teal (180)
+] as const;

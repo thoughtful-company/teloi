@@ -1,6 +1,7 @@
 import { tables } from "@/livestore/schema";
-import { Id, System } from "@/schema";
+import { COLOR_PALETTE, Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
@@ -99,6 +100,7 @@ const createType = (name: string) =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
     const Yjs = yield* YjsT;
+    const Tuple = yield* TupleT;
 
     // Create a new node under System.TYPES
     const typeId = yield* Node.insertNode({
@@ -110,8 +112,13 @@ const createType = (name: string) =>
     const yText = Yjs.getText(typeId);
     yText.insert(0, name);
 
+    // Assign a random color from the palette
+    const randomIndex = Math.floor(Math.random() * COLOR_PALETTE.length);
+    const randomColor = COLOR_PALETTE[randomIndex] ?? System.DEFAULT_TYPE_COLOR;
+    yield* Tuple.create(System.TYPE_HAS_COLOR, [typeId, randomColor]);
+
     yield* Effect.logDebug("[TypePicker.createType] Created new type").pipe(
-      Effect.annotateLogs({ typeId, name }),
+      Effect.annotateLogs({ typeId, name, colorId: randomColor }),
     );
 
     return typeId;
@@ -136,11 +143,13 @@ export const TypePickerLive = Layer.effect(
     const Yjs = yield* YjsT;
     const Node = yield* NodeT;
     const Type = yield* TypeT;
+    const Tuple = yield* TupleT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(YjsT, Yjs),
       Context.add(NodeT, Node),
       Context.add(TypeT, Type),
+      Context.add(TupleT, Tuple),
     );
 
     return {
