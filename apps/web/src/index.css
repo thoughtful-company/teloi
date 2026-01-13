@@ -100,6 +100,11 @@ tfoot th {
   --type-badge: oklch(0.92 0.05 145);
   --type-badge-foreground: oklch(0.35 0.12 145);
 
+  /* Selection */
+  --selection-ring: oklch(0.75 0.08 250);
+  --selection-bg: oklch(0.96 0.02 250);
+  --selection-children-bg: oklch(0.97 0.015 250);
+
   --radius: 0.5rem;
   --max-line-width: 50rem;
   --spacing: 0.25rem;
@@ -141,6 +146,11 @@ tfoot th {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Selection */
+  --selection-ring: oklch(0.55 0.08 250);
+  --selection-bg: oklch(0.22 0.03 250);
+  --selection-children-bg: oklch(0.2 0.02 250);
 }
 
 @theme inline {
@@ -183,6 +193,9 @@ tfoot th {
   --color-sidebar-ring: var(--sidebar-ring);
   --color-type-badge: var(--type-badge);
   --color-type-badge-foreground: var(--type-badge-foreground);
+  --color-selection-ring: var(--selection-ring);
+  --color-selection-bg: var(--selection-bg);
+  --color-selection-children-bg: var(--selection-children-bg);
 
   --shadow-daiichi:
     0px 0px 0px 1px

@@ -1333,9 +1333,6 @@ export default function Block({ blockId }: BlockProps) {
       data-element-id={blockId}
       data-element-type="block"
       class="relative"
-      classList={{
-        "ring-2 ring-blue-400 bg-blue-50/50 rounded": store.isSelected,
-      }}
     >
       <Show when={hasChildren()}>
         <button
@@ -1352,7 +1349,13 @@ export default function Block({ blockId }: BlockProps) {
           />
         </button>
       </Show>
-      <div onClick={handleFocus} class="flex">
+      <div
+        onClick={handleFocus}
+        class="flex"
+        classList={{
+          "ring-2 ring-inset ring-selection-ring bg-selection-bg rounded": store.isSelected,
+        }}
+      >
         <Transition
           enterActiveClass="transition-all duration-150 ease-out"
           enterClass="opacity-0 scale-0"
@@ -1400,7 +1403,12 @@ export default function Block({ blockId }: BlockProps) {
         </div>
       </div>
       <Show when={store.isExpanded}>
-        <div class="pl-4 flex flex-col gap-1.5">
+        <div
+          class="pl-4 flex flex-col gap-1.5"
+          classList={{
+            "bg-selection-children-bg rounded-b": store.isSelected,
+          }}
+        >
           <Show when={store.childBlockIds.length > 0}>
             <div class="w-max h-0"> </div>
           </Show>

@@ -67,8 +67,9 @@ describe("Block selection", () => {
               `[data-element-id="${blockId}"]`,
             );
             expect(blockEl).not.toBeNull();
-            // Check for ring class (visual indicator)
-            expect(blockEl?.className).toMatch(/ring/);
+            // Check for ring class on a descendant (visual indicator moved to inner content div)
+            const ringEl = blockEl?.querySelector('[class*="ring-"]');
+            expect(ringEl).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -151,8 +152,9 @@ describe("Block selection", () => {
             const secondBlockEl = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
             );
-            expect(firstBlockEl?.className).toMatch(/ring/);
-            expect(secondBlockEl?.className).toMatch(/ring/);
+            // Check for ring class on a descendant (visual indicator moved to inner content div)
+            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -317,8 +319,9 @@ describe("Block selection", () => {
             const secondBlockEl = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
             );
-            expect(firstBlockEl?.className).toMatch(/ring/);
-            expect(secondBlockEl?.className).toMatch(/ring/);
+            // Check for ring class on a descendant (visual indicator moved to inner content div)
+            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -806,8 +809,8 @@ describe("Block selection", () => {
               `[data-element-id="${firstBlockId}"]`,
             );
             expect(firstBlockEl).not.toBeNull();
-            // Ring class should be gone
-            expect(firstBlockEl?.className).not.toMatch(/ring/);
+            // Ring class should be gone from the inner content div
+            expect(firstBlockEl?.querySelector('[class*="ring-"]')).toBeNull();
           },
           { timeout: 2000 },
         ),
