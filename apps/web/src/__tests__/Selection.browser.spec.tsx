@@ -254,7 +254,7 @@ describe("Selection sync", () => {
           () => {
             const cmContent = document.querySelector(".cm-content");
             if (!cmContent) throw new Error("CodeMirror not found");
-            const view = EditorView.findFromDOM(cmContent);
+            const view = EditorView.findFromDOM(cmContent as HTMLElement);
             if (!view) throw new Error("EditorView not found");
             return getWrapBoundaryCoords(view);
           },

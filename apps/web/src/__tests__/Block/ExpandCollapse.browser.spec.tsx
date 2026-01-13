@@ -195,7 +195,6 @@ describe("Block expand/collapse - Text editing mode", () => {
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
 
       // Add a child to make it collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({

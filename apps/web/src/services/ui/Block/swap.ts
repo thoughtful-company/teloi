@@ -120,7 +120,7 @@ const crossParentMove = (
           nodeId,
           parentId: nextParentSiblingId,
           insert: "before",
-          siblingId: targetChildren[0],
+          siblingId: targetChildren[0]!,
         });
       } else {
         yield* Node.insertNode({
@@ -132,7 +132,9 @@ const crossParentMove = (
     }
 
     return true;
-  });
+  }).pipe(
+    Effect.catchAll(() => Effect.succeed(false)),
+  );
 
 /**
  * Move a node to be the first sibling.

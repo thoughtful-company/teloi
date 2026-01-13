@@ -81,7 +81,9 @@ export const BlockLive = Layer.effect(
       subscribe: withContext(subscribe)(context),
       attestExistence: withContext(attestExistence)(context),
       setExpanded: (blockId: Id.Block, isExpanded: boolean) =>
-        Store.setDocument("block", { isExpanded }, blockId),
+        Store.setDocument("block", { isExpanded }, blockId).pipe(
+          Effect.catchAll(() => Effect.void),
+        ),
       isExpanded: (blockId: Id.Block) =>
         Store.getDocument("block", blockId).pipe(
           Effect.map((doc) => Option.isNone(doc) || doc.value.isExpanded),

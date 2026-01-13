@@ -192,7 +192,9 @@ const crossParentMoveBlocks = (
     }
 
     return true;
-  });
+  }).pipe(
+    Effect.catchAll(() => Effect.succeed(false)),
+  );
 
 interface EditorBufferProps {
   bufferId: Id.Buffer;

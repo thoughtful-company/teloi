@@ -542,7 +542,7 @@ export default function Block({ blockId }: BlockProps) {
         const allNodesToDelete = [nodeId, ...descendants];
 
         // Find focus target before deletion
-        const prevNodeOpt = yield* Block.findPreviousNode(nodeId);
+        const prevNodeOpt = yield* Block.findPreviousNode(nodeId, bufferId);
         const focusNodeId = Option.isSome(prevNodeOpt)
           ? prevNodeOpt.value
           : rootNodeId;
@@ -1071,250 +1071,254 @@ export default function Block({ blockId }: BlockProps) {
 
   const handleAction = (action: EditorAction): boolean | void =>
     Match.value(action).pipe(
-      Match.tag("Enter", ({ info }) => {
-        // If picker is open, select the current item
-        if (pickerState()) {
-          const query = getPickerQuery();
-          const availableTypes = runtime.runSync(
-            Effect.gen(function* () {
-              const TypePicker = yield* TypePickerT;
-              const types = yield* TypePicker.getAvailableTypes();
-              return TypePicker.filterTypes(types, query);
-            }),
-          );
-          if (availableTypes.length > 0) {
-            handleTypePickerSelect(availableTypes[0]!.id);
-          } else if (query) {
-            handleTypePickerCreate(query);
-          }
-          return true;
-        }
-        return handleEnter(info);
-      }),
-      Match.tag("Tab", () => handleTab()),
-      Match.tag("ShiftTab", () => handleShiftTab()),
-      Match.tag("BackspaceAtStart", () => handleBackspaceAtStart()),
-      Match.tag("DeleteAtEnd", () => handleDeleteAtEnd()),
-      Match.tag("ForceDelete", () => handleForceDelete()),
-      Match.tag("Navigate", ({ direction, goalX }) =>
-        Match.value(direction).pipe(
-          Match.when("left", () => handleArrowLeftAtStart()),
-          Match.when("right", () => handleArrowRightAtEnd()),
-          Match.when("up", () => handleArrowUpOnFirstLine(goalX ?? 0)),
-          Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
-          Match.exhaustive,
-        ),
-      ),
-      Match.tag("SelectionChange", ({ selection }) =>
-        handleSelectionChange(selection),
-      ),
-      Match.tag("VerticalMove", ({ anchor, head, assoc, goalX }) => {
-        // Update model with selection + preserved goalX (for intra-block vertical movement)
-        const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Buffer = yield* BufferT;
-            yield* Buffer.setSelection(
-              bufferId,
-              Option.some({
-                anchor: { nodeId },
-                anchorOffset: anchor,
-                focus: { nodeId },
-                focusOffset: head,
-                goalX,
-                goalLine: null,
-                assoc,
+      Match.tags({
+        Enter: ({ info }) => {
+          // If picker is open, select the current item
+          if (pickerState()) {
+            const query = getPickerQuery();
+            const availableTypes = runtime.runSync(
+              Effect.gen(function* () {
+                const TypePicker = yield* TypePickerT;
+                const types = yield* TypePicker.getAvailableTypes();
+                return TypePicker.filterTypes(types, query);
               }),
             );
-          }),
-        );
-      }),
-      Match.tag("Blur", () => handleBlur()),
-      Match.tag("Escape", () => {
-        // If picker is open, close it instead of entering block selection
-        if (pickerState()) {
-          handleTypePickerClose();
-          return;
-        }
-        enterBlockSelectionMode();
-      }),
-      Match.tag("ZoomIn", () => handleZoomIn()),
-      Match.tag("ZoomOut", () => handleZoomOut()),
-      Match.tag("BlockSelect", () => enterBlockSelectionMode()),
-      Match.tag("Move", ({ action: moveAction }) => handleMove(moveAction)),
-      Match.tag("TypeTrigger", ({ typeId, trigger }) =>
-        handleTypeTrigger(typeId, trigger),
-      ),
-      Match.tag("TypePickerOpen", ({ position, from }) =>
-        handleTypePickerOpen(position, from),
-      ),
-      Match.tag("TypePickerUpdate", () => {
-        // Query is computed reactively from textContent and selection
-      }),
-      Match.tag("TypePickerClose", () => handleTypePickerClose()),
-      // Collapse: toggle collapse one level (no navigation)
-      Match.tag("Collapse", () => {
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Block = yield* BlockT;
-            const Node = yield* NodeT;
-            const [bufferId] = yield* Id.parseBlockId(blockId);
-
-            // Level-by-level collapse: collapse deepest expanded descendants first
-            const collapseOneLevel = (
-              nId: Id.Node,
-            ): Effect.Effect<boolean> =>
-              Effect.gen(function* () {
-                const bId = Id.makeBlockId(bufferId, nId);
-                const isExpanded = yield* Block.isExpanded(bId);
-                const children = yield* Node.getNodeChildren(nId);
-
-                // Leaf nodes can't be collapsed
-                if (children.length === 0) return false;
-                if (!isExpanded) return false;
-
-                // Try to collapse children first (deepest first)
-                let childWasCollapsed = false;
-                for (const childId of children) {
-                  const didCollapse = yield* collapseOneLevel(childId);
-                  if (didCollapse) childWasCollapsed = true;
-                }
-
-                if (childWasCollapsed) return true;
-
-                // No expanded descendants - collapse this block
-                yield* Block.setExpanded(bId, false);
-                return true;
-              });
-
-            yield* collapseOneLevel(nodeId);
-          }),
-        );
-      }),
-      // Expand: toggle expand one level (no navigation)
-      Match.tag("Expand", () => {
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Block = yield* BlockT;
-            const Node = yield* NodeT;
-            const [bufferId] = yield* Id.parseBlockId(blockId);
-
-            // Level-by-level expand: expand self first, then children
-            const expandOneLevel = (
-              nId: Id.Node,
-            ): Effect.Effect<boolean> =>
-              Effect.gen(function* () {
-                const bId = Id.makeBlockId(bufferId, nId);
-                const isExpanded = yield* Block.isExpanded(bId);
-
-                if (!isExpanded) {
-                  yield* Block.setExpanded(bId, true);
-                  return true;
-                }
-
-                // Already expanded - try to expand children
-                const children = yield* Node.getNodeChildren(nId);
-                for (const childId of children) {
-                  const didExpand = yield* expandOneLevel(childId);
-                  if (didExpand) return true;
-                }
-
-                return false;
-              });
-
-            yield* expandOneLevel(nodeId);
-          }),
-        );
-      }),
-      // DrillOut: navigate to parent (collapse PARENT, focus parent)
-      // We're "drilling out" of the parent level, so collapse it
-      Match.tag("DrillOut", ({ goalX: actionGoalX }) => {
-        isDrilling = true;
-        runtime
-          .runPromise(
+            if (availableTypes.length > 0) {
+              handleTypePickerSelect(availableTypes[0]!.id);
+            } else if (query) {
+              handleTypePickerCreate(query);
+            }
+            return true;
+          }
+          return handleEnter(info);
+        },
+        Tab: () => handleTab(),
+        ShiftTab: () => handleShiftTab(),
+        BackspaceAtStart: () => handleBackspaceAtStart(),
+        DeleteAtEnd: () => handleDeleteAtEnd(),
+        ForceDelete: () => handleForceDelete(),
+        Navigate: ({ direction, goalX }) =>
+          Match.value(direction).pipe(
+            Match.when("left", () => handleArrowLeftAtStart()),
+            Match.when("right", () => handleArrowRightAtEnd()),
+            Match.when("up", () => handleArrowUpOnFirstLine(goalX ?? 0)),
+            Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
+            Match.exhaustive,
+          ),
+        SelectionChange: ({ selection }) => handleSelectionChange(selection),
+        VerticalMove: ({ anchor, head, assoc, goalX }) => {
+          // Update model with selection + preserved goalX (for intra-block vertical movement)
+          const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const Buffer = yield* BufferT;
+              yield* Buffer.setSelection(
+                bufferId,
+                Option.some({
+                  anchor: { nodeId },
+                  anchorOffset: anchor,
+                  focus: { nodeId },
+                  focusOffset: head,
+                  goalX,
+                  goalLine: null,
+                  assoc,
+                }),
+              );
+            }),
+          );
+        },
+        Blur: () => handleBlur(),
+        Escape: () => {
+          // If picker is open, close it instead of entering block selection
+          if (pickerState()) {
+            handleTypePickerClose();
+            return;
+          }
+          enterBlockSelectionMode();
+        },
+        ZoomIn: () => handleZoomIn(),
+        ZoomOut: () => handleZoomOut(),
+        BlockSelect: () => enterBlockSelectionMode(),
+        Move: ({ action: moveAction }) => handleMove(moveAction),
+        TypeTrigger: ({ typeId, trigger }) =>
+          handleTypeTrigger(typeId, trigger),
+        TypePickerOpen: ({ position, from }) =>
+          handleTypePickerOpen(position, from),
+        TypePickerUpdate: () => {
+          // Query is computed reactively from textContent and selection
+        },
+        TypePickerClose: () => handleTypePickerClose(),
+        // Collapse: toggle collapse one level (no navigation)
+        Collapse: () => {
+          runtime.runPromise(
             Effect.gen(function* () {
               const Block = yield* BlockT;
+              const Node = yield* NodeT;
+              const [bufferId] = yield* Id.parseBlockId(blockId);
+
+              // Level-by-level collapse: collapse deepest expanded descendants first
+              const collapseOneLevel = (
+                nId: Id.Node,
+              ): Effect.Effect<boolean> =>
+                Effect.gen(function* () {
+                  const bId = Id.makeBlockId(bufferId, nId);
+                  const isExpanded = yield* Block.isExpanded(bId);
+                  const children = yield* Node.getNodeChildren(nId);
+
+                  // Leaf nodes can't be collapsed
+                  if (children.length === 0) return false;
+                  if (!isExpanded) return false;
+
+                  // Try to collapse children first (deepest first)
+                  let childWasCollapsed = false;
+                  for (const childId of children) {
+                    const didCollapse = yield* collapseOneLevel(childId);
+                    if (didCollapse) childWasCollapsed = true;
+                  }
+
+                  if (childWasCollapsed) return true;
+
+                  // No expanded descendants - collapse this block
+                  yield* Block.setExpanded(bId, false);
+                  return true;
+                });
+
+              yield* collapseOneLevel(nodeId);
+            }),
+          );
+        },
+        // Expand: toggle expand one level (no navigation)
+        Expand: () => {
+          runtime.runPromise(
+            Effect.gen(function* () {
+              const Block = yield* BlockT;
+              const Node = yield* NodeT;
+              const [bufferId] = yield* Id.parseBlockId(blockId);
+
+              // Level-by-level expand: expand self first, then children
+              const expandOneLevel = (
+                nId: Id.Node,
+              ): Effect.Effect<boolean> =>
+                Effect.gen(function* () {
+                  const bId = Id.makeBlockId(bufferId, nId);
+                  const isExpanded = yield* Block.isExpanded(bId);
+
+                  if (!isExpanded) {
+                    yield* Block.setExpanded(bId, true);
+                    return true;
+                  }
+
+                  // Already expanded - try to expand children
+                  const children = yield* Node.getNodeChildren(nId);
+                  for (const childId of children) {
+                    const didExpand = yield* expandOneLevel(childId);
+                    if (didExpand) return true;
+                  }
+
+                  return false;
+                });
+
+              yield* expandOneLevel(nodeId);
+            }),
+          );
+        },
+        // DrillOut: navigate to parent (collapse PARENT, focus parent)
+        // We're "drilling out" of the parent level, so collapse it
+        DrillOut: ({ goalX: actionGoalX }) => {
+          isDrilling = true;
+          runtime
+            .runPromise(
+              Effect.gen(function* () {
+                const Block = yield* BlockT;
+                const Node = yield* NodeT;
+                const Buffer = yield* BufferT;
+                const Window = yield* WindowT;
+                const [bufferId] = yield* Id.parseBlockId(blockId);
+
+                // Get parent first
+                const parentId = yield* Node.getParent(nodeId).pipe(
+                  Effect.catchTag("NodeHasNoParentError", () =>
+                    Effect.succeed<Id.Node | null>(null),
+                  ),
+                );
+                if (!parentId) return;
+
+                const parentBlockId = Id.makeBlockId(bufferId, parentId);
+
+                // Collapse the PARENT (not the current block)
+                yield* Block.setExpanded(parentBlockId, false);
+
+                const goalX = actionGoalX ?? store.selection?.goalX ?? null;
+
+                // Check if parent is the buffer root (first-level block)
+                const assignedNodeId =
+                  yield* Buffer.getAssignedNodeId(bufferId);
+                if (parentId === assignedNodeId) {
+                  yield* Buffer.setSelection(
+                    bufferId,
+                    makeCollapsedSelection(parentId, 0, {
+                      goalX,
+                      goalLine: "last",
+                    }),
+                  );
+                  yield* Window.setActiveElement(
+                    Option.some({ type: "title" as const, bufferId }),
+                  );
+                  return;
+                }
+
+                // Focus parent
+                yield* Buffer.setSelection(
+                  bufferId,
+                  makeCollapsedSelection(parentId, 0, {
+                    goalX,
+                    goalLine: "last",
+                  }),
+                );
+                yield* Window.setActiveElement(
+                  Option.some({ type: "block" as const, id: parentBlockId }),
+                );
+              }),
+            )
+            .finally(() => {
+              isDrilling = false;
+            });
+        },
+        // DrillIn: navigate to first child (create if needed, focus child)
+        DrillIn: ({ goalX: actionGoalX }) => {
+          runtime.runPromise(
+            Effect.gen(function* () {
               const Node = yield* NodeT;
               const Buffer = yield* BufferT;
               const Window = yield* WindowT;
               const [bufferId] = yield* Id.parseBlockId(blockId);
 
-              // Get parent first
-              const parentId = yield* Node.getParent(nodeId).pipe(
-                Effect.catchTag("NodeHasNoParentError", () =>
-                  Effect.succeed<Id.Node | null>(null),
-                ),
-              );
-              if (!parentId) return;
-
-              const parentBlockId = Id.makeBlockId(bufferId, parentId);
-
-              // Collapse the PARENT (not the current block)
-              yield* Block.setExpanded(parentBlockId, false);
-
               const goalX = actionGoalX ?? store.selection?.goalX ?? null;
+              const children = yield* Node.getNodeChildren(nodeId);
 
-              // Check if parent is the buffer root (first-level block)
-              const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
-              if (parentId === assignedNodeId) {
-                yield* Buffer.setSelection(
-                  bufferId,
-                  makeCollapsedSelection(parentId, 0, { goalX, goalLine: "last" }),
-                );
-                yield* Window.setActiveElement(
-                  Option.some({ type: "title" as const, bufferId }),
-                );
-                return;
-              }
+              // Create child if childless
+              const firstChildId =
+                children.length === 0
+                  ? yield* Node.insertNode({
+                      parentId: nodeId,
+                      insert: "before",
+                    })
+                  : children[0]!;
 
-              // Focus parent
+              const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
               yield* Buffer.setSelection(
                 bufferId,
-                makeCollapsedSelection(parentId, 0, { goalX, goalLine: "last" }),
+                makeCollapsedSelection(firstChildId, 0, {
+                  goalX,
+                  goalLine: "first",
+                }),
               );
               yield* Window.setActiveElement(
-                Option.some({ type: "block" as const, id: parentBlockId }),
+                Option.some({ type: "block" as const, id: firstChildBlockId }),
               );
             }),
-          )
-          .finally(() => {
-            isDrilling = false;
-          });
-      }),
-      // DrillIn: navigate to first child (create if needed, focus child)
-      Match.tag("DrillIn", ({ goalX: actionGoalX }) => {
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const Buffer = yield* BufferT;
-            const Window = yield* WindowT;
-            const [bufferId] = yield* Id.parseBlockId(blockId);
-
-            const goalX = actionGoalX ?? store.selection?.goalX ?? null;
-            const children = yield* Node.getNodeChildren(nodeId);
-
-            // Create child if childless
-            const firstChildId =
-              children.length === 0
-                ? yield* Node.insertNode({
-                    parentId: nodeId,
-                    insert: "before",
-                  })
-                : children[0]!;
-
-            const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
-            yield* Buffer.setSelection(
-              bufferId,
-              makeCollapsedSelection(firstChildId, 0, {
-                goalX,
-                goalLine: "first",
-              }),
-            );
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: firstChildBlockId }),
-            );
-          }),
-        );
+          );
+        },
       }),
       Match.exhaustive,
     );
