@@ -37,6 +37,32 @@ describe("TypePicker", () => {
         );
       }).pipe(runtime.runPromise);
     });
+
+    it("shows picker popup when # is typed in empty block", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "" }],
+        );
+
+        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* When.USER_PRESSES("#");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector("[data-testid='type-picker']");
+              expect(picker).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
   });
 
   describe("Filtering types", () => {

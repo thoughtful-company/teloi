@@ -1026,15 +1026,15 @@ export default function TextEditor(props: TextEditorProps) {
         if (text !== "#") return false;
 
         // Get cursor position for popup placement
+        // coordsAtPos returns null on empty documents, so fall back to editor position
         const coords = view.coordsAtPos(from);
-        if (coords) {
-          emit(
-            Action.TypePickerOpen(
-              { x: coords.left, y: coords.bottom + 4 },
-              from,
-            ),
-          );
-        }
+        const position = coords
+          ? { x: coords.left, y: coords.bottom + 4 }
+          : (() => {
+              const rect = view.contentDOM.getBoundingClientRect();
+              return { x: rect.left, y: rect.top + 20 };
+            })();
+        emit(Action.TypePickerOpen(position, from));
         // Don't consume - let "#" be inserted
         return false;
       }),
