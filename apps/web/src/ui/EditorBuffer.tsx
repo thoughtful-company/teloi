@@ -288,6 +288,17 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             wasBufferActive = isBufferActive;
             setIsBlockSelectionMode(isBufferActive);
+
+            // Scroll block into view when navigating in text editing mode
+            if (
+              Option.isSome(activeElement) &&
+              activeElement.value.type === "block"
+            ) {
+              const [elBufferId] = yield* Id.parseBlockId(activeElement.value.id);
+              if (elBufferId === bufferId) {
+                scrollBlockIntoView(activeElement.value.id);
+              }
+            }
           }),
         );
       }),
