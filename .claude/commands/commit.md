@@ -10,6 +10,8 @@ Review all staged and modified files before commit. For each changed file:
    - Usage of 'as'. Type assertions should never be used to mask type errors or missing dependencies.** Type assertions with `as` silence the compiler and hide real issues (missing Effect dependencies, incorrect error types, etc.). If the types don't match, fix the underlying problem—don't cast it away. If you can't fix the underlying issue discuss it with me.
    - Make sure logging is done according to logging standarts `docs/logging.md`.
 
+   **Consider running the `code-simplifier` agent** on changed files to refine code for clarity and maintainability.
+
 3. **Explanation check**: Have I explained all the important or non-obvious things about this code? Consider:
    - Any tricky edge cases or gotchas
    - Why certain approaches were chosen over alternatives
@@ -17,10 +19,11 @@ Review all staged and modified files before commit. For each changed file:
    - Anything the user might want to know before merging
 
 4. **Final checklist**:
-   - [ ] TypeScript compiles without new errors
+   - [ ] **Run `pnpm -F @teloi/web typecheck` NOW** — You MUST run typecheck immediately before committing if ANY code changes were made since the last typecheck. No exceptions. Don't assume a previous run is still valid.
      When TypeScript check fails, report the errors to the user. Don't silently fix pre-existing errors or hide issues behind type assertions. If an error is unrelated to your changes, say so explicitly: "There's a pre-existing TypeScript error in X that's blocking the build - not from my changes." Let the user decide how to handle it.
    - [ ] Tests pass
    - [ ] **All new/modified functionality is covered by tests** — DO NOT commit if there is untested functionality. If tests are missing, stop and use the `test-architect` agent to write them first.
+   - [ ] **No redundant test files created** — Before creating a new test file, check if tests can be added to an existing test file for the same module/component. Keep tests consolidated.
    - [ ] No debug code left behind (console.log, debugger, etc.)
    - [ ] Changes match what was requested (not over-engineered)
 
