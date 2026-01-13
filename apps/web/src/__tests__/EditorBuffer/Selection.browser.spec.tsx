@@ -1707,4 +1707,184 @@ describe("Block selection", () => {
       );
     }).pipe(runtime.runPromise);
   });
+
+  describe("block selection with empty selection and no lastFocusedBlockId", () => {
+    it("ArrowDown selects the first block when there are blocks", async () => {
+      await Effect.gen(function* () {
+        // Given: A buffer with 3 blocks
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
+        );
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        const Store = yield* StoreT;
+        const Window = yield* WindowT;
+
+        // Set up block selection mode (activeElement.type = "buffer")
+        // but with empty selection and no lastFocusedBlockId
+        yield* Window.setActiveElement(
+          Option.some({ type: "buffer" as const, id: bufferId }),
+        );
+
+        // Verify we're in block selection mode with empty selection
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.lastFocusedBlockId).toBeNull();
+          }),
+        );
+
+        // When: User presses ArrowDown
+        yield* When.USER_PRESSES("{ArrowDown}");
+
+        // Then: First block should be selected
+        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+          anchor: childNodeIds[0],
+          focus: childNodeIds[0],
+        });
+      }).pipe(runtime.runPromise);
+    });
+
+    it("ArrowUp selects the last block when there are blocks", async () => {
+      await Effect.gen(function* () {
+        // Given: A buffer with 3 blocks
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
+        );
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        const Store = yield* StoreT;
+        const Window = yield* WindowT;
+
+        // Set up block selection mode (activeElement.type = "buffer")
+        // but with empty selection and no lastFocusedBlockId
+        yield* Window.setActiveElement(
+          Option.some({ type: "buffer" as const, id: bufferId }),
+        );
+
+        // Verify we're in block selection mode with empty selection
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.lastFocusedBlockId).toBeNull();
+          }),
+        );
+
+        // When: User presses ArrowUp
+        yield* When.USER_PRESSES("{ArrowUp}");
+
+        // Then: Last block should be selected
+        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+          anchor: childNodeIds[2],
+          focus: childNodeIds[2],
+        });
+      }).pipe(runtime.runPromise);
+    });
+
+    it("ArrowDown does nothing when there are no blocks", async () => {
+      await Effect.gen(function* () {
+        // Given: A buffer with no child blocks (only root)
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        const Store = yield* StoreT;
+        const Window = yield* WindowT;
+
+        // Set up block selection mode with empty selection
+        yield* Window.setActiveElement(
+          Option.some({ type: "buffer" as const, id: bufferId }),
+        );
+
+        // Verify we're in block selection mode with empty selection
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.lastFocusedBlockId).toBeNull();
+          }),
+        );
+
+        // When: User presses ArrowDown
+        yield* When.USER_PRESSES("{ArrowDown}");
+
+        // Then: Selection should still be empty (nothing happened)
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.blockSelectionAnchor).toBeNull();
+          }),
+        );
+      }).pipe(runtime.runPromise);
+    });
+
+    it("ArrowUp does nothing when there are no blocks", async () => {
+      await Effect.gen(function* () {
+        // Given: A buffer with no child blocks (only root)
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        const Store = yield* StoreT;
+        const Window = yield* WindowT;
+
+        // Set up block selection mode with empty selection
+        yield* Window.setActiveElement(
+          Option.some({ type: "buffer" as const, id: bufferId }),
+        );
+
+        // Verify we're in block selection mode with empty selection
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.lastFocusedBlockId).toBeNull();
+          }),
+        );
+
+        // When: User presses ArrowUp
+        yield* When.USER_PRESSES("{ArrowUp}");
+
+        // Then: Selection should still be empty (nothing happened)
+        yield* Effect.promise(() =>
+          waitFor(async () => {
+            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+              runtime.runPromise,
+            );
+            expect(Option.isSome(bufferDoc)).toBe(true);
+            const buf = Option.getOrThrow(bufferDoc);
+            expect(buf.selectedBlocks).toEqual([]);
+            expect(buf.blockSelectionAnchor).toBeNull();
+          }),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
 });

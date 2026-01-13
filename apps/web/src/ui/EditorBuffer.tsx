@@ -290,8 +290,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     // Handle Escape key when in block selection mode
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle if event came from inside CodeMirror - it has its own Escape handler
-      const target = e.target as HTMLElement;
-      if (target.closest(".cm-editor")) {
+      const target = e.target;
+      if (target instanceof HTMLElement && target.closest(".cm-editor")) {
         return;
       }
 
@@ -659,14 +659,33 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
       if (
         (e.key === "ArrowUp" || e.key === "ArrowDown") &&
         !e.altKey && // Alt+Cmd+Arrow is handled above for swap/move
-        !(isMac ? e.metaKey : e.ctrlKey) && // Cmd+Arrow is handled above for collapse/expand
-        isBlockSelectionMode()
+        !(isMac ? e.metaKey : e.ctrlKey) // Cmd+Arrow is handled above for collapse/expand
+        // Note: We handle both isBlockSelectionMode() AND when nothing is focused
       ) {
         e.preventDefault();
         runtime.runPromise(
           Effect.gen(function* () {
             const Buffer = yield* BufferT;
             const Node = yield* NodeT;
+            const Window = yield* WindowT;
+            const Store = yield* StoreT;
+
+            const sessionId = yield* Store.getSessionId();
+            const windowId = Id.Window.make(sessionId);
+            const windowDoc = yield* Store.getDocument("window", windowId);
+            if (Option.isNone(windowDoc)) return;
+
+            if (windowDoc.value.activeElement === null) {
+              yield* Window.setActiveElement(
+                Option.some({ type: "buffer" as const, id: bufferId }),
+              );
+            } else if (
+              windowDoc.value.activeElement.type !== "buffer" ||
+              windowDoc.value.activeElement.id !== bufferId
+            ) {
+              // Something else is focused (different buffer or title/block), don't handle
+              return;
+            }
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -681,7 +700,24 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             // When selection is empty but we have lastFocusedBlockId, restore selection there
             const isEmptySelection = selectedBlocks.length === 0;
             if (isEmptySelection) {
-              if (!lastFocusedBlockId) return;
+              if (!lastFocusedBlockId) {
+                const rootNodeId = bufferDoc.assignedNodeId as Id.Node;
+                const children = yield* Node.getNodeChildren(rootNodeId);
+                if (children.length === 0) return;
+
+                const targetBlock =
+                  e.key === "ArrowDown"
+                    ? children[0]!
+                    : children[children.length - 1]!;
+                yield* Buffer.setBlockSelection(
+                  bufferId,
+                  [targetBlock],
+                  targetBlock,
+                  targetBlock,
+                );
+                scrollBlockIntoView(Id.makeBlockId(bufferId, targetBlock));
+                return;
+              }
 
               yield* Buffer.setBlockSelection(
                 bufferId,
