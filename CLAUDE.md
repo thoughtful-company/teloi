@@ -37,9 +37,14 @@ pnpm -F @teloi/web typecheck
 
 # Linting
 pnpm eslint .             # Lint entire repo
+
+# GitHub
+gh api repos/:owner/:repo/issues/17  # Look up issue details
 ```
 
 ## Rules
+
+**Always create a new branch** before starting work on a new feature. Never commit directly to main, and never mix unrelated work into an existing feature branch.
 
 **Comments** should explain **why**, not **what**. The code already shows what it does—comments that repeat the code are noise. Write comments only for:
 - Non-obvious reasoning or edge cases ("We check X before Y because Z can cause...")
