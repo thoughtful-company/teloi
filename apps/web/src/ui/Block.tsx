@@ -1380,9 +1380,13 @@ export default function Block({ blockId }: BlockProps) {
                 <Show when={textContent()} fallback={"\u00A0"}>
                   <FormattedText ytext={ytext} />
                 </Show>
-                <For each={userTypes()}>
-                  {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
-                </For>
+                <Show when={userTypes().length > 0}>
+                  <span class="ml-[var(--inline-type-gap)]">
+                    <For each={userTypes()}>
+                      {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
+                    </For>
+                  </span>
+                </Show>
               </p>
             }
           >
