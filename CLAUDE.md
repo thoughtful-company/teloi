@@ -55,9 +55,9 @@ Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clar
 
 When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
 
-**TDD-first**: Write tests **before** implementing features. Browser tests (`pnpm -F @teloi/web test:browser`) for UI components, unit tests for services and utilities.
+**TDD-first (MANDATORY)**: You MUST write tests **before** implementing ANY feature code. Do NOT write implementation until tests exist. This is non-negotiable—no exceptions.
 
-**ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly.
+**ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly. If you catch yourself about to write implementation before tests exist, STOP and write tests first.
 
 **Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 

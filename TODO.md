@@ -1,3 +1,23 @@
+**Needs Design**:
+- [ ] App-wide Navigation & Selection Model
+  Need to design how navigation and selection work across the entire app—sidebar, buffers, and transitions between them.
+
+  **Core Problem**: Implement proper selection for the sidebar with arrow key navigation, but this requires understanding the bigger picture of how selection/focus flows through the app.
+
+  **Open Questions**:
+  - What are all the distinct "focus regions"? (Sidebar, Buffer title, Block list, individual Block editor?)
+  - Should there be a single global "active region" or can multiple regions have selection state simultaneously?
+  - What does "selected" mean in sidebar? Visual highlight? Ready-to-act-on state?
+  - How does focus move from sidebar → buffer? (Enter? Tab? Arrow right?)
+  - How does focus return to sidebar from buffer? (Escape? Arrow left? Explicit shortcut?)
+  - When entering buffer from sidebar, where does focus land? (Title? First block? Last focused block?)
+  - Should sidebar selection persist when focus moves to buffer, or clear?
+  - Is there a "selection mode" vs "editing mode" distinction needed?
+  - How does this interact with existing block selection (Shift+Arrow)?
+
+- [ ] Find proper shortcut to mark todo blocks as done
+  Need to research how other block editors handle this (Notion, Logseq, Roam, Obsidian, etc.)
+
 **Active work**:
 - [ ] Block-level undo (structural changes, not just text)
 - [ ] Implement toggles for nodes that have children >
