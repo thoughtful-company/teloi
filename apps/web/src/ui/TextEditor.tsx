@@ -17,6 +17,11 @@ import {
 } from "@codemirror/view";
 import { Id } from "@/schema";
 import * as BlockType from "@/services/ui/BlockType";
+import {
+  calculateScrollDelta,
+  getSpringScroller,
+  SCROLL_MARGIN,
+} from "@/utils/scroll";
 import { SelectionStrategy } from "@/utils/selectionStrategy";
 import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { render } from "solid-js/web";
@@ -459,6 +464,28 @@ export default function TextEditor(props: TextEditorProps) {
   onMount(() => {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
+      // Intercept CodeMirror's scroll-into-view and use spring animation.
+      // Must defer coordsAtPos() to RAF - it throws if called during view update.
+      EditorView.scrollHandler.of((view, range) => {
+        const scrollContainer = view.dom.closest<HTMLElement>(
+          ".overflow-y-auto, .overflow-auto",
+        );
+        if (!scrollContainer) return false;
+
+        requestAnimationFrame(() => {
+          const coords = view.coordsAtPos(range.from);
+          if (!coords) return;
+
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const delta = calculateScrollDelta(coords, containerRect, SCROLL_MARGIN);
+
+          if (delta !== 0) {
+            getSpringScroller(scrollContainer).scrollBy(delta);
+          }
+        });
+
+        return true;
+      }),
       variantThemes[variant],
       formattingTheme,
       // Text formatting decorations - StateField maps through changes automatically
@@ -848,6 +875,7 @@ export default function TextEditor(props: TextEditorProps) {
                 selection: EditorSelection.create([
                   EditorSelection.cursor(finalPos, finalAssoc),
                 ]),
+                scrollIntoView: true,
               });
               suppressSelectionChange = false;
 
@@ -922,6 +950,7 @@ export default function TextEditor(props: TextEditorProps) {
                 selection: EditorSelection.create([
                   EditorSelection.cursor(finalPos, finalAssoc),
                 ]),
+                scrollIntoView: true,
               });
               suppressSelectionChange = false;
 

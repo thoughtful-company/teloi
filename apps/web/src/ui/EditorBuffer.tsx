@@ -7,6 +7,11 @@ import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
+import {
+  getSpringScroller,
+  SCROLL_MARGIN,
+  scrollElementIntoView,
+} from "@/utils/scroll";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
@@ -17,88 +22,13 @@ import ViewTabs from "./ViewTabs";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 
-/** Spring-based smooth scroll with ease-in-out feel */
-function smoothScrollBy(container: HTMLElement, deltaY: number) {
-  const target = container.scrollTop + deltaY;
-
-  // Spring parameters
-  const stiffness = 180;
-  const damping = 26;
-
-  // Ramp-up phase: gradually engage the spring for ease-in effect
-  const rampDuration = 0.3; // seconds to reach full spring force
-
-  // State
-  let position = container.scrollTop;
-  let velocity = 0;
-  let lastTime = performance.now();
-  const startTime = lastTime;
-
-  const positionThreshold = 0.5;
-  const velocityThreshold = 0.5;
-
-  function tick(now: number) {
-    const dt = Math.min((now - lastTime) / 1000, 0.064);
-    lastTime = now;
-
-    // Ease-in: ramp spring force from 0 to 1 over rampDuration
-    const elapsed = (now - startTime) / 1000;
-    const ramp = Math.min(elapsed / rampDuration, 1);
-    // Smooth the ramp with ease-out curve for natural feel
-    const smoothRamp = 1 - Math.pow(1 - ramp, 3);
-
-    // Spring physics with ramped stiffness
-    const displacement = position - target;
-    const springForce = -stiffness * smoothRamp * displacement;
-    const dampingForce = -damping * velocity;
-    const acceleration = springForce + dampingForce;
-
-    velocity += acceleration * dt;
-    position += velocity * dt;
-
-    container.scrollTop = position;
-
-    const isSettled =
-      Math.abs(position - target) < positionThreshold &&
-      Math.abs(velocity) < velocityThreshold;
-
-    if (!isSettled) {
-      requestAnimationFrame(tick);
-    } else {
-      container.scrollTop = target;
-    }
-  }
-
-  requestAnimationFrame(tick);
-}
-
-/** Scroll a block into view with margin, using spring animation */
-function scrollBlockIntoView(blockId: Id.Block, margin = 50) {
+function scrollBlockIntoView(blockId: Id.Block) {
   requestAnimationFrame(() => {
     const el = document.querySelector<HTMLElement>(
       `[data-element-id="${blockId}"][data-element-type="block"]`,
     );
     if (!el) return;
-
-    const scrollContainer = el.closest<HTMLElement>(
-      ".overflow-y-auto, .overflow-auto",
-    );
-    if (!scrollContainer) return;
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-
-    const topInContainer = elRect.top - containerRect.top;
-    const bottomInContainer = elRect.bottom - containerRect.top;
-
-    if (topInContainer < margin) {
-      smoothScrollBy(scrollContainer, topInContainer - margin);
-    } else if (bottomInContainer > containerRect.height - margin) {
-      smoothScrollBy(
-        scrollContainer,
-        bottomInContainer - containerRect.height + margin,
-      );
-    }
+    scrollElementIntoView(el, SCROLL_MARGIN);
   });
 }
 
@@ -116,7 +46,7 @@ function scrollBufferToTop(bufferId: Id.Buffer) {
     if (!scrollContainer) return;
 
     if (scrollContainer.scrollTop > 0) {
-      smoothScrollBy(scrollContainer, -scrollContainer.scrollTop);
+      getSpringScroller(scrollContainer).scrollTo(0);
     }
   });
 }
