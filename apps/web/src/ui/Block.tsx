@@ -1236,6 +1236,7 @@ export default function Block({ blockId }: BlockProps) {
       </Show>
       <div
         onClick={handleFocus}
+        data-block-content
         class="flex"
         classList={{
           "ring-2 ring-inset ring-selection-ring bg-selection-bg rounded":

@@ -26,7 +26,7 @@ const isMac = navigator.platform.toUpperCase().includes("MAC");
 function scrollBlockIntoView(blockId: Id.Block) {
   requestAnimationFrame(() => {
     const el = document.querySelector<HTMLElement>(
-      `[data-element-id="${blockId}"][data-element-type="block"]`,
+      `[data-element-id="${blockId}"][data-element-type="block"] [data-block-content]`,
     );
     if (!el) return;
     scrollElementIntoView(el, SCROLL_MARGIN);
