@@ -74,8 +74,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `ArrowUp/Down` - Navigate between blocks
 - `Shift+ArrowUp/Down` - Extend block selection
 - `ArrowLeft/Right` - Select parent/first child block
-- `Mod+ArrowUp/Down` - Level-by-level collapse/expand
-- `Mod+Shift+ArrowUp/Down` - Drill out to parent / drill into first child
+- `Mod+Up` - Progressive collapse (collapse → navigate to parent → focus title)
+- `Mod+Down` - Level-by-level expand
 - `Enter` - Start editing focused block
 - `Space` - Create new sibling block and start editing
 - `Delete/Backspace` - Delete selected blocks
@@ -148,24 +148,26 @@ When adding a new shortcut:
 3. **Is it for text manipulation within the editor?**
    → Add to CodeMirror keymap (Editor Shortcuts)
 
-## Block Expand/Collapse vs Drill Navigation
+## Block Expand/Collapse
 
-Two separate concerns are handled with different shortcuts:
-
-### Toggle Expand/Collapse (Mod+ArrowUp/Down)
+### Mod+Down (Expand)
 
 **No navigation** - cursor/selection stays on current block.
 
-- `Mod+Down` (Expand): First press expands the block (shows direct children). Next press expands collapsed children (one level deeper). Continue until all descendants are expanded.
-- `Mod+Up` (Collapse): First press collapses deepest expanded descendants. Continue pressing to collapse upward level by level. Last press collapses the block itself.
+First press expands the block (shows direct children). Next press expands collapsed children (one level deeper). Continue until all descendants are expanded.
 
-Works identically in both text editing and block selection modes.
+Works only in block selection mode.
 
-### Drill Navigation (Mod+Shift+ArrowUp/Down)
+### Mod+Up (Progressive Collapse → Navigate)
 
-**Moves cursor/selection** to a different block.
+**Progressive behavior** that combines collapse and navigation in one shortcut.
 
-- `Mod+Shift+Down` (Drill In): If block has children, focus first child. If childless, create empty child and focus it.
-- `Mod+Shift+Up` (Drill Out): Collapse current block and focus parent. If at root level, focus title.
+Works in **both** text editing mode AND block selection mode:
 
-**Mode preservation:** In text editing mode, stays in text editing mode. In block selection mode, stays in block selection mode. Preserves goalX for cursor positioning in text editing mode.
+| State | Action |
+|-------|--------|
+| Block is expanded (has visible children) | Collapse the block, stay on it |
+| Block is collapsed OR has no children | Collapse parent and navigate to it |
+| At root level (parent is buffer) | Focus title |
+
+**Mode preservation:** If in text editing mode, stays in text editing mode after navigation. Same for block selection mode.

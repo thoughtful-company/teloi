@@ -15,6 +15,493 @@ import {
   type BrowserRuntime,
 } from "../bdd";
 
+/**
+ * =============================================================================
+ * Progressive Mod+Up Behavior (NEW)
+ * =============================================================================
+ *
+ * Mod+Up works in BOTH text editing mode AND block selection mode:
+ *
+ * | State                                    | Action                          |
+ * |------------------------------------------|----------------------------------|
+ * | Block is expanded (has visible children) | Collapse the block, stay on it   |
+ * | Block is collapsed OR has no children    | Navigate to parent block         |
+ * | At root level (parent is buffer)         | Focus title                      |
+ *
+ * Mode preservation: If in text editing mode, stay in text editing mode after
+ * navigation. Same for block selection mode.
+ */
+describe("Progressive Mod+Up - Text editing mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("Mod+Up on expanded block collapses it and stays on the block", async () => {
+    await Effect.gen(function* () {
+      // Given: A block with children (expanded by default), user focused in it
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to make the parent expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus on the parent block (text editing mode)
+      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+
+      // Verify initially expanded (default state)
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Block collapses but stays selected
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on collapsed block navigates to parent", async () => {
+    await Effect.gen(function* () {
+      // Given: A collapsed block with children, nested under root
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to the parent
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the child (it has no children, so it's like being collapsed)
+      // Actually, the child has no children so it can't be expanded/collapsed
+      // Focus on the child block
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+      // When: Mod+Up pressed (child is childless, so navigate to parent)
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection moves to parent block and parent is collapsed
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on childless block navigates to parent", async () => {
+    await Effect.gen(function* () {
+      // Given: A nested hierarchy: Root -> Parent -> Child (leaf)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child (leaf node, no children)
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Leaf",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus on the leaf block
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection moves to parent and parent is collapsed
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on root block (collapsed) focuses title", async () => {
+    await Effect.gen(function* () {
+      // Given: A root-level block that is collapsed
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "TopLevel" }],
+      );
+
+      const rootBlockNodeId = childNodeIds[0];
+      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+
+      // Add a child to make it collapsible
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: rootBlockNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the block
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(rootBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(rootBlockId);
+
+      // Focus on the root-level block
+      yield* When.USER_CLICKS_BLOCK(rootBlockId);
+
+      // When: Mod+Up pressed (block is collapsed, at root level)
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Focus moves to title
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on root block (childless) focuses title", async () => {
+    await Effect.gen(function* () {
+      // Given: A root-level block with no children
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "LeafRoot" }],
+      );
+
+      const rootBlockNodeId = childNodeIds[0];
+      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus on the root-level block (no children)
+      yield* When.USER_CLICKS_BLOCK(rootBlockId);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Focus moves to title
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up preserves text editing mode after navigation", async () => {
+    await Effect.gen(function* () {
+      // Given: Parent -> Child, focused on child in text editing mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus on child (text editing mode - CodeMirror focused)
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+      // Verify we're in text editing mode (CodeMirror is focused)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection is on parent, parent is collapsed, and still in text editing mode
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      // CodeMirror should still be focused (text editing mode preserved)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor)
+            throw new Error("CodeMirror not focused after navigation");
+        }),
+      );
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("Progressive Mod+Up - Block selection mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("Mod+Up on expanded block collapses it and stays selected", async () => {
+    await Effect.gen(function* () {
+      // Given: An expanded block with children, selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on parent
+      yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Block collapses and stays selected in block selection mode
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on collapsed block navigates to parent in block selection mode", async () => {
+    await Effect.gen(function* () {
+      // Given: Parent -> Child, child is collapsed, selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      // Add a child with its own child (so it can be collapsed)
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      // Add grandchild to make child collapsible
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: childNodeId,
+        insert: "after",
+        text: "Grandchild",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the child block
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(childBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(childBlockId);
+
+      // Enter block selection mode on child
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeId]);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection moves to parent in block selection mode and parent is collapsed
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on childless block navigates to parent in block selection mode", async () => {
+    await Effect.gen(function* () {
+      // Given: Parent -> Child (leaf), child selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Leaf",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on child (leaf)
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeId]);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection moves to parent in block selection mode and parent is collapsed
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on root block (collapsed) focuses title", async () => {
+    await Effect.gen(function* () {
+      // Given: A root-level collapsed block, selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "TopLevel" }],
+      );
+
+      const rootBlockNodeId = childNodeIds[0];
+      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+
+      // Add a child to make it collapsible
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: rootBlockNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the block
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(rootBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(rootBlockId);
+
+      // Enter block selection mode
+      yield* When.USER_ENTERS_BLOCK_SELECTION(rootBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [rootBlockNodeId]);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Focus moves to title
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on root block (childless) focuses title", async () => {
+    await Effect.gen(function* () {
+      // Given: A root-level childless block, selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "LeafRoot" }],
+      );
+
+      const rootBlockNodeId = childNodeIds[0];
+      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode
+      yield* When.USER_ENTERS_BLOCK_SELECTION(rootBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [rootBlockNodeId]);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Focus moves to title
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up preserves block selection mode after navigation", async () => {
+    await Effect.gen(function* () {
+      // Given: Parent -> Child, child selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Enter block selection mode on child
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeId]);
+
+      // When: Mod+Up pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection moves to parent, parent is collapsed, and stays in block selection mode
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      // Verify we're still in block selection mode (not text editing)
+      // In block selection mode, CodeMirror should NOT be focused
+      yield* Effect.sync(() => {
+        const cmEditor = document.querySelector(".cm-editor.cm-focused");
+        expect(cmEditor).toBeNull();
+      });
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// LEGACY TESTS - TO BE MODIFIED OR REMOVED
+// =============================================================================
+// The tests below test the OLD Cmd+Up behavior which only collapsed blocks.
+// With the new progressive behavior:
+// - "Cmd+Up does nothing on already collapsed block" -> REMOVE (now navigates to parent)
+// - "Cmd+Up does nothing on block with no children" -> REMOVE (now navigates to parent)
+// The first test "Cmd+Up collapses an expanded block" remains valid.
+// =============================================================================
+
 describe("Block expand/collapse - Text editing mode", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
@@ -34,8 +521,10 @@ describe("Block expand/collapse - Text editing mode", () => {
   it("Cmd+Up collapses an expanded block that has children", async () => {
     await Effect.gen(function* () {
       // Given: A block with children, user focused in it
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
 
       const parentNodeId = childNodeIds[0];
       const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
@@ -63,67 +552,13 @@ describe("Block expand/collapse - Text editing mode", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up does nothing on already collapsed block", async () => {
-    await Effect.gen(function* () {
-      // Given: A collapsed block with children
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add a child to the parent
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Collapse the block first
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(parentBlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-
-      // Focus on the parent block
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
-
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-
-      // Then: Block stays collapsed
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Up does nothing on block with no children", async () => {
-    await Effect.gen(function* () {
-      // Given: A block with no children
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Leaf" }]);
-
-      const leafNodeId = childNodeIds[0];
-      const leafBlockId = Id.makeBlockId(bufferId, leafNodeId);
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Focus on the leaf block
-      yield* When.USER_CLICKS_BLOCK(leafBlockId);
-
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-
-      // Then: Nothing happens (no error, block still exists)
-      yield* Then.TEXT_IS_VISIBLE("Leaf");
-    }).pipe(runtime.runPromise);
-  });
-
   it("Cmd+Down expands a collapsed block that has children", async () => {
     await Effect.gen(function* () {
       // Given: A collapsed block with children
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
 
       const parentNodeId = childNodeIds[0];
       const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
@@ -152,259 +587,6 @@ describe("Block expand/collapse - Text editing mode", () => {
       yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
     }).pipe(runtime.runPromise);
   });
-
-  // TODO: This test is flaky - the child block ID doesn't match expected.
-  // The behavior is tested in ExpandChildless.browser.spec.tsx.
-  it.skip("Cmd+Down on expanded block focuses first child", async () => {
-    await Effect.gen(function* () {
-      // Given: An expanded block with children
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add a child to the parent
-      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child",
-      });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Verify initially expanded
-      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
-
-      // Focus on the parent block
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
-
-      // When: Cmd+Down pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
-
-      // Then: Focus moves to first child
-      yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Shift+Up on first-level block drills out to title", async () => {
-    await Effect.gen(function* () {
-      // Given: A first-level block
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
-
-      const parentNodeId = childNodeIds[0];
-
-      // Add a child to make it collapsible
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Focus on the first-level block by clicking its text
-      yield* Effect.promise(async () => {
-        const parentText = await waitFor(() => screen.getByText("Parent"));
-        await userEvent.click(parentText);
-      });
-
-      // Wait for CodeMirror to be focused
-      yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmEditor = document.querySelector(".cm-editor.cm-focused");
-          if (!cmEditor) throw new Error("CodeMirror not focused");
-        }),
-      );
-
-      // When: Cmd+Shift+Up pressed (drill out)
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
-
-      // Then: Focus moves to Title
-      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Shift+Up collapses PARENT and drills out to parent", async () => {
-    await Effect.gen(function* () {
-      // Given: Parent has child "A"
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add Child A to Parent
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child A",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Wait for hierarchy to render
-      yield* Then.TEXT_IS_VISIBLE("Child A");
-
-      // Focus on Child A by clicking its text content
-      yield* Effect.promise(async () => {
-        const childAText = await waitFor(() => screen.getByText("Child A"));
-        await userEvent.click(childAText);
-      });
-
-      // Wait for CodeMirror to be focused
-      yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmEditor = document.querySelector(".cm-editor.cm-focused");
-          if (!cmEditor) throw new Error("CodeMirror not focused");
-        }),
-      );
-
-      // When: Cmd+Shift+Up pressed (drill out)
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
-
-      // Then: PARENT is collapsed (we drilled out of that level)
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-
-      // Then: Focus moves to Parent (cursor is in Parent's text editor)
-      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Shift+Down preserves goalX when drilling into first child", async () => {
-    await Effect.gen(function* () {
-      // Given: A parent block with a child that has longer text
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Parent text here" }],
-      );
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add child with text
-      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child block with some text",
-      });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Focus parent and position cursor in the middle
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
-
-      // Wait for CodeMirror
-      yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmEditor = document.querySelector(".cm-editor.cm-focused");
-          if (!cmEditor) throw new Error("CodeMirror not focused");
-        }),
-      );
-
-      // Move cursor to position 8 ("Parent t|ext here")
-      yield* When.USER_PRESSES("{Home}");
-      for (let i = 0; i < 8; i++) {
-        yield* When.USER_PRESSES("{ArrowRight}");
-      }
-
-      // Record X position in parent
-      const xBefore = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        return sel.getRangeAt(0).getBoundingClientRect().left;
-      });
-
-      // When: Cmd+Shift+Down to drill into child
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
-
-      // Then: Focus is on child block
-      yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
-
-      // And: X position is preserved (within 10px tolerance)
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          return sel.getRangeAt(0).getBoundingClientRect().left;
-        }),
-      );
-
-      const delta = Math.abs(xAfter - xBefore);
-      expect(delta).toBeLessThan(10);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Shift+Up then Cmd+Shift+Down round-trip preserves cursor position", async () => {
-    await Effect.gen(function* () {
-      const { BufferT } = yield* Effect.promise(() =>
-        import("@/services/ui/Buffer"),
-      );
-      const Buffer = yield* BufferT;
-
-      // Given: Parent "Serial Lain Experiments" with child "ss"
-      // User bug: cursor at "ss|" → Cmd+Shift+Up → Cmd+Shift+Down → cursor lands at "s|s"
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Serial Lain Experiments" }],
-      );
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add child "ss"
-      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "ss",
-      });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Focus child and position cursor at end: "ss|"
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmEditor = document.querySelector(".cm-editor.cm-focused");
-          if (!cmEditor) throw new Error("CodeMirror not focused");
-        }),
-      );
-
-      // Move to end of "ss" (offset 2)
-      yield* When.USER_PRESSES("{End}");
-
-      // Verify we're at offset 2
-      const selBefore = yield* Buffer.getSelection(bufferId);
-      const offsetBefore = Option.map(selBefore, (s) => s.focusOffset).pipe(
-        Option.getOrElse(() => -1),
-      );
-
-      // When: Cmd+Shift+Up then Cmd+Shift+Down (drill round-trip)
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
-      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowDown}{/Meta}{/Shift}");
-      yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
-
-      // Get actual DOM cursor offset after round-trip
-      const domOffset = yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmContent = document.querySelector(".cm-content");
-          const sel = window.getSelection();
-          if (!sel || !cmContent) throw new Error("No selection");
-          return sel.focusOffset;
-        }),
-      );
-
-      // The offset should be preserved (2 → 2, not 2 → 0 or 2 → 1)
-      expect(offsetBefore).toBe(2);
-      expect(domOffset).toBe(2);
-    }).pipe(runtime.runPromise);
-  });
 });
 
 describe("Block expand/collapse - Block selection mode (single block)", () => {
@@ -426,8 +608,10 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
   it("Cmd+Up collapses selected block and preserves selection", async () => {
     await Effect.gen(function* () {
       // Given: A block with children is selected in block selection mode
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
 
       const parentNodeId = childNodeIds[0];
       const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
@@ -457,8 +641,10 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
   it("Cmd+Down expands selected block and preserves selection", async () => {
     await Effect.gen(function* () {
       // Given: A collapsed block with children is selected
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
 
       const parentNodeId = childNodeIds[0];
       const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
@@ -494,8 +680,10 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
     await Effect.gen(function* () {
       // Given: A -> B (collapsed), B -> C (collapsed)
       // A is selected in block selection mode, both A and B are collapsed
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
 
       const nodeA = childNodeIds[0];
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -570,8 +758,10 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
   it("Cmd+Down expands children on second press", async () => {
     await Effect.gen(function* () {
       // Given: A -> B (collapsed), B -> C, A is expanded
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
 
       const nodeA = childNodeIds[0];
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -641,72 +831,13 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up collapses deepest expanded descendants first", async () => {
-    await Effect.gen(function* () {
-      // Given: A -> B -> C, all expanded
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
-
-      const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-
-      // Add B as child of A
-      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "B",
-      });
-      const blockB = Id.makeBlockId(bufferId, nodeB);
-
-      // Add C as child of B (makes B expandable)
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeB,
-        insert: "after",
-        text: "C",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Wait for hierarchy to render (all blocks expanded by default)
-      yield* Then.TEXT_IS_VISIBLE("B");
-      yield* Then.TEXT_IS_VISIBLE("C");
-
-      // Verify both A and B are expanded (default state)
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
-
-      // Click on A text to focus it
-      yield* Effect.promise(async () => {
-        const aText = await waitFor(() => screen.getByText("A"));
-        await userEvent.click(aText);
-      });
-
-      // Wait for CodeMirror to be focused
-      yield* Effect.promise(() =>
-        waitFor(() => {
-          const cmEditor = document.querySelector(".cm-editor.cm-focused");
-          if (!cmEditor) throw new Error("CodeMirror not focused");
-        }),
-      );
-
-      // Press Escape to enter block selection mode
-      yield* When.USER_PRESSES("{Escape}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
-
-      // When: Cmd+Up pressed once
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-
-      // Then: B collapsed (deepest with children), A still expanded
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-    }).pipe(runtime.runPromise);
-  });
-
   it("Cmd+Up collapses the block itself when no expanded descendants", async () => {
     await Effect.gen(function* () {
       // Given: A -> B -> C, where B is collapsed (no expanded descendants under A)
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
 
       const nodeA = childNodeIds[0];
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -775,48 +906,6 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       yield* Then.BLOCK_IS_COLLAPSED(blockA);
     }).pipe(runtime.runPromise);
   });
-
-  it("Cmd+Shift+Up (DrillOut) collapses PARENT when on child", async () => {
-    await Effect.gen(function* () {
-      // Given: Root > Parent > Child
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Parent" }],
-      );
-
-      const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
-
-      // Add Child to Parent
-      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: parentNodeId,
-        insert: "after",
-        text: "Child",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Verify initial state: Parent expanded, Child visible
-      yield* Then.TEXT_IS_VISIBLE("Parent");
-      yield* Then.TEXT_IS_VISIBLE("Child");
-      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
-
-      // Enter block selection mode on Child
-      yield* When.USER_ENTERS_BLOCK_SELECTION(
-        Id.makeBlockId(bufferId, childNodeId),
-      );
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeId]);
-
-      // When: Cmd+Shift+Up (DrillOut)
-      yield* When.USER_PRESSES("{Shift>}{Meta>}{ArrowUp}{/Meta}{/Shift}");
-
-      // Then: PARENT should be collapsed (we drilled out of it)
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-
-      // And: Selection moved to Parent
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
-    }).pipe(runtime.runPromise);
-  });
 });
 
 describe("Block expand/collapse - Block selection mode (multiple blocks)", () => {
@@ -835,58 +924,13 @@ describe("Block expand/collapse - Block selection mode (multiple blocks)", () =>
     await cleanup();
   });
 
-  it("Cmd+Up collapses all expandable selected blocks", async () => {
-    await Effect.gen(function* () {
-      // Given: Multiple blocks are selected, some with children
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "B" },
-          { text: "C" },
-        ]);
-
-      const [nodeA, nodeB, nodeC] = childNodeIds;
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
-
-      // Add children to A and B (C has no children)
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "Child of A",
-      });
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeB,
-        insert: "after",
-        text: "Child of B",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Select A, B, C in block selection mode
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB, nodeC]);
-
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-
-      // Then: A and B are collapsed (they have children), C is unaffected
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
-    }).pipe(runtime.runPromise);
-  });
-
   it("Cmd+Down expands all collapsible selected blocks", async () => {
     await Effect.gen(function* () {
       // Given: Multiple collapsed blocks are selected
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "B" },
-          { text: "C" },
-        ]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }, { text: "C" }],
+      );
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -948,12 +992,10 @@ describe("Title expand/collapse", () => {
   it("Cmd+Down on title expands all first-level nodes with children", async () => {
     await Effect.gen(function* () {
       // Given: Buffer with 3 first-level nodes: A (has child, expanded), B (has child, collapsed), C (no children)
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "B" },
-          { text: "C" },
-        ]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }, { text: "C" }],
+      );
 
       const [nodeA, nodeB, _nodeC] = childNodeIds;
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -1002,56 +1044,15 @@ describe("Title expand/collapse", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Cmd+Up on title collapses all first-level nodes with children", async () => {
-    await Effect.gen(function* () {
-      // Given: Buffer with 2 first-level nodes with children, both expanded
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "B" },
-        ]);
-
-      const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
-
-      // Add children to make them expandable
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "Child of A",
-      });
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeB,
-        insert: "after",
-        text: "Child of B",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Verify both are expanded by default
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
-
-      // Focus on Title
-      yield* When.USER_CLICKS_TITLE(bufferId);
-
-      // When: Cmd+Up pressed
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-
-      // Then: Both A and B are collapsed
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
-    }).pipe(runtime.runPromise);
-  });
-
   it("Cmd+Down on title drills down level by level", async () => {
     await Effect.gen(function* () {
       // Given: 3-level hierarchy
       // Root -> A (has child A1) -> A1 (has child A1a)
       // A and A1 are collapsed initially
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
 
       const nodeA = childNodeIds[0];
       const blockA = Id.makeBlockId(bufferId, nodeA);
@@ -1097,66 +1098,6 @@ describe("Title expand/collapse", () => {
 
       // A1a is visible (leaf, no more drilling)
       yield* Then.TEXT_IS_VISIBLE("A1a");
-    }).pipe(runtime.runPromise);
-  });
-
-  it("Cmd+Up on title collapses from deepest level up", async () => {
-    await Effect.gen(function* () {
-      // Given: 3-level hierarchy, all expanded
-      // Root -> A -> C -> X (leaf)
-      //            -> D (leaf)
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "A" }]);
-
-      const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-
-      // Add C as child of A (C will have a child, so it's expandable)
-      const nodeC = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "C",
-      });
-      const blockC = Id.makeBlockId(bufferId, nodeC);
-
-      // Add D as child of A (D is a leaf)
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "D",
-      });
-
-      // Add X as child of C (X is a leaf, makes C expandable)
-      yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeC,
-        insert: "after",
-        text: "X",
-      });
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      // Wait for hierarchy to render
-      yield* Then.TEXT_IS_VISIBLE("A");
-      yield* Then.TEXT_IS_VISIBLE("C");
-      yield* Then.TEXT_IS_VISIBLE("D");
-      yield* Then.TEXT_IS_VISIBLE("X");
-
-      // Verify both A and C are expanded (default state)
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockC);
-
-      // Focus on Title
-      yield* When.USER_CLICKS_TITLE(bufferId);
-
-      // First Cmd+Up: C collapses (its only child X is a leaf)
-      // A should stay expanded (its child C still has children, even though collapsed)
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-      yield* Then.BLOCK_IS_COLLAPSED(blockC);
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-
-      // Second Cmd+Up: A collapses (its children C and D - C is now collapsed, D is leaf)
-      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
     }).pipe(runtime.runPromise);
   });
 });

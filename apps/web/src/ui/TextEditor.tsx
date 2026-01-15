@@ -309,10 +309,7 @@ export type EditorAction =
   | { _tag: "ZoomOut" }
   | { _tag: "BlockSelect"; direction: "up" | "down" }
   | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
-  | { _tag: "Collapse"; goalX?: number }
   | { _tag: "Expand"; goalX?: number }
-  | { _tag: "DrillIn"; goalX?: number }
-  | { _tag: "DrillOut"; goalX?: number }
   | {
       _tag: "TypeTrigger";
       typeId: Id.Node;
@@ -370,14 +367,8 @@ export const Action = {
     _tag: "Move",
     action,
   }),
-  Collapse: (goalX?: number): EditorAction =>
-    goalX !== undefined ? { _tag: "Collapse", goalX } : { _tag: "Collapse" },
   Expand: (goalX?: number): EditorAction =>
     goalX !== undefined ? { _tag: "Expand", goalX } : { _tag: "Expand" },
-  DrillIn: (goalX?: number): EditorAction =>
-    goalX !== undefined ? { _tag: "DrillIn", goalX } : { _tag: "DrillIn" },
-  DrillOut: (goalX?: number): EditorAction =>
-    goalX !== undefined ? { _tag: "DrillOut", goalX } : { _tag: "DrillOut" },
   TypeTrigger: (
     typeId: Id.Node,
     trigger: BlockType.TriggerDefinition,
@@ -479,7 +470,11 @@ export default function TextEditor(props: TextEditorProps) {
           if (!coords) return;
 
           const containerRect = scrollContainer.getBoundingClientRect();
-          const delta = calculateScrollDelta(coords, containerRect, SCROLL_MARGIN);
+          const delta = calculateScrollDelta(
+            coords,
+            containerRect,
+            SCROLL_MARGIN,
+          );
 
           if (delta !== 0) {
             getSpringScroller(scrollContainer).scrollBy(delta);
@@ -968,49 +963,14 @@ export default function TextEditor(props: TextEditorProps) {
       ]),
     );
 
-    // Mod-ArrowUp/Down toggle expand/collapse (no navigation).
+    // Mod-ArrowDown toggles expand (no navigation).
+    // Note: Mod-ArrowUp is now handled by EditorBuffer for progressive collapse→navigate.
     extensions.push(
       keymap.of([
-        {
-          key: "Mod-ArrowUp",
-          run: () => {
-            emit(Action.Collapse());
-            return true;
-          },
-        },
         {
           key: "Mod-ArrowDown",
           run: () => {
             emit(Action.Expand());
-            return true;
-          },
-        },
-      ]),
-    );
-
-    // Shift-Mod-ArrowUp/Down drill in/out with goalX preservation.
-    // Prefer stored goalX over fresh calculation to avoid drift on round-trips.
-    extensions.push(
-      keymap.of([
-        {
-          key: "Shift-Mod-ArrowUp",
-          run: (view) => {
-            const sel = view.state.selection.main;
-            const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentCoords = view.coordsAtPos(sel.head, side);
-            const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
-            emit(Action.DrillOut(goalX));
-            return true;
-          },
-        },
-        {
-          key: "Shift-Mod-ArrowDown",
-          run: (view) => {
-            const sel = view.state.selection.main;
-            const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentCoords = view.coordsAtPos(sel.head, side);
-            const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
-            emit(Action.DrillIn(goalX));
             return true;
           },
         },

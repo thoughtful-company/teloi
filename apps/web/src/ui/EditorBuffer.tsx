@@ -146,9 +146,7 @@ const crossParentMoveBlocks = (
     }
 
     return true;
-  }).pipe(
-    Effect.catchAll(() => Effect.succeed(false)),
-  );
+  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
 
 interface EditorBufferProps {
   bufferId: Id.Buffer;
@@ -248,7 +246,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               Option.isSome(activeElement) &&
               activeElement.value.type === "block"
             ) {
-              const [elBufferId] = yield* Id.parseBlockId(activeElement.value.id);
+              const [elBufferId] = yield* Id.parseBlockId(
+                activeElement.value.id,
+              );
               if (elBufferId === bufferId) {
                 scrollBlockIntoView(activeElement.value.id);
               }
@@ -260,9 +260,19 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
     // Handle Escape key when in block selection mode
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if event came from inside CodeMirror - it has its own Escape handler
+      // Don't handle if event came from inside CodeMirror, EXCEPT for Mod+Up
+      // (Mod+Up needs to work in both text editing and block selection modes)
       const target = e.target;
-      if (target instanceof HTMLElement && target.closest(".cm-editor")) {
+      const isModUp =
+        e.key === "ArrowUp" &&
+        !e.altKey &&
+        !e.shiftKey &&
+        (isMac ? e.metaKey : e.ctrlKey);
+      if (
+        target instanceof HTMLElement &&
+        target.closest(".cm-editor") &&
+        !isModUp
+      ) {
         return;
       }
 
@@ -365,8 +375,11 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
 
-            const { selectedBlocks, blockSelectionAnchor, blockSelectionFocus } =
-              bufferDoc;
+            const {
+              selectedBlocks,
+              blockSelectionAnchor,
+              blockSelectionFocus,
+            } = bufferDoc;
             if (selectedBlocks.length === 0) return;
 
             // Get parent and siblings of selected blocks (they're all siblings)
@@ -455,9 +468,101 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         );
       }
 
-      // Cmd+ArrowUp/Down in block selection mode: collapse/expand selected blocks
+      // Cmd+ArrowUp: Progressive collapse → navigate to parent → focus title
+      // Works in BOTH text editing mode AND block selection mode
       if (
-        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        e.key === "ArrowUp" &&
+        !e.altKey &&
+        !e.shiftKey &&
+        (isMac ? e.metaKey : e.ctrlKey)
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const Block = yield* BlockT;
+            const Buffer = yield* BufferT;
+            const Node = yield* NodeT;
+            const Window = yield* WindowT;
+
+            const bufferDoc = yield* getBufferDoc;
+            const currentSelection = yield* Buffer.getSelection(bufferId);
+
+            // Get current focused node: block selection takes priority over text selection
+            const nodeId =
+              bufferDoc?.selectedBlocks[0] ??
+              Option.getOrNull(currentSelection)?.anchor.nodeId ??
+              null;
+
+            if (!nodeId) return;
+
+            // Preserve goalX for cursor positioning when navigating in text editing mode
+            const goalX = Option.getOrNull(currentSelection)?.goalX ?? null;
+
+            const blockId = Id.makeBlockId(bufferId, nodeId);
+            const children = yield* Node.getNodeChildren(nodeId);
+            const isExpanded = yield* Block.isExpanded(blockId);
+
+            // If block is expanded with children, collapse it and stay
+            if (children.length > 0 && isExpanded) {
+              yield* Block.setExpanded(blockId, false);
+              return;
+            }
+
+            // Block is collapsed or childless → navigate to parent
+            const parentId = yield* Node.getParent(nodeId).pipe(
+              Effect.catchTag("NodeHasNoParentError", () =>
+                Effect.succeed<Id.Node | null>(null),
+              ),
+            );
+
+            if (!parentId) return;
+
+            // At root level → focus title
+            const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
+            if (parentId === assignedNodeId) {
+              yield* Buffer.setBlockSelection(bufferId, [], null, null);
+              yield* Window.setActiveElement(
+                Option.some({ type: "title" as const, bufferId }),
+              );
+              return;
+            }
+
+            // Navigate to parent AND collapse it
+            const parentBlockId = Id.makeBlockId(bufferId, parentId);
+            yield* Block.setExpanded(parentBlockId, false);
+
+            if (isBlockSelectionMode()) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [parentId],
+                parentId,
+                parentId,
+              );
+            } else {
+              yield* Buffer.setSelection(
+                bufferId,
+                Option.some({
+                  anchor: { nodeId: parentId },
+                  focus: { nodeId: parentId },
+                  anchorOffset: 0,
+                  focusOffset: 0,
+                  assoc: 0 as const,
+                  goalX,
+                  goalLine: "last",
+                }),
+              );
+              yield* Window.setActiveElement(
+                Option.some({ type: "block" as const, id: parentBlockId }),
+              );
+            }
+          }),
+        );
+        return;
+      }
+
+      // Cmd+ArrowDown in block selection mode: expand selected blocks
+      if (
+        e.key === "ArrowDown" &&
         !e.altKey &&
         !e.shiftKey &&
         (isMac ? e.metaKey : e.ctrlKey) &&
@@ -473,12 +578,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             if (!bufferDoc) return;
 
             const { selectedBlocks } = bufferDoc;
-            const isCollapse = e.key === "ArrowUp";
 
             // Expand one level: if collapsed, expand; else expand first collapsed child
-            const expandOneLevel = (
-              nodeId: Id.Node,
-            ): Effect.Effect<boolean> =>
+            const expandOneLevel = (nodeId: Id.Node): Effect.Effect<boolean> =>
               Effect.gen(function* () {
                 const blockId = Id.makeBlockId(bufferId, nodeId);
                 const isExpanded = yield* Block.isExpanded(blockId);
@@ -498,134 +600,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 return false;
               });
 
-            // Collapse one level: collapse deepest expanded descendants first
-            const collapseOneLevel = (
-              nodeId: Id.Node,
-            ): Effect.Effect<boolean> =>
-              Effect.gen(function* () {
-                const blockId = Id.makeBlockId(bufferId, nodeId);
-                const isExpanded = yield* Block.isExpanded(blockId);
-                const children = yield* Node.getNodeChildren(nodeId);
-
-                // Leaf nodes (no children) can't be collapsed
-                if (children.length === 0) {
-                  return false;
-                }
-
-                if (!isExpanded) {
-                  return false;
-                }
-
-                // Check if any children are expanded - collapse deepest first
-                let childWasCollapsed = false;
-
-                for (const childId of children) {
-                  const didCollapse = yield* collapseOneLevel(childId);
-                  if (didCollapse) childWasCollapsed = true;
-                }
-
-                if (childWasCollapsed) {
-                  return true;
-                }
-
-                // No expanded descendants - collapse this block
-                yield* Block.setExpanded(blockId, false);
-                return true;
-              });
-
             for (const nodeId of selectedBlocks) {
-              if (isCollapse) {
-                yield* collapseOneLevel(nodeId);
-              } else {
-                yield* expandOneLevel(nodeId);
-              }
-            }
-          }),
-        );
-        return;
-      }
-
-      // Cmd+Shift+ArrowUp/Down in block selection mode: drill in/out
-      // Stays in block selection mode, just moves selection to parent/child
-      if (
-        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
-        !e.altKey &&
-        e.shiftKey &&
-        (isMac ? e.metaKey : e.ctrlKey) &&
-        isBlockSelectionMode()
-      ) {
-        e.preventDefault();
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Block = yield* BlockT;
-            const Buffer = yield* BufferT;
-            const Node = yield* NodeT;
-            const Window = yield* WindowT;
-
-            const bufferDoc = yield* getBufferDoc;
-            if (!bufferDoc) return;
-
-            const { selectedBlocks } = bufferDoc;
-            if (selectedBlocks.length === 0) return;
-
-            const nodeId = selectedBlocks[0]!;
-            const blockId = Id.makeBlockId(bufferId, nodeId);
-            const isDrillOut = e.key === "ArrowUp";
-
-            if (isDrillOut) {
-              // DrillOut: collapse PARENT, select parent (stay in block selection mode)
-              // We're "drilling out" of the parent level, so collapse it
-              const parentId = yield* Node.getParent(nodeId).pipe(
-                Effect.catchTag("NodeHasNoParentError", () =>
-                  Effect.succeed<Id.Node | null>(null),
-                ),
-              );
-              if (!parentId) return;
-
-              const parentBlockId = Id.makeBlockId(bufferId, parentId);
-
-              // Collapse the PARENT (not the current block)
-              yield* Block.setExpanded(parentBlockId, false);
-
-              // Check if parent is the buffer root
-              const assignedNodeId = yield* Buffer.getAssignedNodeId(bufferId);
-              if (parentId === assignedNodeId) {
-                // Navigate to title (exit block selection mode)
-                yield* Buffer.setBlockSelection(bufferId, [], null, null);
-                yield* Window.setActiveElement(
-                  Option.some({ type: "title" as const, bufferId }),
-                );
-                return;
-              }
-
-              // Select parent block (stay in block selection mode)
-              yield* Buffer.setBlockSelection(
-                bufferId,
-                [parentId],
-                parentId,
-                parentId,
-              );
-            } else {
-              // DrillIn: select first child (stay in block selection mode)
-              const children = yield* Node.getNodeChildren(nodeId);
-
-              const firstChildId =
-                children.length === 0
-                  ? yield* Node.insertNode({
-                      parentId: nodeId,
-                      insert: "before",
-                    })
-                  : children[0]!;
-
-              yield* Block.setExpanded(blockId, true);
-
-              // Select first child (stay in block selection mode)
-              yield* Buffer.setBlockSelection(
-                bufferId,
-                [firstChildId],
-                firstChildId,
-                firstChildId,
-              );
+              yield* expandOneLevel(nodeId);
             }
           }),
         );
@@ -1336,7 +1312,10 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             <Show
               when={store.activeViewId}
               fallback={
-                <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
+                <div
+                  data-testid="editor-body"
+                  class="flex-1 flex flex-col pt-4"
+                >
                   <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
                     <For each={store.childBlockIds}>
                       {(childId) => <Block blockId={childId} />}

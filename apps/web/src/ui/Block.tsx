@@ -200,9 +200,6 @@ export default function Block({ blockId }: BlockProps) {
   // Flag to prevent blur handler from clearing state during block movement
   let isMoving = false;
 
-  // Flag to prevent blur handler from clearing state during drill navigation
-  let isDrilling = false;
-
   const waitForDomAndRefocus = Effect.gen(function* () {
     yield* Effect.promise(
       () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
@@ -347,11 +344,6 @@ export default function Block({ blockId }: BlockProps) {
       return;
     }
 
-    // Don't clear selection during drill navigation (collapse + navigate)
-    if (isDrilling) {
-      return;
-    }
-
     runtime.runPromise(
       Effect.gen(function* () {
         const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
@@ -460,7 +452,9 @@ export default function Block({ blockId }: BlockProps) {
               Effect.succeed<Id.Node | null>(null),
             ),
           );
-          const siblings = parentId ? yield* Node.getNodeChildren(parentId) : [];
+          const siblings = parentId
+            ? yield* Node.getNodeChildren(parentId)
+            : [];
           const index = siblings.indexOf(nodeId);
           const isAtBoundary =
             (action === "swapUp" && index === 0) ||
@@ -1181,45 +1175,6 @@ export default function Block({ blockId }: BlockProps) {
           // Query is computed reactively from textContent and selection
         },
         TypePickerClose: () => handleTypePickerClose(),
-        // Collapse: toggle collapse one level (no navigation)
-        Collapse: () => {
-          runtime.runPromise(
-            Effect.gen(function* () {
-              const Block = yield* BlockT;
-              const Node = yield* NodeT;
-              const [bufferId] = yield* Id.parseBlockId(blockId);
-
-              // Level-by-level collapse: collapse deepest expanded descendants first
-              const collapseOneLevel = (
-                nId: Id.Node,
-              ): Effect.Effect<boolean> =>
-                Effect.gen(function* () {
-                  const bId = Id.makeBlockId(bufferId, nId);
-                  const isExpanded = yield* Block.isExpanded(bId);
-                  const children = yield* Node.getNodeChildren(nId);
-
-                  // Leaf nodes can't be collapsed
-                  if (children.length === 0) return false;
-                  if (!isExpanded) return false;
-
-                  // Try to collapse children first (deepest first)
-                  let childWasCollapsed = false;
-                  for (const childId of children) {
-                    const didCollapse = yield* collapseOneLevel(childId);
-                    if (didCollapse) childWasCollapsed = true;
-                  }
-
-                  if (childWasCollapsed) return true;
-
-                  // No expanded descendants - collapse this block
-                  yield* Block.setExpanded(bId, false);
-                  return true;
-                });
-
-              yield* collapseOneLevel(nodeId);
-            }),
-          );
-        },
         // Expand: toggle expand one level (no navigation)
         Expand: () => {
           runtime.runPromise(
@@ -1229,9 +1184,7 @@ export default function Block({ blockId }: BlockProps) {
               const [bufferId] = yield* Id.parseBlockId(blockId);
 
               // Level-by-level expand: expand self first, then children
-              const expandOneLevel = (
-                nId: Id.Node,
-              ): Effect.Effect<boolean> =>
+              const expandOneLevel = (nId: Id.Node): Effect.Effect<boolean> =>
                 Effect.gen(function* () {
                   const bId = Id.makeBlockId(bufferId, nId);
                   const isExpanded = yield* Block.isExpanded(bId);
@@ -1255,103 +1208,6 @@ export default function Block({ blockId }: BlockProps) {
             }),
           );
         },
-        // DrillOut: navigate to parent (collapse PARENT, focus parent)
-        // We're "drilling out" of the parent level, so collapse it
-        DrillOut: ({ goalX: actionGoalX }) => {
-          isDrilling = true;
-          runtime
-            .runPromise(
-              Effect.gen(function* () {
-                const Block = yield* BlockT;
-                const Node = yield* NodeT;
-                const Buffer = yield* BufferT;
-                const Window = yield* WindowT;
-                const [bufferId] = yield* Id.parseBlockId(blockId);
-
-                // Get parent first
-                const parentId = yield* Node.getParent(nodeId).pipe(
-                  Effect.catchTag("NodeHasNoParentError", () =>
-                    Effect.succeed<Id.Node | null>(null),
-                  ),
-                );
-                if (!parentId) return;
-
-                const parentBlockId = Id.makeBlockId(bufferId, parentId);
-
-                // Collapse the PARENT (not the current block)
-                yield* Block.setExpanded(parentBlockId, false);
-
-                const goalX = actionGoalX ?? store.selection?.goalX ?? null;
-
-                // Check if parent is the buffer root (first-level block)
-                const assignedNodeId =
-                  yield* Buffer.getAssignedNodeId(bufferId);
-                if (parentId === assignedNodeId) {
-                  yield* Buffer.setSelection(
-                    bufferId,
-                    makeCollapsedSelection(parentId, 0, {
-                      goalX,
-                      goalLine: "last",
-                    }),
-                  );
-                  yield* Window.setActiveElement(
-                    Option.some({ type: "title" as const, bufferId }),
-                  );
-                  return;
-                }
-
-                // Focus parent
-                yield* Buffer.setSelection(
-                  bufferId,
-                  makeCollapsedSelection(parentId, 0, {
-                    goalX,
-                    goalLine: "last",
-                  }),
-                );
-                yield* Window.setActiveElement(
-                  Option.some({ type: "block" as const, id: parentBlockId }),
-                );
-              }),
-            )
-            .finally(() => {
-              isDrilling = false;
-            });
-        },
-        // DrillIn: navigate to first child (create if needed, focus child)
-        DrillIn: ({ goalX: actionGoalX }) => {
-          runtime.runPromise(
-            Effect.gen(function* () {
-              const Node = yield* NodeT;
-              const Buffer = yield* BufferT;
-              const Window = yield* WindowT;
-              const [bufferId] = yield* Id.parseBlockId(blockId);
-
-              const goalX = actionGoalX ?? store.selection?.goalX ?? null;
-              const children = yield* Node.getNodeChildren(nodeId);
-
-              // Create child if childless
-              const firstChildId =
-                children.length === 0
-                  ? yield* Node.insertNode({
-                      parentId: nodeId,
-                      insert: "before",
-                    })
-                  : children[0]!;
-
-              const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
-              yield* Buffer.setSelection(
-                bufferId,
-                makeCollapsedSelection(firstChildId, 0, {
-                  goalX,
-                  goalLine: "first",
-                }),
-              );
-              yield* Window.setActiveElement(
-                Option.some({ type: "block" as const, id: firstChildBlockId }),
-              );
-            }),
-          );
-        },
         ToggleTodo: () => {
           runtime.runPromise(BlockType.toggleCheckbox(nodeId));
         },
@@ -1362,11 +1218,7 @@ export default function Block({ blockId }: BlockProps) {
   const hasChildren = () => store.childBlockIds.length > 0;
 
   return (
-    <div
-      data-element-id={blockId}
-      data-element-type="block"
-      class="relative"
-    >
+    <div data-element-id={blockId} data-element-type="block" class="relative">
       <Show when={hasChildren()}>
         <button
           type="button"
@@ -1386,7 +1238,8 @@ export default function Block({ blockId }: BlockProps) {
         onClick={handleFocus}
         class="flex"
         classList={{
-          "ring-2 ring-inset ring-selection-ring bg-selection-bg rounded": store.isSelected,
+          "ring-2 ring-inset ring-selection-ring bg-selection-bg rounded":
+            store.isSelected,
         }}
       >
         <Transition
@@ -1416,7 +1269,9 @@ export default function Block({ blockId }: BlockProps) {
                 <Show when={userTypes().length > 0}>
                   <span class="inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]">
                     <For each={userTypes()}>
-                      {(typeId) => <TypeBadge typeId={typeId} nodeId={nodeId} />}
+                      {(typeId) => (
+                        <TypeBadge typeId={typeId} nodeId={nodeId} />
+                      )}
                     </For>
                   </span>
                 </Show>
