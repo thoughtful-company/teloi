@@ -11,6 +11,7 @@ import { BlockGoneError, BlockNotFoundError } from "./errors";
 import {
   findDeepestLastChild,
   findNextNode,
+  findNextNodeInDocumentOrder,
   findPreviousNode,
 } from "./navigation";
 import { split, type SplitParams, type SplitResult } from "./split";
@@ -46,6 +47,10 @@ export class BlockT extends Context.Tag("BlockT")<
     ) => Effect.Effect<Id.Node, never>;
     findNextNode: (
       currentId: Id.Node,
+    ) => Effect.Effect<Option.Option<Id.Node>, never>;
+    findNextNodeInDocumentOrder: (
+      currentId: Id.Node,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     findPreviousNode: (
       currentId: Id.Node,
@@ -92,6 +97,7 @@ export const BlockLive = Layer.effect(
       // Tree navigation
       findDeepestLastChild: withContext(findDeepestLastChild)(context),
       findNextNode: withContext(findNextNode)(context),
+      findNextNodeInDocumentOrder: withContext(findNextNodeInDocumentOrder)(context),
       findPreviousNode: withContext(findPreviousNode)(context),
 
       // Structural operations

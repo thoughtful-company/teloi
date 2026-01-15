@@ -133,3 +133,29 @@ export const findPreviousNode = (
     // First child - return parent
     return Option.some(parentId);
   });
+
+/**
+ * Find next node in VISUAL document order for block selection.
+ * Unlike findNextNode, this DOES descend into expanded children first.
+ *
+ * Order: current -> first child (if expanded) -> next sibling -> parent's next sibling
+ */
+export const findNextNodeInDocumentOrder = (
+  currentId: Id.Node,
+  bufferId: Id.Buffer,
+): Effect.Effect<Option.Option<Id.Node>, never, NodeT | StoreT> =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+
+    // First: if has visible children (expanded), go to first child
+    const expanded = yield* isBlockExpanded(bufferId, currentId);
+    if (expanded) {
+      const children = yield* Node.getNodeChildren(currentId);
+      if (children.length > 0) {
+        return Option.some(children[0]!);
+      }
+    }
+
+    // Otherwise: find next sibling or ancestor's next sibling
+    return yield* findNextNode(currentId);
+  });

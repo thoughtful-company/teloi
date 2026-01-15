@@ -678,37 +678,28 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             if (!blockSelectionAnchor) return;
 
-            // Get siblings of the current focus (works for nested blocks too)
             const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
-            const parentId = yield* Node.getParent(currentFocus);
-            const siblings = yield* Node.getNodeChildren(parentId);
-            const focusIndex = siblings.indexOf(currentFocus);
-
-            // Move focus up or down by one step
-            const newFocusIndex =
-              e.key === "ArrowUp"
-                ? Math.max(0, focusIndex - 1)
-                : Math.min(siblings.length - 1, focusIndex + 1);
-
-            // ArrowUp on first block: scroll to show top of buffer (skip normal scroll)
-            // Only trigger for first child at buffer root, not nested blocks
-            const didScrollToTop =
-              e.key === "ArrowUp" &&
-              focusIndex === 0 &&
-              !e.shiftKey &&
-              parentId === bufferDoc.assignedNodeId;
-            if (didScrollToTop) {
-              scrollBufferToTop(bufferId);
-            }
-
-            const newFocus = siblings[newFocusIndex];
-            if (!newFocus) return;
-
-            const anchorIndex = siblings.indexOf(blockSelectionAnchor);
-            if (anchorIndex === -1) return;
 
             if (e.shiftKey) {
-              // Shift+Arrow: extend/contract range from anchor to new focus
+              // Shift+Arrow: sibling-only range extension (cross-parent deferred)
+              const parentId = yield* Node.getParent(currentFocus);
+              const siblings = yield* Node.getNodeChildren(parentId);
+              const focusIndex = siblings.indexOf(currentFocus);
+              const anchorIndex = siblings.indexOf(blockSelectionAnchor);
+
+              // Anchor must be in same sibling group for range extension
+              if (anchorIndex === -1) return;
+
+              // Calculate new focus within siblings only
+              const newFocusIndex =
+                e.key === "ArrowUp"
+                  ? Math.max(0, focusIndex - 1)
+                  : Math.min(siblings.length - 1, focusIndex + 1);
+
+              const newFocus = siblings[newFocusIndex];
+              if (!newFocus) return;
+
+              // Extend range from anchor to new focus
               const startIndex = Math.min(anchorIndex, newFocusIndex);
               const endIndex = Math.max(anchorIndex, newFocusIndex);
               const newSelection = siblings.slice(startIndex, endIndex + 1);
@@ -719,36 +710,51 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 blockSelectionAnchor,
                 newFocus,
               );
-
               scrollBlockIntoView(Id.makeBlockId(bufferId, newFocus));
             } else {
-              // Plain Arrow: collapse to single block
-              const selectionStart = Math.min(anchorIndex, focusIndex);
-              const selectionEnd = Math.max(anchorIndex, focusIndex);
-              const isSingleSelection = selectionStart === selectionEnd;
+              // Plain Arrow: document-order navigation
+              const Block = yield* BlockT;
+              let newFocus: Id.Node | null = null;
 
-              // For multi-selection, jump to edge (Up→top, Down→bottom)
-              // For single selection, move one step in arrow direction
-              const clampedFocusIndex = isSingleSelection
-                ? newFocusIndex
-                : e.key === "ArrowUp"
-                  ? selectionStart
-                  : selectionEnd;
+              if (e.key === "ArrowUp") {
+                const prevOpt = yield* Block.findPreviousNode(
+                  currentFocus,
+                  bufferId,
+                );
+                if (Option.isSome(prevOpt)) {
+                  // Don't select buffer root (title)
+                  if (prevOpt.value !== bufferDoc.assignedNodeId) {
+                    newFocus = prevOpt.value;
+                  }
+                }
+              } else {
+                // ArrowDown
+                const nextOpt = yield* Block.findNextNodeInDocumentOrder(
+                  currentFocus,
+                  bufferId,
+                );
+                if (Option.isSome(nextOpt)) {
+                  newFocus = nextOpt.value;
+                }
+              }
 
-              const clampedFocus = siblings[clampedFocusIndex];
-              if (!clampedFocus) return;
+              // Edge case: ArrowUp at first block - scroll to top, keep selection
+              if (e.key === "ArrowUp" && newFocus === null) {
+                scrollBufferToTop(bufferId);
+                return;
+              }
 
+              // ArrowDown at last block - no movement possible
+              if (newFocus === null) return;
+
+              // Collapse to single block at new location
               yield* Buffer.setBlockSelection(
                 bufferId,
-                [clampedFocus],
-                clampedFocus,
-                clampedFocus,
+                [newFocus],
+                newFocus,
+                newFocus,
               );
-
-              // Don't scroll block into view if we already scrolled to top
-              if (!didScrollToTop) {
-                scrollBlockIntoView(Id.makeBlockId(bufferId, clampedFocus));
-              }
+              scrollBlockIntoView(Id.makeBlockId(bufferId, newFocus));
             }
           }),
         );
