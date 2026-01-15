@@ -496,7 +496,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             if (!nodeId) return;
 
             // Preserve goalX for cursor positioning when navigating in text editing mode
-            const goalX = Option.getOrNull(currentSelection)?.goalX ?? null;
+            // Fall back to current DOM cursor position if buffer selection doesn't have goalX
+            const storedGoalX = Option.getOrNull(currentSelection)?.goalX;
+            const goalX =
+              storedGoalX ??
+              (() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return null;
+                return sel.getRangeAt(0).getBoundingClientRect().left;
+              })();
 
             const blockId = Id.makeBlockId(bufferId, nodeId);
             const children = yield* Node.getNodeChildren(nodeId);

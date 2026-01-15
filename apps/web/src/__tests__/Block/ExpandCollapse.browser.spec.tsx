@@ -258,6 +258,89 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
     }).pipe(runtime.runPromise);
   });
+
+  it("Mod+Up preserves goalX when navigating to parent", async () => {
+    await Effect.gen(function* () {
+      const Buffer = yield* BufferT;
+
+      // Given: Parent -> Child with text "Hello world"
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Hello world",
+      });
+      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Focus on child block (text editing mode)
+      yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // Position cursor in the middle of the text (offset 6 = after "Hello ")
+      yield* When.USER_PRESSES("{Home}");
+      for (let i = 0; i < 6; i++) {
+        yield* When.USER_PRESSES("{ArrowRight}");
+      }
+
+      // Press ArrowUp to establish goalX (this sets goalX in the model)
+      yield* When.USER_PRESSES("{ArrowUp}");
+
+      // Verify we're now on the parent (ArrowUp navigated from child to parent)
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+
+      // Record the goalX before Mod+Up
+      const selectionBefore = yield* Buffer.getSelection(bufferId);
+      expect(Option.isSome(selectionBefore)).toBe(true);
+      const goalXBefore = Option.getOrThrow(selectionBefore).goalX;
+      expect(
+        goalXBefore,
+        "goalX should be set after vertical navigation",
+      ).not.toBeNull();
+
+      // Navigate back to child to test Mod+Up
+      yield* When.USER_PRESSES("{ArrowDown}");
+      yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
+
+      // Verify goalX is still preserved after ArrowDown
+      const selectionAfterDown = yield* Buffer.getSelection(bufferId);
+      expect(Option.isSome(selectionAfterDown)).toBe(true);
+      const goalXAfterDown = Option.getOrThrow(selectionAfterDown).goalX;
+      expect(goalXAfterDown, "goalX should be preserved after ArrowDown").toBe(
+        goalXBefore,
+      );
+
+      // When: Mod+Up pressed (navigates to parent since child has no children)
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Then: Selection is on parent and goalX is preserved
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      const selectionAfter = yield* Buffer.getSelection(bufferId);
+      expect(Option.isSome(selectionAfter)).toBe(true);
+      const goalXAfter = Option.getOrThrow(selectionAfter).goalX;
+      expect(
+        goalXAfter,
+        "goalX should be preserved after Mod+Up navigation",
+      ).toBe(goalXBefore);
+    }).pipe(runtime.runPromise);
+  });
 });
 
 describe("Progressive Mod+Up - Block selection mode", () => {

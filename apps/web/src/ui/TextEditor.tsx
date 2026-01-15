@@ -964,7 +964,8 @@ export default function TextEditor(props: TextEditorProps) {
     );
 
     // Mod-ArrowDown toggles expand (no navigation).
-    // Note: Mod-ArrowUp is now handled by EditorBuffer for progressive collapse→navigate.
+    // Mod-ArrowUp: intercept here to prevent CodeMirror's default processing,
+    // but let the event bubble to EditorBuffer which handles progressive collapse→navigate.
     extensions.push(
       keymap.of([
         {
@@ -973,6 +974,10 @@ export default function TextEditor(props: TextEditorProps) {
             emit(Action.Expand());
             return true;
           },
+        },
+        {
+          key: "Mod-ArrowUp",
+          run: () => true, // Intercept to preserve selection state; EditorBuffer handles the logic
         },
       ]),
     );
