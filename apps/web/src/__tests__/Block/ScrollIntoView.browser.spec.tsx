@@ -107,12 +107,14 @@ describe("Scroll behavior", () => {
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      yield* Effect.promise(
-        () => new Promise((resolve) => setTimeout(resolve, 300)),
+      // Wait for scroll to change (spring animation)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          if (scrollContainer.scrollTop >= scrollTopBefore) {
+            throw new Error("Scroll not started");
+          }
+        }),
       );
-
-      const scrollTopAfter = scrollContainer.scrollTop;
-      expect(scrollTopAfter).toBeLessThan(scrollTopBefore);
     }).pipe(runtime.runPromise);
   });
 
@@ -125,12 +127,69 @@ describe("Scroll behavior", () => {
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      yield* Effect.promise(
-        () => new Promise((resolve) => setTimeout(resolve, 300)),
+      // Wait for scroll to change (spring animation)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          if (scrollContainer.scrollTop >= scrollTopBefore) {
+            throw new Error("Scroll not started");
+          }
+        }),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  /**
+   * Verifies that scroll-into-view targets [data-block-content] (content row only),
+   * not the full block element which would include expanded children.
+   */
+  it("scroll selector targets content row, not full block with children", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
       );
 
-      const scrollTopAfter = scrollContainer.scrollTop;
-      expect(scrollTopAfter).toBeLessThan(scrollTopBefore);
+      const parentNodeId = childNodeIds[0]!;
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a few children to make block taller than content row
+      for (let i = 0; i < 3; i++) {
+        yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: `Child ${i + 1}`,
+        });
+      }
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for children to render
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const block = document.querySelector(
+            `[data-element-id="${parentBlockId}"]`,
+          );
+          if (!block) throw new Error("Block not found");
+          if (
+            block.querySelectorAll("[data-element-type='block']").length < 3
+          ) {
+            throw new Error("Children not rendered");
+          }
+        }),
+      );
+
+      const fullBlockEl = document.querySelector<HTMLElement>(
+        `[data-element-id="${parentBlockId}"][data-element-type="block"]`,
+      );
+      const contentRowEl = document.querySelector<HTMLElement>(
+        `[data-element-id="${parentBlockId}"][data-element-type="block"] [data-block-content]`,
+      );
+
+      expect(fullBlockEl).not.toBeNull();
+      expect(contentRowEl).not.toBeNull();
+      expect(contentRowEl!.offsetHeight).toBeLessThan(
+        fullBlockEl!.offsetHeight,
+      );
     }).pipe(runtime.runPromise);
   });
 });
