@@ -1352,6 +1352,9 @@ export default function Block({ blockId }: BlockProps) {
             }),
           );
         },
+        ToggleTodo: () => {
+          runtime.runPromise(BlockType.toggleCheckbox(nodeId));
+        },
       }),
       Match.exhaustive,
     );

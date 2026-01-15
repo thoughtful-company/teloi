@@ -7,3 +7,4 @@ export {
   getDecorativeTypeIds,
   type TriggerWithDefinition,
 } from "./registry";
+export { toggleCheckbox } from "./toggleCheckbox";

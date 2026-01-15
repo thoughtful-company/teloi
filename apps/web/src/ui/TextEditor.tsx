@@ -324,7 +324,8 @@ export type EditorAction =
       from: number;
     }
   | { _tag: "TypePickerUpdate"; query: string }
-  | { _tag: "TypePickerClose" };
+  | { _tag: "TypePickerClose" }
+  | { _tag: "ToggleTodo" };
 
 /** Action constructors for type-safe action creation */
 export const Action = {
@@ -390,6 +391,7 @@ export const Action = {
     query,
   }),
   TypePickerClose: (): EditorAction => ({ _tag: "TypePickerClose" }),
+  ToggleTodo: (): EditorAction => ({ _tag: "ToggleTodo" }),
 } as const;
 
 interface TextEditorProps {
@@ -702,6 +704,7 @@ export default function TextEditor(props: TextEditorProps) {
       { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
       { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
       { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
+      { key: "Mod-Enter", action: Action.ToggleTodo() },
       // Mod-ArrowUp/Down handled below with custom goalX calculation
 
       // Position-conditional (anchor AND head at position)

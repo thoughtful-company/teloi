@@ -4,6 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
+import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -625,6 +626,29 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 firstChildId,
                 firstChildId,
               );
+            }
+          }),
+        );
+        return;
+      }
+
+      // Mod+Enter in block selection mode: toggle todo/checkbox state
+      if (
+        e.key === "Enter" &&
+        (isMac ? e.metaKey : e.ctrlKey) &&
+        isBlockSelectionMode()
+      ) {
+        e.preventDefault();
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const bufferDoc = yield* getBufferDoc;
+            if (!bufferDoc) return;
+
+            const { selectedBlocks } = bufferDoc;
+            if (selectedBlocks.length === 0) return;
+
+            for (const nodeId of selectedBlocks) {
+              yield* BlockType.toggleCheckbox(nodeId);
             }
           }),
         );

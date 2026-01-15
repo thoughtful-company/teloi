@@ -86,6 +86,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 - `Mod+C` - Copy selected blocks
 - `Mod+X` - Cut selected blocks
 - `Mod+A` - Select all blocks
+- `Mod+Enter` - Toggle todo/checkbox state (cycles: normal → unchecked → checked → normal)
 
 ## 3. Editor Shortcuts (CodeMirror)
 
@@ -121,6 +122,7 @@ const keymap = Prec.highest(
 - `Mod+Shift+Backspace` - Force-delete block and all children
 - `Tab` - Indent block
 - `Shift+Tab` - Outdent block
+- `Mod+Enter` - Toggle todo/checkbox state (cycles: normal → unchecked → checked → normal)
 
 ## Mod Key Pattern
 
