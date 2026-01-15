@@ -8,9 +8,11 @@ import { Effect } from "effect";
  * - "up": swap with previous sibling
  * - "down": swap with next sibling
  *
- * When at boundary (first/last sibling), attempts cross-parent movement:
- * - "up" at first position: move to last child of parent's previous sibling
- * - "down" at last position: move to first child of parent's next sibling
+ * When at boundary (first/last sibling), cross-parent or outdent:
+ * - "up" at first: if parent has prev sibling → become last child of that sibling
+ *                  else → outdent (become sibling BEFORE parent)
+ * - "down" at last: if parent has next sibling → become first child of that sibling
+ *                   else → outdent (become sibling AFTER parent)
  *
  * Returns true if swap succeeded, false otherwise.
  */
@@ -69,12 +71,14 @@ export const swap = (
   );
 
 /**
- * Cross-parent movement: move a node to an adjacent parent's children.
+ * Cross-parent movement: prioritize moving to parent's sibling, fallback to outdent.
  *
- * - "up": move to become last child of parent's previous sibling
- * - "down": move to become first child of parent's next sibling
+ * - "up": if parent has prev sibling → become last child of that sibling
+ *         else → outdent (become sibling BEFORE parent)
+ * - "down": if parent has next sibling → become first child of that sibling
+ *           else → outdent (become sibling AFTER parent)
  *
- * Returns true if move succeeded, false if no valid target exists.
+ * Returns true if move succeeded, false if at buffer root.
  */
 const crossParentMove = (
   nodeId: Id.Node,
@@ -98,35 +102,49 @@ const crossParentMove = (
     if (parentIndex === -1) return false;
 
     if (direction === "up") {
-      // Find previous parent sibling
-      if (parentIndex === 0) return false;
-      const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
-
-      // Move to become last child of previous parent sibling
-      yield* Node.insertNode({
-        nodeId,
-        parentId: prevParentSiblingId,
-        insert: "after", // "after" with no siblingId = append at end
-      });
-    } else {
-      // Find next parent sibling
-      if (parentIndex === parentSiblings.length - 1) return false;
-      const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
-
-      // Move to become first child of next parent sibling
-      const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
-      if (targetChildren.length > 0) {
+      if (parentIndex > 0) {
+        // Parent HAS prev sibling → cross-parent move (become last child)
+        const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
         yield* Node.insertNode({
           nodeId,
-          parentId: nextParentSiblingId,
-          insert: "before",
-          siblingId: targetChildren[0]!,
+          parentId: prevParentSiblingId,
+          insert: "after", // append at end
         });
       } else {
+        // Parent has NO prev sibling → outdent (become sibling BEFORE parent)
         yield* Node.insertNode({
           nodeId,
-          parentId: nextParentSiblingId,
-          insert: "after", // Empty parent - just insert
+          parentId: grandparentId,
+          insert: "before",
+          siblingId: parentId,
+        });
+      }
+    } else {
+      if (parentIndex < parentSiblings.length - 1) {
+        // Parent HAS next sibling → cross-parent move (become first child)
+        const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
+        const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
+        if (targetChildren.length > 0) {
+          yield* Node.insertNode({
+            nodeId,
+            parentId: nextParentSiblingId,
+            insert: "before",
+            siblingId: targetChildren[0]!,
+          });
+        } else {
+          yield* Node.insertNode({
+            nodeId,
+            parentId: nextParentSiblingId,
+            insert: "after",
+          });
+        }
+      } else {
+        // Parent has NO next sibling → outdent (become sibling AFTER parent)
+        yield* Node.insertNode({
+          nodeId,
+          parentId: grandparentId,
+          insert: "after",
+          siblingId: parentId,
         });
       }
     }

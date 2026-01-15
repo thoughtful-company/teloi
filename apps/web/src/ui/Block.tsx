@@ -449,6 +449,39 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Block = yield* BlockT;
+        const Node = yield* NodeT;
+        const Store = yield* StoreT;
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+
+        // For swap actions, check if at buffer boundary (can't outdent past buffer root)
+        if (action === "swapUp" || action === "swapDown") {
+          const parentId = yield* Node.getParent(nodeId).pipe(
+            Effect.catchTag("NodeHasNoParentError", () =>
+              Effect.succeed<Id.Node | null>(null),
+            ),
+          );
+          const siblings = parentId ? yield* Node.getNodeChildren(parentId) : [];
+          const index = siblings.indexOf(nodeId);
+          const isAtBoundary =
+            (action === "swapUp" && index === 0) ||
+            (action === "swapDown" && index === siblings.length - 1);
+
+          if (isAtBoundary && parentId) {
+            // Check if parent is the buffer root
+            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+              Effect.orDie,
+            );
+            const assignedNodeId = Option.match(bufferDoc, {
+              onNone: () => null,
+              onSome: (doc) => doc.assignedNodeId,
+            });
+            if (parentId === assignedNodeId) {
+              // At buffer root boundary - can't outdent further
+              return;
+            }
+          }
+        }
+
         const moved = yield* Match.value(action).pipe(
           Match.when("swapUp", () => Block.swap(nodeId, "up")),
           Match.when("swapDown", () => Block.swap(nodeId, "down")),

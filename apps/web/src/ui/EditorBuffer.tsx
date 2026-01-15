@@ -53,12 +53,14 @@ function scrollBufferToTop(bufferId: Id.Buffer) {
 
 /**
  * Cross-parent movement for block selection mode.
- * Moves selected blocks to adjacent parent sibling.
+ * Prioritize moving to parent's sibling, fallback to outdent.
  *
- * - "up": move to become last children of parent's previous sibling
- * - "down": move to become first children of parent's next sibling
+ * - "up": if parent has prev sibling → become last children of that sibling
+ *         else → outdent (become siblings BEFORE parent)
+ * - "down": if parent has next sibling → become first children of that sibling
+ *           else → outdent (become siblings AFTER parent)
  *
- * Returns true if move succeeded, false if no valid target exists.
+ * Returns true if move succeeded, false if at buffer root.
  */
 const crossParentMoveBlocks = (
   nodeIds: readonly Id.Node[],
@@ -82,40 +84,61 @@ const crossParentMoveBlocks = (
     if (parentIndex === -1) return false;
 
     if (direction === "up") {
-      // Find previous parent sibling
-      if (parentIndex === 0) return false;
-      const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
-
-      // Move all nodes to become last children of previous parent sibling
-      for (const nodeId of nodeIds) {
-        yield* Node.insertNode({
-          nodeId,
-          parentId: prevParentSiblingId,
-          insert: "after", // "after" with no siblingId = append at end
-        });
-      }
-    } else {
-      // Find next parent sibling
-      if (parentIndex === parentSiblings.length - 1) return false;
-      const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
-
-      // Move all nodes to become first children of next parent sibling
-      const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
-      if (targetChildren.length > 0) {
-        // Insert before first child, maintaining order
-        yield* Node.moveNodes({
-          nodeIds,
-          parentId: nextParentSiblingId,
-          insert: "before",
-          siblingId: targetChildren[0]!,
-        });
-      } else {
-        // Empty parent - insert nodes one by one
+      if (parentIndex > 0) {
+        // Parent HAS prev sibling → cross-parent move (become last children)
+        const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
+        // Insert in order - each "after" with no sibling appends at end
         for (const nodeId of nodeIds) {
           yield* Node.insertNode({
             nodeId,
+            parentId: prevParentSiblingId,
+            insert: "after", // append at end
+          });
+        }
+      } else {
+        // Parent has NO prev sibling → outdent (become siblings BEFORE parent)
+        // Forward order - each "before parent" stacks correctly
+        for (const nodeId of nodeIds) {
+          yield* Node.insertNode({
+            nodeId,
+            parentId: grandparentId,
+            insert: "before",
+            siblingId: parentId,
+          });
+        }
+      }
+    } else {
+      if (parentIndex < parentSiblings.length - 1) {
+        // Parent HAS next sibling → cross-parent move (become first children)
+        const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
+        const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
+        if (targetChildren.length > 0) {
+          // Insert before first child, using moveNodes for proper ordering
+          yield* Node.moveNodes({
+            nodeIds,
             parentId: nextParentSiblingId,
+            insert: "before",
+            siblingId: targetChildren[0]!,
+          });
+        } else {
+          // Empty parent - insert nodes one by one
+          for (const nodeId of nodeIds) {
+            yield* Node.insertNode({
+              nodeId,
+              parentId: nextParentSiblingId,
+              insert: "after",
+            });
+          }
+        }
+      } else {
+        // Parent has NO next sibling → outdent (become siblings AFTER parent)
+        // Reverse order to maintain sequence
+        for (let i = nodeIds.length - 1; i >= 0; i--) {
+          yield* Node.insertNode({
+            nodeId: nodeIds[i]!,
+            parentId: grandparentId,
             insert: "after",
+            siblingId: parentId,
           });
         }
       }
@@ -374,10 +397,14 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 });
               }
             } else {
-              // Alt+Cmd+Arrow: Swap with adjacent (or cross-parent at boundary)
+              // Alt+Cmd+Arrow: Swap with adjacent (or outdent at boundary)
+              // Can't outdent if parent is the buffer root
+              const isAtBufferRoot = parentId === bufferDoc.assignedNodeId;
+
               if (e.key === "ArrowUp") {
                 if (firstIndex === 0) {
-                  // At first position - try cross-parent movement
+                  // At first position - try outdent (unless at buffer root)
+                  if (isAtBufferRoot) return;
                   const moved = yield* crossParentMoveBlocks(
                     selectedBlocks,
                     parentId,
@@ -394,7 +421,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 }
               } else {
                 if (lastIndex === siblings.length - 1) {
-                  // At last position - try cross-parent movement
+                  // At last position - try outdent (unless at buffer root)
+                  if (isAtBufferRoot) return;
                   const moved = yield* crossParentMoveBlocks(
                     selectedBlocks,
                     parentId,
