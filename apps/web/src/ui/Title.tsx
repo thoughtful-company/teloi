@@ -425,7 +425,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       <Show
         when={store.isActive}
         fallback={
-          <h1 class="text-title leading-[var(--text-title--line-height)] font-semibold">
+          <h1 class="text-title leading-[var(--text-title--line-height)] font-semibold whitespace-break-spaces">
             {textContent()}
           </h1>
         }
