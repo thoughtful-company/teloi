@@ -524,6 +524,7 @@ export default function TextEditor(props: TextEditorProps) {
                   selection: EditorSelection.create([
                     EditorSelection.cursor(anchor, sel.assoc),
                   ]),
+                  scrollIntoView: true,
                 });
                 setIsSelectionReady(true);
                 update.view.focus();
@@ -534,7 +535,10 @@ export default function TextEditor(props: TextEditorProps) {
               // Set selection ready BEFORE focus to avoid cursor flash
               setTimeout(() => {
                 suppressSelectionChange = true;
-                update.view.dispatch({ selection: { anchor, head } });
+                update.view.dispatch({
+                  selection: { anchor, head },
+                  scrollIntoView: true,
+                });
                 setIsSelectionReady(true);
                 update.view.focus();
                 suppressSelectionChange = false;
@@ -546,6 +550,7 @@ export default function TextEditor(props: TextEditorProps) {
               setIsSelectionReady(true);
               suppressSelectionChange = true;
               update.view.focus();
+              update.view.dispatch({ scrollIntoView: true });
               suppressSelectionChange = false;
             }, 0);
           }
@@ -1206,6 +1211,8 @@ export default function TextEditor(props: TextEditorProps) {
       // Suppress selection changes during focus to prevent yCollab cursor restoration
       suppressSelectionChange = true;
       view.focus();
+      // Scroll cursor into view (triggers our spring scroll handler)
+      view.dispatch({ scrollIntoView: true });
       suppressSelectionChange = false;
     } else {
       // Doc is empty - check if we're expecting content from Yjs
@@ -1217,6 +1224,8 @@ export default function TextEditor(props: TextEditorProps) {
         setIsSelectionReady(true);
         suppressSelectionChange = true;
         view.focus();
+        // Scroll cursor into view (triggers our spring scroll handler)
+        view.dispatch({ scrollIntoView: true });
         suppressSelectionChange = false;
       }
       // else: wait for updateListener to focus after Yjs syncs
