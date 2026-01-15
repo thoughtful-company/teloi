@@ -17,10 +17,21 @@ const navItems: NavItem[] = [
   { label: "Types", nodeId: System.TYPES, icon: "tag" },
 ];
 
+const nodeToPath: Record<string, string> = {
+  [System.INBOX]: "/inbox",
+  [System.THE_BOX]: "/box",
+  [System.CALENDAR]: "/calendar",
+  [System.TYPES]: "/types",
+};
+
 export default function SidebarNav() {
   const runtime = useBrowserRuntime();
 
-  const handleNavClick = (nodeId: Id.Node) => {
+  const handleNavClick = (nodeId: Id.Node, e: MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      window.open(nodeToPath[nodeId], "_blank");
+      return;
+    }
     runtime.runPromise(
       Effect.gen(function* () {
         const Navigation = yield* NavigationT;
@@ -34,7 +45,7 @@ export default function SidebarNav() {
       <For each={navItems}>
         {(item) => (
           <button
-            onClick={() => handleNavClick(item.nodeId)}
+            onClick={(e) => handleNavClick(item.nodeId, e)}
             class="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm text-left"
           >
             <span class="w-5 h-5 flex items-center justify-center opacity-60">

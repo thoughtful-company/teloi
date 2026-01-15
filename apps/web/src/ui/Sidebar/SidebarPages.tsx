@@ -38,7 +38,11 @@ function PageItem(props: PageItemProps) {
     onCleanup(() => ytext.unobserve(observer));
   });
 
-  const handleClick = () => {
+  const handleClick = (e: MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      window.open(`/workspace/${props.nodeId}`, "_blank");
+      return;
+    }
     runtime.runPromise(
       Effect.gen(function* () {
         const Navigation = yield* NavigationT;
