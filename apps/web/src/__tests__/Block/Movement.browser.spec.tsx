@@ -1,5 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -256,7 +257,12 @@ describe("Block Movement", () => {
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           // [A, B, C, D] → [B, C, A, D]
-          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [second, third, first, fourth]);
+          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [
+            second,
+            third,
+            first,
+            fourth,
+          ]);
           yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second, third]);
         }).pipe(runtime.runPromise);
       });
@@ -327,7 +333,12 @@ describe("Block Movement", () => {
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           // [A, B, C, D] → [A, D, B, C]
-          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, fourth, second, third]);
+          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [
+            first,
+            fourth,
+            second,
+            third,
+          ]);
           yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second, third]);
         }).pipe(runtime.runPromise);
       });
@@ -402,7 +413,12 @@ describe("Block Movement", () => {
           );
 
           // [A, B, C, D] → [C, D, A, B]
-          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [third, fourth, first, second]);
+          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [
+            third,
+            fourth,
+            first,
+            second,
+          ]);
           yield* Then.BLOCKS_ARE_SELECTED(bufferId, [third, fourth]);
         }).pipe(runtime.runPromise);
       });
@@ -456,7 +472,12 @@ describe("Block Movement", () => {
           );
 
           // [A, B, C, D] → [C, D, A, B]
-          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [third, fourth, first, second]);
+          yield* Then.CHILDREN_ORDER_IS(rootNodeId, [
+            third,
+            fourth,
+            first,
+            second,
+          ]);
           yield* Then.BLOCKS_ARE_SELECTED(bufferId, [first, second]);
         }).pipe(runtime.runPromise);
       });
@@ -524,9 +545,7 @@ describe("Block Movement", () => {
       it("last child outdents to become sibling after parent when no next sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -599,9 +618,7 @@ describe("Block Movement", () => {
       it("first child outdents to become sibling before parent when no prev sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent D" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -789,9 +806,7 @@ describe("Block Movement", () => {
       it("single block outdents on move down when no next sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -824,9 +839,7 @@ describe("Block Movement", () => {
       it("single block outdents on move up when no prev sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent D" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -853,9 +866,7 @@ describe("Block Movement", () => {
       it("multiple blocks outdent on move down when no next sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -896,9 +907,7 @@ describe("Block Movement", () => {
       it("multiple blocks outdent on move up when no prev sibling", async () => {
         await Effect.gen(function* () {
           const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent D" },
-            ]);
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -933,6 +942,64 @@ describe("Block Movement", () => {
           yield* Then.CHILDREN_ORDER_IS(parentD, [childG]);
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [childE, childF, parentD]);
           yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childE, childF]);
+        }).pipe(runtime.runPromise);
+      });
+    });
+
+    describe("Auto-expand on Move Into Collapsed Parent", () => {
+      it("expands collapsed target when moving block into it", async () => {
+        await Effect.gen(function* () {
+          // Given: Root -> [Parent A, Parent B]
+          // Parent A has child C
+          // Parent B is collapsed and has child D
+          // When C (last child of A) moves down, it crosses into B
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+              { text: "Parent A" },
+              { text: "Parent B" },
+            ]);
+
+          const [parentA, parentB] = childNodeIds;
+          const blockB = Id.makeBlockId(bufferId, parentB);
+
+          // Add child C to Parent A
+          const childC = yield* Given.INSERT_NODE_WITH_TEXT({
+            parentId: parentA,
+            insert: "after",
+            text: "Child C",
+          });
+          const blockC = Id.makeBlockId(bufferId, childC);
+
+          // Add child D to Parent B (so B can be collapsed)
+          const childD = yield* Given.INSERT_NODE_WITH_TEXT({
+            parentId: parentB,
+            insert: "after",
+            text: "Child D",
+          });
+
+          render(() => <EditorBuffer bufferId={bufferId} />);
+
+          // Wait for blocks to render
+          yield* Then.TEXT_IS_VISIBLE("Child C");
+          yield* Then.TEXT_IS_VISIBLE("Child D");
+
+          // Collapse B
+          const Block = yield* BlockT;
+          yield* Block.setExpanded(blockB, false);
+          yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+          // Focus on Child C (last child of Parent A)
+          yield* When.USER_CLICKS_BLOCK(blockC);
+
+          // When: Move C down (Cmd+Opt+Down)
+          // C is last child of A, A's next sibling is B, so C crosses into B
+          yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
+
+          // Then: B is expanded (so C is visible) and C is now first child of B
+          yield* Then.BLOCK_IS_EXPANDED(blockB);
+          yield* Then.CHILDREN_ORDER_IS(parentA, []);
+          yield* Then.CHILDREN_ORDER_IS(parentB, [childC, childD]);
+          yield* Then.SELECTION_IS_ON_BLOCK(blockC);
         }).pipe(runtime.runPromise);
       });
     });

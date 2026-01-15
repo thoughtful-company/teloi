@@ -484,6 +484,10 @@ export default function Block({ blockId }: BlockProps) {
           Match.exhaustive,
         );
         if (moved) {
+          // Re-set selection to trigger ancestor expansion for new tree position
+          const Buffer = yield* BufferT;
+          const selection = yield* Buffer.getSelection(bufferId);
+          yield* Buffer.setSelection(bufferId, selection);
           yield* waitForDomAndRefocus;
         }
       }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
