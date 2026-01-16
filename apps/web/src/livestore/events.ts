@@ -36,7 +36,7 @@ export const nodeMoved = Events.synced({
         nodeId: Schema.String,
         newParentId: Schema.String,
         position: Schema.String,
-        isHidden: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+        inShadow: Schema.optionalWith(Schema.Boolean, { default: () => false }),
       }),
       Schema.Struct({
         nodeId: Schema.String,

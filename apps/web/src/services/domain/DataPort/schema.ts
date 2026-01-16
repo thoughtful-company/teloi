@@ -11,7 +11,7 @@ export interface ExportData {
       readonly childId: string;
       readonly parentId: string | null;
       readonly position: string;
-      readonly isHidden: boolean;
+      readonly inShadow: boolean;
       readonly createdAt: number;
     }>;
     textContent: Record<string, string>;

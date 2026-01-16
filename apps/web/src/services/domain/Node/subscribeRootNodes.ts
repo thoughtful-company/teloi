@@ -11,7 +11,7 @@ export const subscribeRootNodes = () =>
     const query = queryDb(
       tables.parentLinks
         .select()
-        .where({ parentId: System.WORKSPACE })
+        .where({ parentId: System.WORKSPACE, inShadow: false })
         .orderBy("position", "asc"),
       { label: "workspace-pages" },
     );

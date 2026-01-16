@@ -40,7 +40,7 @@ const getLastChildPosition = (parentId: Id.Node) =>
     const lastChild = yield* Store.query(
       tables.parentLinks
         .select()
-        .where({ parentId })
+        .where({ parentId, inShadow: false })
         .orderBy("position", "desc")
         .first({ fallback: () => null }),
     );
@@ -56,7 +56,7 @@ const getFirstChildPosition = (parentId: Id.Node) =>
     const firstChild = yield* Store.query(
       tables.parentLinks
         .select()
-        .where({ parentId })
+        .where({ parentId, inShadow: false })
         .orderBy("position", "asc")
         .first({ fallback: () => null }),
     );
@@ -74,6 +74,7 @@ const getNextSiblingPosition = (parentId: Id.Node, afterPosition: string) =>
         .select()
         .where({
           parentId,
+          inShadow: false,
           position: { op: ">", value: afterPosition },
         })
         .orderBy("position", "asc")
@@ -93,6 +94,7 @@ const getPrevSiblingPosition = (parentId: Id.Node, beforePosition: string) =>
         .select()
         .where({
           parentId,
+          inShadow: false,
           position: { op: "<", value: beforePosition },
         })
         .orderBy("position", "desc")
@@ -170,7 +172,7 @@ export const insertNode = (args: InsertNodeArgs) =>
             nodeId,
             newParentId: parentId,
             position,
-            isHidden: false,
+            inShadow: false,
           },
         }),
       );

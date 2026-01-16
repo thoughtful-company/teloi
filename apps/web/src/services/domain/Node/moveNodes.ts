@@ -38,6 +38,7 @@ const getNextSiblingPosition = (parentId: Id.Node, afterPosition: string) =>
         .select()
         .where({
           parentId,
+          inShadow: false,
           position: { op: ">", value: afterPosition },
         })
         .orderBy("position", "asc")
@@ -57,6 +58,7 @@ const getPrevSiblingPosition = (parentId: Id.Node, beforePosition: string) =>
         .select()
         .where({
           parentId,
+          inShadow: false,
           position: { op: "<", value: beforePosition },
         })
         .orderBy("position", "desc")

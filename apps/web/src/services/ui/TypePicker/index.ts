@@ -66,6 +66,7 @@ const getAvailableTypes = () =>
       tables.parentLinks
         .select("childId")
         .where("parentId", "=", System.TYPES)
+        .where("inShadow", "=", false)
         .orderBy("position", "asc"),
     );
 

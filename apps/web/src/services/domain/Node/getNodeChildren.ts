@@ -15,6 +15,7 @@ export const getNodeChildren = (nodeId: Id.Node) =>
       tables.parentLinks
         .select("childId")
         .where("parentId", "=", nodeId)
+        .where("inShadow", "=", false)
         .orderBy("position", "asc"),
     );
 
