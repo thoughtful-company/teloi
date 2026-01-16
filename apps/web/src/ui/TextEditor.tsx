@@ -29,7 +29,12 @@ import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import TypeBadge from "./TypeBadge";
 import * as Y from "yjs";
 
-export type TextEditorVariant = "block" | "title";
+export type TextEditorVariant =
+  | "block"
+  | "title"
+  | "header1"
+  | "header2"
+  | "header3";
 
 // === Keymap Condition Types ===
 
@@ -55,6 +60,21 @@ const variantStyles: Record<TextEditorVariant, VariantStyles> = {
     fontSize: "var(--text-title)",
     lineHeight: "var(--text-title--line-height)",
     fontWeight: "600",
+  },
+  header1: {
+    fontSize: "var(--text-h1)",
+    lineHeight: "var(--text-h1--line-height)",
+    fontWeight: "600",
+  },
+  header2: {
+    fontSize: "var(--text-h2)",
+    lineHeight: "var(--text-h2--line-height)",
+    fontWeight: "600",
+  },
+  header3: {
+    fontSize: "var(--text-h3)",
+    lineHeight: "var(--text-h3--line-height)",
+    fontWeight: "500",
   },
 };
 
@@ -85,6 +105,9 @@ const createTheme = (styles: VariantStyles): Extension =>
 const variantThemes: Record<TextEditorVariant, Extension> = {
   block: createTheme(variantStyles.block),
   title: createTheme(variantStyles.title),
+  header1: createTheme(variantStyles.header1),
+  header2: createTheme(variantStyles.header2),
+  header3: createTheme(variantStyles.header3),
 };
 
 // === Text Formatting Marks ===
@@ -322,7 +345,8 @@ export type EditorAction =
     }
   | { _tag: "TypePickerUpdate"; query: string }
   | { _tag: "TypePickerClose" }
-  | { _tag: "ToggleTodo" };
+  | { _tag: "ToggleTodo" }
+  | { _tag: "ToggleHeader"; level: 1 | 2 | 3 };
 
 /** Action constructors for type-safe action creation */
 export const Action = {
@@ -383,6 +407,10 @@ export const Action = {
   }),
   TypePickerClose: (): EditorAction => ({ _tag: "TypePickerClose" }),
   ToggleTodo: (): EditorAction => ({ _tag: "ToggleTodo" }),
+  ToggleHeader: (level: 1 | 2 | 3): EditorAction => ({
+    _tag: "ToggleHeader",
+    level,
+  }),
 } as const;
 
 interface TextEditorProps {
@@ -453,6 +481,8 @@ export default function TextEditor(props: TextEditorProps) {
 
   // Compartment for inline type badges - allows dynamic reconfiguration
   const typeBadgeCompartment = new Compartment();
+  // Compartment for variant theme - allows dynamic reconfiguration when header type changes
+  const variantThemeCompartment = new Compartment();
 
   onMount(() => {
     const extensions: Extension[] = [
@@ -483,7 +513,7 @@ export default function TextEditor(props: TextEditorProps) {
 
         return true;
       }),
-      variantThemes[variant],
+      variantThemeCompartment.of(variantThemes[variant]),
       formattingTheme,
       // Text formatting decorations - StateField maps through changes automatically
       createFormattingField(ytext),
@@ -815,6 +845,33 @@ export default function TextEditor(props: TextEditorProps) {
         { key: "Mod-b", run: createFormatHandler("bold") },
         { key: "Mod-i", run: createFormatHandler("italic") },
         { key: "Mod-e", run: createFormatHandler("code") },
+      ]),
+    );
+
+    // Cmd+1/2/3: Toggle header levels
+    extensions.push(
+      keymap.of([
+        {
+          key: "Mod-1",
+          run: () => {
+            emit(Action.ToggleHeader(1));
+            return true;
+          },
+        },
+        {
+          key: "Mod-2",
+          run: () => {
+            emit(Action.ToggleHeader(2));
+            return true;
+          },
+        },
+        {
+          key: "Mod-3",
+          run: () => {
+            emit(Action.ToggleHeader(3));
+            return true;
+          },
+        },
       ]),
     );
 
@@ -1378,6 +1435,17 @@ export default function TextEditor(props: TextEditorProps) {
               createTypeBadgeDecorations(state, types, nodeId),
             )
           : [],
+      ),
+    });
+  });
+
+  // Reconfigure variant theme when header type changes
+  createEffect(() => {
+    if (!view) return;
+    const currentVariant = props.variant ?? "block";
+    view.dispatch({
+      effects: variantThemeCompartment.reconfigure(
+        variantThemes[currentVariant],
       ),
     });
   });

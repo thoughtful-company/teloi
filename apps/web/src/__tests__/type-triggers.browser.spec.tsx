@@ -390,4 +390,147 @@ describe("Type Trigger Replacement", () => {
       }).pipe(runtime.runPromise);
     });
   });
+
+  describe("Header triggers", () => {
+    it("applies H1 when user types '# ' at start", async () => {
+      await Effect.gen(function* () {
+        const Type = yield* TypeT;
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "" }],
+        );
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* When.USER_PRESSES("#");
+        yield* When.USER_PRESSES(" ");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const hasH1 = await Type.hasType(
+                childNodeId,
+                System.HEADER_1,
+              ).pipe(runtime.runPromise);
+              expect(hasH1).toBe(true);
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        yield* Then.NODE_HAS_TEXT(childNodeId, "");
+      }).pipe(runtime.runPromise);
+    });
+
+    it("replaces H1 with H2 when user types '## ' at start", async () => {
+      await Effect.gen(function* () {
+        const Type = yield* TypeT;
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "Heading" }],
+        );
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+        yield* Type.addType(childNodeId, System.HEADER_1);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* When.USER_PRESSES("{Home}");
+        yield* When.USER_PRESSES("##");
+        yield* When.USER_PRESSES(" ");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const hasH2 = await Type.hasType(
+                childNodeId,
+                System.HEADER_2,
+              ).pipe(runtime.runPromise);
+              expect(hasH2).toBe(true);
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        const hasH1 = yield* Type.hasType(childNodeId, System.HEADER_1);
+        expect(hasH1).toBe(false);
+
+        yield* Then.NODE_HAS_TEXT(childNodeId, "Heading");
+      }).pipe(runtime.runPromise);
+    });
+
+    it("inserts '# ' literally when H1 triggers H1", async () => {
+      await Effect.gen(function* () {
+        const Type = yield* TypeT;
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "Heading" }],
+        );
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+        yield* Type.addType(childNodeId, System.HEADER_1);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* When.USER_PRESSES("{Home}");
+        yield* When.USER_PRESSES("#");
+        yield* When.USER_PRESSES(" ");
+
+        const hasH1 = yield* Type.hasType(childNodeId, System.HEADER_1);
+        expect(hasH1).toBe(true);
+
+        yield* Then.NODE_HAS_TEXT(childNodeId, "# Heading");
+      }).pipe(runtime.runPromise);
+    });
+
+    it("replaces H1 with list when user types '- ' at start", async () => {
+      await Effect.gen(function* () {
+        const Type = yield* TypeT;
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "Heading" }],
+        );
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+
+        yield* Type.addType(childNodeId, System.HEADER_1);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* When.USER_PRESSES("{Home}");
+        yield* When.USER_PRESSES("-");
+        yield* When.USER_PRESSES(" ");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const hasList = await Type.hasType(
+                childNodeId,
+                System.LIST_ELEMENT,
+              ).pipe(runtime.runPromise);
+              expect(hasList).toBe(true);
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        const hasH1 = yield* Type.hasType(childNodeId, System.HEADER_1);
+        expect(hasH1).toBe(false);
+
+        yield* Then.NODE_HAS_TEXT(childNodeId, "Heading");
+      }).pipe(runtime.runPromise);
+    });
+  });
 });

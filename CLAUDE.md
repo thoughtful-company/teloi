@@ -1,16 +1,5 @@
 # CLAUDE.md
 
-1. Each time you are tasked with a problem, think deeply and carefully.
-  a. When **approaching a problem** that is more complex than usual, analyze it with greater depth.
-  b. When you **present a solution** to me
-    - Make sure you considered multiple approaches.
-    - Include potential edge cases and tradeoffs.
-    - Solution must solve the exact problem specified (no more, no less)
-  c. When I describe a problem, you should ONLY explain what you find. Don't start fixing things unless I explicitly ask you to. If I want you to fix something, I'll tell you directly - "fix it", "implement it", or give similar clear instruction.
-2. Only perform the exact task given, using the most surgical, concise and elegant fix that changes as little code as possible. 
-3. Every change must be intentional, minimal, and clean.
-4. I am also a human and I often make mistakes and understand something not right. You should **be direct with me** and do not optimize for politeness.
-
 ## Maintaining This Document
 
 You should **ALWAYS** proactively update this file when:
@@ -24,9 +13,6 @@ Updates should be minimal and surgical—add only what's necessary to keep the d
 ## Commands
 
 ```bash
-# Development (not recommended for AI - prefer testing and typecheck)
-pnpm dev:web              # Start web app dev server (localhost:3003)
-
 # Testing - ALWAYS specify filename first to avoid scanning all files
 pnpm -F @teloi/web test:browser src/path/to/file.test.tsx
 pnpm -F @teloi/web test:browser src/path/to/file.test.tsx -t "test name pattern"
@@ -34,9 +20,6 @@ pnpm -F @teloi/web test:browser      # Run ALL browser tests (slow, avoid unless
 
 # Type checking
 pnpm -F @teloi/web typecheck
-
-# Linting
-pnpm eslint .             # Lint entire repo
 
 # GitHub
 gh api repos/:owner/:repo/issues/17  # Look up issue details
@@ -58,8 +41,6 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 **TDD-first (MANDATORY)**: You MUST write tests **before** implementing ANY feature code. Do NOT write implementation until tests exist. This is non-negotiable—no exceptions.
 
 **ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly. If you catch yourself about to write implementation before tests exist, STOP and write tests first.
-
-**Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 
 **Always** strictly follow logging standards in `docs/logging.md`. Use "Wide Events" and `Effect.annotateLogs`.
 
@@ -101,9 +82,6 @@ This is a pnpm monorepo with:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
 - **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
 - Split/merge update both; typing only touches Yjs
-
-
-
 
 ### LiveStore Integration
 Local-first SQLite database with event sourcing:

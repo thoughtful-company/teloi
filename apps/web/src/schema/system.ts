@@ -55,6 +55,21 @@ export const System = {
   CHECKBOX: "system:checkbox" as Id.Node,
 
   /**
+   * Rendering type for H1 headers. Applied when user types "# " at start of line or Cmd+1.
+   */
+  HEADER_1: "system:header-1" as Id.Node,
+
+  /**
+   * Rendering type for H2 headers. Applied when user types "## " at start of line or Cmd+2.
+   */
+  HEADER_2: "system:header-2" as Id.Node,
+
+  /**
+   * Rendering type for H3 headers. Applied when user types "### " at start of line or Cmd+3.
+   */
+  HEADER_3: "system:header-3" as Id.Node,
+
+  /**
    * Meta-type for color nodes. A node with this type represents a color definition.
    */
   COLOR: "system:color" as Id.Node,

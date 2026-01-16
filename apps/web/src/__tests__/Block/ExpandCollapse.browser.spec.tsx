@@ -1,5 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
@@ -1052,6 +1053,328 @@ describe("Block expand/collapse - Block selection mode (multiple blocks)", () =>
       // Then: A and B are expanded (they have children), C is unaffected
       yield* Then.BLOCK_IS_EXPANDED(blockA);
       yield* Then.BLOCK_IS_EXPANDED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+/**
+ * =============================================================================
+ * Progressive Mod+Down Behavior (NEW)
+ * =============================================================================
+ *
+ * Mod+Down works in BOTH text editing mode AND block selection mode:
+ *
+ * | State                                    | Action                          |
+ * |------------------------------------------|----------------------------------|
+ * | Block is collapsed (has children)        | Expand the block, stay on it     |
+ * | Block is expanded (has visible children) | Expand children one level deeper |
+ * | Block has no children                    | Create child and focus it        |
+ *
+ * Mode preservation: If in text editing mode, stay in text editing mode after
+ * the action. Same for block selection mode.
+ */
+describe("Progressive Mod+Down - Text editing mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("Mod+Down on childless block creates a child and focuses it", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: A block with NO children, user focused in it (text editing mode)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Childless" }],
+      );
+
+      const childlessNodeId = childNodeIds[0];
+      const childlessBlockId = Id.makeBlockId(bufferId, childlessNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Verify the node has no children initially
+      const childrenBefore = yield* Node.getNodeChildren(childlessNodeId);
+      expect(childrenBefore.length).toBe(0);
+
+      // Focus on the childless block (text editing mode)
+      yield* When.USER_CLICKS_BLOCK(childlessBlockId);
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor) throw new Error("CodeMirror not focused");
+        }),
+      );
+
+      // When: Mod+Down pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: A child was created
+      const childrenAfter = yield* Node.getNodeChildren(childlessNodeId);
+      expect(childrenAfter.length).toBe(1);
+
+      // And: Focus moved to the new child
+      const newChildNodeId = childrenAfter[0]!;
+      const newChildBlockId = Id.makeBlockId(bufferId, newChildNodeId);
+      yield* Then.SELECTION_IS_ON_BLOCK(newChildBlockId);
+
+      // And: Still in text editing mode (CodeMirror focused)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor)
+            throw new Error("CodeMirror not focused after child creation");
+        }),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down on collapsed block with children expands it (does not create child)", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: A collapsed block with existing children
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to the parent
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Existing Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the block first
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(parentBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      // Record children count before
+      const childrenBefore = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenBefore.length).toBe(1);
+
+      // Focus on the parent block
+      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+
+      // When: Mod+Down pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: Block expands (does NOT create new child)
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+      // Verify no new child was created
+      const childrenAfter = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenAfter.length).toBe(1);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down on expanded block with children does not create more children", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: An expanded block with one existing child (simple case)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to the parent (leaf node, no grandchild)
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Existing Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for render
+      yield* Then.TEXT_IS_VISIBLE("Existing Child");
+
+      // Verify parent is expanded (default state)
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+      // Record children count before
+      const childrenBefore = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenBefore.length).toBe(1);
+
+      // Focus on the parent block
+      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+
+      // When: Mod+Down pressed (parent already expanded with children)
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: No new child was created on parent (existing behavior is expand/drill-down, not create)
+      const childrenAfter = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenAfter.length).toBe(1);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("Progressive Mod+Down - Block selection mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("Mod+Down on childless block creates a child and focuses it", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: A block with NO children, selected in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Childless" }],
+      );
+
+      const childlessNodeId = childNodeIds[0];
+      const childlessBlockId = Id.makeBlockId(bufferId, childlessNodeId);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Verify the node has no children initially
+      const childrenBefore = yield* Node.getNodeChildren(childlessNodeId);
+      expect(childrenBefore.length).toBe(0);
+
+      // Enter block selection mode on the childless block
+      yield* When.USER_ENTERS_BLOCK_SELECTION(childlessBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childlessNodeId]);
+
+      // When: Mod+Down pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: A child was created
+      const childrenAfter = yield* Node.getNodeChildren(childlessNodeId);
+      expect(childrenAfter.length).toBe(1);
+
+      // And: Focus moved to the new child (in text editing mode to allow typing)
+      const newChildNodeId = childrenAfter[0]!;
+      const newChildBlockId = Id.makeBlockId(bufferId, newChildNodeId);
+      yield* Then.SELECTION_IS_ON_BLOCK(newChildBlockId);
+
+      // New child should be focused in text editing mode (CodeMirror)
+      yield* Effect.promise(() =>
+        waitFor(() => {
+          const cmEditor = document.querySelector(".cm-editor.cm-focused");
+          if (!cmEditor)
+            throw new Error("CodeMirror not focused for new child");
+        }),
+      );
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down on collapsed block with children expands it (does not create child)", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: A collapsed block with existing children, in block selection mode
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to the parent
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Existing Child",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Collapse the block first
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(parentBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      // Record children count before
+      const childrenBefore = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenBefore.length).toBe(1);
+
+      // Enter block selection mode on parent
+      yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+
+      // When: Mod+Down pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: Block expands AND selection is preserved (does NOT create new child)
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+
+      // Verify no new child was created
+      const childrenAfter = yield* Node.getNodeChildren(parentNodeId);
+      expect(childrenAfter.length).toBe(1);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down on multiple selected childless blocks creates children for each", async () => {
+    await Effect.gen(function* () {
+      const Node = yield* NodeT;
+
+      // Given: Multiple childless blocks selected
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBlockId(bufferId, nodeA);
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Verify both nodes have no children
+      expect((yield* Node.getNodeChildren(nodeA)).length).toBe(0);
+      expect((yield* Node.getNodeChildren(nodeB)).length).toBe(0);
+
+      // Select both blocks in block selection mode
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB]);
+
+      // When: Mod+Down pressed
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Then: Both blocks now have children
+      const childrenA = yield* Node.getNodeChildren(nodeA);
+      const childrenB = yield* Node.getNodeChildren(nodeB);
+      expect(childrenA.length).toBe(1);
+      expect(childrenB.length).toBe(1);
     }).pipe(runtime.runPromise);
   });
 });

@@ -1,5 +1,9 @@
 # Testing Guidelines
 
+## Cleanup
+
+Always clean up in `beforeEach` (first action), not `afterEach`—failed tests skip `afterEach`.
+
 ## Setting Up Selection and Focus
 
 ### DON'T: Click to set selection

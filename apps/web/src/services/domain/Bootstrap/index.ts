@@ -205,6 +205,39 @@ const ensureSystemNodes = () =>
       yield* Type.addType(System.CHECKBOX, System.RENDERING_TYPE);
     }
 
+    // === Header 1 (rendering type) ===
+    pos = nextPosition(pos);
+    const header1Exists = yield* nodeExists(System.HEADER_1);
+    if (!header1Exists) {
+      yield* createChildNode(System.HEADER_1, System.ROOT, pos);
+      yield* setNodeText(System.HEADER_1, "Header 1");
+    }
+    if (!(yield* Type.hasType(System.HEADER_1, System.RENDERING_TYPE))) {
+      yield* Type.addType(System.HEADER_1, System.RENDERING_TYPE);
+    }
+
+    // === Header 2 (rendering type) ===
+    pos = nextPosition(pos);
+    const header2Exists = yield* nodeExists(System.HEADER_2);
+    if (!header2Exists) {
+      yield* createChildNode(System.HEADER_2, System.ROOT, pos);
+      yield* setNodeText(System.HEADER_2, "Header 2");
+    }
+    if (!(yield* Type.hasType(System.HEADER_2, System.RENDERING_TYPE))) {
+      yield* Type.addType(System.HEADER_2, System.RENDERING_TYPE);
+    }
+
+    // === Header 3 (rendering type) ===
+    pos = nextPosition(pos);
+    const header3Exists = yield* nodeExists(System.HEADER_3);
+    if (!header3Exists) {
+      yield* createChildNode(System.HEADER_3, System.ROOT, pos);
+      yield* setNodeText(System.HEADER_3, "Header 3");
+    }
+    if (!(yield* Type.hasType(System.HEADER_3, System.RENDERING_TYPE))) {
+      yield* Type.addType(System.HEADER_3, System.RENDERING_TYPE);
+    }
+
     // === Color (meta-type for color nodes) ===
     pos = nextPosition(pos);
     const colorExists = yield* nodeExists(System.COLOR);

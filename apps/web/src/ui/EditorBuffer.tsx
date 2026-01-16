@@ -13,6 +13,7 @@ import {
   SCROLL_MARGIN,
   scrollElementIntoView,
 } from "@/utils/scroll";
+import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
@@ -568,7 +569,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         return;
       }
 
-      // Cmd+ArrowDown in block selection mode: expand selected blocks
+      // Cmd+ArrowDown in block selection mode: expand selected blocks or create children
       if (
         e.key === "ArrowDown" &&
         !e.altKey &&
@@ -581,6 +582,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           Effect.gen(function* () {
             const Block = yield* BlockT;
             const Node = yield* NodeT;
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
 
             const bufferDoc = yield* getBufferDoc;
             if (!bufferDoc) return;
@@ -608,8 +611,32 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 return false;
               });
 
+            let lastCreatedNodeId: Id.Node | null = null;
+
             for (const nodeId of selectedBlocks) {
-              yield* expandOneLevel(nodeId);
+              const didExpand = yield* expandOneLevel(nodeId);
+
+              if (!didExpand) {
+                const children = yield* Node.getNodeChildren(nodeId);
+                if (children.length === 0) {
+                  const newNodeId = yield* Node.insertNode({
+                    parentId: nodeId,
+                    insert: "before",
+                  });
+                  lastCreatedNodeId = newNodeId;
+                }
+              }
+            }
+
+            if (lastCreatedNodeId) {
+              const newBlockId = Id.makeBlockId(bufferId, lastCreatedNodeId);
+              yield* Buffer.setSelection(
+                bufferId,
+                makeCollapsedSelection(lastCreatedNodeId, 0),
+              );
+              yield* Window.setActiveElement(
+                Option.some({ type: "block" as const, id: newBlockId }),
+              );
             }
           }),
         );

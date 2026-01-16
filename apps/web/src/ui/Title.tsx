@@ -10,6 +10,7 @@ import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
+  makeCollapsedSelection,
   resolveSelectionStrategy,
   updateEditorSelection,
 } from "@/utils/selectionStrategy";
@@ -320,12 +321,31 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       Match.tag("TypePickerClose", () => handleTypePickerClose()),
       Match.tag("Expand", () => {
         // Drill down level by level, expanding all collapsed nodes at each level
+        // If no children exist, create one and focus it
         runtime.runPromise(
           Effect.gen(function* () {
             const Node = yield* NodeT;
             const Block = yield* BlockT;
+            const Buffer = yield* BufferT;
+            const Window = yield* WindowT;
 
             let currentLevel = yield* Node.getNodeChildren(nodeId);
+
+            if (currentLevel.length === 0) {
+              const newNodeId = yield* Node.insertNode({
+                parentId: nodeId,
+                insert: "before",
+              });
+              const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+              yield* Buffer.setSelection(
+                bufferId,
+                makeCollapsedSelection(newNodeId, 0),
+              );
+              yield* Window.setActiveElement(
+                Option.some({ type: "block" as const, id: newBlockId }),
+              );
+              return;
+            }
 
             while (currentLevel.length > 0) {
               const collapsedExpandable: Id.Node[] = [];

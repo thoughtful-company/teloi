@@ -18,6 +18,9 @@ export interface AvailableType {
 const SYSTEM_TYPE_IDS = new Set<Id.Node>([
   System.LIST_ELEMENT,
   System.CHECKBOX,
+  System.HEADER_1,
+  System.HEADER_2,
+  System.HEADER_3,
   System.RENDERING_TYPE,
   System.BOOLEAN,
   System.TRUE,
@@ -131,9 +134,9 @@ const applyType = (nodeId: Id.Node, typeId: Id.Node) =>
       Effect.annotateLogs({ nodeId, typeId }),
     );
     yield* Type.addType(nodeId, typeId);
-    yield* Effect.logDebug("[TypePicker.applyType] Type applied successfully").pipe(
-      Effect.annotateLogs({ nodeId, typeId }),
-    );
+    yield* Effect.logDebug(
+      "[TypePicker.applyType] Type applied successfully",
+    ).pipe(Effect.annotateLogs({ nodeId, typeId }));
   });
 
 export const TypePickerLive = Layer.effect(

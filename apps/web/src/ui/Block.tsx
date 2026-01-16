@@ -230,6 +230,24 @@ export default function Block({ blockId }: BlockProps) {
     return null;
   };
 
+  const getContentClassName = () => {
+    for (const def of getActiveDefinitions()) {
+      if (def.contentClassName) return def.contentClassName;
+    }
+    return null;
+  };
+
+  const getTextEditorVariant = ():
+    | "block"
+    | "header1"
+    | "header2"
+    | "header3" => {
+    if (hasType(System.HEADER_1)) return "header1";
+    if (hasType(System.HEADER_2)) return "header2";
+    if (hasType(System.HEADER_3)) return "header3";
+    return "block";
+  };
+
   onMount(() => {
     const dispose = start(runtime);
 
@@ -1179,12 +1197,14 @@ export default function Block({ blockId }: BlockProps) {
           // Query is computed reactively from textContent and selection
         },
         TypePickerClose: () => handleTypePickerClose(),
-        // Expand: toggle expand one level (no navigation)
+        // Expand: toggle expand one level, or create child if no children
         Expand: () => {
           runtime.runPromise(
             Effect.gen(function* () {
               const Block = yield* BlockT;
               const Node = yield* NodeT;
+              const Buffer = yield* BufferT;
+              const Window = yield* WindowT;
               const [bufferId] = yield* Id.parseBlockId(blockId);
 
               // Level-by-level expand: expand self first, then children
@@ -1208,12 +1228,60 @@ export default function Block({ blockId }: BlockProps) {
                   return false;
                 });
 
-              yield* expandOneLevel(nodeId);
+              const didExpand = yield* expandOneLevel(nodeId);
+
+              if (!didExpand) {
+                const children = yield* Node.getNodeChildren(nodeId);
+                if (children.length === 0) {
+                  const newNodeId = yield* Node.insertNode({
+                    parentId: nodeId,
+                    insert: "before",
+                  });
+                  const newBlockId = Id.makeBlockId(bufferId, newNodeId);
+                  yield* Buffer.setSelection(
+                    bufferId,
+                    makeCollapsedSelection(newNodeId, 0),
+                  );
+                  yield* Window.setActiveElement(
+                    Option.some({ type: "block" as const, id: newBlockId }),
+                  );
+                }
+              }
             }),
           );
         },
         ToggleTodo: () => {
           runtime.runPromise(BlockType.toggleCheckbox(nodeId));
+        },
+        ToggleHeader: ({ level }) => {
+          const targetHeaderId = Match.value(level).pipe(
+            Match.when(1, () => System.HEADER_1),
+            Match.when(2, () => System.HEADER_2),
+            Match.when(3, () => System.HEADER_3),
+            Match.exhaustive,
+          );
+
+          const existingDecorativeId = getExistingDecorativeTypeId();
+
+          if (existingDecorativeId === targetHeaderId) {
+            runtime.runPromise(
+              TypeT.pipe(
+                Effect.flatMap((Type) =>
+                  Type.removeType(nodeId, targetHeaderId),
+                ),
+              ),
+            );
+          } else {
+            runtime.runPromise(
+              Effect.gen(function* () {
+                const Type = yield* TypeT;
+                if (existingDecorativeId) {
+                  yield* Type.removeType(nodeId, existingDecorativeId);
+                }
+                yield* Type.addType(nodeId, targetHeaderId);
+              }),
+            );
+          }
         },
       }),
       Match.exhaustive,
@@ -1267,7 +1335,14 @@ export default function Block({ blockId }: BlockProps) {
           <Show
             when={store.isActive}
             fallback={
-              <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
+              <p
+                class="font-[family-name:var(--font-sans)] whitespace-break-spaces"
+                classList={{
+                  "text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)]":
+                    !getContentClassName(),
+                  [getContentClassName() ?? ""]: !!getContentClassName(),
+                }}
+              >
                 <Show when={textContent()} fallback={"\u00A0"}>
                   <FormattedText ytext={ytext} />
                 </Show>
@@ -1293,6 +1368,7 @@ export default function Block({ blockId }: BlockProps) {
                 modelSelection: store.selection,
               })}
               selection={store.selection}
+              variant={getTextEditorVariant()}
               inlineTypes={userTypes()}
               inlineTypesNodeId={nodeId}
             />

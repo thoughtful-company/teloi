@@ -53,6 +53,12 @@ export interface BlockTypeDefinition {
   renderDecoration?: (props: { nodeId: Id.Node }) => JSX.Element | null;
 
   /**
+   * CSS class name to apply to the block's content area.
+   * Used for types that style the entire content (e.g., headers) rather than adding decorations.
+   */
+  contentClassName?: string;
+
+  /**
    * Input trigger(s) that convert a plain block to this type.
    * When matched at document start and space is typed, the pattern is consumed and the type is added.
    * Can be a single trigger or array of triggers (e.g., checkbox has both "[]" and "[x]" triggers).
