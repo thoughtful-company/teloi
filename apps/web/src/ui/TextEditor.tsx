@@ -407,6 +407,12 @@ interface TextEditorProps {
   inlineTypes?: readonly Id.Node[];
   /** Node ID for type badge removal (required if inlineTypes provided) */
   inlineTypesNodeId?: Id.Node;
+  /** When true, editor is readonly (used for readonly title links) */
+  readonly?: boolean | undefined;
+  /** Called on first text edit attempt when in detach mode. Callback should copy
+   *  source text to node's Y.Text and delete the tuple. The edit is blocked and
+   *  the component re-renders with node's own Y.Text. */
+  onDetachEdit?: (() => void) | undefined;
 }
 
 /**
@@ -457,6 +463,17 @@ export default function TextEditor(props: TextEditorProps) {
   onMount(() => {
     const extensions: Extension[] = [
       EditorView.lineWrapping,
+      ...(props.readonly
+        ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+        : []),
+      ...(props.onDetachEdit
+        ? [
+            EditorView.inputHandler.of((_view, _from, _to, _text) => {
+              props.onDetachEdit!();
+              return true; // Block input - component re-renders with node's own Y.Text
+            }),
+          ]
+        : []),
       // Intercept CodeMirror's scroll-into-view and use spring animation.
       // Must defer coordsAtPos() to RAF - it throws if called during view update.
       EditorView.scrollHandler.of((view, range) => {

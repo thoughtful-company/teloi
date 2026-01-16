@@ -116,7 +116,7 @@ describe("Rendered Title", () => {
   });
 
   describe("Synced mode", () => {
-    it.skip("editing node's title updates source's Y.Text", async () => {
+    it("editing node's title updates source's Y.Text", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
@@ -137,7 +137,7 @@ describe("Rendered Title", () => {
   });
 
   describe("Readonly mode", () => {
-    it.skip("prevents editing of node's title", async () => {
+    it("prevents editing of node's title", async () => {
       await Effect.gen(function* () {
         // GIVEN: Node A linked to Node B (mode: readonly)
         const { nodeA } = yield* createLinkedNodes(System.MODE_READONLY);
@@ -159,7 +159,7 @@ describe("Rendered Title", () => {
   });
 
   describe("Detach mode", () => {
-    it.skip("editing breaks link and node gets own title", async () => {
+    it("editing breaks link and node gets own title", async () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
         const Tuple = yield* TupleT;
