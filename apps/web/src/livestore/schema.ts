@@ -19,7 +19,7 @@ const parentLinks = State.SQLite.table({
   columns: {
     childId: State.SQLite.text({ primaryKey: true }),
     parentId: State.SQLite.text({ nullable: true }), // null for root nodes
-    isHidden: State.SQLite.boolean({ default: false }),
+    inShadow: State.SQLite.boolean({ default: false }),
     position: State.SQLite.text(), // fractional index key
     createdAt: State.SQLite.integer(),
   },
@@ -284,20 +284,23 @@ const materializers = State.SQLite.materializers(events, {
       shouldNeverHappen("Parent link cannot be absent during materialization.");
     }
 
-    if ("position" in data && data.position) {
+    // Move to parent (position can be "" for shadow children)
+    if ("newParentId" in data && data.newParentId !== undefined) {
       return parentLinks
         .update({
           parentId: data.newParentId,
+          // Shadow children use position: "" (no ordering among visible siblings)
           position: data.position,
-          isHidden: data.isHidden,
+          inShadow: data.inShadow,
         })
         .where({ childId: data.nodeId });
     } else {
+      // Detach from parent
       return parentLinks
         .update({
           parentId: null,
           position: "",
-          isHidden: false,
+          inShadow: false,
         })
         .where({ childId: data.nodeId });
     }

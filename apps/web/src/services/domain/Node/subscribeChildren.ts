@@ -11,7 +11,7 @@ export const subscribeChildren = (nodeId: Id.Node) =>
     const query = queryDb(
       tables.parentLinks
         .select()
-        .where({ parentId: nodeId })
+        .where({ parentId: nodeId, inShadow: false })
         .orderBy("position", "asc"),
       { label: `children-${nodeId}`, deps: [nodeId] },
     );
