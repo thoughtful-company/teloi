@@ -4,6 +4,7 @@ import * as eventsDefs from "./events";
 import { shouldNeverHappen } from "@/error";
 import { Id } from "@/schema/id";
 import { Model } from "@/schema/model";
+import { System } from "@/schema/system";
 
 const nodes = State.SQLite.table({
   name: "nodes",
@@ -132,6 +133,23 @@ const tupleMembers = State.SQLite.table({
   ],
 });
 
+// Rendered title system: materialized view of RENDERED_NAME tuples for fast lookups
+const titleLinks = State.SQLite.table({
+  name: "title_links",
+  columns: {
+    nodeId: State.SQLite.text({ primaryKey: true }),
+    sourceId: State.SQLite.text(),
+    mode: State.SQLite.text(), // "synced" | "readonly" | "detach"
+  },
+  indexes: [
+    {
+      name: "titleLinks_source",
+      columns: ["sourceId"],
+      isUnique: false,
+    },
+  ],
+});
+
 const window = State.SQLite.clientDocument({
   name: Model.DocumentName.Window,
   schema: Model.DocumentSchemas[Model.DocumentName.Window].schema,
@@ -242,6 +260,7 @@ export type TupleRow = State.SQLite.FromTable.RowDecoded<typeof tuples>;
 export type TupleMember = State.SQLite.FromTable.RowDecoded<
   typeof tupleMembers
 >;
+export type TitleLink = State.SQLite.FromTable.RowDecoded<typeof titleLinks>;
 
 export const tables = {
   nodes,
@@ -251,6 +270,7 @@ export const tables = {
   tupleTypeRoleAllowedTypes,
   tuples,
   tupleMembers,
+  titleLinks,
   window,
   pane,
   buffer,
@@ -388,6 +408,14 @@ const materializers = State.SQLite.materializers(events, {
         tables.tupleTypeRoleAllowedTypes.delete().where({ allowedTypeId: nodeId }),
     );
 
+    // Clean up title_links where deleted nodes appear (as node or source)
+    const deleteTitleLinksAsNodeOps = allNodeIds.map((nodeId) =>
+      tables.titleLinks.delete().where({ nodeId }),
+    );
+    const deleteTitleLinksAsSourceOps = allNodeIds.map((nodeId) =>
+      tables.titleLinks.delete().where({ sourceId: nodeId }),
+    );
+
     const deleteNodesOps = allNodeIds.map((nodeId) =>
       tables.nodes.delete().where({ id: nodeId }),
     );
@@ -401,6 +429,8 @@ const materializers = State.SQLite.materializers(events, {
       ...deleteTupleTypeRolesOps,
       ...deleteTupleTypeRoleAllowedTypesOps,
       ...deleteTupleTypeRoleAllowedTypesByAllowedTypeOps,
+      ...deleteTitleLinksAsNodeOps,
+      ...deleteTitleLinksAsSourceOps,
       ...deleteNodesOps,
     ];
   },
@@ -455,13 +485,59 @@ const materializers = State.SQLite.materializers(events, {
       }),
     );
 
+    // Materialize RENDERED_NAME tuples to title_links for fast lookups
+    if (data.tupleTypeId === System.RENDERED_NAME) {
+      const nodeId = data.members[0];
+      const sourceId = data.members[1];
+      const modeNodeId = data.members[2];
+      const mode =
+        modeNodeId === System.MODE_SYNCED
+          ? "synced"
+          : modeNodeId === System.MODE_READONLY
+            ? "readonly"
+            : modeNodeId === System.MODE_DETACH
+              ? "detach"
+              : "synced"; // default
+
+      if (nodeId && sourceId) {
+        return [
+          insertTupleOp,
+          ...insertMemberOps,
+          tables.titleLinks.insert({ nodeId, sourceId, mode }),
+        ];
+      }
+    }
+
     return [insertTupleOp, ...insertMemberOps];
   },
-  "v1.TupleDeleted": ({ data }) => {
+  "v1.TupleDeleted": ({ data }, ctx) => {
     const deleteMembersOp = tables.tupleMembers
       .delete()
       .where({ tupleId: data.tupleId });
     const deleteTupleOp = tables.tuples.delete().where({ id: data.tupleId });
+
+    // Query tuple info before deletion for RENDERED_NAME cleanup
+    const tuple = ctx.query(
+      tables.tuples.select().where({ id: data.tupleId }).first(),
+    );
+
+    if (tuple?.tupleTypeId === System.RENDERED_NAME) {
+      // Get position 0 member (the node whose title is rendered)
+      const member0 = ctx.query(
+        tables.tupleMembers
+          .select()
+          .where({ tupleId: data.tupleId, position: 0 })
+          .first(),
+      );
+      if (member0) {
+        return [
+          tables.titleLinks.delete().where({ nodeId: member0.nodeId }),
+          deleteMembersOp,
+          deleteTupleOp,
+        ];
+      }
+    }
+
     return [deleteMembersOp, deleteTupleOp];
   },
   "v1.NodesReordered": ({ data }) => {

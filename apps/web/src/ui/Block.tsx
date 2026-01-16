@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
+import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
 import { TupleT } from "@/services/domain/Tuple";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
@@ -177,10 +178,19 @@ export default function Block({ blockId }: BlockProps) {
   // Get Y.Text and UndoManager for this block's node
   const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
   const Yjs = runtime.runSync(YjsT);
-  const ytext = Yjs.getText(nodeId);
-  const undoManager = Yjs.getUndoManager(nodeId);
 
-  const [textContent, setTextContent] = createSignal(ytext.toString());
+  // Title link state: which node's text to display and how
+  const [titleLink, setTitleLink] = createSignal<TitleLink | null>(null);
+
+  // Compute display node: use source if linked, otherwise self
+  const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
+  // titleMode() can be used for readonly/detach handling: titleLink()?.mode ?? "synced"
+
+  // Get Y.Text for the display node (reactive based on title link)
+  const getYtext = () => Yjs.getText(displayNodeId());
+  const getUndoManager = () => Yjs.getUndoManager(displayNodeId());
+
+  const [textContent, setTextContent] = createSignal(getYtext().toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
   const getActiveElement = useContext(ActiveElementContext);
@@ -263,8 +273,29 @@ export default function Block({ blockId }: BlockProps) {
       }
     }
 
-    const observer = () => setTextContent(ytext.toString());
-    ytext.observe(observer);
+    // Track current ytext observer for cleanup
+    let currentYtext = getYtext();
+    const observer = () => setTextContent(getYtext().toString());
+    currentYtext.observe(observer);
+
+    // Subscribe to title link changes
+    const titleLinkFiber = runtime.runFork(
+      Effect.gen(function* () {
+        const TitleLink = yield* TitleLinkT;
+        const stream = yield* TitleLink.subscribe(nodeId);
+        yield* Stream.runForEach(stream, (link) =>
+          Effect.sync(() => {
+            // Unobserve old ytext before updating state
+            currentYtext.unobserve(observer);
+            setTitleLink(link);
+            // Update text content and re-observe new ytext
+            currentYtext = getYtext();
+            setTextContent(currentYtext.toString());
+            currentYtext.observe(observer);
+          }),
+        );
+      }),
+    );
 
     const typesFiber = runtime.runFork(
       Effect.gen(function* () {
@@ -280,7 +311,8 @@ export default function Block({ blockId }: BlockProps) {
 
     onCleanup(() => {
       dispose();
-      ytext.unobserve(observer);
+      currentYtext.unobserve(observer);
+      runtime.runFork(Fiber.interrupt(titleLinkFiber));
       runtime.runFork(Fiber.interrupt(typesFiber));
     });
   });
@@ -1042,10 +1074,10 @@ export default function Block({ blockId }: BlockProps) {
 
         yield* TypePicker.applyType(nodeId, typeId);
 
-        const cursorPos = store.selection?.head ?? ytext.length;
+        const cursorPos = store.selection?.head ?? getYtext().length;
         const deleteLength = cursorPos - state.from;
         if (deleteLength > 0) {
-          ytext.delete(state.from, deleteLength);
+          getYtext().delete(state.from, deleteLength);
         }
 
         const [bufferId] = yield* Id.parseBlockId(blockId);
@@ -1095,10 +1127,10 @@ export default function Block({ blockId }: BlockProps) {
         const typeId = yield* TypePicker.createType(name);
         yield* TypePicker.applyType(nodeId, typeId);
 
-        const cursorPos = store.selection?.head ?? ytext.length;
+        const cursorPos = store.selection?.head ?? getYtext().length;
         const deleteLength = cursorPos - state.from;
         if (deleteLength > 0) {
-          ytext.delete(state.from, deleteLength);
+          getYtext().delete(state.from, deleteLength);
         }
 
         const [bufferId] = yield* Id.parseBlockId(blockId);
@@ -1300,7 +1332,7 @@ export default function Block({ blockId }: BlockProps) {
             fallback={
               <p class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces">
                 <Show when={textContent()} fallback={"\u00A0"}>
-                  <FormattedText ytext={ytext} />
+                  <FormattedText ytext={getYtext()} />
                 </Show>
                 <Show when={userTypes().length > 0}>
                   <span class="inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]">
@@ -1315,8 +1347,8 @@ export default function Block({ blockId }: BlockProps) {
             }
           >
             <TextEditor
-              ytext={ytext}
-              undoManager={undoManager}
+              ytext={getYtext()}
+              undoManager={getUndoManager()}
               onAction={handleAction}
               initialStrategy={resolveSelectionStrategy({
                 clickCoords,

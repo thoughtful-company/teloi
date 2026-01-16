@@ -149,6 +149,36 @@ export const System = {
    * Types node for user-created types. URL shortcut: /types
    */
   TYPES: "workspace:types" as Id.Node,
+
+  // === Rendered Title System ===
+  // Allows nodes to display another node's title instead of their own.
+
+  /**
+   * TupleType for rendered title links.
+   * Schema: RENDERED_NAME(node: Node, source: Node, mode: Mode)
+   * - Position 0: The node whose title is rendered
+   * - Position 1: The node providing the title
+   * - Position 2: The rendering mode (MODE_SYNCED | MODE_READONLY | MODE_DETACH)
+   */
+  RENDERED_NAME: "system:rendered-name" as Id.Node,
+
+  /**
+   * Mode value: Synced mode.
+   * Editing the node's title edits the source's title.
+   */
+  MODE_SYNCED: "system:mode-synced" as Id.Node,
+
+  /**
+   * Mode value: Readonly mode.
+   * Display only, cannot edit the title.
+   */
+  MODE_READONLY: "system:mode-readonly" as Id.Node,
+
+  /**
+   * Mode value: Detach mode.
+   * Editing breaks the link, node gets its own title.
+   */
+  MODE_DETACH: "system:mode-detach" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];
