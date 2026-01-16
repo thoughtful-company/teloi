@@ -184,7 +184,8 @@ export default function Block({ blockId }: BlockProps) {
 
   // Compute display node: use source if linked, otherwise self
   const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
-  // titleMode() can be used for readonly/detach handling: titleLink()?.mode ?? "synced"
+  // Title link mode for readonly/detach handling
+  const titleMode = () => titleLink()?.mode ?? null;
 
   // Get Y.Text for the display node (reactive based on title link)
   const getYtext = () => Yjs.getText(displayNodeId());
@@ -911,6 +912,25 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
+  const handleDetach = () => {
+    const link = titleLink();
+    if (!link) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TitleLink = yield* TitleLinkT;
+        yield* TitleLink.detach(nodeId, link.sourceId);
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Block] Detach failed").pipe(
+            Effect.annotateLogs({ blockId, nodeId, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+  };
+
   const handleZoomOut = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -1358,6 +1378,8 @@ export default function Block({ blockId }: BlockProps) {
               selection={store.selection}
               inlineTypes={userTypes()}
               inlineTypesNodeId={nodeId}
+              readonly={titleMode() === "readonly"}
+              onDetachEdit={titleMode() === "detach" ? handleDetach : undefined}
             />
           </Show>
         </div>

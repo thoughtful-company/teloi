@@ -45,7 +45,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
   // Compute display node: use source if linked, otherwise self
   const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
-  // titleMode() can be used for readonly/detach handling: titleLink()?.mode ?? "synced"
+  // Title link mode for readonly/detach handling
+  const titleMode = () => titleLink()?.mode ?? null;
 
   // Get Y.Text for the display node (reactive based on title link)
   const getYtext = () => Yjs.getText(displayNodeId());
@@ -292,6 +293,25 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
+  const handleDetach = () => {
+    const link = titleLink();
+    if (!link) return;
+
+    runtime.runFork(
+      Effect.gen(function* () {
+        const TitleLink = yield* TitleLinkT;
+        yield* TitleLink.detach(nodeId, link.sourceId);
+      }).pipe(
+        Effect.tapError((err) =>
+          Effect.logError("[Title] Detach failed").pipe(
+            Effect.annotateLogs({ bufferId, nodeId, error: String(err) }),
+          ),
+        ),
+        Effect.catchAll(() => Effect.void),
+      ),
+    );
+  };
+
   const handleAction = (action: EditorAction): void => {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => {
@@ -427,6 +447,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           })}
           selection={store.selection}
           variant="title"
+          readonly={titleMode() === "readonly"}
+          onDetachEdit={titleMode() === "detach" ? handleDetach : undefined}
         />
       </Show>
       <Show when={pickerState()}>

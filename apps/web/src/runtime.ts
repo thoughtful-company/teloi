@@ -67,8 +67,8 @@ const BrowserLayer = pipe(
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),
-  Layer.provideMerge(TupleLive),
   Layer.provideMerge(TitleLinkLive),
+  Layer.provideMerge(TupleLive),
   Layer.provideMerge(TypeLive),
   Layer.provideMerge(NodeLive),
   Layer.provideMerge(
