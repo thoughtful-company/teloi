@@ -14,7 +14,15 @@ import {
   scrollElementIntoView,
 } from "@/utils/scroll";
 import { Effect, Fiber, Option, Stream } from "effect";
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import {
+  createContext,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
+import type { Entity } from "@/schema";
 import Block from "./Block";
 import TableView from "./TableView";
 import Title from "./Title";
@@ -22,6 +30,11 @@ import TypeList from "./TypeList";
 import ViewTabs from "./ViewTabs";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
+
+/** Context to expose activeElement to child components for scroll-on-mount behavior */
+export const ActiveElementContext = createContext<() => Entity.Element | null>(
+  () => null,
+);
 
 function scrollBlockIntoView(blockId: Id.Block) {
   requestAnimationFrame(() => {
@@ -199,13 +212,14 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     return Option.getOrNull(doc);
   });
 
-  // Track if we're in block selection mode (activeElement.type === "buffer")
   const [isBlockSelectionMode, setIsBlockSelectionMode] = createSignal(false);
+  const [activeElement, setActiveElement] = createSignal<Entity.Element | null>(
+    null,
+  );
 
   onMount(() => {
     const dispose = start(runtime);
 
-    // Subscribe to activeElement to know when we're in block selection mode
     const activeElementFiber = runtime.runFork(
       Effect.gen(function* () {
         const Window = yield* WindowT;
@@ -215,9 +229,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
         let wasBufferActive = false;
 
-        yield* Stream.runForEach(stream, (activeElement) =>
+        yield* Stream.runForEach(stream, (activeEl) =>
           Effect.gen(function* () {
-            const isBufferActive = Option.match(activeElement, {
+            // Update context signal for child components
+            const elementValue = Option.getOrNull(activeEl);
+            setActiveElement(elementValue);
+
+            const isBufferActive = Option.match(activeEl, {
               onNone: () => false,
               onSome: (el) => el.type === "buffer" && el.id === bufferId,
             });
@@ -243,14 +261,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             // Scroll block into view when navigating in text editing mode
             if (
-              Option.isSome(activeElement) &&
-              activeElement.value.type === "block"
+              Option.isSome(activeEl) &&
+              activeEl.value.type === "block"
             ) {
-              const [elBufferId] = yield* Id.parseBlockId(
-                activeElement.value.id,
-              );
+              const [elBufferId] = yield* Id.parseBlockId(activeEl.value.id);
               if (elBufferId === bufferId) {
-                scrollBlockIntoView(activeElement.value.id);
+                scrollBlockIntoView(activeEl.value.id);
               }
             }
           }),
@@ -1304,14 +1320,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   };
 
   return (
-    <div data-testid="editor-buffer" class="h-full flex flex-col">
-      <Show when={store.nodeId} keyed>
-        {(nodeId) => (
-          <>
-            <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-              <Title bufferId={bufferId} nodeId={nodeId} />
-              <TypeList nodeId={nodeId} />
-            </header>
+    <ActiveElementContext.Provider value={activeElement}>
+      <div data-testid="editor-buffer" class="h-full flex flex-col">
+        <Show when={store.nodeId} keyed>
+          {(nodeId) => (
+            <>
+              <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+                <Title bufferId={bufferId} nodeId={nodeId} />
+                <TypeList nodeId={nodeId} />
+              </header>
             <ViewTabs
               bufferId={bufferId}
               nodeId={nodeId}
@@ -1347,7 +1364,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             </Show>
           </>
         )}
-      </Show>
-    </div>
+        </Show>
+      </div>
+    </ActiveElementContext.Provider>
   );
 }
