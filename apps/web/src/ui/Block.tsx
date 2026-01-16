@@ -17,6 +17,7 @@ import {
   resolveSelectionStrategy,
   updateEditorSelection,
 } from "@/utils/selectionStrategy";
+import { usePickerDismissal } from "@/utils/usePickerDismissal";
 import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
   createEffect,
@@ -196,6 +197,13 @@ export default function Block({ blockId }: BlockProps) {
     // Extract text after "#" (from + 1) up to cursor
     return text.slice(state.from + 1, cursorPos);
   };
+
+  usePickerDismissal({
+    pickerState,
+    setPickerState,
+    textContent,
+    getPickerQuery,
+  });
 
   // Flag to prevent blur handler from clearing state during block movement
   let isMoving = false;

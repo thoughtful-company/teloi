@@ -29,7 +29,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
             },
             { timeout: 2000 },
@@ -55,7 +57,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
             },
             { timeout: 2000 },
@@ -88,7 +92,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
               // Should show "Page" but not "Project"
               const items = picker!.querySelectorAll("button");
@@ -118,7 +124,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
               const createOption = picker!.querySelector("button");
               expect(createOption?.textContent).toContain("Create");
@@ -157,7 +165,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
               const buttons = picker.querySelectorAll("button");
               if (buttons.length === 0) throw new Error("Types not loaded yet");
@@ -175,15 +185,21 @@ describe("TypePicker", () => {
             () => {
               const Yjs = runtime.runSync(YjsT);
               const text = Yjs.getText(childNodeId).toString();
-              if (!text.includes("#test")) throw new Error("Text not updated: " + text);
+              if (!text.includes("#test"))
+                throw new Error("Text not updated: " + text);
               // Verify the picker shows our unique type
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker closed unexpectedly");
               const buttons = picker.querySelectorAll("button");
               const hasType = Array.from(buttons).some((btn) =>
                 btn.textContent?.includes(uniqueTypeName),
               );
-              if (!hasType) throw new Error(`${uniqueTypeName} not showing in filtered list`);
+              if (!hasType)
+                throw new Error(
+                  `${uniqueTypeName} not showing in filtered list`,
+                );
             },
             { timeout: 2000 },
           ),
@@ -213,7 +229,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },
@@ -241,7 +259,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -257,9 +277,9 @@ describe("TypePicker", () => {
             async () => {
               const Node = await NodeT.pipe(runtime.runPromise);
               const Yjs = await YjsT.pipe(runtime.runPromise);
-              const typeChildren = await Node.getNodeChildren(System.TYPES).pipe(
-                runtime.runPromise,
-              );
+              const typeChildren = await Node.getNodeChildren(
+                System.TYPES,
+              ).pipe(runtime.runPromise);
               const typeNames = typeChildren.map((id) =>
                 Yjs.getText(id).toString(),
               );
@@ -294,7 +314,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -308,7 +330,99 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
+              expect(picker).toBeFalsy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+
+    it("closes picker when # is deleted", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "" }],
+        );
+
+        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Delete the # character
+        yield* When.USER_PRESSES("{Backspace}");
+
+        // Picker should close
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
+              expect(picker).toBeFalsy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+
+    it("closes picker when space is typed", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "" }],
+        );
+
+        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* When.USER_PRESSES("#foo");
+
+        // Wait for picker to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Type a space
+        yield* When.USER_PRESSES(" ");
+
+        // Picker should close
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },

@@ -14,6 +14,7 @@ import {
   resolveSelectionStrategy,
   updateEditorSelection,
 } from "@/utils/selectionStrategy";
+import { usePickerDismissal } from "@/utils/usePickerDismissal";
 import { Effect, Match, Option, Stream } from "effect";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import TextEditor, {
@@ -75,6 +76,13 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     const cursorPos = store.selection?.head ?? text.length;
     return text.slice(state.from + 1, cursorPos);
   };
+
+  usePickerDismissal({
+    pickerState,
+    setPickerState,
+    textContent,
+    getPickerQuery,
+  });
 
   onMount(() => {
     const dispose = start(runtime);
