@@ -6,6 +6,7 @@ import { makeURLServiceLive } from "@/services/browser/URLService";
 import { BootstrapLive } from "@/services/domain/Bootstrap";
 import { DataPortLive } from "@/services/domain/DataPort";
 import { NodeLive } from "@/services/domain/Node";
+import { TitleLinkLive } from "@/services/domain/TitleLink";
 import { TupleLive } from "@/services/domain/Tuple";
 import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
@@ -97,6 +98,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(WindowLive),
     Layer.provideMerge(TupleLive),
+    Layer.provideMerge(TitleLinkLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(NodeLive),
     Layer.provideMerge(makeYjsLive({ roomName: "test-room", persist: false })),

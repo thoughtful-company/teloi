@@ -1,6 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
 import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
@@ -36,18 +37,35 @@ interface TitleProps {
 export default function Title({ bufferId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
 
-  // Get Y.Text and UndoManager for the title node
+  // Get Yjs service for text access
   const Yjs = runtime.runSync(YjsT);
-  const ytext = Yjs.getText(nodeId);
-  const undoManager = Yjs.getUndoManager(nodeId);
+
+  // Title link state: which node's text to display and how
+  const [titleLink, setTitleLink] = createSignal<TitleLink | null>(null);
+
+  // Compute display node: use source if linked, otherwise self
+  const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
+  // titleMode() can be used for readonly/detach handling: titleLink()?.mode ?? "synced"
+
+  // Get Y.Text for the display node (reactive based on title link)
+  const getYtext = () => Yjs.getText(displayNodeId());
+  const getUndoManager = () => Yjs.getUndoManager(displayNodeId());
 
   // Reactive text content signal for unfocused view
-  const [textContent, setTextContent] = createSignal(ytext.toString());
+  const [textContent, setTextContent] = createSignal(getYtext().toString());
 
+  // Combined stream for title state and title link
   const titleStream = Stream.unwrap(
     Effect.gen(function* () {
       const Title = yield* TitleT;
       return yield* Title.subscribe(bufferId, nodeId);
+    }),
+  );
+
+  const titleLinkStream = Stream.unwrap(
+    Effect.gen(function* () {
+      const TitleLink = yield* TitleLinkT;
+      return yield* TitleLink.subscribe(nodeId);
     }),
   );
 
@@ -58,6 +76,17 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
       isActive: false,
       selection: null as TitleSelection | null,
     },
+  });
+
+  const { start: startTitleLink } = bindStreamToStore({
+    stream: titleLinkStream,
+    project: (link) => {
+      setTitleLink(link);
+      // Update text content when display node changes
+      setTextContent(Yjs.getText(link?.sourceId ?? nodeId).toString());
+      return { link };
+    },
+    initial: { link: null as TitleLink | null },
   });
 
   // Type picker state
@@ -77,14 +106,20 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
   onMount(() => {
     const dispose = start(runtime);
+    const disposeTitleLink = startTitleLink(runtime);
 
-    // Observe Y.Text changes for unfocused view
-    const observer = () => setTextContent(ytext.toString());
-    ytext.observe(observer);
+    // Track current ytext observer for cleanup when display node changes
+    const currentYtext = getYtext();
+    const observer = () => setTextContent(getYtext().toString());
+    currentYtext.observe(observer);
+
+    // Note: The title link subscription's project function handles text content updates
+    // when the display node changes
 
     onCleanup(() => {
       dispose();
-      ytext.unobserve(observer);
+      disposeTitleLink();
+      currentYtext.unobserve(observer);
     });
   });
 
@@ -143,10 +178,10 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
         yield* TypePicker.applyType(nodeId, typeId);
 
-        const cursorPos = store.selection?.head ?? ytext.length;
+        const cursorPos = store.selection?.head ?? getYtext().length;
         const deleteLength = cursorPos - state.from;
         if (deleteLength > 0) {
-          ytext.delete(state.from, deleteLength);
+          getYtext().delete(state.from, deleteLength);
         }
 
         yield* Buffer.setSelection(
@@ -195,10 +230,10 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         const typeId = yield* TypePicker.createType(name);
         yield* TypePicker.applyType(nodeId, typeId);
 
-        const cursorPos = store.selection?.head ?? ytext.length;
+        const cursorPos = store.selection?.head ?? getYtext().length;
         const deleteLength = cursorPos - state.from;
         if (deleteLength > 0) {
-          ytext.delete(state.from, deleteLength);
+          getYtext().delete(state.from, deleteLength);
         }
 
         yield* Buffer.setSelection(
@@ -382,8 +417,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         }
       >
         <TextEditor
-          ytext={ytext}
-          undoManager={undoManager}
+          ytext={getYtext()}
+          undoManager={getUndoManager()}
           onAction={handleAction}
           initialStrategy={resolveSelectionStrategy({
             clickCoords,

@@ -10,6 +10,7 @@ import {
   ExportData,
 } from "./services/domain/DataPort";
 import { NodeLive } from "./services/domain/Node";
+import { TitleLinkLive } from "./services/domain/TitleLink";
 import { TupleLive } from "./services/domain/Tuple";
 import { TypeLive } from "./services/domain/Type";
 import { getStoreLayer } from "./services/external/Store";
@@ -67,6 +68,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(WindowLive),
   Layer.provideMerge(TupleLive),
+  Layer.provideMerge(TitleLinkLive),
   Layer.provideMerge(TypeLive),
   Layer.provideMerge(NodeLive),
   Layer.provideMerge(
