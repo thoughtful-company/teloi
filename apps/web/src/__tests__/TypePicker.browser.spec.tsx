@@ -5,10 +5,10 @@ import { TypeT } from "@/services/domain/Type";
 import { YjsT } from "@/services/external/Yjs";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
+import { waitFor } from "@testing-library/dom";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { Given, render, runtime, Then, When } from "./bdd";
-import { waitFor } from "solid-testing-library";
 
 describe("TypePicker", () => {
   describe("Opening the picker", () => {
@@ -26,17 +26,7 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#");
 
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeTruthy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_VISIBLE();
       }).pipe(runtime.runPromise);
     });
 
@@ -54,17 +44,7 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#");
 
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeTruthy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_VISIBLE();
       }).pipe(runtime.runPromise);
     });
   });
@@ -89,21 +69,7 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#pa");
 
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeTruthy();
-              // Should show "Page" but not "Project"
-              const items = picker!.querySelectorAll("button");
-              const texts = Array.from(items).map((btn) => btn.textContent);
-              expect(texts.some((t) => t?.includes("Page"))).toBe(true);
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_HAS_OPTION("Page");
       }).pipe(runtime.runPromise);
     });
 
@@ -121,20 +87,7 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#newtype");
 
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeTruthy();
-              const createOption = picker!.querySelector("button");
-              expect(createOption?.textContent).toContain("Create");
-              expect(createOption?.textContent).toContain("#newtype");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_SHOWS_CREATE("newtype");
       }).pipe(runtime.runPromise);
     });
   });
@@ -159,22 +112,9 @@ describe("TypePicker", () => {
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
 
-        // Type # to open picker
         yield* When.USER_PRESSES("#");
 
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              if (!picker) throw new Error("Picker not found");
-              const buttons = picker.querySelectorAll("button");
-              if (buttons.length === 0) throw new Error("Types not loaded yet");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* When.TYPE_PICKER_OPENS();
 
         // Type "test" to filter (matches our unique TestType_xxx name)
         yield* When.USER_PRESSES("test");
@@ -225,18 +165,7 @@ describe("TypePicker", () => {
         // # text should be removed
         yield* Then.NODE_HAS_TEXT(childNodeId, "Hello");
 
-        // Picker should be closed
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeFalsy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_CLOSED();
       }).pipe(runtime.runPromise);
     });
 
@@ -255,18 +184,7 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#mytag");
 
-        // Wait for picker
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              if (!picker) throw new Error("Picker not found");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* When.TYPE_PICKER_OPENS();
 
         // Press Enter to create and select
         yield* When.USER_PRESSES("{Enter}");
@@ -310,34 +228,11 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#test");
 
-        // Wait for picker to show
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              if (!picker) throw new Error("Picker not found");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* When.TYPE_PICKER_OPENS();
 
-        // Press Escape
         yield* When.USER_PRESSES("{Escape}");
 
-        // Picker should be closed
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeFalsy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_CLOSED();
       }).pipe(runtime.runPromise);
     });
 
@@ -355,34 +250,11 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#");
 
-        // Wait for picker to appear
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              if (!picker) throw new Error("Picker not found");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* When.TYPE_PICKER_OPENS();
 
-        // Delete the # character
         yield* When.USER_PRESSES("{Backspace}");
 
-        // Picker should close
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeFalsy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_CLOSED();
       }).pipe(runtime.runPromise);
     });
 
@@ -400,34 +272,11 @@ describe("TypePicker", () => {
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#foo");
 
-        // Wait for picker to appear
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              if (!picker) throw new Error("Picker not found");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* When.TYPE_PICKER_OPENS();
 
-        // Type a space
         yield* When.USER_PRESSES(" ");
 
-        // Picker should close
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const picker = document.querySelector(
-                "[data-testid='type-picker']",
-              );
-              expect(picker).toBeFalsy();
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TYPE_PICKER_IS_CLOSED();
       }).pipe(runtime.runPromise);
     });
   });
@@ -449,16 +298,7 @@ describe("TypePicker", () => {
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
-        // Type badge should be visible
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const allText = document.body.textContent;
-              expect(allText).toContain("Important");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Then.TEXT_IS_VISIBLE("Important");
       }).pipe(runtime.runPromise);
     });
   });

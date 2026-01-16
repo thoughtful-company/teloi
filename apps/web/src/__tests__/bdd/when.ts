@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
-import { waitFor } from "solid-testing-library";
+import { waitFor } from "@testing-library/dom";
 
 /**
  * Waits for a block element to appear and clicks its text area.
@@ -112,3 +112,19 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
 
     yield* USER_PRESSES("{Escape}");
   }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));
+
+/**
+ * Waits for the type picker popup to appear in the DOM.
+ * Use after typing '#' to trigger the picker.
+ */
+export const TYPE_PICKER_OPENS = () =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const picker = document.querySelector("[data-testid='type-picker']");
+        if (!picker) throw new Error("Picker not found");
+        return picker;
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("When.TYPE_PICKER_OPENS"));

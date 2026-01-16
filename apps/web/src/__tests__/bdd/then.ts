@@ -3,8 +3,8 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { EditorView } from "@codemirror/view";
+import { screen, waitFor } from "@testing-library/dom";
 import { Data, Effect, Option, Schedule } from "effect";
-import { screen, waitFor } from "solid-testing-library";
 import { expect } from "vitest";
 
 /**
@@ -568,7 +568,9 @@ export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
           return; // Pass - no doc means expanded by default
         }
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(true);
+        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(
+          true,
+        );
       },
       catch: (cause) => new AssertionError({ cause }),
     });
@@ -588,9 +590,14 @@ export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
 
     yield* Effect.try({
       try: () => {
-        expect(Option.isSome(blockDoc), `Block ${blockId} should have a document`).toBe(true);
+        expect(
+          Option.isSome(blockDoc),
+          `Block ${blockId} should have a document`,
+        ).toBe(true);
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(false);
+        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(
+          false,
+        );
       },
       catch: (cause) => new AssertionError({ cause }),
     });
@@ -598,3 +605,65 @@ export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
     Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
     Effect.withSpan("Then.BLOCK_IS_COLLAPSED"),
   );
+
+/**
+ * Asserts that the type picker popup is visible in the DOM.
+ */
+export const TYPE_PICKER_IS_VISIBLE = () =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const picker = document.querySelector("[data-testid='type-picker']");
+        expect(picker).toBeTruthy();
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.TYPE_PICKER_IS_VISIBLE"));
+
+/**
+ * Asserts that the type picker popup is NOT in the DOM (closed).
+ */
+export const TYPE_PICKER_IS_CLOSED = () =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const picker = document.querySelector("[data-testid='type-picker']");
+        expect(picker).toBeFalsy();
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.TYPE_PICKER_IS_CLOSED"));
+
+/**
+ * Asserts that the type picker shows an option containing the given text.
+ */
+export const TYPE_PICKER_HAS_OPTION = (text: string) =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const picker = document.querySelector("[data-testid='type-picker']");
+        expect(picker).toBeTruthy();
+        const buttons = picker!.querySelectorAll("button");
+        const texts = Array.from(buttons).map((btn) => btn.textContent);
+        expect(texts.some((t) => t?.includes(text))).toBe(true);
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.TYPE_PICKER_HAS_OPTION"));
+
+/**
+ * Asserts that the type picker shows a "Create #name" option.
+ */
+export const TYPE_PICKER_SHOWS_CREATE = (name: string) =>
+  Effect.promise(() =>
+    waitFor(
+      () => {
+        const picker = document.querySelector("[data-testid='type-picker']");
+        expect(picker).toBeTruthy();
+        const createOption = picker!.querySelector("button");
+        expect(createOption?.textContent).toContain("Create");
+        expect(createOption?.textContent).toContain(`#${name}`);
+      },
+      { timeout: 2000 },
+    ),
+  ).pipe(Effect.withSpan("Then.TYPE_PICKER_SHOWS_CREATE"));
