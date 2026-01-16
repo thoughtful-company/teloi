@@ -128,12 +128,14 @@ export const NavigationLive = Layer.effect(
                   yield* Window.setActiveElement(
                     Option.some({ type: "title" as const, bufferId }),
                   );
+                  // Title scrolls itself or EditorBuffer handles it
                 } else {
                   // Selection is on a block
                   const blockId = Id.makeBlockId(bufferId, selNodeId);
                   yield* Window.setActiveElement(
                     Option.some({ type: "block" as const, id: blockId }),
                   );
+                  // Block scrolls itself on mount via ActiveElementContext
                 }
               }
 

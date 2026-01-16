@@ -252,6 +252,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
         );
+        // Block scrolls itself on mount via ActiveElementContext
       }),
     );
   };

@@ -1,6 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
+import { NavigationT } from "@/services/ui/Navigation";
+import { SCROLL_MARGIN } from "@/utils/scroll";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -244,6 +246,192 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Selection should be on "First child" (the collapsed parent), NOT grandchild
       // because grandchild is not visible when First child is collapsed
       yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("scrolls cursor into view after each Mod+, zoom out", async () => {
+    await Effect.gen(function* () {
+      // Create deep hierarchy:
+      // Grandparent
+      //   - Root (with 20 children to make it scrollable)
+      //     - Block 1-20 (siblings)
+      //     - Block 21 (child of Block 20)
+      //       - Block 22 (cursor starts here)
+
+      // Create root with 20 children
+      const children = Array.from({ length: 20 }, (_, i) => ({
+        text: `Block ${i + 1}`,
+      }));
+      const { bufferId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN("Grandparent", "Root", children);
+
+      const block20Id = childNodeIds[19]!;
+
+      // Add Block 21 as child of Block 20
+      const block21Id = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: block20Id,
+        insert: "after",
+        text: "Block 21",
+      });
+
+      // Add Block 22 as child of Block 21
+      const block22Id = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: block21Id,
+        insert: "after",
+        text: "Block 22",
+      });
+
+      // Start at Block 22's view (zoom into it)
+      history.replaceState({}, "", `/workspace/${block22Id}`);
+
+      // Sync URL to buffer model
+      const Navigation = yield* NavigationT;
+      yield* Navigation.syncUrlToModel();
+
+      // Wrap in scroll container with limited height
+      render(() => (
+        <div class="overflow-y-auto" style={{ height: "300px" }}>
+          <EditorBuffer bufferId={bufferId} />
+        </div>
+      ));
+
+      // Wait for initial render
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const title = document.querySelector("[data-element-type='title']");
+            expect(title?.textContent).toBe("Block 22");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Focus the title to enable keyboard shortcuts
+      yield* When.USER_CLICKS_TITLE(bufferId);
+
+      // Helper to check if element is visible in scroll container
+      const isBlockVisibleInContainer = (blockId: Id.Block): boolean => {
+        const blockEl = document.querySelector(`[data-element-id="${blockId}"]`);
+        if (!blockEl) return false;
+
+        const scrollContainer = blockEl.closest(".overflow-y-auto");
+        if (!scrollContainer) return false;
+
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const blockRect = blockEl.getBoundingClientRect();
+
+        // Check if block is within container bounds (with some tolerance for margin)
+        return (
+          blockRect.top >= containerRect.top - SCROLL_MARGIN - 50 &&
+          blockRect.bottom <= containerRect.bottom + SCROLL_MARGIN + 50
+        );
+      };
+
+      // Press Mod+, #1: Block 22 view → Block 21 view (cursor on Block 22)
+      yield* When.USER_PRESSES("{Meta>},{/Meta}");
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const title = document.querySelector("[data-element-type='title']");
+            expect(title?.textContent).toBe("Block 21");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      const block22BlockId = Id.makeBlockId(bufferId, block22Id);
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            expect(
+              isBlockVisibleInContainer(block22BlockId),
+              "Block 22 should be visible after 1st Mod+,"
+            ).toBe(true);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Press Mod+, #2: Block 21 view → Block 20 view (cursor on Block 21)
+      yield* When.USER_PRESSES("{Meta>},{/Meta}");
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const title = document.querySelector("[data-element-type='title']");
+            expect(title?.textContent).toBe("Block 20");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      const block21BlockId = Id.makeBlockId(bufferId, block21Id);
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            expect(
+              isBlockVisibleInContainer(block21BlockId),
+              "Block 21 should be visible after 2nd Mod+,"
+            ).toBe(true);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Press Mod+, #3: Block 20 view → Root view (cursor on Block 20)
+      yield* When.USER_PRESSES("{Meta>},{/Meta}");
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const title = document.querySelector("[data-element-type='title']");
+            expect(title?.textContent).toBe("Root");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      const block20BlockId = Id.makeBlockId(bufferId, block20Id);
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            expect(
+              isBlockVisibleInContainer(block20BlockId),
+              "Block 20 should be visible after 3rd Mod+,"
+            ).toBe(true);
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Press Mod+, #4: Root view → Grandparent view
+      // Note: Cursor stays on Block 22 (deeply nested) because blocks are expanded by default
+      yield* When.USER_PRESSES("{Meta>},{/Meta}");
+
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const title = document.querySelector("[data-element-type='title']");
+            expect(title?.textContent).toBe("Grandparent");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Block 22 is deeply nested: Grandparent > Root > Block 20 > Block 21 > Block 22
+      // The scroll should bring Block 22 (and its ancestors) into view
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            expect(
+              isBlockVisibleInContainer(block22BlockId),
+              "Block 22 should be visible after 4th Mod+,"
+            ).toBe(true);
+          },
+          { timeout: 2000 },
+        ),
+      );
     }).pipe(runtime.runPromise);
   });
 });

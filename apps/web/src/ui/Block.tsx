@@ -25,7 +25,9 @@ import {
   onCleanup,
   onMount,
   Show,
+  useContext,
 } from "solid-js";
+import { ActiveElementContext } from "./EditorBuffer";
 import { Transition } from "solid-transition-group";
 import TextEditor, {
   type EditorAction,
@@ -181,6 +183,8 @@ export default function Block({ blockId }: BlockProps) {
   const [textContent, setTextContent] = createSignal(ytext.toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
+  const getActiveElement = useContext(ActiveElementContext);
+
   // Type picker state
   const [pickerState, setPickerState] = createSignal<{
     visible: boolean;
@@ -232,6 +236,32 @@ export default function Block({ blockId }: BlockProps) {
 
   onMount(() => {
     const dispose = start(runtime);
+
+    // Instant scroll on mount for navigation targets (zoom out, etc.)
+    const activeEl = getActiveElement();
+    if (activeEl?.type === "block" && activeEl.id === blockId) {
+      const blockEl = document.querySelector<HTMLElement>(
+        `[data-element-id="${blockId}"][data-element-type="block"]`,
+      );
+      if (blockEl) {
+        const scrollContainer = blockEl.closest<HTMLElement>(
+          ".overflow-y-auto, .overflow-auto",
+        );
+        if (scrollContainer) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const blockRect = blockEl.getBoundingClientRect();
+          const topMargin = 80;
+          const isOutsideViewport =
+            blockRect.top < containerRect.top ||
+            blockRect.bottom > containerRect.bottom;
+
+          if (isOutsideViewport) {
+            const scrollDelta = blockRect.top - containerRect.top - topMargin;
+            scrollContainer.scrollTop += scrollDelta;
+          }
+        }
+      }
+    }
 
     const observer = () => setTextContent(ytext.toString());
     ytext.observe(observer);
@@ -885,6 +915,7 @@ export default function Block({ blockId }: BlockProps) {
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
         );
+        // Block scrolls itself on mount via ActiveElementContext
       }),
     );
   };
