@@ -61,7 +61,7 @@ describe("Scroll behavior", () => {
         children,
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]!);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]!);
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "300px" }}>
@@ -150,7 +150,7 @@ describe("Scroll behavior", () => {
       );
 
       const parentNodeId = childNodeIds[0]!;
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a few children to make block taller than content row
       for (let i = 0; i < 3; i++) {

@@ -47,7 +47,7 @@ describe("Copy selected blocks (Mod+C)", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
@@ -73,7 +73,7 @@ describe("Copy selected blocks (Mod+C)", () => {
         ],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -102,7 +102,7 @@ describe("Copy selected blocks (Mod+C)", () => {
         [{ text: "Alpha" }, { text: "Beta" }, { text: "Gamma" }],
       );
 
-      const thirdBlockId = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
@@ -151,7 +151,7 @@ describe("Copy selected blocks (Mod+C)", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Select nested child A
-      const nestedBlockId = Id.makeBlockId(bufferId, nestedChildA);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA]);
 
@@ -192,7 +192,7 @@ describe("Copy selected blocks (Mod+C)", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Select first nested child and extend to second
-      const nestedBlockA = Id.makeBlockId(bufferId, nestedChildA);
+      const nestedBlockA = Id.makeBufferBlockId(bufferId, nestedChildA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockA);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA, nestedChildB]);

@@ -2,10 +2,11 @@ import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
-import { Context, Effect, Layer, Option } from "effect";
+import { Context, Effect, Layer, Option, Stream } from "effect";
 import { getActiveView } from "./getActiveView";
 import { getOrCreateView } from "./getOrCreateView";
 import { getViewsForPage } from "./getViewsForPage";
+import { subscribeViewsForPage } from "./subscribeViewsForPage";
 
 /**
  * ViewT service manages view nodes for pages.
@@ -34,6 +35,14 @@ export class ViewT extends Context.Tag("ViewT")<
      * Returns the view node IDs linked via HAS_VIEW tuples.
      */
     getViewsForPage: (pageId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
+
+    /**
+     * Subscribe to views for a page.
+     * Emits whenever HAS_VIEW tuples change for the given page.
+     */
+    subscribeViewsForPage: (
+      pageId: Id.Node,
+    ) => Effect.Effect<Stream.Stream<readonly Id.Node[]>>;
   }
 >() {}
 
@@ -49,6 +58,7 @@ export const ViewLive = Layer.effect(
       getOrCreateView: withContext(getOrCreateView)(context),
       getActiveView: withContext(getActiveView)(context),
       getViewsForPage: withContext(getViewsForPage)(context),
+      subscribeViewsForPage: withContext(subscribeViewsForPage)(context),
     };
   }),
 );

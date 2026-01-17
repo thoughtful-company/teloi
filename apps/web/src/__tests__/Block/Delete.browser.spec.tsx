@@ -44,7 +44,7 @@ describe("Block Delete key", () => {
           { text: "Second" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -93,7 +93,7 @@ describe("Block Delete key", () => {
         text: "FirstChild",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -142,8 +142,8 @@ describe("Block Delete key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -175,7 +175,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
           { text: "Second" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -199,7 +199,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
           { text: "Second" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -241,7 +241,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
         text: "Hidden",
       });
 
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
@@ -289,7 +289,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
         text: "Grandchild",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -333,7 +333,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
         text: "Nephew",
       });
 
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

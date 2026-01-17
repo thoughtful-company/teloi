@@ -1,5 +1,6 @@
 import { tables, TeloiNode } from "@/livestore/schema";
 import { Id } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
@@ -180,7 +181,7 @@ const makeChildrenIdsStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
 
     return stream.pipe(
       Stream.map((nodeIds) =>
-        nodeIds.map((id) => Id.makeBlockId(bufferId, Id.Node.make(id))),
+        nodeIds.map((id) => Id.makeBufferBlockId(bufferId, Id.Node.make(id))),
       ),
     );
   });
@@ -197,22 +198,32 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
 
     return stream.pipe(
-      Stream.map((buffer): BlockSelection | null => {
-        if (!buffer?.selection) return null;
+      Stream.mapEffect((buffer): Effect.Effect<BlockSelection | null> => {
+        if (!buffer?.selection) return Effect.succeed(null);
 
         const sel = buffer.selection;
         // Only return selection if both anchor and focus are on this node
-        if (sel.anchor.nodeId !== nodeId || sel.focus.nodeId !== nodeId) {
-          return null;
-        }
-
-        return {
-          anchor: sel.anchorOffset,
-          head: sel.focusOffset,
-          goalX: sel.goalX ?? null,
-          goalLine: sel.goalLine ?? null,
-          assoc: sel.assoc,
-        };
+        return Effect.all({
+          anchorContext: IdT.parseBlockContext(sel.anchor.elementId),
+          focusContext: IdT.parseBlockContext(sel.focus.elementId),
+        }).pipe(
+          Effect.map(({ anchorContext, focusContext }) => {
+            if (
+              anchorContext.nodeId !== nodeId ||
+              focusContext.nodeId !== nodeId
+            ) {
+              return null;
+            }
+            return {
+              anchor: sel.anchorOffset,
+              head: sel.focusOffset,
+              goalX: sel.goalX ?? null,
+              goalLine: sel.goalLine ?? null,
+              assoc: sel.assoc,
+            };
+          }),
+          Effect.orDie,
+        );
       }),
       Stream.changesWith(deepEqual),
       Stream.tap((sel) =>

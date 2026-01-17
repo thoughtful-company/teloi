@@ -322,7 +322,8 @@ export type EditorAction =
     }
   | { _tag: "TypePickerUpdate"; query: string }
   | { _tag: "TypePickerClose" }
-  | { _tag: "ToggleTodo" };
+  | { _tag: "ToggleTodo" }
+  | { _tag: "PropertyTrigger" };
 
 /** Action constructors for type-safe action creation */
 export const Action = {
@@ -383,6 +384,7 @@ export const Action = {
   }),
   TypePickerClose: (): EditorAction => ({ _tag: "TypePickerClose" }),
   ToggleTodo: (): EditorAction => ({ _tag: "ToggleTodo" }),
+  PropertyTrigger: (): EditorAction => ({ _tag: "PropertyTrigger" }),
 } as const;
 
 interface TextEditorProps {
@@ -1039,6 +1041,29 @@ export default function TextEditor(props: TextEditorProps) {
         return false;
       }),
     );
+
+    // Property trigger handler: "> " at start of block creates a property
+    // Only works in blocks (variant === "block"), not in titles
+    if (variant === "block") {
+      extensions.push(
+        EditorView.inputHandler.of((view, from, to, text) => {
+          if (text !== " ") return false;
+          // Must be at position 1 (after the ">")
+          if (from !== 1 || to !== 1) return false;
+
+          const doc = view.state.doc.toString();
+          // Doc must be exactly ">"
+          if (doc !== ">") return false;
+
+          // Emit PropertyTrigger - if handled, the block will be deleted
+          // so we don't need to modify the text here
+          if (emit(Action.PropertyTrigger())) {
+            return true;
+          }
+          return false;
+        }),
+      );
+    }
 
     // Type picker "#" detection - opens picker when "#" is typed
     extensions.push(

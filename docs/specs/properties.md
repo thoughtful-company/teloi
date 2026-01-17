@@ -23,11 +23,11 @@ workspace:schema
 │     ├── title: "Project"
 │     ├── hostPosition: 1
 │     ├── displayPosition: 0
-│     └── ──PROPERTY_USES_TUPLE──▶ Tuple Type "Project"
+│     └── ──PROPERTY_USES_TUPLE──▶ Tuple Type "Project_Tuple"
 │
-└── (shadow) Tuple Type "Project"
+└── (shadow) Tuple Type "Project_Tuple"
       ├── (shadow) Position 0: "Project"
-      └── (shadow) Position 1: ""
+      └── (shadow) Position 1: "Is Project For"
 
 Page "Task A"
 └── View ──Has_Property──▶ Property "Project"
@@ -52,8 +52,8 @@ The property is linked to its tuple type via a `PROPERTY_USES_TUPLE(property, tu
 Tuple types define relationship schemas. They live as shadow children under `workspace:schema`.
 
 Each tuple type has **position nodes** as shadow children. For binary tuples (the current focus):
-- **Position 0**: Typically the "linked thing" (e.g., "Project")
-- **Position 1**: Typically the "host" (e.g., "" or "Is Project For")
+- **Position 0**: The "linked thing" (e.g., "Project")
+- **Position 1**: The "host" relationship (e.g., "Is Project For")
 
 Position nodes have editable titles that define role names.
 
@@ -197,11 +197,12 @@ Full control mode for creating a new tuple type:
 ### Quick-Create
 
 Pressing `→` at the end of the property name text:
-1. Creates a tuple type with default values based on the typed property name
-2. Position 0 title = property name (detached, not synced)
-3. Position 1 title = "" (empty)
-4. Tuple type name = property name
-5. Property is immediately bound and functional
+1. Creates a tuple type named `{propertyName}_Tuple` as shadow child of SCHEMA
+2. Position 0 title = property name (e.g., "Project")
+3. Position 1 title = "Is {name} For" (e.g., "Is Project For")
+4. Property is bound with `hostPosition: 1`, `displayPosition: 0`
+5. Initial linked block is created
+6. Focus moves to the new linked block
 
 ## Adding Linked Blocks
 

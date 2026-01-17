@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
 import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
 import { YjsT } from "@/services/external/Yjs";
@@ -185,12 +186,13 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           getYtext().delete(state.from, deleteLength);
         }
 
+        const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId },
+            anchor: { elementId },
             anchorOffset: state.from,
-            focus: { nodeId },
+            focus: { elementId },
             focusOffset: state.from,
             goalX: null,
             goalLine: null,
@@ -237,12 +239,13 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           getYtext().delete(state.from, deleteLength);
         }
 
+        const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId },
+            anchor: { elementId },
             anchorOffset: state.from,
-            focus: { nodeId },
+            focus: { elementId },
             focusOffset: state.from,
             goalX: null,
             goalLine: null,
@@ -284,7 +287,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         yield* Navigation.navigateTo(parentId);
 
         // Preserve selection: title's nodeId becomes a block in the parent view
-        const newBlockId = Id.makeBlockId(bufferId, nodeId);
+        const newBlockId = Id.makeBufferBlockId(bufferId, nodeId);
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
         );
@@ -390,7 +393,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
                 const grandchildren = yield* Node.getNodeChildren(childId);
                 if (grandchildren.length === 0) continue;
 
-                const childBlockId = Id.makeBlockId(bufferId, childId);
+                const childBlockId = Id.makeBufferBlockId(bufferId, childId);
                 const isExpanded = yield* Block.isExpanded(childBlockId);
                 if (!isExpanded) {
                   collapsedExpandable.push(childId);
@@ -399,7 +402,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
               if (collapsedExpandable.length > 0) {
                 for (const childId of collapsedExpandable) {
-                  const childBlockId = Id.makeBlockId(bufferId, childId);
+                  const childBlockId = Id.makeBufferBlockId(bufferId, childId);
                   yield* Block.setExpanded(childBlockId, true);
                 }
                 return;

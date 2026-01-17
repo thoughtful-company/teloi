@@ -55,7 +55,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Buy groceries" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -115,7 +115,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Task to complete" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple with FALSE
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -179,7 +179,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Completed task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple with TRUE (checked)
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -242,7 +242,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Bullet item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add LIST_ELEMENT type (bullet)
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -311,7 +311,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Task item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -364,7 +364,7 @@ describe("Block Mod+Enter todo toggle", () => {
           ],
         );
         const [normalId, uncheckedId, checkedId] = childNodeIds;
-        const normalBlockId = Id.makeBlockId(bufferId, normalId);
+        const normalBlockId = Id.makeBufferBlockId(bufferId, normalId);
 
         // Set up initial states:
         // - First block: normal (no type)
@@ -451,7 +451,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Cycle test" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -532,7 +532,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Important task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Create a user type (simulate by adding any non-system type)
         const userTypeResult = yield* Given.A_TYPE_WITHOUT_COLOR();
@@ -604,7 +604,7 @@ describe("Block Mod+Enter todo toggle", () => {
           [{ text: "Orphaned tuple" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Create orphaned IS_CHECKED tuple without CHECKBOX type
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);

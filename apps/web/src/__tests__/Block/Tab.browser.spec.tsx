@@ -38,7 +38,7 @@ describe("Block Tab key", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -67,7 +67,7 @@ describe("Block Tab key", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -93,7 +93,7 @@ describe("Block Tab key", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -118,7 +118,7 @@ describe("Block Tab key", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -153,7 +153,7 @@ describe("Block Tab key", () => {
           [{ text: "Child" }],
         );
 
-      const childBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -204,7 +204,7 @@ describe("Block selection Tab key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Select B and extend selection to C
-      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
@@ -248,7 +248,7 @@ describe("Block selection Tab key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // First, indent B and C under A (setup for outdent test)
-      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
       yield* When.USER_PRESSES("{Tab}");
@@ -285,7 +285,7 @@ describe("Block selection Tab key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Select A (first child) and extend to B
-      const blockA = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockA = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
@@ -335,8 +335,8 @@ describe("Block selection Tab key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockC = Id.makeBlockId(bufferId, nodeC);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockC = Id.makeBufferBlockId(bufferId, nodeC);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -380,8 +380,8 @@ describe("Block selection Tab key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockC = Id.makeBlockId(bufferId, nodeC);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockC = Id.makeBufferBlockId(bufferId, nodeC);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

@@ -36,8 +36,8 @@ describe("Block ArrowRight key", () => {
         [{ text: "First" }, { text: "Second" }],
       );
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -63,8 +63,8 @@ describe("Block ArrowRight key", () => {
         text: "Child",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const childBlockId = Id.makeBlockId(bufferId, childId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -92,8 +92,8 @@ describe("Block ArrowRight key", () => {
         text: "Nested",
       });
 
-      const nestedBlockId = Id.makeBlockId(bufferId, nestedId);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedId);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -114,7 +114,7 @@ describe("Block ArrowRight key", () => {
         [{ text: "First block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -148,7 +148,7 @@ describe("Block ArrowRight key", () => {
         text: "Nested",
       });
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
@@ -164,10 +164,11 @@ describe("Block ArrowRight key", () => {
       const buffer = Option.getOrThrow(bufferDoc);
 
       expect(buffer.selection).not.toBeNull();
-      const actualNodeId = buffer.selection!.focus.nodeId;
+      const expectedBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
 
-      expect(actualNodeId).not.toBe(nestedChildId);
-      expect(actualNodeId).toBe(childNodeIds[1]);
+      expect(buffer.selection!.focus.elementId).not.toBe(nestedBlockId);
+      expect(buffer.selection!.focus.elementId).toBe(expectedBlockId);
       expect(buffer.selection!.focusOffset).toBe(0);
     }).pipe(runtime.runPromise);
   });
@@ -193,7 +194,7 @@ describe("Block ArrowRight key", () => {
         text: "Nested",
       });
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
@@ -208,10 +209,11 @@ describe("Block ArrowRight key", () => {
       const buffer = Option.getOrThrow(bufferDoc);
 
       expect(buffer.selection).not.toBeNull();
-      const actualNodeId = buffer.selection!.focus.nodeId;
+      const expectedBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
 
-      expect(actualNodeId).not.toBe(nestedChildId);
-      expect(actualNodeId).toBe(childNodeIds[1]);
+      expect(buffer.selection!.focus.elementId).not.toBe(nestedBlockId);
+      expect(buffer.selection!.focus.elementId).toBe(expectedBlockId);
     }).pipe(runtime.runPromise);
   });
 });

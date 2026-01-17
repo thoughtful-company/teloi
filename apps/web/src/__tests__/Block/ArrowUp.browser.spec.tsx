@@ -36,7 +36,7 @@ describe("Block ArrowUp key", () => {
         [{ text: "Line1\nLine2\nLine3" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -59,7 +59,7 @@ describe("Block ArrowUp key", () => {
         [{ text: longText }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -79,8 +79,8 @@ describe("Block ArrowUp key", () => {
         [{ text: "First" }, { text: "Second" }],
       );
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -100,8 +100,8 @@ describe("Block ArrowUp key", () => {
         [{ text: "LongFirstBlock" }, { text: "Short" }],
       );
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -122,8 +122,8 @@ describe("Block ArrowUp key", () => {
         [{ text: "Hi" }, { text: "LongerText" }],
       );
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -150,8 +150,8 @@ describe("Block ArrowUp key", () => {
         text: "Nested",
       });
 
-      const nestedChildBlockId = Id.makeBlockId(bufferId, nestedChildId);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const nestedChildBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -177,8 +177,8 @@ describe("Block ArrowUp key", () => {
         text: "Child",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const childBlockId = Id.makeBlockId(bufferId, childId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -204,7 +204,7 @@ describe("Block ArrowUp key", () => {
         text: "Nested child content",
       });
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -241,7 +241,7 @@ describe("Block ArrowUp key", () => {
         [{ text: "iiiiiiiiii" }, { text: "WW" }],
       );
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -281,8 +281,8 @@ describe("Block ArrowUp key", () => {
         [{ text: "First block" }, { text: wrappingText }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -305,7 +305,7 @@ describe("Block ArrowUp key", () => {
         [{ text: "First block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -327,8 +327,8 @@ describe("Block ArrowUp key", () => {
         [{ text: wrappingText }, { text: "Second" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -353,7 +353,7 @@ describe("Block ArrowUp key", () => {
         [{ text: "While" }, { text: "I pondered weak and" }],
       );
 
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -443,8 +443,8 @@ describe("Block ArrowUp key", () => {
         ],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const thirdBlockId = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

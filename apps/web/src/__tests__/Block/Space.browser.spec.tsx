@@ -35,7 +35,7 @@ describe("Space in block selection mode", () => {
       const { bufferId, rootNodeId, childNodeIds, windowId } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "First block" }]);
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -112,7 +112,7 @@ describe("Space in block selection mode", () => {
         text: "Nested child",
       });
 
-      const nestedBlockId = Id.makeBlockId(bufferId, nestedChild);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChild);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);

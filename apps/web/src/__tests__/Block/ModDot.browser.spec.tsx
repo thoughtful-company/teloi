@@ -39,7 +39,7 @@ describe("Block Mod+. key", () => {
           { text: "Second child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -70,7 +70,7 @@ describe("Block Mod+. key", () => {
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -88,7 +88,7 @@ describe("Block Mod+. key", () => {
           { text: "Hello world" },
         ]);
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -122,7 +122,7 @@ describe("Block Mod+. key", () => {
           { text: "Hello world" },
         ]);
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 

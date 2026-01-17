@@ -36,8 +36,8 @@ describe("Block ArrowLeft key", () => {
         [{ text: "First" }, { text: "Second" }],
       );
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -71,8 +71,8 @@ describe("Block ArrowLeft key", () => {
         text: "Nested",
       });
 
-      const nestedChildBlockId = Id.makeBlockId(bufferId, nestedChildId);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const nestedChildBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -106,8 +106,8 @@ describe("Block ArrowLeft key", () => {
         text: "Child",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const childBlockId = Id.makeBlockId(bufferId, childId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -133,7 +133,7 @@ describe("Block ArrowLeft key", () => {
         [{ text: "First block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -175,8 +175,8 @@ describe("Block ArrowLeft key", () => {
         text: "Nested",
       });
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       // Collapse the first block (hide its children)
       const Block = yield* BlockT;
@@ -197,19 +197,20 @@ describe("Block ArrowLeft key", () => {
       const buffer = Option.getOrThrow(bufferDoc);
 
       expect(buffer.selection).not.toBeNull();
-      const actualNodeId = buffer.selection!.focus.nodeId;
+      const expectedBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
 
       // Selection should NOT be on the hidden nested child
       expect(
-        actualNodeId,
+        buffer.selection!.focus.elementId,
         `Selection went to hidden Nested child instead of visible First block`,
-      ).not.toBe(nestedChildId);
+      ).not.toBe(nestedBlockId);
 
       // Selection should be on the visible First block
       expect(
-        actualNodeId,
+        buffer.selection!.focus.elementId,
         "Selection should be on First block (visible)",
-      ).toBe(childNodeIds[0]);
+      ).toBe(expectedBlockId);
 
       // Cursor should be at end of "First" text
       expect(buffer.selection!.focusOffset).toBe(5);

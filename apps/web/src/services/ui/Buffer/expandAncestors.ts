@@ -45,7 +45,7 @@ export const expandAncestors = (
     yield* Effect.forEach(
       ancestorsToExpand,
       (nodeId) => {
-        const blockId = Id.makeBlockId(bufferId, nodeId);
+        const blockId = Id.makeBufferBlockId(bufferId, nodeId);
         return Store.setDocument("block", { isExpanded: true }, blockId).pipe(
           Effect.orDie,
         );
@@ -104,7 +104,7 @@ export const expandAncestorsForNodes = (
     yield* Effect.forEach(
       [...ancestorsToExpand],
       (nodeId) => {
-        const blockId = Id.makeBlockId(bufferId, nodeId);
+        const blockId = Id.makeBufferBlockId(bufferId, nodeId);
         return Store.setDocument("block", { isExpanded: true }, blockId).pipe(
           Effect.orDie,
         );

@@ -237,7 +237,7 @@ describe("Enter/Space buffer activation", () => {
         const element = Option.getOrThrow(el);
         expect(element.type).toBe("block");
         if (element.type === "block") {
-          expect(element.id).toBe(Id.makeBlockId(bufferId, childNodeIds[1]));
+          expect(element.id).toBe(Id.makeBufferBlockId(bufferId, childNodeIds[1]));
         }
       }).pipe(runtime.runPromise);
     });
@@ -277,7 +277,7 @@ describe("Enter/Space buffer activation", () => {
         const element = Option.getOrThrow(el);
         expect(element.type).toBe("block");
         if (element.type === "block") {
-          expect(element.id).toBe(Id.makeBlockId(bufferId, childNodeIds[1]));
+          expect(element.id).toBe(Id.makeBufferBlockId(bufferId, childNodeIds[1]));
         }
       }).pipe(runtime.runPromise);
     });
@@ -361,7 +361,7 @@ describe("Enter/Space buffer activation", () => {
         render(() => <EditorBuffer bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         // Click the block to enter editing mode
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -394,7 +394,7 @@ describe("Enter/Space buffer activation", () => {
         render(() => <EditorBuffer bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         // Click the block to enter editing mode
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -426,7 +426,7 @@ describe("Enter/Space buffer activation", () => {
         render(() => <EditorBuffer bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);

@@ -1,5 +1,6 @@
 import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
@@ -44,22 +45,26 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     const bufferStream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
 
     const selectionStream = bufferStream.pipe(
-      Stream.map((buffer): TitleSelection | null => {
-        if (!buffer?.selection) return null;
+      Stream.mapEffect((buffer): Effect.Effect<TitleSelection | null> => {
+        if (!buffer?.selection) return Effect.succeed(null);
 
         const sel = buffer.selection;
         // Only return selection if anchor is on this node (the title's node)
-        if (sel.anchor.nodeId !== nodeId) {
-          return null;
-        }
-
-        return {
-          anchor: sel.anchorOffset,
-          head: sel.focusOffset,
-          goalX: sel.goalX ?? null,
-          goalLine: sel.goalLine ?? null,
-          assoc: sel.assoc,
-        };
+        return IdT.parseBlockContext(sel.anchor.elementId).pipe(
+          Effect.map((context) => {
+            if (context.nodeId !== nodeId) {
+              return null;
+            }
+            return {
+              anchor: sel.anchorOffset,
+              head: sel.focusOffset,
+              goalX: sel.goalX ?? null,
+              goalLine: sel.goalLine ?? null,
+              assoc: sel.assoc,
+            };
+          }),
+          Effect.orDie,
+        );
       }),
       Stream.changesWith(deepEqual),
     );

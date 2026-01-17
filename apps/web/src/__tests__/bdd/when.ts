@@ -77,12 +77,13 @@ export const SELECTION_IS_SET_TO = (
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
+    const elementId = Id.makeBufferBlockId(bufferId, nodeId);
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchor: { nodeId },
+        anchor: { elementId },
         anchorOffset: offset,
-        focus: { nodeId },
+        focus: { elementId },
         focusOffset: offset,
         goalX: null,
         goalLine: null,

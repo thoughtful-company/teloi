@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
 import { TupleT } from "@/services/domain/Tuple";
 import { NodeT } from "@/services/domain/Node";
@@ -10,7 +11,9 @@ import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
+import { PropertyT } from "@/services/ui/Property";
 import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
+import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -417,12 +420,17 @@ export default function Block({ blockId }: BlockProps) {
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
+        const selNodeId = sel
+          ? (yield* IdT.parseBlockContext(sel.anchor.elementId).pipe(
+              Effect.orDie,
+            )).nodeId
+          : null;
         console.debug("[Block.handleBlur] Checking selection", {
           nodeId,
-          selNodeId: sel?.anchor.nodeId,
-          willClear: sel && sel.anchor.nodeId === nodeId,
+          selNodeId,
+          willClear: sel && selNodeId === nodeId,
         });
-        if (sel && sel.anchor.nodeId === nodeId) {
+        if (sel && selNodeId === nodeId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
         }
@@ -464,10 +472,10 @@ export default function Block({ blockId }: BlockProps) {
           }
         }
 
-        const newBlockId = Id.makeBlockId(bufferId, result.newNodeId);
+        const newBlockId = Id.makeBufferBlockId(bufferId, result.newNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(result.newNodeId, result.cursorOffset),
+          makeCollapsedSelection(newBlockId, result.cursorOffset),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: newBlockId }),
@@ -578,10 +586,11 @@ export default function Block({ blockId }: BlockProps) {
         if (Option.isNone(result)) return;
 
         const { targetNodeId, cursorOffset, isTitle } = result.value;
+        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
 
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(targetNodeId, cursorOffset),
+          makeCollapsedSelection(targetElementId, cursorOffset),
         );
 
         if (isTitle) {
@@ -589,9 +598,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "title" as const, bufferId }),
           );
         } else {
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
+            Option.some({ type: "block" as const, id: targetElementId }),
           );
         }
       }),
@@ -609,7 +617,7 @@ export default function Block({ blockId }: BlockProps) {
 
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(nodeId, result.value.cursorOffset),
+          makeCollapsedSelection(blockId, result.value.cursorOffset),
         );
       }),
     );
@@ -654,10 +662,11 @@ export default function Block({ blockId }: BlockProps) {
         // Set cursor at end of focus target
         const targetYtext = Yjs.getText(focusNodeId);
         const cursorOffset = targetYtext.length;
+        const focusElementId = Id.makeBufferBlockId(bufferId, focusNodeId);
 
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(focusNodeId, cursorOffset),
+          makeCollapsedSelection(focusElementId, cursorOffset),
         );
 
         // Update active element
@@ -666,9 +675,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "title" as const, bufferId }),
           );
         } else {
-          const targetBlockId = Id.makeBlockId(bufferId, focusNodeId);
           yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
+            Option.some({ type: "block" as const, id: focusElementId }),
           );
         }
       }),
@@ -696,10 +704,11 @@ export default function Block({ blockId }: BlockProps) {
         const targetNodeId = targetOpt.value;
         const targetYtext = Yjs.getText(targetNodeId);
         const endPos = targetYtext.length;
+        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
 
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(targetNodeId, endPos),
+          makeCollapsedSelection(targetElementId, endPos),
         );
 
         if (targetNodeId === rootNodeId) {
@@ -707,9 +716,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "title" as const, bufferId }),
           );
         } else {
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
+            Option.some({ type: "block" as const, id: targetElementId }),
           );
         }
       }),
@@ -729,10 +737,10 @@ export default function Block({ blockId }: BlockProps) {
         const children = yield* Node.getNodeChildren(nodeId);
         if (children.length > 0 && store.isExpanded) {
           const firstChildId = children[0]!;
-          const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+          const targetBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
           yield* Buffer.setSelection(
             bufferId,
-            makeCollapsedSelection(firstChildId, 0),
+            makeCollapsedSelection(targetBlockId, 0),
           );
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: targetBlockId }),
@@ -745,10 +753,10 @@ export default function Block({ blockId }: BlockProps) {
         if (Option.isNone(nextNodeOpt)) return;
 
         const nextNodeId = nextNodeOpt.value;
-        const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
+        const targetBlockId = Id.makeBufferBlockId(bufferId, nextNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(nextNodeId, 0),
+          makeCollapsedSelection(targetBlockId, 0),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -783,9 +791,10 @@ export default function Block({ blockId }: BlockProps) {
         if (Option.isNone(targetOpt)) return;
 
         const targetNodeId = targetOpt.value;
+        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(targetNodeId, 0, { goalX, goalLine: "last" }),
+          makeCollapsedSelection(targetElementId, 0, { goalX, goalLine: "last" }),
         );
 
         if (targetNodeId === rootNodeId) {
@@ -793,9 +802,8 @@ export default function Block({ blockId }: BlockProps) {
             Option.some({ type: "title" as const, bufferId }),
           );
         } else {
-          const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
           yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
+            Option.some({ type: "block" as const, id: targetElementId }),
           );
         }
       }),
@@ -834,7 +842,7 @@ export default function Block({ blockId }: BlockProps) {
         const children = yield* Node.getNodeChildren(nodeId);
         if (children.length > 0 && store.isExpanded) {
           const firstChildId = children[0]!;
-          const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+          const targetBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
           yield* Effect.logDebug(
             "[Block.handleArrowDownOnLastLine] Has visible children, going to first child",
           ).pipe(
@@ -846,7 +854,7 @@ export default function Block({ blockId }: BlockProps) {
           );
           yield* Buffer.setSelection(
             bufferId,
-            makeCollapsedSelection(firstChildId, 0, {
+            makeCollapsedSelection(targetBlockId, 0, {
               goalX,
               goalLine: "first",
             }),
@@ -877,19 +885,19 @@ export default function Block({ blockId }: BlockProps) {
           ).pipe(Effect.annotateLogs({ textLength }));
           yield* Buffer.setSelection(
             bufferId,
-            makeCollapsedSelection(nodeId, textLength),
+            makeCollapsedSelection(blockId, textLength),
           );
           return;
         }
 
         const nextNodeId = nextNodeOpt.value;
-        const targetBlockId = Id.makeBlockId(bufferId, nextNodeId);
+        const targetBlockId = Id.makeBufferBlockId(bufferId, nextNodeId);
         yield* Effect.logDebug(
           "[Block.handleArrowDownOnLastLine] Moving to next node",
         ).pipe(Effect.annotateLogs({ nextNodeId, targetBlockId }));
         yield* Buffer.setSelection(
           bufferId,
-          makeCollapsedSelection(nextNodeId, 0, { goalX, goalLine: "first" }),
+          makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
         );
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: targetBlockId }),
@@ -956,12 +964,12 @@ export default function Block({ blockId }: BlockProps) {
         yield* Navigation.navigateTo(parentId);
 
         // Check if the previous root (now a block) is expanded
-        const rootBlockId = Id.makeBlockId(bufferId, rootNodeId);
+        const rootBlockId = Id.makeBufferBlockId(bufferId, rootNodeId);
         const isRootExpanded = yield* Block.isExpanded(rootBlockId);
 
         // If expanded, select the original node; if collapsed, select the root block
         const targetBlockId = isRootExpanded
-          ? Id.makeBlockId(bufferId, nodeId)
+          ? Id.makeBufferBlockId(bufferId, nodeId)
           : rootBlockId;
 
         yield* Window.setActiveElement(
@@ -1071,6 +1079,33 @@ export default function Block({ blockId }: BlockProps) {
     return true;
   };
 
+  // Property trigger handler: "> " at start creates a property and deletes this block
+  const handlePropertyTrigger = (): boolean => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const Buffer = yield* BufferT;
+        const View = yield* ViewT;
+        const Property = yield* PropertyT;
+        const Node = yield* NodeT;
+
+        // Get the page (root node) for this buffer
+        const pageId = yield* Buffer.getAssignedNodeId(bufferId);
+        if (pageId === null) return;
+
+        // Get or create view for the page
+        const viewId = yield* View.getOrCreateView(pageId);
+
+        // Create property linked to the view
+        yield* Property.createProperty(viewId);
+
+        // Delete the triggering block
+        yield* Node.deleteNode(nodeId);
+      }),
+    );
+    return true;
+  };
+
   // Type picker handlers
   const handleTypePickerOpen = (
     position: { x: number; y: number },
@@ -1104,9 +1139,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId },
+            anchor: { elementId: blockId },
             anchorOffset: state.from,
-            focus: { nodeId },
+            focus: { elementId: blockId },
             focusOffset: state.from,
             goalX: null,
             goalLine: null,
@@ -1157,9 +1192,9 @@ export default function Block({ blockId }: BlockProps) {
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId },
+            anchor: { elementId: blockId },
             anchorOffset: state.from,
-            focus: { nodeId },
+            focus: { elementId: blockId },
             focusOffset: state.from,
             goalX: null,
             goalLine: null,
@@ -1229,9 +1264,9 @@ export default function Block({ blockId }: BlockProps) {
               yield* Buffer.setSelection(
                 bufferId,
                 Option.some({
-                  anchor: { nodeId },
+                  anchor: { elementId: blockId },
                   anchorOffset: anchor,
-                  focus: { nodeId },
+                  focus: { elementId: blockId },
                   focusOffset: head,
                   goalX,
                   goalLine: null,
@@ -1256,6 +1291,7 @@ export default function Block({ blockId }: BlockProps) {
         Move: ({ action: moveAction }) => handleMove(moveAction),
         TypeTrigger: ({ typeId, trigger }) =>
           handleTypeTrigger(typeId, trigger),
+        PropertyTrigger: () => handlePropertyTrigger(),
         TypePickerOpen: ({ position, from }) =>
           handleTypePickerOpen(position, from),
         TypePickerUpdate: () => {
@@ -1273,7 +1309,7 @@ export default function Block({ blockId }: BlockProps) {
               // Level-by-level expand: expand self first, then children
               const expandOneLevel = (nId: Id.Node): Effect.Effect<boolean> =>
                 Effect.gen(function* () {
-                  const bId = Id.makeBlockId(bufferId, nId);
+                  const bId = Id.makeBufferBlockId(bufferId, nId);
                   const isExpanded = yield* Block.isExpanded(bId);
 
                   if (!isExpanded) {

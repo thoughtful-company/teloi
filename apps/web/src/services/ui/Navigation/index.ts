@@ -1,4 +1,5 @@
 import { Id, System } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { URLServiceB } from "@/services/browser/URLService";
 import { NodeT } from "@/services/domain/Node";
 import { Context, Effect, Layer, Option, Stream } from "effect";
@@ -122,8 +123,10 @@ export const NavigationLive = Layer.effect(
               );
 
               if (Option.isSome(selection)) {
-                const selNodeId = selection.value.anchor.nodeId;
-                if (selNodeId === validatedNodeId) {
+                const selContext = yield* IdT.parseBlockContext(
+                  selection.value.anchor.elementId,
+                ).pipe(Effect.orDie);
+                if (selContext.nodeId === validatedNodeId) {
                   // Selection is on the title node
                   yield* Window.setActiveElement(
                     Option.some({ type: "title" as const, bufferId }),
@@ -131,7 +134,10 @@ export const NavigationLive = Layer.effect(
                   // Title scrolls itself or EditorBuffer handles it
                 } else {
                   // Selection is on a block
-                  const blockId = Id.makeBlockId(bufferId, selNodeId);
+                  const blockId = Id.makeBufferBlockId(
+                    bufferId,
+                    selContext.nodeId,
+                  );
                   yield* Window.setActiveElement(
                     Option.some({ type: "block" as const, id: blockId }),
                   );

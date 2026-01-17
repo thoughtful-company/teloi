@@ -39,7 +39,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second, third] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, second);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -60,7 +60,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second] = childNodeIds;
-        const firstBlockId = Id.makeBlockId(bufferId, first);
+        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -83,7 +83,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second, third] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, second);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -104,7 +104,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, second);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -127,7 +127,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second, third] = childNodeIds;
-        const thirdBlockId = Id.makeBlockId(bufferId, third);
+        const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -150,7 +150,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second] = childNodeIds;
-        const firstBlockId = Id.makeBlockId(bufferId, first);
+        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -175,7 +175,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second, third] = childNodeIds;
-        const firstBlockId = Id.makeBlockId(bufferId, first);
+        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -198,7 +198,7 @@ describe("Block Movement", () => {
           ]);
 
         const [first, second] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, second);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -224,7 +224,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -247,7 +247,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -276,7 +276,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second] = childNodeIds;
-          const firstBlockId = Id.makeBlockId(bufferId, first);
+          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -300,7 +300,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -323,7 +323,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -352,7 +352,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -376,7 +376,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third] = childNodeIds;
-          const thirdBlockId = Id.makeBlockId(bufferId, third);
+          const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -401,7 +401,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const thirdBlockId = Id.makeBlockId(bufferId, third);
+          const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -435,7 +435,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third] = childNodeIds;
-          const firstBlockId = Id.makeBlockId(bufferId, first);
+          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -460,7 +460,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const firstBlockId = Id.makeBlockId(bufferId, first);
+          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -524,7 +524,7 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -562,7 +562,7 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -597,7 +597,7 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -629,7 +629,7 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -669,7 +669,7 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -699,7 +699,7 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -741,7 +741,7 @@ describe("Block Movement", () => {
             text: "Child F",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -785,7 +785,7 @@ describe("Block Movement", () => {
             text: "Child G",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -822,7 +822,7 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -849,7 +849,7 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -888,7 +888,7 @@ describe("Block Movement", () => {
             text: "Child F",
           });
 
-          const childCBlockId = Id.makeBlockId(bufferId, childC);
+          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -929,7 +929,7 @@ describe("Block Movement", () => {
             text: "Child G",
           });
 
-          const childEBlockId = Id.makeBlockId(bufferId, childE);
+          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -960,7 +960,7 @@ describe("Block Movement", () => {
             ]);
 
           const [parentA, parentB] = childNodeIds;
-          const blockB = Id.makeBlockId(bufferId, parentB);
+          const blockB = Id.makeBufferBlockId(bufferId, parentB);
 
           // Add child C to Parent A
           const childC = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -968,7 +968,7 @@ describe("Block Movement", () => {
             insert: "after",
             text: "Child C",
           });
-          const blockC = Id.makeBlockId(bufferId, childC);
+          const blockC = Id.makeBufferBlockId(bufferId, childC);
 
           // Add child D to Parent B (so B can be collapsed)
           const childD = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1014,7 +1014,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second] = childNodeIds;
-          const secondBlockId = Id.makeBlockId(bufferId, second);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -1037,7 +1037,7 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second] = childNodeIds;
-          const firstBlockId = Id.makeBlockId(bufferId, first);
+          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
           render(() => <EditorBuffer bufferId={bufferId} />);
 

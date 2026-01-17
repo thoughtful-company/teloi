@@ -31,7 +31,7 @@ describe("Block Escape key", () => {
           { text: "Block content" },
         ]);
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -105,7 +105,7 @@ describe("Block Escape key", () => {
           { text: "Block content" },
         ]);
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -194,7 +194,7 @@ describe("Block Escape key", () => {
         text: "C",
       });
 
-      const childABlockId = Id.makeBlockId(bufferId, childA);
+      const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -273,7 +273,7 @@ describe("Block Escape key", () => {
         text: "C",
       });
 
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -338,7 +338,7 @@ describe("Block Escape key", () => {
           { text: "C" },
         ]);
 
-      const blockAId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockAId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -397,7 +397,7 @@ describe("Block Escape key", () => {
       const { bufferId, childNodeIds, windowId } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -418,9 +418,9 @@ describe("Block Escape key", () => {
       yield* Buffer.setSelection(
         bufferId,
         Option.some({
-          anchor: { nodeId: childNodeIds[0] },
+          anchor: { elementId: blockId },
           anchorOffset: 2,
-          focus: { nodeId: childNodeIds[0] },
+          focus: { elementId: blockId },
           focusOffset: 5,
           goalX: null,
           goalLine: null,
@@ -519,7 +519,7 @@ describe("Block deletion in block selection mode", () => {
         text: "C",
       });
 
-      const childABlockId = Id.makeBlockId(bufferId, childA);
+      const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -575,7 +575,7 @@ describe("Block deletion in block selection mode", () => {
         text: "Only child",
       });
 
-      const onlyChildBlockId = Id.makeBlockId(bufferId, onlyChild);
+      const onlyChildBlockId = Id.makeBufferBlockId(bufferId, onlyChild);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -641,7 +641,7 @@ describe("Block deletion in block selection mode", () => {
         text: "C",
       });
 
-      const childABlockId = Id.makeBlockId(bufferId, childA);
+      const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
