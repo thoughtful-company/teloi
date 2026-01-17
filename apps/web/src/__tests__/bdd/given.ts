@@ -617,7 +617,7 @@ export const A_TYPE_WITHOUT_COLOR = () =>
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
-        data: { nodeId: typeId, parentId: System.TYPES },
+        data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
     Yjs.getText(typeId).insert(0, `NoColorType_${nanoid(6)}`);
@@ -650,7 +650,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
-        data: { nodeId: typeId, parentId: System.TYPES },
+        data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
     Yjs.getText(typeId).insert(0, `ColoredType_${nanoid(6)}`);
@@ -732,7 +732,7 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
-        data: { nodeId: typeId, parentId: System.TYPES },
+        data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
     Yjs.getText(typeId).insert(0, `DirectColorType_${nanoid(6)}`);

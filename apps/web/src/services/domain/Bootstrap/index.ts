@@ -368,12 +368,12 @@ const ensureSystemNodes = () =>
       yield* setNodeText(System.CALENDAR, "Calendar");
     }
 
-    // === Types (root node for user-created types) ===
+    // === Schema (root node for types and properties) ===
     rootPos = nextPosition(rootPos);
-    const typesExists = yield* nodeExists(System.TYPES);
-    if (!typesExists) {
-      yield* createRootNode(System.TYPES, rootPos);
-      yield* setNodeText(System.TYPES, "Types");
+    const schemaExists = yield* nodeExists(System.SCHEMA);
+    if (!schemaExists) {
+      yield* createRootNode(System.SCHEMA, rootPos);
+      yield* setNodeText(System.SCHEMA, "Schema");
     }
   });
 

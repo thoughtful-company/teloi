@@ -34,7 +34,7 @@ export class TypePickerT extends Context.Tag("TypePickerT")<
   TypePickerT,
   {
     /**
-     * Get all user-defined types (children of System.TYPES node).
+     * Get all user-defined types (children of System.SCHEMA node).
      */
     getAvailableTypes: () => Effect.Effect<readonly AvailableType[]>;
     /**
@@ -45,7 +45,7 @@ export class TypePickerT extends Context.Tag("TypePickerT")<
       query: string,
     ) => readonly AvailableType[];
     /**
-     * Create a new type under System.TYPES and return its ID.
+     * Create a new type under System.SCHEMA and return its ID.
      */
     createType: (name: string) => Effect.Effect<Id.Node>;
     /**
@@ -65,7 +65,7 @@ const getAvailableTypes = () =>
     const childIds = yield* Store.query(
       tables.parentLinks
         .select("childId")
-        .where("parentId", "=", System.TYPES)
+        .where("parentId", "=", System.SCHEMA)
         .where("inShadow", "=", false)
         .orderBy("position", "asc"),
     );
@@ -103,9 +103,8 @@ const createType = (name: string) =>
     const Yjs = yield* YjsT;
     const Tuple = yield* TupleT;
 
-    // Create a new node under System.TYPES
     const typeId = yield* Node.insertNode({
-      parentId: System.TYPES,
+      parentId: System.SCHEMA,
       insert: "after",
     });
 

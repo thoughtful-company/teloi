@@ -14,14 +14,14 @@ const navItems: NavItem[] = [
   { label: "Inbox", nodeId: System.INBOX, icon: "inbox" },
   { label: "The Box", nodeId: System.THE_BOX, icon: "box" },
   { label: "Calendar", nodeId: System.CALENDAR, icon: "calendar" },
-  { label: "Types", nodeId: System.TYPES, icon: "tag" },
+  { label: "Schema", nodeId: System.SCHEMA, icon: "tag" },
 ];
 
 const nodeToPath: Record<string, string> = {
   [System.INBOX]: "/inbox",
   [System.THE_BOX]: "/box",
   [System.CALENDAR]: "/calendar",
-  [System.TYPES]: "/types",
+  [System.SCHEMA]: "/schema",
 };
 
 export default function SidebarNav() {
