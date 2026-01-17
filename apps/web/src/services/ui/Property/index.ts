@@ -1,0 +1,124 @@
+import { Id } from "@/schema";
+import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
+import { StoreT } from "@/services/external/Store";
+import { YjsT } from "@/services/external/Yjs";
+import { withContext } from "@/utils";
+import { Context, Effect, Layer } from "effect";
+import { addLinkedBlock } from "./addLinkedBlock";
+import { bindToTupleType } from "./bindToTupleType";
+import { createProperty } from "./createProperty";
+import { getLinkedBlocks } from "./getLinkedBlocks";
+import { getPropertiesForView } from "./getPropertiesForView";
+
+/**
+ * Information about a property linked to a view.
+ */
+export interface PropertyInfo {
+  id: Id.Node;
+  title: string;
+  /** Whether the property is bound to a tuple type via PROPERTY_USES_TUPLE */
+  isBound: boolean;
+  /** The tuple type this property is bound to (if bound) */
+  tupleTypeId?: Id.Node;
+  /** Which position in the tuple contains the "host" page (0 or 1) */
+  hostPosition?: 0 | 1;
+  /** Which position in the tuple contains the "display" node (0 or 1) */
+  displayPosition?: 0 | 1;
+}
+
+/**
+ * PropertyT service manages property definitions for views.
+ *
+ * Properties define how relationships are displayed on pages.
+ * They are children of SCHEMA, linked to views via HAS_PROPERTY tuples,
+ * and can be bound to tuple types for actual data display.
+ *
+ * Key concepts:
+ * - Property: A node under SCHEMA with type PROPERTY
+ * - Binding: Links a property to a tuple type, specifying which position is the "host" (page)
+ *   and which is the "display" (linked data)
+ * - Linked blocks: Nodes that appear in the property's display, derived from tuple instances
+ */
+export class PropertyT extends Context.Tag("PropertyT")<
+  PropertyT,
+  {
+    /**
+     * Create a new property under SCHEMA, linked to the given view.
+     * - Creates node as child of System.SCHEMA
+     * - Sets type to System.PROPERTY
+     * - Creates HAS_PROPERTY tuple linking view to property
+     */
+    createProperty: (viewId: Id.Node) => Effect.Effect<Id.Node>;
+
+    /**
+     * Get all properties for a view via HAS_PROPERTY tuples.
+     * Returns PropertyInfo with title, binding status, and configuration.
+     */
+    getPropertiesForView: (viewId: Id.Node) => Effect.Effect<readonly PropertyInfo[]>;
+
+    /**
+     * Bind a property to a tuple type with position configuration.
+     * - Creates PROPERTY_USES_TUPLE tuple linking property to tuple type
+     * - Creates PROPERTY_CONFIG tuple with hostPosition and displayPosition
+     *
+     * @param propertyId - The property to bind
+     * @param tupleTypeId - The tuple type to bind to
+     * @param hostPosition - Which tuple position contains the "host" page (0 or 1)
+     * @param displayPosition - Which tuple position contains the "display" node (0 or 1)
+     */
+    bindToTupleType: (
+      propertyId: Id.Node,
+      tupleTypeId: Id.Node,
+      hostPosition: 0 | 1,
+      displayPosition: 0 | 1,
+    ) => Effect.Effect<void>;
+
+    /**
+     * Get linked blocks for a property on a given page.
+     * Queries tuple instances of the bound tuple type where the page
+     * is at the hostPosition, returns node IDs from the displayPosition.
+     */
+    getLinkedBlocks: (
+      propertyId: Id.Node,
+      pageId: Id.Node,
+    ) => Effect.Effect<readonly Id.Node[]>;
+
+    /**
+     * Add a linked block to a property for a given page.
+     * - Creates a new node
+     * - Creates a tuple instance with the bound tuple type,
+     *   placing pageId at hostPosition and newNodeId at displayPosition
+     *
+     * @returns The ID of the newly created node
+     */
+    addLinkedBlock: (
+      propertyId: Id.Node,
+      pageId: Id.Node,
+    ) => Effect.Effect<Id.Node>;
+  }
+>() {}
+
+export const PropertyLive = Layer.effect(
+  PropertyT,
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Type = yield* TypeT;
+    const Tuple = yield* TupleT;
+    const Yjs = yield* YjsT;
+
+    const context = Context.make(StoreT, Store).pipe(
+      Context.add(TypeT, Type),
+      Context.add(TupleT, Tuple),
+      Context.add(YjsT, Yjs),
+    );
+
+    return {
+      createProperty: withContext(createProperty)(context),
+      getPropertiesForView: withContext(getPropertiesForView)(context),
+      bindToTupleType: withContext(bindToTupleType)(context),
+      getLinkedBlocks: withContext(getLinkedBlocks)(context),
+      addLinkedBlock: withContext(addLinkedBlock)(context),
+    };
+  }),
+);
