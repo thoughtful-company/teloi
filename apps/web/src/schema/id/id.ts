@@ -1,11 +1,16 @@
 import { Data, Effect, Schema } from "effect";
 
-export const Window = Schema.String.pipe(Schema.brand("WindowId"));
-export const Pane = Schema.String.pipe(Schema.brand("PaneId"));
-export const Buffer = Schema.String.pipe(Schema.brand("BufferId"));
+// Base schema that only allows nanoid-safe characters (A-Za-z0-9_-)
+const SafeIdString = Schema.String.pipe(Schema.pattern(/^[A-Za-z0-9_-]+$/));
+
+export const Window = SafeIdString.pipe(Schema.brand("WindowId"));
+export const Pane = SafeIdString.pipe(Schema.brand("PaneId"));
+export const Buffer = SafeIdString.pipe(Schema.brand("BufferId"));
+export const Node = SafeIdString.pipe(Schema.brand("NodeId"));
+export const Tuple = SafeIdString.pipe(Schema.brand("TupleId"));
+
+// Block is a composite ID containing : delimiter
 export const Block = Schema.String.pipe(Schema.brand("BlockId"));
-export const Node = Schema.String.pipe(Schema.brand("NodeId"));
-export const Tuple = Schema.String.pipe(Schema.brand("TupleId"));
 
 export type Window = typeof Window.Type;
 export type Pane = typeof Pane.Type;
