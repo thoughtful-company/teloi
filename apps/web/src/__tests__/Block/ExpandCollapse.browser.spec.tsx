@@ -1,6 +1,7 @@
 import "@/index.css";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TypeT } from "@/services/domain/Type";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
@@ -1811,5 +1812,311 @@ describe("Auto-expand ancestors on selection", () => {
         yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
       }).pipe(runtime.runPromise);
     });
+  });
+});
+
+/**
+ * Tests for expand/collapse triangle vertical positioning.
+ *
+ * The triangle should be vertically centered relative to the first line of
+ * the block content. When a block has a header type (H1/H2/H3), the line
+ * height is larger than the default --text-block line height, so the
+ * triangle positioning needs to adjust accordingly.
+ */
+describe("Expand/collapse triangle positioning", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  /**
+   * Helper to get the vertical center of an element.
+   */
+  const getVerticalCenter = (el: Element): number => {
+    const rect = el.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  };
+
+  /**
+   * Helper to get the vertical center of the first line of text content.
+   * Looks for the <p> element that contains the styled text, then calculates
+   * the first line center based on its computed line height.
+   */
+  const getFirstLineVerticalCenter = (contentEl: Element): number => {
+    // The text styling (including header-specific line heights) is applied to
+    // the <p> element inside the content area
+    const textEl = contentEl.querySelector("p");
+    if (!textEl) {
+      // Fallback if no <p> found (e.g., when CodeMirror is active)
+      const rect = contentEl.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(contentEl);
+      const lineHeight = parseFloat(computedStyle.lineHeight);
+      return rect.top + lineHeight / 2;
+    }
+
+    const rect = textEl.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(textEl);
+    const lineHeight = parseFloat(computedStyle.lineHeight);
+    return rect.top + lineHeight / 2;
+  };
+
+  it("triangle aligns with first line of default block text", async () => {
+    await Effect.gen(function* () {
+      // Given: A block with children (so triangle appears)
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent block" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add a child to make the parent expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child block",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for the block and its child to render (child presence triggers triangle)
+      yield* Then.TEXT_IS_VISIBLE("Parent block");
+      yield* Then.TEXT_IS_VISIBLE("Child block");
+
+      // Find the triangle button and content area
+      const { triangleButton, contentArea } = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const blockEl = document.querySelector(
+              `[data-element-id="${parentBlockId}"]`,
+            );
+            if (!blockEl) throw new Error("Block not found");
+
+            const button = blockEl.querySelector("button");
+            if (!button) throw new Error("Triangle button not found");
+
+            const content = blockEl.querySelector("[data-block-content]");
+            if (!content) throw new Error("Content area not found");
+
+            return { triangleButton: button, contentArea: content };
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Get the vertical centers
+      const triangleCenter = getVerticalCenter(triangleButton);
+      const firstLineCenter = getFirstLineVerticalCenter(contentArea);
+
+      // They should be aligned within 2 pixels (accounting for rounding)
+      const difference = Math.abs(triangleCenter - firstLineCenter);
+      expect(
+        difference,
+        `Triangle center (${triangleCenter.toFixed(1)}px) should align with first line center (${firstLineCenter.toFixed(1)}px)`,
+      ).toBeLessThan(2);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("triangle aligns with first line of H1 header block", async () => {
+    await Effect.gen(function* () {
+      const Type = yield* TypeT;
+
+      // Given: A block with children and H1 type
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Header 1 Content" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add H1 type to the block
+      yield* Type.addType(parentNodeId, System.HEADER_1);
+
+      // Add a child to make the parent expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child block",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for the block and its child to render (child presence triggers triangle)
+      yield* Then.TEXT_IS_VISIBLE("Header 1 Content");
+      yield* Then.TEXT_IS_VISIBLE("Child block");
+
+      // Find the triangle button and content area
+      const { triangleButton, contentArea } = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const blockEl = document.querySelector(
+              `[data-element-id="${parentBlockId}"]`,
+            );
+            if (!blockEl) throw new Error("Block not found");
+
+            const button = blockEl.querySelector("button");
+            if (!button) throw new Error("Triangle button not found");
+
+            const content = blockEl.querySelector("[data-block-content]");
+            if (!content) throw new Error("Content area not found");
+
+            return { triangleButton: button, contentArea: content };
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Get the vertical centers
+      const triangleCenter = getVerticalCenter(triangleButton);
+      const firstLineCenter = getFirstLineVerticalCenter(contentArea);
+
+      // They should be aligned within 2 pixels
+      const difference = Math.abs(triangleCenter - firstLineCenter);
+      expect(
+        difference,
+        `Triangle center (${triangleCenter.toFixed(1)}px) should align with H1 first line center (${firstLineCenter.toFixed(1)}px). ` +
+          `Difference of ${difference.toFixed(1)}px suggests triangle is using wrong line height.`,
+      ).toBeLessThan(2);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("triangle aligns with first line of H2 header block", async () => {
+    await Effect.gen(function* () {
+      const Type = yield* TypeT;
+
+      // Given: A block with children and H2 type
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Header 2 Content" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add H2 type to the block
+      yield* Type.addType(parentNodeId, System.HEADER_2);
+
+      // Add a child to make the parent expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child block",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for the block and its child to render (child presence triggers triangle)
+      yield* Then.TEXT_IS_VISIBLE("Header 2 Content");
+      yield* Then.TEXT_IS_VISIBLE("Child block");
+
+      // Find the triangle button and content area
+      const { triangleButton, contentArea } = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const blockEl = document.querySelector(
+              `[data-element-id="${parentBlockId}"]`,
+            );
+            if (!blockEl) throw new Error("Block not found");
+
+            const button = blockEl.querySelector("button");
+            if (!button) throw new Error("Triangle button not found");
+
+            const content = blockEl.querySelector("[data-block-content]");
+            if (!content) throw new Error("Content area not found");
+
+            return { triangleButton: button, contentArea: content };
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Get the vertical centers
+      const triangleCenter = getVerticalCenter(triangleButton);
+      const firstLineCenter = getFirstLineVerticalCenter(contentArea);
+
+      // They should be aligned within 2 pixels
+      const difference = Math.abs(triangleCenter - firstLineCenter);
+      expect(
+        difference,
+        `Triangle center (${triangleCenter.toFixed(1)}px) should align with H2 first line center (${firstLineCenter.toFixed(1)}px). ` +
+          `Difference of ${difference.toFixed(1)}px suggests triangle is using wrong line height.`,
+      ).toBeLessThan(2);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("triangle aligns with first line of H3 header block", async () => {
+    await Effect.gen(function* () {
+      const Type = yield* TypeT;
+
+      // Given: A block with children and H3 type
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Header 3 Content" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+
+      // Add H3 type to the block
+      yield* Type.addType(parentNodeId, System.HEADER_3);
+
+      // Add a child to make the parent expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child block",
+      });
+
+      render(() => <EditorBuffer bufferId={bufferId} />);
+
+      // Wait for the block and its child to render (child presence triggers triangle)
+      yield* Then.TEXT_IS_VISIBLE("Header 3 Content");
+      yield* Then.TEXT_IS_VISIBLE("Child block");
+
+      // Find the triangle button and content area
+      const { triangleButton, contentArea } = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const blockEl = document.querySelector(
+              `[data-element-id="${parentBlockId}"]`,
+            );
+            if (!blockEl) throw new Error("Block not found");
+
+            const button = blockEl.querySelector("button");
+            if (!button) throw new Error("Triangle button not found");
+
+            const content = blockEl.querySelector("[data-block-content]");
+            if (!content) throw new Error("Content area not found");
+
+            return { triangleButton: button, contentArea: content };
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Get the vertical centers
+      const triangleCenter = getVerticalCenter(triangleButton);
+      const firstLineCenter = getFirstLineVerticalCenter(contentArea);
+
+      // They should be aligned within 2 pixels
+      const difference = Math.abs(triangleCenter - firstLineCenter);
+      expect(
+        difference,
+        `Triangle center (${triangleCenter.toFixed(1)}px) should align with H3 first line center (${firstLineCenter.toFixed(1)}px). ` +
+          `Difference of ${difference.toFixed(1)}px suggests triangle is using wrong line height.`,
+      ).toBeLessThan(2);
+    }).pipe(runtime.runPromise);
   });
 });

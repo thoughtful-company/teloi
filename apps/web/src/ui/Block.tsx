@@ -189,6 +189,8 @@ export default function Block({ blockId }: BlockProps) {
     from: number;
   } | null>(null);
 
+  let blockRef: HTMLDivElement | undefined;
+
   const getPickerQuery = () => {
     const state = pickerState();
     if (!state) return "";
@@ -203,6 +205,7 @@ export default function Block({ blockId }: BlockProps) {
     setPickerState,
     textContent,
     getPickerQuery,
+    scrollAnchor: () => blockRef,
   });
 
   // Flag to prevent blur handler from clearing state during block movement
@@ -254,6 +257,53 @@ export default function Block({ blockId }: BlockProps) {
     if (hasType(System.HEADER_2)) return "header2";
     if (hasType(System.HEADER_3)) return "header3";
     return "block";
+  };
+
+  // Returns the CSS class for vertically centering elements with the first line of text.
+  // Formula: (lineHeight - fontSize) / 2
+  // Block uses unitless line-height (multiplier), headers use absolute values.
+  const getVerticalCenterClass = () => {
+    const variant = getTextEditorVariant();
+    switch (variant) {
+      case "header1":
+        return "top-[calc((var(--text-h1--line-height)-var(--text-h1))/2)]";
+      case "header2":
+        return "top-[calc((var(--text-h2--line-height)-var(--text-h2))/2)]";
+      case "header3":
+        return "top-[calc((var(--text-h3--line-height)-var(--text-h3))/2)]";
+      default:
+        return "top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)]";
+    }
+  };
+
+  // Button height should match font size so items-center aligns triangle with text center
+  const getTriangleButtonHeightClass = () => {
+    const variant = getTextEditorVariant();
+    switch (variant) {
+      case "header1":
+        return "h-[var(--text-h1)]";
+      case "header2":
+        return "h-[var(--text-h2)]";
+      case "header3":
+        return "h-[var(--text-h3)]";
+      default:
+        return "h-[var(--text-block)]";
+    }
+  };
+
+  // Returns the CSS class for decoration padding-top (same logic + small baseline adjustment)
+  const getDecorationPaddingClass = () => {
+    const variant = getTextEditorVariant();
+    switch (variant) {
+      case "header1":
+        return "pt-[calc((var(--text-h1--line-height)-var(--text-h1))/2+var(--text-h1)*0.025)]";
+      case "header2":
+        return "pt-[calc((var(--text-h2--line-height)-var(--text-h2))/2+var(--text-h2)*0.025)]";
+      case "header3":
+        return "pt-[calc((var(--text-h3--line-height)-var(--text-h3))/2+var(--text-h3)*0.025)]";
+      default:
+        return "pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)]";
+    }
   };
 
   onMount(() => {
@@ -1298,11 +1348,16 @@ export default function Block({ blockId }: BlockProps) {
   const hasChildren = () => store.childBlockIds.length > 0;
 
   return (
-    <div data-element-id={blockId} data-element-type="block" class="relative">
+    <div
+      ref={blockRef}
+      data-element-id={blockId}
+      data-element-type="block"
+      class="relative"
+    >
       <Show when={hasChildren()}>
         <button
           type="button"
-          class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
+          class={`absolute -left-5 ${getVerticalCenterClass()} w-5 ${getTriangleButtonHeightClass()} flex items-center justify-center select-none`}
           onClick={handleToggleExpand}
           tabIndex={-1}
         >
@@ -1333,7 +1388,9 @@ export default function Block({ blockId }: BlockProps) {
         >
           <Show when={getPrimaryDecoration()}>
             {(renderDecoration) => (
-              <span class="w-4 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] mr-1 select-none origin-center overflow-hidden">
+              <span
+                class={`w-4 shrink-0 ${getDecorationPaddingClass()} mr-1 select-none origin-center overflow-hidden`}
+              >
                 {renderDecoration()({ nodeId })}
               </span>
             )}
