@@ -251,13 +251,13 @@ describe("TypePicker", () => {
         // Press Enter to create and select
         yield* When.USER_PRESSES("{Enter}");
 
-        // Check that a new type was created under System.TYPES
+        // Check that a new type was created under System.SCHEMA
         yield* Effect.promise(() =>
           waitFor(
             async () => {
               const Node = await NodeT.pipe(runtime.runPromise);
               const Yjs = await YjsT.pipe(runtime.runPromise);
-              const typeChildren = await Node.getNodeChildren(System.TYPES).pipe(
+              const typeChildren = await Node.getNodeChildren(System.SCHEMA).pipe(
                 runtime.runPromise,
               );
               const typeNames = typeChildren.map((id) =>
@@ -393,8 +393,8 @@ describe("TypePickerT Service", () => {
 
       const typeId = yield* TypePicker.createType("NewType");
 
-      // Should be a child of System.TYPES
-      const typeChildren = yield* Node.getNodeChildren(System.TYPES);
+      // Should be a child of System.SCHEMA
+      const typeChildren = yield* Node.getNodeChildren(System.SCHEMA);
       expect(typeChildren).toContain(typeId);
 
       // Should have the correct text

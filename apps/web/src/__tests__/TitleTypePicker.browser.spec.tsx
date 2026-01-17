@@ -148,13 +148,13 @@ describe("TypePicker in Title", () => {
         // Press Enter to create and select
         yield* When.USER_PRESSES("{Enter}");
 
-        // Check that a new type was created under System.TYPES
+        // Check that a new type was created under System.SCHEMA
         yield* Effect.promise(() =>
           waitFor(
             async () => {
               const Node = await NodeT.pipe(runtime.runPromise);
               const Yjs = await YjsT.pipe(runtime.runPromise);
-              const typeChildren = await Node.getNodeChildren(System.TYPES).pipe(
+              const typeChildren = await Node.getNodeChildren(System.SCHEMA).pipe(
                 runtime.runPromise,
               );
               const typeNames = typeChildren.map((id) =>

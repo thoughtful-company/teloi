@@ -146,9 +146,12 @@ export const System = {
   CALENDAR: "workspace:calendar" as Id.Node,
 
   /**
-   * Types node for user-created types. URL shortcut: /types
+   * Schema node for types, properties, and relationship definitions.
+   * - Visible children: Classification types, Properties (with PROPERTY type)
+   * - Shadow children: User-defined tuple types
+   * URL shortcut: /schema
    */
-  TYPES: "workspace:types" as Id.Node,
+  SCHEMA: "workspace:schema" as Id.Node,
 
   // === Rendered Title System ===
   // Allows nodes to display another node's title instead of their own.
@@ -179,6 +182,60 @@ export const System = {
    * Editing breaks the link, node gets its own title.
    */
   MODE_DETACH: "system:mode-detach" as Id.Node,
+
+  // === Property System ===
+  // Properties define how relationships are displayed on pages.
+
+  /**
+   * Type marker for property nodes.
+   * Applied to nodes that define properties under SCHEMA.
+   */
+  PROPERTY: "system:property" as Id.Node,
+
+  /**
+   * TupleType linking a page to a view node.
+   * Schema: HAS_VIEW(page, view)
+   * - Position 0: The page node
+   * - Position 1: The view node (shadow child of page)
+   */
+  HAS_VIEW: "system:has-view" as Id.Node,
+
+  /**
+   * TupleType linking a view to a property.
+   * Schema: HAS_PROPERTY(view, property)
+   * - Position 0: The view node
+   * - Position 1: The property node
+   */
+  HAS_PROPERTY: "system:has-property" as Id.Node,
+
+  /**
+   * TupleType linking a property to its underlying tuple type.
+   * Schema: PROPERTY_USES_TUPLE(property, tupleType)
+   * - Position 0: The property node
+   * - Position 1: The tuple type node
+   */
+  PROPERTY_USES_TUPLE: "system:property-uses-tuple" as Id.Node,
+
+  /**
+   * TupleType storing property position configuration.
+   * Schema: PROPERTY_CONFIG(property, hostPosition, displayPosition)
+   * - Position 0: The property node
+   * - Position 1: Host position (POSITION_0 or POSITION_1)
+   * - Position 2: Display position (POSITION_0 or POSITION_1)
+   */
+  PROPERTY_CONFIG: "system:property-config" as Id.Node,
+
+  /**
+   * Position value: index 0 in a tuple.
+   * Used in PROPERTY_CONFIG to indicate tuple position.
+   */
+  POSITION_0: "system:position-0" as Id.Node,
+
+  /**
+   * Position value: index 1 in a tuple.
+   * Used in PROPERTY_CONFIG to indicate tuple position.
+   */
+  POSITION_1: "system:position-1" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];
