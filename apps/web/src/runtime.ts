@@ -22,6 +22,8 @@ import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
 import { TypePickerLive } from "./services/ui/TypePicker";
 import { TypeColorLive } from "./services/ui/TypeColor";
+import { PropertyLive } from "./services/ui/Property";
+import { ViewLive } from "./services/ui/View";
 import { WindowLive } from "./services/ui/Window";
 
 registerBuiltInTypes();
@@ -57,6 +59,9 @@ const getLoggerLayer = (): Layer.Layer<never> => {
 // and Yjs is the sole source of truth for text content.
 const yjsPersist = true;
 
+// Group layers to avoid pipe's argument limit (max 20)
+const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
+
 const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(DataPortLive),
@@ -66,6 +71,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(BufferLive),
+  Layer.provideMerge(ViewPropertyLive),
   Layer.provideMerge(WindowLive),
   Layer.provideMerge(TitleLinkLive),
   Layer.provideMerge(TupleLive),

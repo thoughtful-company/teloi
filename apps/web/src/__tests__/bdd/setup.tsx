@@ -17,6 +17,8 @@ import { BufferLive } from "@/services/ui/Buffer";
 import { TitleLive } from "@/services/ui/Title";
 import { TypeColorLive } from "@/services/ui/TypeColor";
 import { TypePickerLive } from "@/services/ui/TypePicker";
+import { PropertyLive } from "@/services/ui/Property";
+import { ViewLive } from "@/services/ui/View";
 import { WindowLive } from "@/services/ui/Window";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { Store } from "@livestore/livestore";
@@ -87,6 +89,9 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   });
 
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
+  // Group layers to avoid pipe's argument limit (max 20)
+  const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
+
   const TestLayer = pipe(
     NavigationLive,
     Layer.provideMerge(BootstrapLive),
@@ -96,6 +101,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(BufferLive),
+    Layer.provideMerge(ViewPropertyLive),
     Layer.provideMerge(WindowLive),
     Layer.provideMerge(TitleLinkLive),
     Layer.provideMerge(TupleLive),
