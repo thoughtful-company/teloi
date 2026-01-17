@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { makeBlockId } from "@/schema/id/id";
+import { makeBufferBlockId } from "@/schema/id/id";
 import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { EditorView } from "@codemirror/view";
@@ -65,7 +65,7 @@ describe("Selection sync", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -77,9 +77,9 @@ describe("Selection sync", () => {
       yield* Buffer.setSelection(
         bufferId,
         Option.some({
-          anchor: { nodeId: childNodeIds[0] },
+          anchor: { elementId: blockId },
           anchorOffset: 5,
-          focus: { nodeId: childNodeIds[0] },
+          focus: { elementId: blockId },
           focusOffset: 5,
           goalX: null,
           goalLine: null,
@@ -100,7 +100,7 @@ describe("Selection sync", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -140,7 +140,7 @@ describe("Selection sync", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       // First render: focus and set position at 6
       render(() => <EditorBuffer bufferId={bufferId} />);
@@ -206,7 +206,7 @@ describe("Selection sync", () => {
 
       yield* Given.ACTIVE_ELEMENT_IS({
         type: "block",
-        id: makeBlockId(bufferId, childNodeIds[0]),
+        id: makeBufferBlockId(bufferId, childNodeIds[0]),
       });
 
       // // Press ArrowDown
@@ -238,7 +238,7 @@ describe("Selection sync", () => {
         [{ text: wrappingText }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -299,7 +299,7 @@ describe("Selection sync", () => {
         [{ text: "" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

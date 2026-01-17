@@ -128,7 +128,7 @@ describe("TableView", () => {
         expect(table, "Expected no <table> when activeViewId is not set").toBeFalsy();
 
         // Then: Normal blocks should be visible
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const blockElement = document.querySelector(
           `[data-element-id="${firstChildBlockId}"]`,
         );

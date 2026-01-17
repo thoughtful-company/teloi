@@ -36,7 +36,7 @@ describe("Shift+Up from in-block text selection", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -90,7 +90,7 @@ describe("Shift+Up from in-block text selection", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -153,7 +153,7 @@ describe("Shift+Up from in-block text selection", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;

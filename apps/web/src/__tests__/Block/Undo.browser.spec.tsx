@@ -41,7 +41,7 @@ describe("Block Undo (Cmd+Z)", () => {
       );
 
       const [nodeId] = childNodeIds;
-      const blockId = Id.makeBlockId(bufferId, nodeId);
+      const blockId = Id.makeBufferBlockId(bufferId, nodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -83,7 +83,7 @@ describe("Block Undo (Cmd+Z)", () => {
         ]);
 
       const [firstNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

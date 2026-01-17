@@ -1,4 +1,5 @@
 import { Id, Model } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
@@ -27,10 +28,16 @@ export const setSelection = (
       const rootNodeId = Id.Node.make(assignedNodeId);
       const { anchor, focus } = selection.value;
 
-      yield* expandAncestors(bufferId, rootNodeId, anchor.nodeId);
+      const anchorContext = yield* IdT.parseBlockContext(anchor.elementId).pipe(
+        Effect.orDie,
+      );
+      yield* expandAncestors(bufferId, rootNodeId, anchorContext.nodeId);
 
-      if (focus.nodeId !== anchor.nodeId) {
-        yield* expandAncestors(bufferId, rootNodeId, focus.nodeId);
+      const focusContext = yield* IdT.parseBlockContext(focus.elementId).pipe(
+        Effect.orDie,
+      );
+      if (focusContext.nodeId !== anchorContext.nodeId) {
+        yield* expandAncestors(bufferId, rootNodeId, focusContext.nodeId);
       }
     }
 
@@ -49,7 +56,7 @@ export const setSelection = (
         selection: Option.match(selection, {
           onNone: () => null,
           onSome: (s) =>
-            `${s.anchor.nodeId}:${s.anchorOffset}-${s.focus.nodeId}:${s.focusOffset}|accos:${s.assoc}`,
+            `${s.anchor.elementId}:${s.anchorOffset}-${s.focus.elementId}:${s.focusOffset}|assoc:${s.assoc}`,
         }),
       }),
     );

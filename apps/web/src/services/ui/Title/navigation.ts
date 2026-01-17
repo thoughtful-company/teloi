@@ -19,7 +19,7 @@ export const navigateToFirstChild = (
     if (children.length === 0) return;
 
     const firstChildId = children[0]!;
-    const targetBlockId = Id.makeBlockId(bufferId, firstChildId);
+    const targetBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
 
     // Preserve existing goalX if set (for chained arrow navigation)
     const existingSelection = yield* Buffer.getSelection(bufferId);
@@ -31,7 +31,7 @@ export const navigateToFirstChild = (
     yield* Buffer.setSelection(
       bufferId,
       makeCollapsedSelection(
-        firstChildId,
+        targetBlockId,
         0,
         finalGoalX != null
           ? { goalX: finalGoalX, goalLine: "first" }

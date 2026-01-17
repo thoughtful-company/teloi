@@ -42,7 +42,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           { text: "Second child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -84,7 +84,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -118,7 +118,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       // Set initial URL
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
@@ -193,7 +193,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ]);
 
       const firstChildNodeId = childNodeIds[0];
-      const firstChildBlockId = Id.makeBlockId(bufferId, firstChildNodeId);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, firstChildNodeId);
 
       // Add grandchild under "First child"
       const grandchildNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -201,7 +201,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         insert: "after",
         text: "Grandchild",
       });
-      const grandchildBlockId = Id.makeBlockId(bufferId, grandchildNodeId);
+      const grandchildBlockId = Id.makeBufferBlockId(bufferId, grandchildNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -340,7 +340,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block22BlockId = Id.makeBlockId(bufferId, block22Id);
+      const block22BlockId = Id.makeBufferBlockId(bufferId, block22Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -366,7 +366,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block21BlockId = Id.makeBlockId(bufferId, block21Id);
+      const block21BlockId = Id.makeBufferBlockId(bufferId, block21Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -392,7 +392,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block20BlockId = Id.makeBlockId(bufferId, block20Id);
+      const block20BlockId = Id.makeBufferBlockId(bufferId, block20Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {

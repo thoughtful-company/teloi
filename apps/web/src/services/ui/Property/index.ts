@@ -4,12 +4,14 @@ import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Stream } from "effect";
 import { addLinkedBlock } from "./addLinkedBlock";
 import { bindToTupleType } from "./bindToTupleType";
 import { createProperty } from "./createProperty";
 import { getLinkedBlocks } from "./getLinkedBlocks";
 import { getPropertiesForView } from "./getPropertiesForView";
+import { quickCreateTupleType } from "./quickCreateTupleType";
+import { subscribePropertiesForView } from "./subscribePropertiesForView";
 
 /**
  * Information about a property linked to a view.
@@ -58,6 +60,14 @@ export class PropertyT extends Context.Tag("PropertyT")<
     getPropertiesForView: (viewId: Id.Node) => Effect.Effect<readonly PropertyInfo[]>;
 
     /**
+     * Subscribe to properties for a view.
+     * Emits whenever HAS_PROPERTY tuples change for the given view.
+     */
+    subscribePropertiesForView: (
+      viewId: Id.Node,
+    ) => Effect.Effect<Stream.Stream<readonly PropertyInfo[]>>;
+
+    /**
      * Bind a property to a tuple type with position configuration.
      * - Creates PROPERTY_USES_TUPLE tuple linking property to tuple type
      * - Creates PROPERTY_CONFIG tuple with hostPosition and displayPosition
@@ -96,6 +106,25 @@ export class PropertyT extends Context.Tag("PropertyT")<
       propertyId: Id.Node,
       pageId: Id.Node,
     ) => Effect.Effect<Id.Node>;
+
+    /**
+     * Quick-create a tuple type for an unbound property.
+     * Triggered when user presses ArrowRight at end of unbound property name.
+     *
+     * Creates:
+     * - Tuple Type named "{propertyName}_Tuple" as shadow child of SCHEMA
+     * - Position 0 node with title = property name
+     * - Position 1 node with title = "Is {name} For"
+     * - Roles for both positions
+     * - Binding with hostPosition=1, displayPosition=0
+     * - Initial linked block
+     *
+     * @returns The ID of the newly created linked block
+     */
+    quickCreateTupleType: (
+      propertyId: Id.Node,
+      pageId: Id.Node,
+    ) => Effect.Effect<Id.Node>;
   }
 >() {}
 
@@ -116,9 +145,11 @@ export const PropertyLive = Layer.effect(
     return {
       createProperty: withContext(createProperty)(context),
       getPropertiesForView: withContext(getPropertiesForView)(context),
+      subscribePropertiesForView: withContext(subscribePropertiesForView)(context),
       bindToTupleType: withContext(bindToTupleType)(context),
       getLinkedBlocks: withContext(getLinkedBlocks)(context),
       addLinkedBlock: withContext(addLinkedBlock)(context),
+      quickCreateTupleType: withContext(quickCreateTupleType)(context),
     };
   }),
 );

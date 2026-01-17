@@ -59,7 +59,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "ChildB",
         });
 
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -94,7 +94,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           ]);
 
         const [firstNodeId, secondNodeId] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -105,7 +105,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
 
         // Focus should be on First (previous sibling)
-        yield* Then.SELECTION_IS_ON_BLOCK(Id.makeBlockId(bufferId, firstNodeId));
+        yield* Then.SELECTION_IS_ON_BLOCK(Id.makeBufferBlockId(bufferId, firstNodeId));
       }).pipe(runtime.runPromise);
     });
 
@@ -126,8 +126,8 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "OnlyChild",
         });
 
-        const onlyChildBlockId = Id.makeBlockId(bufferId, onlyChild);
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const onlyChildBlockId = Id.makeBufferBlockId(bufferId, onlyChild);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -161,7 +161,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "Child text",
         });
 
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -207,7 +207,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "ChildB",
         });
 
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -255,7 +255,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "SecondChild",
         });
 
-        const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -290,7 +290,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           ]);
 
         const [firstNodeId, secondNodeId] = childNodeIds;
-        const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -322,7 +322,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "Child text",
         });
 
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -365,7 +365,7 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       );
 
       const [firstNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -391,7 +391,7 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       );
 
       const [, secondNodeId] = childNodeIds;
-      const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -421,7 +421,7 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       );
 
       const [firstNodeId, secondNodeId, thirdNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

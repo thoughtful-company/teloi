@@ -23,7 +23,10 @@ import {
   Show,
 } from "solid-js";
 import type { Entity } from "@/schema";
+import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
+import { ViewT } from "@/services/ui/View";
 import Block from "./Block";
+import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
 import TypeList from "./TypeList";
@@ -161,6 +164,61 @@ const crossParentMoveBlocks = (
     return true;
   }).pipe(Effect.catchAll(() => Effect.succeed(false)));
 
+/** Helper component to render properties for a page's view */
+function PropertyList(props: { pageId: Id.Node }) {
+  const runtime = useBrowserRuntime();
+  const [properties, setProperties] = createSignal<PropertyInfo[]>([]);
+
+  onMount(() => {
+    // Subscribe to views for the page, then subscribe to properties when a view exists
+    const fiber = runtime.runFork(
+      Effect.gen(function* () {
+        const View = yield* ViewT;
+        const Property = yield* PropertyT;
+
+        // Subscribe to views for the page
+        const viewsStream = yield* View.subscribeViewsForPage(props.pageId);
+
+        // When views change, subscribe to properties of the first view
+        yield* Stream.runForEach(
+          Stream.flatMap(
+            viewsStream,
+            (viewIds): Stream.Stream<readonly PropertyInfo[]> => {
+              if (viewIds.length === 0) {
+                // No views yet - emit empty properties
+                return Stream.succeed<readonly PropertyInfo[]>([]);
+              }
+              // Subscribe to properties of first view
+              const viewId = viewIds[0]!;
+              return Stream.unwrap(
+                Property.subscribePropertiesForView(viewId),
+              );
+            },
+            { switch: true }, // Cancel previous subscription when views change
+          ),
+          (props_) => Effect.sync(() => setProperties([...props_])),
+        );
+      }),
+    );
+
+    onCleanup(() => {
+      runtime.runFork(Fiber.interrupt(fiber));
+    });
+  });
+
+  return (
+    <Show when={properties().length > 0}>
+      <div class="mx-auto max-w-[var(--max-line-width)] w-full py-2">
+        <For each={properties()}>
+          {(prop) => (
+            <PropertySection propertyId={prop.id} pageId={props.pageId} />
+          )}
+        </For>
+      </div>
+    </Show>
+  );
+}
+
 interface EditorBufferProps {
   bufferId: Id.Buffer;
 }
@@ -189,7 +247,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     project: (v) => ({
       nodeId: Id.Node.make(v.nodeData.id),
       childBlockIds: v.childBlockIds.map((childId) =>
-        Id.makeBlockId(bufferId, Id.Node.make(childId)),
+        Id.makeBufferBlockId(bufferId, Id.Node.make(childId)),
       ),
       activeViewId: v.activeViewId,
     }),
@@ -504,10 +562,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const currentSelection = yield* Buffer.getSelection(bufferId);
 
             // Get current focused node: block selection takes priority over text selection
-            const nodeId =
-              bufferDoc?.selectedBlocks[0] ??
-              Option.getOrNull(currentSelection)?.anchor.nodeId ??
-              null;
+            const selectionNodeId =
+              Option.isSome(currentSelection)
+                ? (yield* Id.parseBlockContext(
+                    currentSelection.value.anchor.elementId,
+                  ).pipe(Effect.orDie)).nodeId
+                : null;
+            const nodeId = bufferDoc?.selectedBlocks[0] ?? selectionNodeId;
 
             if (!nodeId) return;
 
@@ -522,7 +583,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 return sel.getRangeAt(0).getBoundingClientRect().left;
               })();
 
-            const blockId = Id.makeBlockId(bufferId, nodeId);
+            const blockId = Id.makeBufferBlockId(bufferId, nodeId);
             const children = yield* Node.getNodeChildren(nodeId);
             const isExpanded = yield* Block.isExpanded(blockId);
 
@@ -552,7 +613,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             }
 
             // Navigate to parent AND collapse it
-            const parentBlockId = Id.makeBlockId(bufferId, parentId);
+            const parentBlockId = Id.makeBufferBlockId(bufferId, parentId);
             yield* Block.setExpanded(parentBlockId, false);
 
             if (isBlockSelectionMode()) {
@@ -566,8 +627,8 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               yield* Buffer.setSelection(
                 bufferId,
                 Option.some({
-                  anchor: { nodeId: parentId },
-                  focus: { nodeId: parentId },
+                  anchor: { elementId: parentBlockId },
+                  focus: { elementId: parentBlockId },
                   anchorOffset: 0,
                   focusOffset: 0,
                   assoc: 0 as const,
@@ -606,7 +667,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             // Expand one level: if collapsed, expand; else expand first collapsed child
             const expandOneLevel = (nodeId: Id.Node): Effect.Effect<boolean> =>
               Effect.gen(function* () {
-                const blockId = Id.makeBlockId(bufferId, nodeId);
+                const blockId = Id.makeBufferBlockId(bufferId, nodeId);
                 const isExpanded = yield* Block.isExpanded(blockId);
 
                 if (!isExpanded) {
@@ -714,7 +775,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                   targetBlock,
                   targetBlock,
                 );
-                scrollBlockIntoView(Id.makeBlockId(bufferId, targetBlock));
+                scrollBlockIntoView(Id.makeBufferBlockId(bufferId, targetBlock));
                 return;
               }
 
@@ -724,7 +785,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 lastFocusedBlockId,
                 lastFocusedBlockId,
               );
-              scrollBlockIntoView(Id.makeBlockId(bufferId, lastFocusedBlockId));
+              scrollBlockIntoView(Id.makeBufferBlockId(bufferId, lastFocusedBlockId));
               return;
             }
 
@@ -762,7 +823,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 blockSelectionAnchor,
                 newFocus,
               );
-              scrollBlockIntoView(Id.makeBlockId(bufferId, newFocus));
+              scrollBlockIntoView(Id.makeBufferBlockId(bufferId, newFocus));
             } else {
               // Plain Arrow: document-order navigation
               const Block = yield* BlockT;
@@ -806,7 +867,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 newFocus,
                 newFocus,
               );
-              scrollBlockIntoView(Id.makeBlockId(bufferId, newFocus));
+              scrollBlockIntoView(Id.makeBufferBlockId(bufferId, newFocus));
             }
           }),
         );
@@ -864,13 +925,16 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const text = Yjs.getText(targetBlock).toString();
             const textLength = text.length;
 
+            // Enter text editing mode
+            const blockId = Id.makeBufferBlockId(bufferId, targetBlock);
+
             // Set selection to end of text
             yield* Buffer.setSelection(
               bufferId,
               Option.some({
-                anchor: { nodeId: targetBlock },
+                anchor: { elementId: blockId },
                 anchorOffset: textLength,
-                focus: { nodeId: targetBlock },
+                focus: { elementId: blockId },
                 focusOffset: textLength,
                 goalX: null,
                 goalLine: null,
@@ -880,9 +944,6 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             // Clear block selection, reset anchor to target block
             yield* Buffer.setBlockSelection(bufferId, [], targetBlock);
-
-            // Enter text editing mode
-            const blockId = Id.makeBlockId(bufferId, targetBlock);
             yield* Window.setActiveElement(
               Option.some({ type: "block" as const, id: blockId }),
             );
@@ -913,12 +974,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               siblingId: targetBlock,
             });
 
+            const blockId = Id.makeBufferBlockId(bufferId, newNodeId);
             yield* Buffer.setSelection(
               bufferId,
               Option.some({
-                anchor: { nodeId: newNodeId },
+                anchor: { elementId: blockId },
                 anchorOffset: 0,
-                focus: { nodeId: newNodeId },
+                focus: { elementId: blockId },
                 focusOffset: 0,
                 goalX: null,
                 goalLine: null,
@@ -926,8 +988,6 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               }),
             );
             yield* Buffer.setBlockSelection(bufferId, [], newNodeId);
-
-            const blockId = Id.makeBlockId(bufferId, newNodeId);
             yield* Window.setActiveElement(
               Option.some({ type: "block" as const, id: blockId }),
             );
@@ -992,13 +1052,14 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             }
 
             const textLength = Yjs.getText(targetNodeId).toString().length;
+            const blockId = Id.makeBufferBlockId(bufferId, targetNodeId);
 
             yield* Buffer.setSelection(
               bufferId,
               Option.some({
-                anchor: { nodeId: targetNodeId },
+                anchor: { elementId: blockId },
                 anchorOffset: textLength,
-                focus: { nodeId: targetNodeId },
+                focus: { elementId: blockId },
                 focusOffset: textLength,
                 goalX: null,
                 goalLine: null,
@@ -1007,8 +1068,6 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             );
 
             yield* Buffer.setBlockSelection(bufferId, [], targetNodeId);
-
-            const blockId = Id.makeBlockId(bufferId, targetNodeId);
             yield* Window.setActiveElement(
               Option.some({ type: "block" as const, id: blockId }),
             );
@@ -1284,28 +1343,28 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
           const lastChildText = Yjs.getText(lastChildId).toString();
           if (lastChildText === "") {
             targetNodeId = lastChildId;
-            targetBlockId = Id.makeBlockId(bufferId, lastChildId);
+            targetBlockId = Id.makeBufferBlockId(bufferId, lastChildId);
           } else {
             targetNodeId = yield* Node.insertNode({
               parentId: nodeId,
               insert: "after",
             });
-            targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+            targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
           }
         } else {
           targetNodeId = yield* Node.insertNode({
             parentId: nodeId,
             insert: "after",
           });
-          targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+          targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
         }
 
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId: targetNodeId },
+            anchor: { elementId: targetBlockId },
             anchorOffset: 0,
-            focus: { nodeId: targetNodeId },
+            focus: { elementId: targetBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -1334,6 +1393,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               nodeId={nodeId}
               activeViewId={store.activeViewId}
             />
+            <PropertyList pageId={nodeId} />
             <Show
               when={store.activeViewId}
               fallback={

@@ -31,7 +31,7 @@ describe("Window blur preserves selection", () => {
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -109,7 +109,7 @@ describe("Window blur preserves selection", () => {
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

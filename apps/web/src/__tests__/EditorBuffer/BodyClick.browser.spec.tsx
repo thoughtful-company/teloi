@@ -54,7 +54,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(1);
       yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
-      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -112,7 +112,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(2);
       yield* Then.NODE_HAS_TEXT(children[1]!, "");
 
-      const newBlockId = Id.makeBlockId(bufferId, children[1]!);
+      const newBlockId = Id.makeBufferBlockId(bufferId, children[1]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -145,7 +145,7 @@ describe("Body click creates block", () => {
           { text: "" },
         ]);
 
-      const emptyBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -199,7 +199,7 @@ describe("Body click creates block", () => {
         [{ text: "" }],
       );
 
-      const emptyBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -257,7 +257,7 @@ describe("Body click creates block", () => {
         [{ text: "some text" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

@@ -21,7 +21,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Buy groceries" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -86,7 +86,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Task done" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -158,7 +158,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -205,7 +205,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add checkbox type to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -256,7 +256,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Important task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -329,7 +329,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Completed task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);

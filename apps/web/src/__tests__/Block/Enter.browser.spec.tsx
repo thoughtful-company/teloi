@@ -35,7 +35,7 @@ describe("Block Enter key", () => {
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -63,7 +63,7 @@ describe("Block Enter key", () => {
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -84,7 +84,7 @@ describe("Block Enter key", () => {
           { text: "First child" },
         ]);
 
-      const originalBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const originalBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -112,7 +112,7 @@ describe("Block Enter key", () => {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [{ text: "" }]);
 
-      const emptyBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -182,7 +182,7 @@ describe("Title Enter key", () => {
       yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
       // And: Cursor should be in the new block at position 0
-      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
       yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
@@ -219,7 +219,7 @@ describe("Title Enter key", () => {
       yield* Then.NODE_HAS_TEXT(children[0]!, "Document Title");
 
       // And: Cursor should be in the new block at position 0
-      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
       yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
@@ -256,7 +256,7 @@ describe("Title Enter key", () => {
       yield* Then.NODE_HAS_TEXT(children[0]!, " Title");
 
       // And: Cursor should be in the new block at position 0
-      const newBlockId = Id.makeBlockId(bufferId, children[0]!);
+      const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
       yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);

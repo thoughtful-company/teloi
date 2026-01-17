@@ -41,7 +41,7 @@ describe("Block Down+Up navigation", () => {
         ],
       );
 
-      const longTextBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const longTextBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

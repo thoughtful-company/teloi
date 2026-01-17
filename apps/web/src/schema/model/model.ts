@@ -24,9 +24,9 @@ export const Pane = Schema.Struct({
 });
 export type Pane = typeof Pane.Type;
 
-/** Target of a selection point - identified by nodeId (renders as title or block based on context) */
+/** Target of a selection point - identified by elementId (BlockId format: buffer:{bufferId}/node:{nodeId}) */
 export const SelectionTarget = Schema.Struct({
-  nodeId: Id.Node,
+  elementId: Id.Block,
 });
 export type SelectionTarget = typeof SelectionTarget.Type;
 

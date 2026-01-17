@@ -19,7 +19,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -45,7 +45,7 @@ describe("TypePicker", () => {
           [{ text: "" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -78,7 +78,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -108,7 +108,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -144,7 +144,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const childNodeId = childNodeIds[0];
 
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -229,7 +229,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const childNodeId = childNodeIds[0];
 
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -283,7 +283,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 

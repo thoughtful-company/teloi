@@ -50,7 +50,7 @@ describe("Text Formatting", () => {
               { text: "hello world" },
             ]);
 
-          const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
           render(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(blockId);
@@ -73,7 +73,7 @@ describe("Text Formatting", () => {
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <EditorBuffer bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -93,7 +93,7 @@ describe("Text Formatting", () => {
           [{ text: "hello" }],
         );
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <EditorBuffer bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -118,7 +118,7 @@ describe("Text Formatting", () => {
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <EditorBuffer bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -143,7 +143,7 @@ describe("Text Formatting", () => {
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <EditorBuffer bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
@@ -174,7 +174,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
         yield* Given.NODE_HAS_BOLD(childNodeIds[1], 0, 6);
 
-        const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+        const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
         render(() => <EditorBuffer bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
@@ -203,7 +203,7 @@ describe("Text Formatting", () => {
         );
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -219,7 +219,7 @@ describe("Text Formatting", () => {
         );
 
         yield* Given.NODE_HAS_ITALIC(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -235,7 +235,7 @@ describe("Text Formatting", () => {
         );
 
         yield* Given.NODE_HAS_CODE(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 

@@ -37,7 +37,7 @@ describe("Block Backspace key", () => {
           { text: "Second" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -67,8 +67,8 @@ describe("Block Backspace key", () => {
           { text: "12" },
         ]);
 
-      const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -123,8 +123,8 @@ describe("Block Backspace key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockC = Id.makeBlockId(bufferId, nodeC);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockC = Id.makeBufferBlockId(bufferId, nodeC);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -164,7 +164,7 @@ describe("Block Backspace key", () => {
         yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [{ text: "FirstChild" }]);
 
       const [firstChildId] = childNodeIds;
-      const firstChildBlockId = Id.makeBlockId(bufferId, firstChildId);
+      const firstChildBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -191,7 +191,7 @@ it("merges with previous sibling when Cmd+Backspace pressed at start", async () 
           { text: "Second" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
@@ -215,7 +215,7 @@ it("merges with previous sibling when Cmd+Backspace pressed at start", async () 
           { text: "Second" },
         ]);
 
-      const secondChildBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
@@ -260,7 +260,7 @@ it("merges with previous sibling when Cmd+Backspace pressed at start", async () 
         text: "Child",
       });
 
-      const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

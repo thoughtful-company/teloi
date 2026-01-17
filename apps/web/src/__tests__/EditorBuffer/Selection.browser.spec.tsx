@@ -40,7 +40,7 @@ describe("Block selection", () => {
         [{ text: "Block content" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter text editing, then press Escape to select
@@ -85,8 +85,8 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -170,7 +170,7 @@ describe("Block selection", () => {
         [{ text: "A" }, { text: "B" }, { text: "C" }],
       );
 
-      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -252,8 +252,8 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -337,7 +337,7 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -402,7 +402,7 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -467,7 +467,7 @@ describe("Block selection", () => {
         [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
       );
 
-      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -539,7 +539,7 @@ describe("Block selection", () => {
         [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
       );
 
-      const blockB = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -607,7 +607,7 @@ describe("Block selection", () => {
         [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -679,7 +679,7 @@ describe("Block selection", () => {
         [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -747,8 +747,8 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -827,8 +827,8 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -905,6 +905,7 @@ describe("Block selection", () => {
       );
 
       // Cursor at end of second block's text ("Second block" = 12 chars)
+      const expectedBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -914,9 +915,9 @@ describe("Block selection", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selection).not.toBeNull();
-            expect(buf.selection?.anchor.nodeId).toBe(childNodeIds[1]);
+            expect(buf.selection?.anchor.elementId).toBe(expectedBlockId);
             expect(buf.selection?.anchorOffset).toBe(12);
-            expect(buf.selection?.focus.nodeId).toBe(childNodeIds[1]);
+            expect(buf.selection?.focus.elementId).toBe(expectedBlockId);
             expect(buf.selection?.focusOffset).toBe(12);
           },
           { timeout: 2000 },
@@ -950,7 +951,7 @@ describe("Block selection", () => {
           { text: "Third" },
         ]);
 
-      const secondBlockId = Id.makeBlockId(bufferId, childNodeIds[1]);
+      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -1007,10 +1008,10 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlock = document.querySelector(
-              `[data-element-id="${Id.makeBlockId(bufferId, childNodeIds[0])}"]`,
+              `[data-element-id="${Id.makeBufferBlockId(bufferId, childNodeIds[0])}"]`,
             );
             const thirdBlock = document.querySelector(
-              `[data-element-id="${Id.makeBlockId(bufferId, childNodeIds[2])}"]`,
+              `[data-element-id="${Id.makeBufferBlockId(bufferId, childNodeIds[2])}"]`,
             );
             const secondBlock = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
@@ -1064,7 +1065,7 @@ describe("Block selection", () => {
         [{ text: "Block content" }],
       );
 
-      const blockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -1131,8 +1132,8 @@ describe("Block selection", () => {
           { text: "Gamma" },
         ]);
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
-      const thirdBlockId = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       const Store = yield* StoreT;
@@ -1204,7 +1205,7 @@ describe("Block selection", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selection).not.toBeNull();
-            expect(buf.selection?.anchor.nodeId).toBe(childNodeIds[2]);
+            expect(buf.selection?.anchor.elementId).toBe(thirdBlockId);
             expect(buf.selection?.anchorOffset).toBe(5);
           },
           { timeout: 2000 },
@@ -1235,7 +1236,7 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
@@ -1348,7 +1349,7 @@ describe("Block selection", () => {
       ));
 
       // Select A (first child of Parent, which is NOT the buffer root's first child)
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
 
@@ -1582,7 +1583,7 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter block selection mode on C
@@ -1615,7 +1616,7 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter block selection mode on C
@@ -1648,7 +1649,7 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter block selection mode on C
@@ -1688,7 +1689,7 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter block selection mode on C
@@ -1751,7 +1752,7 @@ describe("Block selection", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Select A (first child of Parent, which is at 2nd indentation level)
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
 
@@ -1781,7 +1782,7 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBlockId(bufferId, childNodeIds[2]);
+      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Enter block selection mode on C

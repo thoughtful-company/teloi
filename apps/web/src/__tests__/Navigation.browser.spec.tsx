@@ -235,7 +235,7 @@ describe("Navigation with UI", () => {
 
         // Get the last child block (index 19 = 20th element)
         const lastChildId = childNodeIds[19]!;
-        const lastBlockId = Id.makeBlockId(bufferId, lastChildId);
+        const lastBlockId = Id.makeBufferBlockId(bufferId, lastChildId);
 
         // Click on the last block (this should scroll it into view initially)
         yield* When.USER_CLICKS_BLOCK(lastBlockId);

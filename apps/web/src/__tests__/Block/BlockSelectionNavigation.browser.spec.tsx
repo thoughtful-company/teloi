@@ -70,7 +70,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
         text: "C",
       });
 
-      const childABlockId = Id.makeBlockId(bufferId, childA);
+      const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -102,7 +102,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add nested children to A: A -> A1 -> A1a
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -119,8 +119,8 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       // Verify A and A1 are expanded (default state)
-      yield* Then.BLOCK_IS_EXPANDED(Id.makeBlockId(bufferId, nodeA));
-      yield* Then.BLOCK_IS_EXPANDED(Id.makeBlockId(bufferId, nodeA1));
+      yield* Then.BLOCK_IS_EXPANDED(Id.makeBufferBlockId(bufferId, nodeA));
+      yield* Then.BLOCK_IS_EXPANDED(Id.makeBufferBlockId(bufferId, nodeA1));
 
       // Enter block selection mode on B
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
@@ -146,7 +146,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       );
 
       const firstNodeId = childNodeIds[0];
-      const firstBlockId = Id.makeBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -196,7 +196,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add children to parent
       const childA = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -241,7 +241,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       );
 
       const [parentNodeId, nextSiblingId] = childNodeIds;
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add children to parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -303,7 +303,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "A2",
       });
 
-      const blockA2 = Id.makeBlockId(bufferId, nodeA2);
+      const blockA2 = Id.makeBufferBlockId(bufferId, nodeA2);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -331,7 +331,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       );
 
       const lastNodeId = childNodeIds[1];
-      const lastBlockId = Id.makeBlockId(bufferId, lastNodeId);
+      const lastBlockId = Id.makeBufferBlockId(bufferId, lastNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -380,8 +380,8 @@ describe("Block selection document-order navigation - Edge cases", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add child to A
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -438,7 +438,7 @@ describe("Block selection document-order navigation - Edge cases", () => {
         text: "A1a",
       });
 
-      const blockA1a = Id.makeBlockId(bufferId, nodeA1a);
+      const blockA1a = Id.makeBufferBlockId(bufferId, nodeA1a);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 

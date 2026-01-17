@@ -38,8 +38,8 @@ export const enter = (
       newYtext.insert(0, params.textAfter);
     });
 
-    const newBlockId = Id.makeBlockId(bufferId, newNodeId);
-    yield* Buffer.setSelection(bufferId, makeCollapsedSelection(newNodeId, 0));
+    const newBlockId = Id.makeBufferBlockId(bufferId, newNodeId);
+    yield* Buffer.setSelection(bufferId, makeCollapsedSelection(newBlockId, 0));
     yield* Window.setActiveElement(
       Option.some({ type: "block" as const, id: newBlockId }),
     );

@@ -56,7 +56,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to make the parent expandable
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -91,7 +91,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to the parent
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -99,7 +99,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -126,7 +126,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child (leaf node, no children)
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -134,7 +134,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
         insert: "after",
         text: "Leaf",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -159,7 +159,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const rootBlockNodeId = childNodeIds[0];
-      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+      const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
       // Add a child to make it collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -195,7 +195,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const rootBlockNodeId = childNodeIds[0];
-      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+      const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -219,14 +219,14 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -270,14 +270,14 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
         insert: "after",
         text: "Hello world",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -368,7 +368,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -409,7 +409,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       // Add grandchild to make child collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -433,7 +433,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
       // Then: Selection moves to parent in block selection mode and parent is collapsed
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
       yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
     }).pipe(runtime.runPromise);
@@ -454,7 +454,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         insert: "after",
         text: "Leaf",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -466,7 +466,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
       // Then: Selection moves to parent in block selection mode and parent is collapsed
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
       yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
     }).pipe(runtime.runPromise);
@@ -481,7 +481,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       );
 
       const rootBlockNodeId = childNodeIds[0];
-      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+      const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
       // Add a child to make it collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -518,7 +518,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       );
 
       const rootBlockNodeId = childNodeIds[0];
-      const rootBlockId = Id.makeBlockId(bufferId, rootBlockNodeId);
+      const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -549,7 +549,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeBlockId(bufferId, childNodeId);
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -561,7 +561,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
       // Then: Selection moves to parent, parent is collapsed, and stays in block selection mode
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
       yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
 
@@ -610,7 +610,7 @@ describe("Block expand/collapse - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to the parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -644,7 +644,7 @@ describe("Block expand/collapse - Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to the parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -697,7 +697,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to the parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -730,7 +730,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
       // Add a child to the parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -769,7 +769,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
 
       // Add B as child of A
       const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -777,7 +777,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         insert: "after",
         text: "B",
       });
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add C as child of B (makes B expandable)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -847,7 +847,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
 
       // Add B as child of A
       const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -855,7 +855,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         insert: "after",
         text: "B",
       });
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add C as child of B (makes B expandable)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -923,7 +923,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
 
       // Add B as child of A
       const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -931,7 +931,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         insert: "after",
         text: "B",
       });
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add C as child of B (makes B expandable/collapsible)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1016,8 +1016,8 @@ describe("Block expand/collapse - Block selection mode (multiple blocks)", () =>
       );
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add children to A and B (C has no children)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1081,8 +1081,8 @@ describe("Title expand/collapse", () => {
       );
 
       const [nodeA, nodeB, _nodeC] = childNodeIds;
-      const blockA = Id.makeBlockId(bufferId, nodeA);
-      const blockB = Id.makeBlockId(bufferId, nodeB);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
       // Add child to A (so A is expandable)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1138,7 +1138,7 @@ describe("Title expand/collapse", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeBlockId(bufferId, nodeA);
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
 
       // Add A1 as child of A
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1146,7 +1146,7 @@ describe("Title expand/collapse", () => {
         insert: "after",
         text: "A1",
       });
-      const blockA1 = Id.makeBlockId(bufferId, nodeA1);
+      const blockA1 = Id.makeBufferBlockId(bufferId, nodeA1);
 
       // Add A1a as child of A1 (leaf node)
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1218,7 +1218,7 @@ describe("Auto-expand ancestors on selection", () => {
         );
 
         const parentNodeId = childNodeIds[0];
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         // Create Child under Parent
         const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1239,12 +1239,13 @@ describe("Auto-expand ancestors on selection", () => {
 
         // When: Set text selection to the Child node
         const Buffer = yield* BufferT;
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId: childNodeId },
+            anchor: { elementId: childBlockId },
             anchorOffset: 0,
-            focus: { nodeId: childNodeId },
+            focus: { elementId: childBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -1266,7 +1267,7 @@ describe("Auto-expand ancestors on selection", () => {
         );
 
         const nodeA = childNodeIds[0];
-        const blockA = Id.makeBlockId(bufferId, nodeA);
+        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
 
         // Create B as child of A
         const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1274,7 +1275,7 @@ describe("Auto-expand ancestors on selection", () => {
           insert: "after",
           text: "B",
         });
-        const blockB = Id.makeBlockId(bufferId, nodeB);
+        const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
         // Create C as child of B
         const nodeC = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1294,12 +1295,13 @@ describe("Auto-expand ancestors on selection", () => {
 
         // When: Set text selection to C (deeply nested)
         const Buffer = yield* BufferT;
+        const blockC = Id.makeBufferBlockId(bufferId, nodeC);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId: nodeC },
+            anchor: { elementId: blockC },
             anchorOffset: 0,
-            focus: { nodeId: nodeC },
+            focus: { elementId: blockC },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -1324,7 +1326,7 @@ describe("Auto-expand ancestors on selection", () => {
         );
 
         const parentNodeId = childNodeIds[0];
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         // Create Child under Parent
         const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1364,8 +1366,8 @@ describe("Auto-expand ancestors on selection", () => {
         );
 
         const [nodeA, nodeB] = childNodeIds;
-        const blockA = Id.makeBlockId(bufferId, nodeA);
-        const blockB = Id.makeBlockId(bufferId, nodeB);
+        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+        const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
         // Create A1 under A
         const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1380,7 +1382,7 @@ describe("Auto-expand ancestors on selection", () => {
           insert: "after",
           text: "B1",
         });
-        const blockB1 = Id.makeBlockId(bufferId, nodeB1);
+        const blockB1 = Id.makeBufferBlockId(bufferId, nodeB1);
 
         // Create B1a under B1
         const nodeB1a = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1434,12 +1436,13 @@ describe("Auto-expand ancestors on selection", () => {
 
         // When: Set text selection to direct child
         const Buffer = yield* BufferT;
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
-            anchor: { nodeId: childNodeId },
+            anchor: { elementId: childBlockId },
             anchorOffset: 0,
-            focus: { nodeId: childNodeId },
+            focus: { elementId: childBlockId },
             focusOffset: 0,
             goalX: null,
             goalLine: null,
@@ -1451,7 +1454,9 @@ describe("Auto-expand ancestors on selection", () => {
         // This test mainly ensures we don't have off-by-one errors
         const selection = yield* Buffer.getSelection(bufferId);
         expect(Option.isSome(selection)).toBe(true);
-        expect(Option.getOrThrow(selection).anchor.nodeId).toBe(childNodeId);
+        expect(Option.getOrThrow(selection).anchor.elementId).toBe(
+          childBlockId,
+        );
       }).pipe(runtime.runPromise);
     });
 
@@ -1464,7 +1469,7 @@ describe("Auto-expand ancestors on selection", () => {
         );
 
         const parentNodeId = childNodeIds[0];
-        const parentBlockId = Id.makeBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
         // Create Child under Parent
         yield* Given.INSERT_NODE_WITH_TEXT({

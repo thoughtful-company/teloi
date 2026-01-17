@@ -403,12 +403,13 @@ export const BUFFER_HAS_CURSOR = (
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
+    const elementId = Id.makeBufferBlockId(bufferId, nodeId);
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchor: { nodeId },
+        anchor: { elementId },
         anchorOffset: offset,
-        focus: { nodeId },
+        focus: { elementId },
         focusOffset: offset,
         goalX: null,
         goalLine: null,
@@ -428,12 +429,14 @@ export const BUFFER_HAS_SELECTION = (
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
+    const anchorElementId = Id.makeBufferBlockId(bufferId, anchor.nodeId);
+    const focusElementId = Id.makeBufferBlockId(bufferId, focus.nodeId);
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchor: { nodeId: anchor.nodeId },
+        anchor: { elementId: anchorElementId },
         anchorOffset: anchor.offset,
-        focus: { nodeId: focus.nodeId },
+        focus: { elementId: focusElementId },
         focusOffset: focus.offset,
         goalX: null,
         goalLine: null,

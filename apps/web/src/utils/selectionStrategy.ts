@@ -1,4 +1,5 @@
 import { Id } from "@/schema";
+import * as IdT from "@/schema/id/id";
 import { BufferT } from "@/services/ui/Buffer";
 import { Effect, Option } from "effect";
 
@@ -22,13 +23,14 @@ export const updateEditorSelection = (
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
+    const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
 
     yield* Buffer.setSelection(
       bufferId,
       Option.some({
-        anchor: { nodeId },
+        anchor: { elementId },
         anchorOffset: selection.anchor,
-        focus: { nodeId },
+        focus: { elementId },
         focusOffset: selection.head,
         goalX: null,
         goalLine: null,
@@ -39,7 +41,7 @@ export const updateEditorSelection = (
 
 /** Build a collapsed selection (anchor === focus) for Buffer.setSelection */
 export const makeCollapsedSelection = (
-  targetNodeId: Id.Node,
+  elementId: Id.Block,
   offset: number,
   opts?: {
     goalX?: number | null;
@@ -47,9 +49,9 @@ export const makeCollapsedSelection = (
   },
 ) =>
   Option.some({
-    anchor: { nodeId: targetNodeId },
+    anchor: { elementId },
     anchorOffset: offset,
-    focus: { nodeId: targetNodeId },
+    focus: { elementId },
     focusOffset: offset,
     goalX: opts?.goalX ?? null,
     goalLine: opts?.goalLine ?? null,

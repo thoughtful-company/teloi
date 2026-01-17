@@ -13,7 +13,7 @@ export const isBlockExpanded = (
 ): Effect.Effect<boolean, never, StoreT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const blockId = Id.makeBlockId(bufferId, nodeId);
+    const blockId = Id.makeBufferBlockId(bufferId, nodeId);
     const blockDoc = yield* Store.getDocument("block", blockId);
     if (Option.isNone(blockDoc)) return true; // Default to expanded if no doc
     return blockDoc.value.isExpanded;
