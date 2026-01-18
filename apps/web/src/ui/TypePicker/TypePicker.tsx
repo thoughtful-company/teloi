@@ -1,9 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
-import {
-  AvailableType,
-  TypePickerT,
-} from "@/services/ui/TypePicker";
+import { AvailableType, TypePickerT } from "@/services/ui/TypePicker";
 import { Effect } from "effect";
 import {
   createEffect,
@@ -73,8 +70,7 @@ export default function TypePicker(props: TypePickerProps) {
   };
 
   // Total items including "Create" option
-  const totalItems = () =>
-    filteredTypes().length + (hasExactMatch() ? 0 : 1);
+  const totalItems = () => filteredTypes().length + (hasExactMatch() ? 0 : 1);
 
   // Handle keyboard navigation
   const handleKeyDown = (e: KeyboardEvent) => {

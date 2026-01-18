@@ -69,6 +69,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     from: number;
   } | null>(null);
 
+  let titleRef: HTMLDivElement | undefined;
+
   const getPickerQuery = () => {
     const state = pickerState();
     if (!state) return "";
@@ -82,6 +84,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     setPickerState,
     textContent,
     getPickerQuery,
+    scrollAnchor: () => titleRef,
   });
 
   onMount(() => {
@@ -395,6 +398,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
   return (
     <div
+      ref={titleRef}
       data-element-id={bufferId}
       data-element-type="title"
       onClick={handleFocus}

@@ -7,8 +7,16 @@ import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { waitFor } from "@testing-library/dom";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  Given,
+  render,
+  runtime,
+  setupClientTest,
+  Then,
+  When,
+  type BrowserRuntime,
+} from "./bdd";
 
 describe("TypePicker", () => {
   describe("Opening the picker", () => {
@@ -301,6 +309,128 @@ describe("TypePicker", () => {
         yield* Then.TEXT_IS_VISIBLE("Important");
       }).pipe(runtime.runPromise);
     });
+  });
+});
+
+describe("TypePicker scroll behavior", () => {
+  let testRuntime: BrowserRuntime;
+  let testRender: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    testRuntime = setup.runtime;
+    testRender = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  /**
+   * Verifies that scrolling is locked while TypePicker is open.
+   *
+   * When the picker is open, scroll attempts are blocked to keep
+   * the popup anchored to the cursor position.
+   */
+  it("scroll should be locked while picker is open", async () => {
+    await Effect.gen(function* () {
+      // Create 20 blocks to make page scrollable
+      const children = Array.from({ length: 20 }, (_, i) => ({
+        text: `Block ${i + 1}: Content that takes up space`,
+      }));
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node with many children",
+        children,
+      );
+
+      // Use the 15th block (near the bottom, needs scrolling to see)
+      const targetBlockIndex = 14;
+      const targetNodeId = childNodeIds[targetBlockIndex]!;
+      const targetBlockId = Id.makeBlockId(bufferId, targetNodeId);
+
+      testRender(() => (
+        <div
+          class="overflow-y-auto"
+          style={{ height: "300px" }}
+          data-testid="scroll-container"
+        >
+          <EditorBuffer bufferId={bufferId} />
+        </div>
+      ));
+
+      // Get scroll container
+      const scrollContainer = yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const el = document.querySelector<HTMLElement>(
+              "[data-testid='scroll-container']",
+            );
+            if (!el) throw new Error("Scroll container not found");
+            return el;
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Scroll down to make target block visible
+      scrollContainer.scrollTop = 400;
+
+      // Wait for scroll to settle
+      yield* Effect.promise(
+        () => new Promise((resolve) => setTimeout(resolve, 50)),
+      );
+
+      // Click the target block to focus it
+      yield* When.USER_CLICKS_BLOCK(targetBlockId);
+
+      // Wait for CodeMirror to be focused
+      yield* Effect.promise(() =>
+        waitFor(
+          () => {
+            const cmEditor = document.querySelector(".cm-editor.cm-focused");
+            if (!cmEditor) throw new Error("CodeMirror not focused");
+          },
+          { timeout: 2000 },
+        ),
+      );
+
+      // Type "#" to open the TypePicker
+      yield* When.USER_PRESSES("#");
+
+      // Wait for picker to appear
+      yield* When.TYPE_PICKER_OPENS();
+
+      const picker = document.querySelector<HTMLElement>(
+        "[data-testid='type-picker']",
+      );
+      expect(picker).not.toBeNull();
+
+      // Record scroll position before attempting to scroll
+      const scrollBefore = scrollContainer.scrollTop;
+
+      // Attempt to scroll the container while popup is open
+      scrollContainer.scrollTop += 100;
+
+      // Wait for scroll event to be processed
+      yield* Effect.promise(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
+      );
+
+      // Scroll should have been locked (reset to original position)
+      expect(
+        scrollContainer.scrollTop,
+        "Scroll should be locked while picker is open",
+      ).toBe(scrollBefore);
+
+      // Picker should still be visible
+      const pickerAfter = document.querySelector<HTMLElement>(
+        "[data-testid='type-picker']",
+      );
+      expect(pickerAfter).not.toBeNull();
+    }).pipe(testRuntime.runPromise);
   });
 });
 
