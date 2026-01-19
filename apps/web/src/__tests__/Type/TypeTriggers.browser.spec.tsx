@@ -4,10 +4,10 @@ import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
+import { waitFor } from "solid-testing-library";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
-import { waitFor } from "solid-testing-library";
+import { Given, render, runtime, Then, When } from "../bdd";
 
 describe("Type Trigger Replacement", () => {
   describe("List to checkbox conversion", () => {

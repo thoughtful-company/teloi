@@ -8,7 +8,7 @@ import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import { Effect, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("TypeColorT Service", () => {
   let runtime: BrowserRuntime;
@@ -83,9 +83,8 @@ describe("TypeColorT Service", () => {
       await Effect.gen(function* () {
         const TypeColor = yield* TypeColorT;
         // Create a type with invalid color format (missing closing paren)
-        const { typeId } = yield* Given.A_TYPE_WITH_DIRECT_COLOR(
-          "oklch(0.9 0.05 250",
-        );
+        const { typeId } =
+          yield* Given.A_TYPE_WITH_DIRECT_COLOR("oklch(0.9 0.05 250");
 
         const colors = yield* TypeColor.getColors(typeId);
 
