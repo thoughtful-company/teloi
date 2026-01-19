@@ -1,5 +1,6 @@
 import { events } from "@/livestore/schema";
 import { Entity, Id, System } from "@/schema";
+import { NodeInsertError, NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
@@ -171,6 +172,159 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       windowId,
     };
   }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_CHILDREN"));
+
+/** Recursive spec for nested children - supports arbitrary depth */
+export interface NestedChildSpec {
+  text: string;
+  children?: readonly NestedChildSpec[];
+}
+
+/** Maps a single NestedChildSpec to its result type (preserves children structure) */
+type NestedChildResult<T extends NestedChildSpec> = {
+  nodeId: Id.Node;
+} & (T["children"] extends readonly NestedChildSpec[]
+  ? { children: NestedChildrenResult<T["children"]> }
+  : object);
+
+/** Maps a tuple of NestedChildSpec to a tuple of NestedChildResult */
+type NestedChildrenResult<T extends readonly NestedChildSpec[]> = {
+  [K in keyof T]: T[K] extends NestedChildSpec
+    ? NestedChildResult<T[K]>
+    : never;
+};
+
+export interface BufferWithNestedChildrenResult<
+  T extends readonly NestedChildSpec[] = readonly NestedChildSpec[],
+> {
+  bufferId: Id.Buffer;
+  rootNodeId: Id.Node;
+  children: NestedChildrenResult<T>;
+  windowId: Id.Window;
+}
+
+/**
+ * Creates a buffer with a root node and nested child nodes.
+ * Supports arbitrary depth - children can have children, etc.
+ *
+ * @example
+ * ```ts
+ * const { rootNodeId, children } = yield* Given.A_BUFFER_WITH_NESTED_CHILDREN("Root", [
+ *   { text: "A", children: [
+ *     { text: "A1" },
+ *     { text: "A2" },
+ *   ]},
+ *   { text: "B", children: [
+ *     { text: "B1" },
+ *   ]},
+ * ]);
+ *
+ * // Type-safe access:
+ * children[0].nodeId         // A
+ * children[0].children[0].nodeId  // A1
+ * children[1].children[0].nodeId  // B1
+ * ```
+ */
+export const A_BUFFER_WITH_NESTED_CHILDREN = <
+  const T extends readonly NestedChildSpec[],
+>(
+  rootText: string,
+  childrenSpecs: T,
+) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Node = yield* NodeT;
+    const Yjs = yield* YjsT;
+
+    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const bufferId = Id.Buffer.make(nanoid());
+    const rootNodeId = Id.Node.make(nanoid());
+
+    // Create root node in LiveStore
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: rootNodeId },
+      }),
+    );
+
+    // Set root text in Yjs
+    const rootYtext = Yjs.getText(rootNodeId);
+    rootYtext.insert(0, rootText);
+
+    // Create window document
+    yield* Store.setDocument(
+      "window",
+      {
+        panes: [],
+        activeElement: null,
+      },
+      windowId,
+    );
+
+    // Create buffer document
+    yield* Store.setDocument(
+      "buffer",
+      {
+        windowId,
+        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+        assignedNodeId: rootNodeId,
+        selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
+        lastFocusedBlockId: null,
+        toggledNodes: [],
+        selection: null,
+        activeViewId: null,
+      },
+      bufferId,
+    );
+
+    // Recursive Effect to create nested children
+    const createNestedChildren = (
+      parentId: Id.Node,
+      specs: readonly NestedChildSpec[],
+    ): Effect.Effect<
+      NestedChildResult<NestedChildSpec>[],
+      NodeNotFoundError | NodeInsertError
+    > =>
+      Effect.gen(function* () {
+        const results: NestedChildResult<NestedChildSpec>[] = [];
+
+        for (const spec of specs) {
+          const childId = yield* Node.insertNode({
+            parentId,
+            insert: "after",
+          });
+
+          // Set child text in Yjs
+          Yjs.getText(childId).insert(0, spec.text);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result: any = { nodeId: childId };
+
+          // Recursively create nested children if present
+          if (spec.children && spec.children.length > 0) {
+            result.children = yield* createNestedChildren(
+              childId,
+              spec.children,
+            );
+          }
+
+          results.push(result);
+        }
+
+        return results;
+      });
+
+    const childResults = yield* createNestedChildren(rootNodeId, childrenSpecs);
+
+    return {
+      bufferId,
+      rootNodeId,
+      children: childResults as NestedChildrenResult<T>,
+      windowId,
+    };
+  }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_NESTED_CHILDREN"));
 
 /**
  * Sets the buffer container to a specific width.
@@ -756,3 +910,56 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
       expectedBg: bgColor,
     } satisfies TypeWithDirectColorResult;
   }).pipe(Effect.withSpan("Given.A_TYPE_WITH_DIRECT_COLOR"));
+
+// =============================================================================
+// Tuple Type Setup Helpers
+// =============================================================================
+
+export interface TupleTypeWithRoleResult {
+  tupleTypeId: Id.Node;
+}
+
+/**
+ * Creates a tuple type with a role definition.
+ * Returns the tuple type node ID for further configuration.
+ */
+export const A_TUPLE_TYPE_WITH_ROLE = (
+  name: string,
+  role: { position: number; name: string; required: boolean },
+) =>
+  Effect.gen(function* () {
+    const { nodeId: tupleTypeId } = yield* A_BUFFER_WITH_TEXT(name);
+    const Tuple = yield* TupleT;
+    yield* Tuple.addRole(tupleTypeId, role.position, role.name, role.required);
+    return { tupleTypeId } satisfies TupleTypeWithRoleResult;
+  }).pipe(Effect.withSpan("Given.A_TUPLE_TYPE_WITH_ROLE"));
+
+/**
+ * Adds an allowed type constraint to an existing tuple type role.
+ */
+export const TUPLE_TYPE_ALLOWS = (
+  tupleTypeId: Id.Node,
+  position: number,
+  allowedTypeId: Id.Node,
+) =>
+  Effect.gen(function* () {
+    const Tuple = yield* TupleT;
+    yield* Tuple.addAllowedType(tupleTypeId, position, allowedTypeId);
+  }).pipe(Effect.withSpan("Given.TUPLE_TYPE_ALLOWS"));
+
+export interface TupleInstanceResult {
+  tupleId: Id.Tuple;
+}
+
+/**
+ * Creates a tuple instance with the given members.
+ */
+export const A_TUPLE_INSTANCE = (
+  tupleTypeId: Id.Node,
+  members: readonly Id.Node[],
+) =>
+  Effect.gen(function* () {
+    const Tuple = yield* TupleT;
+    const tupleId = yield* Tuple.create(tupleTypeId, members);
+    return { tupleId } satisfies TupleInstanceResult;
+  }).pipe(Effect.withSpan("Given.A_TUPLE_INSTANCE"));
