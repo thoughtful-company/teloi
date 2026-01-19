@@ -112,8 +112,31 @@ function FormattedText(props: { ytext: Y.Text }) {
   );
 }
 
+/** Context passed to parent's action handler for navigation decisions */
+export interface BlockNavigationContext {
+  /** The block ID that emitted the action */
+  blockId: Id.Block;
+  /** Whether this block is currently expanded (children visible) */
+  isExpanded: boolean;
+  /** Active block type definitions for this block */
+  activeDefinitions: readonly BlockType.BlockTypeDefinition[];
+}
+
 interface BlockProps {
   blockId: Id.Block;
+  /**
+   * Optional node ID for section blocks where nodeId cannot be derived from blockId.
+   * For section blocks, this should be the displayNodeId from the LinkedTuple.
+   * For buffer blocks, this can be omitted - nodeId is extracted from blockId.
+   */
+  nodeId?: Id.Node;
+  /**
+   * Optional parent action handler for tree navigation.
+   * Called BEFORE Block's internal handlers.
+   * Return `true` to indicate the action was handled (Block skips internal handling).
+   * Return `false` or `undefined` to let Block handle it.
+   */
+  onAction?: ((action: EditorAction, context: BlockNavigationContext) => boolean | void) | undefined;
 }
 
 /**
@@ -124,7 +147,11 @@ interface BlockProps {
  * @param blockId - The block identifier to render and synchronize (Id.Block)
  * @returns The block's rendered TSX element containing the editor or read-only view and its child blocks
  */
-export default function Block({ blockId }: BlockProps) {
+export default function Block({
+  blockId,
+  nodeId: nodeIdProp,
+  onAction: parentOnAction,
+}: BlockProps) {
   const runtime = useBrowserRuntime();
 
   // Lazy block creation: if block doesn't exist, create it then subscribe
@@ -178,8 +205,20 @@ export default function Block({ blockId }: BlockProps) {
     },
   });
 
-  // Get Y.Text and UndoManager for this block's node
-  const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+  // Helper to get bufferId from any block context (buffer or section)
+  const getBufferIdFromBlockId = (bid: Id.Block) =>
+    Effect.gen(function* () {
+      const ctx = yield* Id.parseBlockContext(bid);
+      // Both buffer and section blocks now have bufferId directly
+      return ctx.bufferId;
+    }).pipe(Effect.orDie);
+
+  // Get nodeId: use prop for section blocks, derive from context for buffer blocks
+  const blockContext = IdT.parseBlockContext(blockId).pipe(Effect.runSync);
+  const nodeId: Id.Node = nodeIdProp ?? (blockContext.type === "buffer" ? blockContext.nodeId : (() => {
+    throw new Error(`Section block ${blockId} requires nodeId prop`);
+  })());
+
   const Yjs = runtime.runSync(YjsT);
 
   // Title link state: which node's text to display and how
@@ -362,7 +401,7 @@ export default function Block({ blockId }: BlockProps) {
 
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Window = yield* WindowT;
         const Buffer = yield* BufferT;
 
@@ -379,7 +418,7 @@ export default function Block({ blockId }: BlockProps) {
   // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
-    const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+    const bufferId = runtime.runSync(getBufferIdFromBlockId(blockId));
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
@@ -412,7 +451,7 @@ export default function Block({ blockId }: BlockProps) {
 
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
@@ -420,17 +459,14 @@ export default function Block({ blockId }: BlockProps) {
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
-        const selNodeId = sel
-          ? (yield* IdT.parseBlockContext(sel.anchor.elementId).pipe(
-              Effect.orDie,
-            )).nodeId
-          : null;
+        // Compare full block IDs - works for both buffer and section blocks
+        const selBlockId = sel ? sel.anchor.elementId : null;
         console.debug("[Block.handleBlur] Checking selection", {
-          nodeId,
-          selNodeId,
-          willClear: sel && selNodeId === nodeId,
+          blockId,
+          selBlockId,
+          willClear: sel && selBlockId === blockId,
         });
-        if (sel && selNodeId === nodeId) {
+        if (sel && selBlockId === blockId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
         }
@@ -441,7 +477,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
 
         // Check if any active type wants to be removed on empty Enter
         if (info.cursorPos === 0 && info.textAfter.length === 0) {
@@ -488,7 +524,7 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Buffer = yield* BufferT;
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         yield* Buffer.indent(bufferId, [nodeId]);
         // Re-set selection to trigger ancestor expansion for new tree structure
         const selection = yield* Buffer.getSelection(bufferId);
@@ -501,7 +537,7 @@ export default function Block({ blockId }: BlockProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Buffer = yield* BufferT;
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         yield* Buffer.outdent(bufferId, [nodeId]);
       }),
     );
@@ -514,7 +550,7 @@ export default function Block({ blockId }: BlockProps) {
         const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Store = yield* StoreT;
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
 
         // For swap actions, check if at buffer boundary (can't outdent past buffer root)
         if (action === "swapUp" || action === "swapDown") {
@@ -568,7 +604,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleBackspaceAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
 
         // Check if any active type wants to be removed on backspace at start
         for (const def of getActiveDefinitions()) {
@@ -609,7 +645,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleDeleteAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Buffer = yield* BufferT;
 
         const result = yield* Buffer.mergeForward(bufferId, nodeId);
@@ -626,7 +662,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleForceDelete = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
@@ -686,7 +722,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowLeftAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
@@ -727,7 +763,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowRightAtEnd = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
@@ -768,7 +804,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowUpOnFirstLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Block = yield* BlockT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
@@ -813,7 +849,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleArrowDownOnLastLine = (cursorGoalX: number) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Buffer = yield* BufferT;
@@ -909,7 +945,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleZoomIn = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Navigation = yield* NavigationT;
         const Window = yield* WindowT;
         yield* Navigation.navigateTo(nodeId);
@@ -942,7 +978,7 @@ export default function Block({ blockId }: BlockProps) {
   const handleZoomOut = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Store = yield* StoreT;
         const Node = yield* NodeT;
         const Navigation = yield* NavigationT;
@@ -999,7 +1035,7 @@ export default function Block({ blockId }: BlockProps) {
     runtime
       .runPromise(
         Effect.gen(function* () {
-          const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+          const bufferId = yield* getBufferIdFromBlockId(blockId);
           const Window = yield* WindowT;
           const Buffer = yield* BufferT;
 
@@ -1083,7 +1119,7 @@ export default function Block({ blockId }: BlockProps) {
   const handlePropertyTrigger = (): boolean => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         const Buffer = yield* BufferT;
         const View = yield* ViewT;
         const Property = yield* PropertyT;
@@ -1135,7 +1171,7 @@ export default function Block({ blockId }: BlockProps) {
           getYtext().delete(state.from, deleteLength);
         }
 
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
@@ -1188,7 +1224,7 @@ export default function Block({ blockId }: BlockProps) {
           getYtext().delete(state.from, deleteLength);
         }
 
-        const [bufferId] = yield* Id.parseBlockId(blockId);
+        const bufferId = yield* getBufferIdFromBlockId(blockId);
         yield* Buffer.setSelection(
           bufferId,
           Option.some({
@@ -1218,8 +1254,19 @@ export default function Block({ blockId }: BlockProps) {
     setPickerState(null);
   };
 
-  const handleAction = (action: EditorAction): boolean | void =>
-    Match.value(action).pipe(
+  const handleAction = (action: EditorAction): boolean | void => {
+    // Give parent a chance to handle tree navigation actions first
+    if (parentOnAction) {
+      const context: BlockNavigationContext = {
+        blockId,
+        isExpanded: store.isExpanded,
+        activeDefinitions: getActiveDefinitions(),
+      };
+      const handled = parentOnAction(action, context);
+      if (handled === true) return true;
+    }
+
+    return Match.value(action).pipe(
       Match.tags({
         Enter: ({ info }) => {
           // If picker is open, select the current item
@@ -1257,7 +1304,7 @@ export default function Block({ blockId }: BlockProps) {
         SelectionChange: ({ selection }) => handleSelectionChange(selection),
         VerticalMove: ({ anchor, head, assoc, goalX }) => {
           // Update model with selection + preserved goalX (for intra-block vertical movement)
-          const [bufferId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
+          const bufferId = runtime.runSync(getBufferIdFromBlockId(blockId));
           runtime.runPromise(
             Effect.gen(function* () {
               const Buffer = yield* BufferT;
@@ -1304,7 +1351,7 @@ export default function Block({ blockId }: BlockProps) {
             Effect.gen(function* () {
               const Block = yield* BlockT;
               const Node = yield* NodeT;
-              const [bufferId] = yield* Id.parseBlockId(blockId);
+              const bufferId = yield* getBufferIdFromBlockId(blockId);
 
               // Level-by-level expand: expand self first, then children
               const expandOneLevel = (nId: Id.Node): Effect.Effect<boolean> =>
@@ -1337,6 +1384,7 @@ export default function Block({ blockId }: BlockProps) {
       }),
       Match.exhaustive,
     );
+  };
 
   const hasChildren = () => store.childBlockIds.length > 0;
 
@@ -1431,7 +1479,7 @@ export default function Block({ blockId }: BlockProps) {
             <div class="w-max h-0"> </div>
           </Show>
           <For each={store.childBlockIds}>
-            {(childId) => <Block blockId={childId} />}
+            {(childId) => <Block blockId={childId} onAction={parentOnAction} />}
           </For>
         </div>
       </Show>

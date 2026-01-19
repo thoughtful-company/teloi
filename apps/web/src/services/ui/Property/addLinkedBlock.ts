@@ -5,15 +5,29 @@ import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 
+/** Options for addLinkedBlock */
+export interface AddLinkedBlockOptions {
+  /**
+   * Pre-existing nodeId to use instead of creating a new node.
+   * When provided, skips node creation (assumes node already exists in Yjs).
+   * Used by GhostBlock to materialize phantom nodes.
+   */
+  nodeId?: Id.Node;
+}
+
 /**
  * Add a linked block to a property for a given page.
- * - Creates a new node
+ * - Creates a new node (unless nodeId is provided in options)
  * - Creates a tuple instance with the bound tuple type,
  *   placing pageId at hostPosition and newNodeId at displayPosition
  *
  * @returns The ID of the newly created node
  */
-export const addLinkedBlock = (propertyId: Id.Node, pageId: Id.Node) =>
+export const addLinkedBlock = (
+  propertyId: Id.Node,
+  pageId: Id.Node,
+  options?: AddLinkedBlockOptions,
+) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
@@ -49,8 +63,11 @@ export const addLinkedBlock = (propertyId: Id.Node, pageId: Id.Node) =>
       displayPosition = config.members[2] === System.POSITION_0 ? 0 : 1;
     }
 
-    // Create new node
-    const newNodeId = Id.Node.make(nanoid());
+    // Use provided nodeId or generate new one
+    // When nodeId is provided, we're materializing a ghost block (Y.Text already exists)
+    const newNodeId = options?.nodeId ?? Id.Node.make(nanoid());
+
+    // Create node in LiveStore (always needed, even for ghost materialization)
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
@@ -63,7 +80,18 @@ export const addLinkedBlock = (propertyId: Id.Node, pageId: Id.Node) =>
     members[hostPosition] = pageId;
     members[displayPosition] = newNodeId;
 
-    yield* Tuple.create(tupleTypeId, members);
+    const tupleId = yield* Tuple.create(tupleTypeId, members);
+
+    yield* Effect.logDebug("[Property.addLinkedBlock] Linked block created").pipe(
+      Effect.annotateLogs({
+        propertyId,
+        pageId,
+        nodeId: newNodeId,
+        tupleId,
+        tupleTypeId,
+        fromGhost: options?.nodeId != null,
+      }),
+    );
 
     return newNodeId;
   });

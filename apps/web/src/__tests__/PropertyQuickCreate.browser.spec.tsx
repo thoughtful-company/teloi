@@ -19,8 +19,10 @@ import { Given, setupClientTest, When, type BrowserRuntime } from "./bdd";
  * 1. Create a Tuple Type named "{propertyName}_Tuple"
  * 2. Create two position nodes as shadow children: position 0 = property name, position 1 = "Is {name} For"
  * 3. Bind property to tuple type (hostPosition: 1, displayPosition: 0)
- * 4. Create initial linked block (tuple instance)
- * 5. Focus the new linked block
+ * 4. Show ghost block (NOT create a linked block yet)
+ * 5. Focus the ghost block
+ *
+ * The first linked block is created when user types in the ghost block (ghost materialization).
  *
  * Tests render PropertySection directly since EditorBuffer integration is a separate concern.
  */
@@ -95,11 +97,11 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, propertyName } =
+        const { rootNodeId, propertyId, propertyName, bufferId } =
           yield* createUnboundProperty("Author");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Wait for property section to appear
@@ -153,11 +155,11 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, propertyName } =
+        const { rootNodeId, propertyId, propertyName, bufferId } =
           yield* createUnboundProperty("Category");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Wait for property section and trigger quick-create
@@ -214,11 +216,11 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, propertyName } =
+        const { rootNodeId, propertyId, propertyName, bufferId } =
           yield* createUnboundProperty("Status");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Trigger quick-create
@@ -286,11 +288,11 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId, propertyId, viewId } =
+        const { rootNodeId, propertyId, viewId, bufferId } =
           yield* createUnboundProperty("Priority");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Verify property is initially unbound
@@ -323,15 +325,15 @@ describe("Property Quick-Create", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("creates initial linked block (tuple instance)", async () => {
+    it("shows ghost block (no linked block created yet)", async () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId, propertyId } =
+        const { rootNodeId, propertyId, bufferId } =
           yield* createUnboundProperty("Tags");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Trigger quick-create
@@ -340,16 +342,23 @@ describe("Property Quick-Create", () => {
         yield* When.USER_PRESSES("{End}");
         yield* When.USER_PRESSES("{ArrowRight}");
 
-        // Verify a linked block was created
+        // Verify ghost block appears and NO linked block is created yet
         yield* Effect.promise(() =>
           waitFor(
             async () => {
+              // Ghost block should be visible
+              const ghostBlock = document.querySelector(
+                "[data-testid='ghost-block']",
+              );
+              expect(ghostBlock).toBeTruthy();
+
+              // No linked blocks should exist (user hasn't typed yet)
               const linkedBlocks = await Property.getLinkedBlocks(
                 propertyId,
                 rootNodeId,
               ).pipe(runtime.runPromise);
 
-              expect(linkedBlocks.length).toBeGreaterThan(0);
+              expect(linkedBlocks.length).toBe(0);
             },
             { timeout: 3000 },
           ),
@@ -357,15 +366,13 @@ describe("Property Quick-Create", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("focuses the new linked block after creation", async () => {
+    it("focuses the ghost block after quick-create", async () => {
       await Effect.gen(function* () {
-        const Property = yield* PropertyT;
-
-        const { rootNodeId, propertyId } =
+        const { rootNodeId, propertyId, bufferId } =
           yield* createUnboundProperty("Assignee");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Trigger quick-create
@@ -374,23 +381,21 @@ describe("Property Quick-Create", () => {
         yield* When.USER_PRESSES("{End}");
         yield* When.USER_PRESSES("{ArrowRight}");
 
-        // Wait for linked block to be created and focused
+        // Wait for ghost block to be shown and focused
         yield* Effect.promise(() =>
           waitFor(
-            async () => {
-              const linkedBlocks = await Property.getLinkedBlocks(
-                propertyId,
-                rootNodeId,
-              ).pipe(runtime.runPromise);
+            () => {
+              // Ghost block should be visible
+              const ghostBlock = document.querySelector(
+                "[data-testid='ghost-block']",
+              );
+              expect(ghostBlock).toBeTruthy();
 
-              expect(linkedBlocks.length).toBeGreaterThan(0);
-
-              // Check that focus is on a linked block element or CodeMirror inside it
-              const focusedEl = document.activeElement;
-              expect(
-                focusedEl?.closest("[data-testid='linked-blocks']") ||
-                  focusedEl?.closest(".cm-editor"),
-              ).toBeTruthy();
+              // Ghost block should have a focused CodeMirror editor
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
+              expect(focusedEditor).toBeTruthy();
             },
             { timeout: 3000 },
           ),
@@ -406,7 +411,7 @@ describe("Property Quick-Create", () => {
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId } =
+        const { rootNodeId, propertyId, bufferId } =
           yield* createUnboundProperty("BoundProp");
 
         // Create a tuple type and bind the property to it BEFORE testing
@@ -426,7 +431,7 @@ describe("Property Quick-Create", () => {
         yield* Property.addLinkedBlock(propertyId, rootNodeId);
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Wait for property section
@@ -462,11 +467,11 @@ describe("Property Quick-Create", () => {
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId } =
+        const { rootNodeId, propertyId, bufferId } =
           yield* createUnboundProperty("LongPropertyName");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} />
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
         ));
 
         // Click property name to focus

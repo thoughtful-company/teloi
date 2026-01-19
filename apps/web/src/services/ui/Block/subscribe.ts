@@ -1,14 +1,15 @@
 import { tables, TeloiNode } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
-import { BlockGoneError, BlockNotFoundError } from "./errors";
+import { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
 
 export interface BlockSelection {
   anchor: number;
@@ -29,9 +30,45 @@ export interface BlockView {
 
 export const subscribe = (blockId: Id.Block) =>
   Effect.gen(function* () {
-    const [bufferId, nodeId] = yield* Id.parseBlockId(blockId);
+    const ctx = yield* Id.parseBlockContext(blockId);
     const Node = yield* NodeT;
     const Window = yield* WindowT;
+    const Tuple = yield* TupleT;
+
+    // Extract bufferId and nodeId based on block type
+    let bufferId: Id.Buffer;
+    let nodeId: Id.Node;
+
+    if (ctx.type === "buffer") {
+      bufferId = ctx.bufferId;
+      nodeId = ctx.nodeId;
+    } else {
+      // Section block: derive nodeId from tuple lookup
+      bufferId = ctx.bufferId;
+
+      // Virtual blocks cannot be subscribed to
+      if (ctx.tupleId === Id.VIRTUAL_TUPLE) {
+        return yield* Effect.fail(new VirtualBlockError({ blockId }));
+      }
+
+      // Look up the tuple to get the display node
+      const tuple = yield* Tuple.get(ctx.tupleId);
+
+      // Get display position from property config
+      const configTuples = yield* Tuple.findByPosition(
+        System.PROPERTY_CONFIG,
+        0,
+        ctx.propertyId,
+      );
+
+      let displayPosition: 0 | 1 = 1;
+      if (configTuples.length > 0) {
+        const config = configTuples[0]!;
+        displayPosition = config.members[2] === System.POSITION_0 ? 0 : 1;
+      }
+
+      nodeId = tuple.members[displayPosition] as Id.Node;
+    }
 
     yield* attestExistence(blockId);
     yield* Node.attestExistence(nodeId);
@@ -39,7 +76,7 @@ export const subscribe = (blockId: Id.Block) =>
     const block$ = yield* makeBlockStreamEither(blockId);
     const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
-    const selection$ = yield* makeSelectionStream(bufferId, nodeId);
+    const selection$ = yield* makeSelectionStream(bufferId, nodeId, blockId);
     const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
 
     const activeElementStream = yield* Window.subscribeActiveElement();
@@ -186,7 +223,26 @@ const makeChildrenIdsStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     );
   });
 
-const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
+/**
+ * Extract display nodeId from a BlockContext.
+ * For buffer blocks, returns the nodeId directly.
+ * For section blocks, this would need tuple lookup, but for selection comparison
+ * we compare blockIds directly instead.
+ */
+const getDisplayNodeIdFromContext = (ctx: Id.BlockContext): Id.Node | null => {
+  if (ctx.type === "buffer") {
+    return ctx.nodeId;
+  }
+  // Section blocks don't have nodeId directly - we can't derive it without
+  // async tuple lookup, so selection comparison uses blockId instead
+  return null;
+};
+
+const makeSelectionStream = (
+  bufferId: Id.Buffer,
+  nodeId: Id.Node,
+  blockId: Id.Block,
+) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const query = queryDb(
@@ -202,18 +258,33 @@ const makeSelectionStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
         if (!buffer?.selection) return Effect.succeed(null);
 
         const sel = buffer.selection;
-        // Only return selection if both anchor and focus are on this node
+        // Only return selection if both anchor and focus are on this block
+        // Use blockId comparison for section blocks (since they don't have nodeId in context)
         return Effect.all({
           anchorContext: IdT.parseBlockContext(sel.anchor.elementId),
           focusContext: IdT.parseBlockContext(sel.focus.elementId),
         }).pipe(
           Effect.map(({ anchorContext, focusContext }) => {
-            if (
-              anchorContext.nodeId !== nodeId ||
-              focusContext.nodeId !== nodeId
-            ) {
-              return null;
+            // For buffer blocks, compare nodeId directly
+            // For section blocks, compare the full blockId
+            const anchorNodeId = getDisplayNodeIdFromContext(anchorContext);
+            const focusNodeId = getDisplayNodeIdFromContext(focusContext);
+
+            // If we can extract nodeIds, compare them (buffer blocks)
+            if (anchorNodeId !== null && focusNodeId !== null) {
+              if (anchorNodeId !== nodeId || focusNodeId !== nodeId) {
+                return null;
+              }
+            } else {
+              // Section blocks: compare full block IDs
+              if (
+                sel.anchor.elementId !== blockId ||
+                sel.focus.elementId !== blockId
+              ) {
+                return null;
+              }
             }
+
             return {
               anchor: sel.anchorOffset,
               head: sel.focusOffset,

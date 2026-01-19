@@ -192,6 +192,61 @@ describe("Property Creation Trigger", () => {
         );
       }).pipe(runtime.runPromise);
     });
+
+    it("focuses the property name field after creation", async () => {
+      await Effect.gen(function* () {
+        // Setup: buffer with a child node (the trigger target)
+        const { bufferId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [{ text: "" }]);
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Wait for block to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const block = document.querySelector(
+                `[data-element-id="${childBlockId}"]`,
+              );
+              expect(block).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Click the block to focus it
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+        // Type "> " (the trigger sequence)
+        yield* When.USER_PRESSES(">");
+        yield* When.USER_PRESSES(" ");
+
+        // Wait for property section to appear and its name field to be focused
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              // Property section should exist
+              const propertySection = document.querySelector(
+                '[data-testid="property-section"]',
+              );
+              expect(propertySection).toBeTruthy();
+
+              // Property name's TextEditor should have focus
+              const focusedEditor = propertySection!.querySelector(
+                ".property-name .cm-editor.cm-focused",
+              );
+              expect(
+                focusedEditor,
+                "Property name TextEditor should be focused",
+              ).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
   });
 
   describe("trigger does NOT fire in invalid contexts", () => {

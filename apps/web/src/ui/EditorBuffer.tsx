@@ -26,6 +26,7 @@ import type { Entity } from "@/schema";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import Block from "./Block";
+import { createBlockActionHandler } from "./EditorBuffer/blockActionHandler";
 import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
@@ -165,7 +166,7 @@ const crossParentMoveBlocks = (
   }).pipe(Effect.catchAll(() => Effect.succeed(false)));
 
 /** Helper component to render properties for a page's view */
-function PropertyList(props: { pageId: Id.Node }) {
+function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
   const runtime = useBrowserRuntime();
   const [properties, setProperties] = createSignal<PropertyInfo[]>([]);
 
@@ -211,7 +212,7 @@ function PropertyList(props: { pageId: Id.Node }) {
       <div class="mx-auto max-w-[var(--max-line-width)] w-full py-2">
         <For each={properties()}>
           {(prop) => (
-            <PropertySection propertyId={prop.id} pageId={props.pageId} />
+            <PropertySection propertyId={prop.id} pageId={props.pageId} bufferId={props.bufferId} />
           )}
         </For>
       </div>
@@ -234,6 +235,9 @@ interface EditorBufferProps {
  */
 export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   const runtime = useBrowserRuntime();
+
+  // Tree navigation handler for child blocks
+  const blockActionHandler = createBlockActionHandler(runtime, bufferId);
 
   const bufferStream = Stream.unwrap(
     Effect.gen(function* () {
@@ -562,12 +566,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             const currentSelection = yield* Buffer.getSelection(bufferId);
 
             // Get current focused node: block selection takes priority over text selection
-            const selectionNodeId =
+            // Only buffer blocks can be selected in block selection mode
+            const selectionContext =
               Option.isSome(currentSelection)
-                ? (yield* Id.parseBlockContext(
+                ? yield* Id.parseBlockContext(
                     currentSelection.value.anchor.elementId,
-                  ).pipe(Effect.orDie)).nodeId
+                  ).pipe(Effect.orDie)
                 : null;
+            const selectionNodeId =
+              selectionContext?.type === "buffer" ? selectionContext.nodeId : null;
             const nodeId = bufferDoc?.selectedBlocks[0] ?? selectionNodeId;
 
             if (!nodeId) return;
@@ -1393,7 +1400,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
               nodeId={nodeId}
               activeViewId={store.activeViewId}
             />
-            <PropertyList pageId={nodeId} />
+            <PropertyList pageId={nodeId} bufferId={bufferId} />
             <Show
               when={store.activeViewId}
               fallback={
@@ -1403,7 +1410,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 >
                   <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
                     <For each={store.childBlockIds}>
-                      {(childId) => <Block blockId={childId} />}
+                      {(childId) => <Block blockId={childId} onAction={blockActionHandler} />}
                     </For>
                   </div>
                   <div

@@ -31,5 +31,12 @@ export const Title = Schema.Struct({
 });
 export type Title = typeof Title.Type;
 
-export const Element = Schema.Union(Window, Pane, Buffer, Block, Title);
+export const Property = Schema.Struct({
+  propertyId: Id.Node,
+  bufferId: Id.Buffer,
+  type: Schema.Literal("property"),
+});
+export type Property = typeof Property.Type;
+
+export const Element = Schema.Union(Window, Pane, Buffer, Block, Title, Property);
 export type Element = typeof Element.Type;

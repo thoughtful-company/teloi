@@ -6,7 +6,6 @@ import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
-import { addLinkedBlock } from "./addLinkedBlock";
 import { bindToTupleType } from "./bindToTupleType";
 
 /**
@@ -20,13 +19,15 @@ import { bindToTupleType } from "./bindToTupleType";
  * 4. Creates position 1 node (shadow child) with title = "Is {name} For"
  * 5. Adds roles via Tuple.addRole for both positions
  * 6. Binds property to tuple type (hostPosition=1, displayPosition=0)
- * 7. Creates initial linked block (tuple instance)
+ *
+ * After binding, the property will show a ghost block. The first linked block
+ * is created when the user types in the ghost block (ghost materialization).
  *
  * @param propertyId - The property node to bind
- * @param pageId - The page where the linked block will appear
- * @returns The ID of the newly created linked block
+ * @param pageId - The page context (used for ghost block focus after binding)
+ * @returns The tuple type ID
  */
-export const quickCreateTupleType = (propertyId: Id.Node, pageId: Id.Node) =>
+export const quickCreateTupleType = (propertyId: Id.Node, _pageId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Type = yield* TypeT;
@@ -112,8 +113,6 @@ export const quickCreateTupleType = (propertyId: Id.Node, pageId: Id.Node) =>
     // 8. Bind property to tuple type (hostPosition=1, displayPosition=0)
     yield* bindToTupleType(propertyId, tupleTypeId, 1, 0);
 
-    // 9. Create initial linked block (tuple instance)
-    const linkedBlockId = yield* addLinkedBlock(propertyId, pageId);
-
-    return linkedBlockId;
+    // Ghost block will appear in PropertySection, user types to create first linked block
+    return tupleTypeId;
   });

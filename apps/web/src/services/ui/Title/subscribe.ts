@@ -50,9 +50,11 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
 
         const sel = buffer.selection;
         // Only return selection if anchor is on this node (the title's node)
+        // Section blocks can never be the title, so only check buffer blocks
         return IdT.parseBlockContext(sel.anchor.elementId).pipe(
           Effect.map((context) => {
-            if (context.nodeId !== nodeId) {
+            // Only buffer blocks can be the title
+            if (context.type !== "buffer" || context.nodeId !== nodeId) {
               return null;
             }
             return {
