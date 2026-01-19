@@ -11,6 +11,7 @@
     "serve": "vite preview",
     "test": "vitest",
     "test:browser": "vitest --project browser",
+    "test:unit": "vitest --project unit",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@effect/language-service": "^0.20.1",
     "@effect/vitest": "^0.25.1",
+    "@livestore/adapter-node": "0.3.1",
     "@tailwindcss/vite": "^4.1.7",
     "@vitest/browser": "^3.2.4",
     "@vitest/ui": "3.2.4",
