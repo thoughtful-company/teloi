@@ -1,4 +1,3 @@
-import "@/index.css";
 import { events, tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { DataPortT, ExportData } from "@/services/domain/DataPort";
@@ -7,14 +6,15 @@ import { YjsT } from "@/services/external/Yjs";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import * as Given from "./bdd/given";
+import { setupUnitTest, type UnitRuntime } from "./unit/setup";
 
 describe("DataPort", () => {
-  let runtime: BrowserRuntime;
+  let runtime: UnitRuntime;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    const setup = await setupClientTest();
+    const setup = await setupUnitTest();
     runtime = setup.runtime;
     cleanup = setup.cleanup;
   });
