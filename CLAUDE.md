@@ -42,6 +42,8 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly. If you catch yourself about to write implementation before tests exist, STOP and write tests first.
 
+**NEVER claim a task is complete without verification.** Before saying you're done, you MUST verify the solution actually works—run the tests, run the typecheck, or whatever proves it's not broken. "I think this should work" is not verification. Actual passing output or it didn't happen.
+
 **Always** strictly follow logging standards in `docs/logging.md`. Use "Wide Events" and `Effect.annotateLogs`.
 
 ## Project Structure
