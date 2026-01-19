@@ -1,19 +1,21 @@
-import "@/index.css";
 import { NodeT } from "@/services/domain/Node";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import * as Given from "../bdd/given";
+import { setupUnitTest, type UnitRuntime } from "../unit/setup";
 
 /**
  * Tests for NodeT.getAllDescendants helper.
  * This helper recursively collects all descendant node IDs in depth-first order.
+ *
+ * These are unit tests running in Node.js - no browser overhead.
  */
 describe("NodeT.getAllDescendants", () => {
-  let runtime: BrowserRuntime;
+  let runtime: UnitRuntime;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    const setup = await setupClientTest();
+    const setup = await setupUnitTest();
     runtime = setup.runtime;
     cleanup = setup.cleanup;
   });
@@ -62,32 +64,24 @@ describe("NodeT.getAllDescendants", () => {
       //       - A2
       //     - B
       //       - B1
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }],
-      );
+      const { rootNodeId, children } =
+        yield* Given.A_BUFFER_WITH_NESTED_CHILDREN("Root", [
+          {
+            text: "A",
+            children: [{ text: "A1" }, { text: "A2" }],
+          },
+          {
+            text: "B",
+            children: [{ text: "B1" }],
+          },
+        ]);
 
-      const [nodeA, nodeB] = childNodeIds;
-
-      // Add children to A
-      const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        text: "A1",
-      });
-      const nodeA2 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeA,
-        insert: "after",
-        siblingId: nodeA1,
-        text: "A2",
-      });
-
-      // Add child to B
-      const nodeB1 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: nodeB,
-        insert: "after",
-        text: "B1",
-      });
+      // Type-safe access to nested nodes!
+      const nodeA = children[0].nodeId;
+      const nodeA1 = children[0].children[0].nodeId;
+      const nodeA2 = children[0].children[1].nodeId;
+      const nodeB = children[1].nodeId;
+      const nodeB1 = children[1].children[0].nodeId;
 
       const Node = yield* NodeT;
       const descendants = yield* Node.getAllDescendants(rootNodeId);
@@ -129,35 +123,32 @@ describe("NodeT.getAllDescendants", () => {
       //       - Level2
       //         - Level3
       //           - Level4
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Level1" }],
-      );
+      const { rootNodeId, children } =
+        yield* Given.A_BUFFER_WITH_NESTED_CHILDREN("Root", [
+          {
+            text: "Level1",
+            children: [
+              {
+                text: "Level2",
+                children: [
+                  {
+                    text: "Level3",
+                    children: [{ text: "Level4" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ]);
 
-      const [level1] = childNodeIds;
-
-      const level2 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: level1,
-        insert: "after",
-        text: "Level2",
-      });
-
-      const level3 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: level2,
-        insert: "after",
-        text: "Level3",
-      });
-
-      const level4 = yield* Given.INSERT_NODE_WITH_TEXT({
-        parentId: level3,
-        insert: "after",
-        text: "Level4",
-      });
+      const level1 = children[0].nodeId;
+      const level2 = children[0].children[0].nodeId;
+      const level3 = children[0].children[0].children[0].nodeId;
+      const level4 = children[0].children[0].children[0].children[0].nodeId;
 
       const Node = yield* NodeT;
       const descendants = yield* Node.getAllDescendants(rootNodeId);
 
-      // Should contain all 4 levels
       expect(descendants).toHaveLength(4);
       expect(descendants).toEqual([level1, level2, level3, level4]);
     }).pipe(runtime.runPromise);
