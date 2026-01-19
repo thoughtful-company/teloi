@@ -5,13 +5,16 @@ import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
-import { addLinkedBlock } from "./addLinkedBlock";
+import { addLinkedBlock, type AddLinkedBlockOptions } from "./addLinkedBlock";
 import { bindToTupleType } from "./bindToTupleType";
 import { createProperty } from "./createProperty";
 import { getLinkedBlocks } from "./getLinkedBlocks";
+import { getLinkedTuples, type LinkedTuple } from "./getLinkedTuples";
 import { getPropertiesForView } from "./getPropertiesForView";
 import { quickCreateTupleType } from "./quickCreateTupleType";
 import { subscribePropertiesForView } from "./subscribePropertiesForView";
+
+export type { LinkedTuple };
 
 /**
  * Information about a property linked to a view.
@@ -88,6 +91,7 @@ export class PropertyT extends Context.Tag("PropertyT")<
      * Get linked blocks for a property on a given page.
      * Queries tuple instances of the bound tuple type where the page
      * is at the hostPosition, returns node IDs from the displayPosition.
+     * @deprecated Use getLinkedTuples instead
      */
     getLinkedBlocks: (
       propertyId: Id.Node,
@@ -95,16 +99,28 @@ export class PropertyT extends Context.Tag("PropertyT")<
     ) => Effect.Effect<readonly Id.Node[]>;
 
     /**
+     * Get linked tuples for a property on a given page.
+     * Returns tuple instances with both tupleId and displayNodeId.
+     * The tupleId identifies the relationship; displayNodeId is the node to render.
+     */
+    getLinkedTuples: (
+      propertyId: Id.Node,
+      pageId: Id.Node,
+    ) => Effect.Effect<readonly LinkedTuple[]>;
+
+    /**
      * Add a linked block to a property for a given page.
-     * - Creates a new node
+     * - Creates a new node (unless options.nodeId is provided)
      * - Creates a tuple instance with the bound tuple type,
      *   placing pageId at hostPosition and newNodeId at displayPosition
      *
+     * @param options.nodeId - Pre-existing nodeId for ghost block materialization
      * @returns The ID of the newly created node
      */
     addLinkedBlock: (
       propertyId: Id.Node,
       pageId: Id.Node,
+      options?: AddLinkedBlockOptions,
     ) => Effect.Effect<Id.Node>;
 
     /**
@@ -148,6 +164,7 @@ export const PropertyLive = Layer.effect(
       subscribePropertiesForView: withContext(subscribePropertiesForView)(context),
       bindToTupleType: withContext(bindToTupleType)(context),
       getLinkedBlocks: withContext(getLinkedBlocks)(context),
+      getLinkedTuples: withContext(getLinkedTuples)(context),
       addLinkedBlock: withContext(addLinkedBlock)(context),
       quickCreateTupleType: withContext(quickCreateTupleType)(context),
     };

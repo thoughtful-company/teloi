@@ -123,23 +123,22 @@ export const NavigationLive = Layer.effect(
               );
 
               if (Option.isSome(selection)) {
-                const selContext = yield* IdT.parseBlockContext(
-                  selection.value.anchor.elementId,
-                ).pipe(Effect.orDie);
-                if (selContext.nodeId === validatedNodeId) {
+                const anchorBlockId = selection.value.anchor.elementId;
+                const selContext = yield* IdT.parseBlockContext(anchorBlockId).pipe(
+                  Effect.orDie,
+                );
+
+                if (selContext.type === "buffer" && selContext.nodeId === validatedNodeId) {
                   // Selection is on the title node
                   yield* Window.setActiveElement(
                     Option.some({ type: "title" as const, bufferId }),
                   );
                   // Title scrolls itself or EditorBuffer handles it
                 } else {
-                  // Selection is on a block
-                  const blockId = Id.makeBufferBlockId(
-                    bufferId,
-                    selContext.nodeId,
-                  );
+                  // Selection is on a block (buffer or section block)
+                  // Use the original blockId from selection
                   yield* Window.setActiveElement(
-                    Option.some({ type: "block" as const, id: blockId }),
+                    Option.some({ type: "block" as const, id: anchorBlockId }),
                   );
                   // Block scrolls itself on mount via ActiveElementContext
                 }

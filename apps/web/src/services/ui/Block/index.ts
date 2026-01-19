@@ -1,13 +1,14 @@
 import { Id } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT, TupleNotFoundError } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
-import { BlockGoneError, BlockNotFoundError } from "./errors";
+import { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
 import {
   findDeepestLastChild,
   findNextNode,
@@ -18,7 +19,7 @@ import { split, type SplitParams, type SplitResult } from "./split";
 import { BlockView, subscribe } from "./subscribe";
 import { moveToFirst, moveToLast, swap } from "./swap";
 
-export { BlockGoneError, BlockNotFoundError } from "./errors";
+export { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
 export type { BlockView } from "./subscribe";
 export type { SplitParams, SplitResult };
 
@@ -29,7 +30,11 @@ export class BlockT extends Context.Tag("BlockT")<
       blockId: Id.Block,
     ) => Effect.Effect<
       Stream.Stream<BlockView, BlockGoneError>,
-      BlockNotFoundError | NodeNotFoundError | Id.InvalidBlockIdError
+      | BlockNotFoundError
+      | NodeNotFoundError
+      | Id.InvalidBlockIdError
+      | VirtualBlockError
+      | TupleNotFoundError
     >;
     attestExistence: (
       blockId: Id.Block,
@@ -73,11 +78,13 @@ export const BlockLive = Layer.effect(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
     const Window = yield* WindowT;
     const Yjs = yield* YjsT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
+      Context.add(TupleT, Tuple),
       Context.add(WindowT, Window),
       Context.add(YjsT, Yjs),
     );

@@ -124,7 +124,8 @@ describe("PropertySection", () => {
         Yjs.getText(propertyId).insert(0, "My Property Name");
 
         // Render the PropertySection directly
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: property name is visible
         yield* Effect.promise(() =>
@@ -155,7 +156,8 @@ describe("PropertySection", () => {
         // Don't set any text - property name should be empty
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: component renders without error (no crash on empty name)
         yield* Effect.promise(() =>
@@ -203,7 +205,8 @@ describe("PropertySection", () => {
         yield* Tuple.create(tupleTypeId, [pageId, linkedNode2]);
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: both linked block titles are visible
         yield* Effect.promise(() =>
@@ -237,7 +240,8 @@ describe("PropertySection", () => {
         // Don't bind to any tuple type
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: property name is visible and "no linked items" placeholder shown
         yield* Effect.promise(() =>
@@ -273,7 +277,8 @@ describe("PropertySection", () => {
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: property name visible, linked blocks section exists but empty
         yield* Effect.promise(() =>
@@ -327,6 +332,53 @@ describe("PropertySection", () => {
     });
   });
 
+  describe("linked block rendering", () => {
+    it("renders linked blocks as Block components", async () => {
+      await Effect.gen(function* () {
+        const Property = yield* PropertyT;
+        const View = yield* ViewT;
+        const Tuple = yield* TupleT;
+        const Yjs = yield* YjsT;
+
+        // Setup: create a full hierarchy
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Test Page", []);
+        const viewId = yield* View.getOrCreateView(pageId);
+        const propertyId = yield* Property.createProperty(viewId);
+        Yjs.getText(propertyId).insert(0, "Related Items");
+
+        // Create a tuple type and bind the property to it
+        const tupleTypeId = yield* createTupleType("RelatedTo");
+        yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
+
+        // Create a linked node and tuple instance
+        const linkedNode = yield* createLinkedNode("Target Node");
+
+        // Create tuple: (page, linkedNode)
+        yield* Tuple.create(tupleTypeId, [pageId, linkedNode]);
+
+        // Render the PropertySection
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+
+        // Wait for linked block to appear as a Block component (not a button)
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const text = document.body.textContent;
+              expect(text).toContain("Target Node");
+              // Verify it's a Block component, not a button
+              const blockElement = document.querySelector(
+                "[data-testid='linked-blocks'] [data-element-type='block']",
+              );
+              expect(blockElement).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
+
   describe("reactive updates", () => {
     it("updates reactively when property name changes in Y.Text", async () => {
       await Effect.gen(function* () {
@@ -347,7 +399,8 @@ describe("PropertySection", () => {
         ytext.insert(0, "Initial Name");
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} />);
+        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
 
         // Assert: initial name is visible
         yield* Effect.promise(() =>

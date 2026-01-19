@@ -6,6 +6,19 @@ import { StoreT } from "../../external/Store";
 import { BufferNotFoundError } from "../errors";
 import { expandAncestors } from "./expandAncestors";
 
+/**
+ * Get the nodeId from a BlockContext for expansion purposes.
+ * Section blocks (linked blocks in property sections) are flat and don't need
+ * ancestor expansion, so we return null for them.
+ */
+const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
+  if (ctx.type === "buffer") {
+    return ctx.nodeId;
+  }
+  // Section blocks don't have tree hierarchy - skip ancestor expansion
+  return null;
+};
+
 export const setSelection = (
   bufferId: Id.Buffer,
   selection: Option.Option<Model.BufferSelection>,
@@ -31,13 +44,17 @@ export const setSelection = (
       const anchorContext = yield* IdT.parseBlockContext(anchor.elementId).pipe(
         Effect.orDie,
       );
-      yield* expandAncestors(bufferId, rootNodeId, anchorContext.nodeId);
+      const anchorNodeId = getNodeIdForExpansion(anchorContext);
+      if (anchorNodeId) {
+        yield* expandAncestors(bufferId, rootNodeId, anchorNodeId);
+      }
 
       const focusContext = yield* IdT.parseBlockContext(focus.elementId).pipe(
         Effect.orDie,
       );
-      if (focusContext.nodeId !== anchorContext.nodeId) {
-        yield* expandAncestors(bufferId, rootNodeId, focusContext.nodeId);
+      const focusNodeId = getNodeIdForExpansion(focusContext);
+      if (focusNodeId && focusNodeId !== anchorNodeId) {
+        yield* expandAncestors(bufferId, rootNodeId, focusNodeId);
       }
     }
 

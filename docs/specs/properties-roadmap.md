@@ -26,85 +26,104 @@ This document outlines the implementation phases for the Properties feature. See
 
 ### Phase 2: PropertyT Service ✅
 - Created `apps/web/src/services/ui/Property/` with `PropertyT` service
-- Methods: `createProperty`, `getPropertiesForView`, `bindToTupleType`, `getLinkedBlocks`, `addLinkedBlock`
+- Methods: `createProperty`, `getPropertiesForView`, `bindToTupleType`, `getLinkedBlocks`, `addLinkedBlock`, `quickCreateTupleType`
 - Properties are children of `System.SCHEMA` with type `PROPERTY`
 - Binding creates `PROPERTY_USES_TUPLE` and `PROPERTY_CONFIG` tuples
 - Tests: `apps/web/src/__tests__/Property.browser.spec.tsx` (16 tests)
+
+### Phase 3: Property Section UI ✅
+- Created `apps/web/src/ui/PropertySection.tsx`
+- PropertySection renders property name (editable via TextEditor) on left
+- Linked blocks display on right as full Block components
+- Ghost block shown when property bound but no linked blocks
+- Integrated into EditorBuffer via PropertyList component
+- Tests: `apps/web/src/__tests__/PropertySection.browser.spec.tsx` (8 tests)
+
+### Phase 4: Property Creation Flow ✅
+- `> ` trigger implemented in `BlockType/propertyTrigger`
+- Creates view, property, and HAS_PROPERTY tuple
+- Deletes the triggering block
+- Tests: Part of PropertySection tests
+
+### Phase 5a: Quick-Create Flow ✅
+- ArrowRight at end of unbound property name triggers quick-create
+- Creates tuple type `{propertyName}_Tuple` as shadow child of SCHEMA
+- Creates position nodes with proper titles
+- Binds property with `hostPosition: 1`, `displayPosition: 0`
+- Creates initial linked block with title "untitled"
+- Focus moves to new linked block
+- Tests: `apps/web/src/__tests__/PropertyQuickCreate.browser.spec.tsx` (8 tests)
+
+### Phase 6a: Linked Blocks Display ✅
+- Linked blocks render as full Block components (not buttons)
+- Custom action handler intercepts tree operations (Tab, Enter, Navigate)
+- Enter creates new linked block
+- ArrowUp/Down navigates between linked blocks
+- ArrowLeft returns to property name
+- Backspace at start navigates back (no merge)
+- Ghost block clickable to create first linked block
+- Tests: `apps/web/src/__tests__/PropertySectionLinkedBlocks.browser.spec.tsx` (18 tests)
+
+### Phase 6b: Tuple-Based Block ID Scheme ✅
+Refactored block IDs to properly represent the tuple relationship, not just the displayed node.
+
+**Old format (deprecated):**
+```
+section:{sectionId}/node:{nodeId}
+```
+
+**New format:**
+```
+buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
+```
+
+**Key changes:**
+- `BlockContext.section` now includes `bufferId`, `hostNodeId`, `propertyId`, `tupleId`
+- `displayNodeId` is derived from tuple lookup (not stored in ID)
+- Added `Id.makePropertyBlockId()` and `Id.VIRTUAL_TUPLE` sentinel
+- `PropertyT.getLinkedTuples()` returns `{ tupleId, displayNodeId }[]`
+- Block component accepts optional `nodeId` prop for section blocks
+- Updated `Block/subscribe.ts` to derive nodeId from tuple
+
+**Why this matters:**
+- The linked block represents a **tuple instance** (relationship), not just a node
+- Deleting a "linked block" means deleting the tuple, not the node
+- The same node could appear in multiple tuples
+- Proper UI anchor with bufferId + hostNodeId
 
 ---
 
 ## Remaining Phases
 
-### Phase 3: Property Section UI
-Render property sections in EditorBuffer.
+### Phase 5b: Property Binding UI (Advanced)
+Allow binding to existing tuple types.
 
-**Files:**
-- `apps/web/src/ui/EditorBuffer/PropertySection.tsx` (new)
-- `apps/web/src/ui/EditorBuffer/index.tsx` (modify)
+**Not yet implemented:**
+1. **Property name autocomplete** - Show existing properties matching typed text
+2. **Existing properties selection** - Replace unbound property with existing one
+3. **Existing tuple types list** - Browse/select tuple types to bind
+4. **Position selection** - Choose which position the host page occupies
+5. **Full tuple type creation** - Create with custom position names
 
-**Component structure:**
-```
-PropertySection
-├── Left: Property name (editable title via TextEditor)
-├── Right: Linked blocks list + Add button
-└── Settings panel (expandable via Cmd+Down)
-```
-
-**Rendering flow:**
-1. Get active view for buffer (ViewT.getActiveView)
-2. Query properties for view (PropertyT.getPropertiesForView)
-3. For each property, render PropertySection
-4. Property sections appear between title and children blocks
+**Navigation paths (from spec):**
+| Action | Context | Result |
+|--------|---------|--------|
+| `↓` | At last line of editor | Enter existing properties selection |
+| `→` | In properties selection | Move to tuple types selection |
+| `→` | In tuple types selection | Move to create new tuple type |
+| `←` | At first position | Enter create new tuple type |
 
 ---
 
-### Phase 4: Property Creation Flow
-Trigger property creation with `> ` syntax.
+### Phase 7: Property Settings Panel
+Expandable settings below property name.
 
-**Files:**
-- `apps/web/src/ui/TextEditor/extensions/` (new extension)
-- Modify input handling to detect `> ` at line start
+**Trigger:** `Cmd+Down` on property name
 
-**Flow:**
-1. User types `> ` at start of any block
-2. System finds/creates view for current page
-3. Creates property node under SCHEMA
-4. Creates `HAS_PROPERTY(view, property)` tuple
-5. Property section appears (unbound state)
-6. Block with `> ` is deleted or converted
-
----
-
-### Phase 5: Property Binding UI
-Allow users to bind properties to tuple types.
-
-**UI states:**
-1. **Editing property name** - Autocomplete shows existing properties
-2. **Existing properties list** - Select to replace current property
-3. **Existing tuple types list** - Select to bind
-4. **Position selection** - Choose host position after selecting tuple type
-5. **Create new tuple type** - Full control mode
-
-**Quick-create:** `→` at end of property name:
-- Creates tuple type with property name
-- Position 0 = property name, Position 1 = empty
-- Property immediately bound
-
----
-
-### Phase 6: Linked Blocks
-Add and display linked blocks in property sections.
-
-**Add flow:**
-1. User clicks `+` in property section
-2. New node created (empty title)
-3. Tuple instance created with bound tuple type
-4. Focus moves to new node for editing
-
-**Display:**
-- Query tuple instances where `position{hostPosition}` = current page
-- Display nodes from `position{displayPosition}`
-- Each linked block shows as rendered title (clickable to navigate)
+**Settings:**
+- Change bound tuple type
+- View/edit position names
+- Display configuration
 
 ---
 
@@ -130,11 +149,17 @@ Phase 1 (ViewT) ✅ ←──────┐
     ↓                     │
 Phase 2 (PropertyT) ✅ ───┤
     ↓                     │
-Phase 3 (UI) ─────────────┘
+Phase 3 (UI) ✅ ──────────┘
     ↓
-Phase 4 (Creation)
+Phase 4 (Creation) ✅
     ↓
-Phase 5 (Binding)
+Phase 5a (Quick-Create) ✅
     ↓
-Phase 6 (Linked Blocks)
+Phase 6a (Linked Blocks) ✅
+    ↓
+Phase 6b (Tuple-Based IDs) ✅
+    ↓
+    ├─→ Phase 5b (Advanced Binding) ← Next
+    │
+    └─→ Phase 7 (Settings Panel)
 ```
