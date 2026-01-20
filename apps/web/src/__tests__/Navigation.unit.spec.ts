@@ -1,20 +1,20 @@
-import "@/index.css";
 import { Id, System } from "@/schema";
 import { NavigationT } from "@/services/ui/Navigation";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import * as Given from "./bdd/given";
+import { setupUnitTest, type UnitRuntime } from "./unit/setup";
 
 describe("Navigation", () => {
-  let runtime: BrowserRuntime;
+  let runtime: UnitRuntime;
   let cleanup: () => Promise<void>;
+  let mockURL: ReturnType<typeof import("./unit/setup").createMockURLService>;
 
   beforeEach(async () => {
-    // Reset URL to root before each test
-    history.replaceState({}, "", "/");
-    const setup = await setupClientTest();
+    const setup = await setupUnitTest({ initialPath: "/" });
     runtime = setup.runtime;
+    mockURL = setup.mockURL;
     cleanup = setup.cleanup;
   });
 
@@ -30,7 +30,7 @@ describe("Navigation", () => {
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains that nodeId
-        history.replaceState({}, "", `/workspace/${nodeId}`);
+        mockURL.setCurrentPath(`/workspace/${nodeId}`);
 
         // When: syncUrlToModel runs
         const Navigation = yield* NavigationT;
@@ -51,7 +51,7 @@ describe("Navigation", () => {
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains a non-existent nodeId
-        history.replaceState({}, "", "/workspace/non-existent-node-id");
+        mockURL.setCurrentPath("/workspace/non-existent-node-id");
 
         // When: syncUrlToModel runs (no fallback provided)
         const Navigation = yield* NavigationT;
@@ -72,7 +72,7 @@ describe("Navigation", () => {
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is just root (no nodeId)
-        history.replaceState({}, "", "/");
+        mockURL.setCurrentPath("/");
 
         // When: syncUrlToModel runs
         const Navigation = yield* NavigationT;
@@ -93,7 +93,7 @@ describe("Navigation", () => {
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is /workspace/ without a nodeId
-        history.replaceState({}, "", "/workspace/");
+        mockURL.setCurrentPath("/workspace/");
 
         // When: syncUrlToModel runs
         const Navigation = yield* NavigationT;
@@ -116,7 +116,7 @@ describe("Navigation", () => {
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: Initial URL is root
-        history.replaceState({}, "", "/");
+        mockURL.setCurrentPath("/");
 
         // When: navigateTo is called with the nodeId
         const Navigation = yield* NavigationT;
@@ -129,7 +129,7 @@ describe("Navigation", () => {
         expect(buffer.assignedNodeId).toBe(nodeId);
 
         // And: URL is updated
-        expect(window.location.pathname).toBe(`/workspace/${nodeId}`);
+        expect(mockURL.getCurrentPath()).toBe(`/workspace/${nodeId}`);
       }).pipe(runtime.runPromise);
     });
 
@@ -151,7 +151,7 @@ describe("Navigation", () => {
         expect(buffer.assignedNodeId).toBeNull();
 
         // And: URL is /workspace
-        expect(window.location.pathname).toBe("/workspace");
+        expect(mockURL.getCurrentPath()).toBe("/workspace");
       }).pipe(runtime.runPromise);
     });
 

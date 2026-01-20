@@ -1,4 +1,3 @@
-import "@/index.css";
 import { COLOR_PALETTE, Id, System } from "@/schema";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { TupleT } from "@/services/domain/Tuple";
@@ -8,14 +7,15 @@ import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import { Effect, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import * as Given from "../bdd/given";
+import { setupUnitTest, type UnitRuntime } from "../unit/setup";
 
 describe("TypeColorT Service", () => {
-  let runtime: BrowserRuntime;
+  let runtime: UnitRuntime;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    const setup = await setupClientTest();
+    const setup = await setupUnitTest();
     runtime = setup.runtime;
     cleanup = setup.cleanup;
 
