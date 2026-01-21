@@ -137,10 +137,7 @@ export class PropertyT extends Context.Tag("PropertyT")<
      *
      * @returns The ID of the newly created linked block
      */
-    quickCreateTupleType: (
-      propertyId: Id.Node,
-      pageId: Id.Node,
-    ) => Effect.Effect<Id.Node>;
+    quickCreateTupleType: (propertyId: Id.Node) => Effect.Effect<Id.Node>;
   }
 >() {}
 

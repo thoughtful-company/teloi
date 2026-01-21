@@ -24,10 +24,9 @@ import { bindToTupleType } from "./bindToTupleType";
  * is created when the user types in the ghost block (ghost materialization).
  *
  * @param propertyId - The property node to bind
- * @param pageId - The page context (used for ghost block focus after binding)
  * @returns The tuple type ID
  */
-export const quickCreateTupleType = (propertyId: Id.Node, _pageId: Id.Node) =>
+export const quickCreateTupleType = (propertyId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Type = yield* TypeT;

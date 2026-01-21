@@ -18,6 +18,7 @@ import {
   createContext,
   createSignal,
   For,
+  Index,
   onCleanup,
   onMount,
   Show,
@@ -210,11 +211,11 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
   return (
     <Show when={properties().length > 0}>
       <div class="mx-auto max-w-[var(--max-line-width)] w-full py-2">
-        <For each={properties()}>
+        <Index each={properties()}>
           {(prop) => (
-            <PropertySection propertyId={prop.id} pageId={props.pageId} bufferId={props.bufferId} />
+            <PropertySection propertyId={prop().id} pageId={props.pageId} bufferId={props.bufferId} />
           )}
-        </For>
+        </Index>
       </div>
     </Show>
   );
@@ -899,7 +900,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             if (e.shiftKey) {
               yield* Buffer.outdent(bufferId, selectedBlocks);
             } else {
-              yield* Buffer.indent(bufferId, selectedBlocks);
+              yield* Buffer.indent(selectedBlocks);
             }
 
             // Preserve selection
