@@ -2,6 +2,7 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
+import { useClickCapture } from "./hooks/useClickCapture";
 import { useTitleLink } from "./hooks/useTitleLink";
 import { useTypePicker } from "./hooks/useTypePicker";
 import { TypeT } from "@/services/domain/Type";
@@ -152,6 +153,8 @@ export default function Block({
     handleDetach,
   } = useTitleLink({ nodeId, runtime });
 
+  const clickCapture = useClickCapture({ isActive: () => store.isActive });
+
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
   const getActiveElement = useContext(ActiveElementContext);
@@ -242,22 +245,20 @@ export default function Block({
     });
   });
 
-  let clickCoords: { x: number; y: number } | null = null;
+  // Block-specific mutable state (not shared with Title)
   let initialSelection: { anchor: number; head: number } | null = null;
   // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
   let isTransitioningToBlockSelection = false;
 
-  // Clear click coords when block becomes inactive, so programmatic re-activation
-  // (like backspace merge) doesn't use stale click coords from a previous interaction.
+  // Clear initialSelection when block becomes inactive (clickCoords handled by useClickCapture)
   createEffect(() => {
     if (!store.isActive) {
-      clickCoords = null;
       initialSelection = null;
     }
   });
 
   const handleFocus = (e: MouseEvent) => {
-    clickCoords = { x: e.clientX, y: e.clientY };
+    clickCapture.capture(e);
     initialSelection = null;
 
     const domSelection = window.getSelection();
@@ -691,7 +692,7 @@ export default function Block({
               undoManager={getUndoManager()}
               onAction={handleAction}
               initialStrategy={resolveSelectionStrategy({
-                clickCoords,
+                clickCoords: clickCapture.get(),
                 domSelection: initialSelection,
                 modelSelection: store.selection,
               })}

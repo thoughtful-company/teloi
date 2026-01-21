@@ -2,6 +2,7 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
+import { useClickCapture } from "./hooks/useClickCapture";
 import { useTitleLink } from "./hooks/useTitleLink";
 import { useTypePicker } from "./hooks/useTypePicker";
 import { BlockT } from "@/services/ui/Block";
@@ -83,6 +84,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     logPrefix: "[Title]",
   });
 
+  const clickCapture = useClickCapture({ isActive: () => store.isActive });
+
   onMount(() => {
     const dispose = start(runtime);
     const disposeTitleLink = startTitleLink();
@@ -93,10 +96,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     });
   });
 
-  let clickCoords: { x: number; y: number } | null = null;
-
   const handleFocus = (e: MouseEvent) => {
-    clickCoords = { x: e.clientX, y: e.clientY };
+    clickCapture.capture(e);
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;
@@ -282,7 +283,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           undoManager={getUndoManager()}
           onAction={handleAction}
           initialStrategy={resolveSelectionStrategy({
-            clickCoords,
+            clickCoords: clickCapture.get(),
             domSelection: null,
             modelSelection: store.selection,
           })}
