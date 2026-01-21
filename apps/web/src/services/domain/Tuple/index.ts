@@ -10,6 +10,7 @@ import { deleteTuple } from "./delete";
 import { findByPosition } from "./findByPosition";
 import { subscribeByPosition } from "./subscribeByPosition";
 import { get } from "./get";
+import { getDisplayNode } from "./getDisplayNode";
 import { Tuple, TupleNotFoundError, TupleTypeRole } from "./types";
 
 export type { Tuple, TupleTypeRole } from "./types";
@@ -84,6 +85,14 @@ export class TupleT extends Context.Tag("TupleT")<
      * Get a tuple by ID.
      */
     get: (tupleId: Id.Tuple) => Effect.Effect<Tuple, TupleNotFoundError>;
+
+    /**
+     * Get the display node from a tuple - the member that isn't the host node.
+     */
+    getDisplayNode: (
+      tupleId: Id.Tuple,
+      hostNodeId: Id.Node,
+    ) => Effect.Effect<Id.Node, TupleNotFoundError>;
   }
 >() {}
 
@@ -102,6 +111,7 @@ export const TupleLive = Layer.effect(
       findByPosition: withContext(findByPosition)(context),
       subscribeByPosition: withContext(subscribeByPosition)(context),
       get: withContext(get)(context),
+      getDisplayNode: withContext(getDisplayNode)(context),
     };
   }),
 );

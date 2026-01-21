@@ -157,7 +157,7 @@ export function createBlockActionHandler(
     runtime.runPromise(
       Effect.gen(function* () {
         const Buffer = yield* BufferT;
-        yield* Buffer.indent(bufferId, [nodeId]);
+        yield* Buffer.indent([nodeId]);
         // Re-set selection to trigger ancestor expansion for new tree structure
         const selection = yield* Buffer.getSelection(bufferId);
         yield* Buffer.setSelection(bufferId, selection);
@@ -223,50 +223,21 @@ export function createBlockActionHandler(
   function handleForceDelete(_blockId: Id.Block, nodeId: Id.Node) {
     runtime.runPromise(
       Effect.gen(function* () {
-        const Block = yield* BlockT;
         const Buffer = yield* BufferT;
         const Window = yield* WindowT;
-        const Store = yield* StoreT;
-        const Node = yield* NodeT;
-        const Yjs = yield* YjsT;
 
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const rootNodeId = Option.isSome(bufferDoc)
-          ? (bufferDoc.value.assignedNodeId as Id.Node)
-          : null;
+        const result = yield* Buffer.forceDelete(bufferId, nodeId);
+        if (Option.isNone(result)) return;
 
-        // Collect all descendants BEFORE deletion (they'll be gone from DB after)
-        const descendants = yield* Node.getAllDescendants(nodeId);
-        const allNodesToDelete = [nodeId, ...descendants];
-
-        // Find focus target before deletion
-        const prevNodeOpt = yield* Block.findPreviousNode(nodeId, bufferId);
-        const focusNodeId = Option.isSome(prevNodeOpt)
-          ? prevNodeOpt.value
-          : rootNodeId;
-
-        if (!focusNodeId) return;
-
-        // Delete the node (materializer cascades to descendants in DB)
-        yield* Node.deleteNode(nodeId);
-
-        // Clean up Yjs text for all deleted nodes
-        for (const deletedId of allNodesToDelete) {
-          Yjs.deleteText(deletedId);
-        }
-
-        // Set cursor at end of focus target
-        const targetYtext = Yjs.getText(focusNodeId);
-        const cursorOffset = targetYtext.length;
-        const focusElementId = Id.makeBufferBlockId(bufferId, focusNodeId);
+        const { targetNodeId, cursorOffset, isTitle } = result.value;
+        const focusElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
 
         yield* Buffer.setSelection(
           bufferId,
           makeCollapsedSelection(focusElementId, cursorOffset),
         );
 
-        // Update active element
-        if (focusNodeId === rootNodeId) {
+        if (isTitle) {
           yield* Window.setActiveElement(
             Option.some({ type: "title" as const, bufferId }),
           );

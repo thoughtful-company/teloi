@@ -1,4 +1,4 @@
-import { Data, Effect, Schema } from "effect";
+import { Data, Effect, ParseResult, Schema } from "effect";
 
 // Base schema that only allows nanoid-safe characters (A-Za-z0-9_-)
 const SafeIdString = Schema.String.pipe(Schema.pattern(/^[A-Za-z0-9_-]+$/));
@@ -21,16 +21,26 @@ export type Node = typeof Node.Type;
 export type Tuple = typeof Tuple.Type;
 export type Section = typeof Section.Type;
 
-// Block context discriminated union
-export type BlockContext =
-  | { type: "buffer"; bufferId: Buffer; nodeId: Node }
-  | {
-      type: "section";
-      bufferId: Buffer;
-      hostNodeId: Node;
-      propertyId: Node;
-      tupleId: Tuple;
-    };
+// Block context schemas
+const BufferBlockContext = Schema.Struct({
+  type: Schema.Literal("buffer"),
+  bufferId: Buffer,
+  nodeId: Node,
+});
+
+const SectionBlockContext = Schema.Struct({
+  type: Schema.Literal("section"),
+  bufferId: Buffer,
+  hostNodeId: Node,
+  propertyId: Node,
+  tupleId: Tuple,
+});
+
+const BlockContextSchema = Schema.Union(
+  BufferBlockContext,
+  SectionBlockContext,
+);
+export type BlockContext = typeof BlockContextSchema.Type;
 
 // Virtual tuple sentinel for bound properties with no linked blocks
 export const VIRTUAL_TUPLE = Tuple.make("__virtual__");
@@ -82,63 +92,110 @@ export class InvalidSectionIdError extends Data.TaggedError(
 }> {}
 
 const BUFFER_BLOCK_PREFIX = "buffer:";
-const SECTION_BLOCK_PREFIX = "section:";
 const NODE_SEGMENT = "/node:";
 const PROPERTY_SEGMENT = "/property:";
 const TUPLE_SEGMENT = "/tuple:";
 
-export const parseBlockContext = (
-  blockId: Block,
-): Effect.Effect<BlockContext, InvalidBlockIdError> => {
-  if (blockId.startsWith(BUFFER_BLOCK_PREFIX)) {
-    const nodeIndex = blockId.indexOf(NODE_SEGMENT);
-    if (nodeIndex === -1) {
-      return Effect.fail(new InvalidBlockIdError({ blockId }));
-    }
-
-    const bufferId = blockId.slice(BUFFER_BLOCK_PREFIX.length, nodeIndex);
-    const afterNode = blockId.slice(nodeIndex + NODE_SEGMENT.length);
-
-    // Check for property block format: buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
-    const propertyIndex = afterNode.indexOf(PROPERTY_SEGMENT);
-    if (propertyIndex !== -1) {
-      const hostNodeId = afterNode.slice(0, propertyIndex);
-      const afterProperty = afterNode.slice(
-        propertyIndex + PROPERTY_SEGMENT.length,
-      );
-
-      const tupleIndex = afterProperty.indexOf(TUPLE_SEGMENT);
-      if (tupleIndex === -1) {
-        return Effect.fail(new InvalidBlockIdError({ blockId }));
+/**
+ * Schema that decodes a Block ID string into a BlockContext.
+ *
+ * Handles two formats:
+ * - Buffer block: `buffer:{bufferId}/node:{nodeId}`
+ * - Section block: `buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}`
+ */
+export const BlockContextFromBlockId = Schema.transformOrFail(
+  Block,
+  BlockContextSchema,
+  {
+    strict: true,
+    decode: (blockId, _options, ast) => {
+      if (!blockId.startsWith(BUFFER_BLOCK_PREFIX)) {
+        return ParseResult.fail(
+          new ParseResult.Type(
+            ast,
+            blockId,
+            "Block ID must start with 'buffer:'",
+          ),
+        );
       }
 
-      const propertyId = afterProperty.slice(0, tupleIndex);
-      const tupleId = afterProperty.slice(tupleIndex + TUPLE_SEGMENT.length);
+      const nodeIndex = blockId.indexOf(NODE_SEGMENT);
+      if (nodeIndex === -1) {
+        return ParseResult.fail(
+          new ParseResult.Type(ast, blockId, "Missing '/node:' segment"),
+        );
+      }
 
-      return Effect.succeed({
-        type: "section",
-        bufferId: Buffer.make(bufferId),
-        hostNodeId: Node.make(hostNodeId),
-        propertyId: Node.make(propertyId),
-        tupleId: Tuple.make(tupleId),
+      const bufferId = blockId.slice(BUFFER_BLOCK_PREFIX.length, nodeIndex);
+      const afterNode = blockId.slice(nodeIndex + NODE_SEGMENT.length);
+
+      // Check for property block format
+      const propertyIndex = afterNode.indexOf(PROPERTY_SEGMENT);
+      if (propertyIndex !== -1) {
+        const hostNodeId = afterNode.slice(0, propertyIndex);
+        const afterProperty = afterNode.slice(
+          propertyIndex + PROPERTY_SEGMENT.length,
+        );
+
+        const tupleIndex = afterProperty.indexOf(TUPLE_SEGMENT);
+        if (tupleIndex === -1) {
+          return ParseResult.fail(
+            new ParseResult.Type(
+              ast,
+              blockId,
+              "Missing '/tuple:' segment in property block",
+            ),
+          );
+        }
+
+        const propertyId = afterProperty.slice(0, tupleIndex);
+        const tupleId = afterProperty.slice(tupleIndex + TUPLE_SEGMENT.length);
+
+        return ParseResult.succeed({
+          type: "section" as const,
+          bufferId: bufferId as Buffer,
+          hostNodeId: hostNodeId as Node,
+          propertyId: propertyId as Node,
+          tupleId: tupleId as Tuple,
+        });
+      }
+
+      // Simple buffer block format
+      return ParseResult.succeed({
+        type: "buffer" as const,
+        bufferId: bufferId as Buffer,
+        nodeId: afterNode as Node,
       });
-    }
+    },
+    encode: (context) => {
+      if (context.type === "buffer") {
+        return ParseResult.succeed(
+          `buffer:${context.bufferId}/node:${context.nodeId}` as Block,
+        );
+      }
+      return ParseResult.succeed(
+        `buffer:${context.bufferId}/node:${context.hostNodeId}/property:${context.propertyId}/tuple:${context.tupleId}` as Block,
+      );
+    },
+  },
+);
 
-    // Simple buffer block format: buffer:{bufferId}/node:{nodeId}
-    return Effect.succeed({
-      type: "buffer",
-      bufferId: Buffer.make(bufferId),
-      nodeId: Node.make(afterNode),
-    });
-  }
+/**
+ * Parse a Block ID into a BlockContext.
+ * Returns an Effect that fails with InvalidBlockIdError on invalid format.
+ */
+export const parseBlockContext = (
+  blockId: Block,
+): Effect.Effect<BlockContext, InvalidBlockIdError> =>
+  Schema.decode(BlockContextFromBlockId)(blockId).pipe(
+    Effect.mapError(() => new InvalidBlockIdError({ blockId })),
+  );
 
-  // Legacy section block format (deprecated): section:{sectionId}/node:{nodeId}
-  if (blockId.startsWith(SECTION_BLOCK_PREFIX)) {
-    return Effect.fail(new InvalidBlockIdError({ blockId }));
-  }
-
-  return Effect.fail(new InvalidBlockIdError({ blockId }));
-};
+/**
+ * Parse a Block ID synchronously. Throws on invalid format.
+ */
+export const parseBlockContextSync = (blockId: Block): BlockContext =>
+  Schema.decodeUnknownSync(BlockContextFromBlockId)(blockId);
 
 // Backwards-compatible parser for buffer blocks only
 // Returns Effect<[Buffer, Node]> like the old parseBlockId
@@ -166,15 +223,22 @@ export const parseSectionBufferId = (
     // Handle buffer:{bufferId}/property:{propertyId}
     const propertyIndex = sectionId.indexOf(PROPERTY_SEGMENT);
     if (propertyIndex !== -1) {
-      const bufferId = sectionId.slice(BUFFER_BLOCK_PREFIX.length, propertyIndex);
+      const bufferId = sectionId.slice(
+        BUFFER_BLOCK_PREFIX.length,
+        propertyIndex,
+      );
       return Effect.succeed(Buffer.make(bufferId));
     }
     // Handle buffer:{bufferId}/section:{name}
     const sectionIndex = sectionId.indexOf(SECTION_SEGMENT);
     if (sectionIndex !== -1) {
-      const bufferId = sectionId.slice(BUFFER_BLOCK_PREFIX.length, sectionIndex);
+      const bufferId = sectionId.slice(
+        BUFFER_BLOCK_PREFIX.length,
+        sectionIndex,
+      );
       return Effect.succeed(Buffer.make(bufferId));
     }
   }
   return Effect.fail(new InvalidSectionIdError({ sectionId }));
 };
+

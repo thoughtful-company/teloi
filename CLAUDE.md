@@ -97,13 +97,28 @@ This is a pnpm monorepo with:
         - Thin wrapper around CodeMirror 
       - Child blocks (also Block components)
 
+**Block Action Handling**:
+Block emits `EditorAction` events (Enter, Tab, Navigate, etc.) via `onAction` prop. EditorBuffer provides a handler (`EditorBuffer/blockActionHandler.ts`) that intercepts tree navigation; Block handles the rest.
+
+| Parent (EditorBuffer) | Block |
+|-----------------------|-------|
+| Tab/ShiftTab (indent) | Type triggers (`[]`, `-`, `#`) |
+| Arrow navigation | Type picker UI |
+| Backspace/Delete merge | SelectionChange, Blur |
+| Move, Zoom, BlockSelect | Enter (has picker logic) |
+| PropertyTrigger | ToggleTodo, Expand |
+
+Without a parent handler, Block handles everything (standalone mode for PropertySection).
+
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
 - **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
 - Split/merge update both; typing only touches Yjs
 
-
-
+**Ghost Block Pattern** (PropertySection):
+Y.Text is independent of LiveStore—we can bind TextEditor to a pre-generated nodeId's Y.Text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Y.Text.
+- `ui/PropertySection.tsx` - GhostBlock component
+- `services/ui/Property/addLinkedBlock.ts` - accepts optional `nodeId` for materialization
 
 ### LiveStore Integration
 Local-first SQLite database with event sourcing:

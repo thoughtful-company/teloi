@@ -1,19 +1,15 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
-import * as IdT from "@/schema/id/id";
-import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
-import { TupleT } from "@/services/domain/Tuple";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
+import { useTitleLink } from "./hooks/useTitleLink";
+import { useTypePicker } from "./hooks/useTypePicker";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
-import { NavigationT } from "@/services/ui/Navigation";
-import { PropertyT } from "@/services/ui/Property";
 import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
-import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -31,8 +27,9 @@ import {
   Show,
   useContext,
 } from "solid-js";
-import { ActiveElementContext } from "./EditorBuffer";
 import { Transition } from "solid-transition-group";
+import { ActiveElementContext } from "./EditorBuffer";
+import { FormattedText } from "./FormattedText";
 import TextEditor, {
   type EditorAction,
   type EnterKeyInfo,
@@ -40,77 +37,6 @@ import TextEditor, {
 } from "./TextEditor";
 import TypeBadge from "./TypeBadge";
 import { TypePicker } from "./TypePicker";
-import * as Y from "yjs";
-
-/** Text segment with optional formatting */
-interface TextSegment {
-  text: string;
-  bold?: boolean;
-  italic?: boolean;
-  code?: boolean;
-}
-
-/** Build segments from Y.Text deltas for formatted rendering */
-function buildSegments(ytext: Y.Text): TextSegment[] {
-  const deltas = ytext.toDelta() as Array<{
-    insert: string;
-    attributes?: { bold?: true; italic?: true; code?: true };
-  }>;
-
-  return deltas.map((d) => ({
-    text: d.insert,
-    bold: d.attributes?.bold === true,
-    italic: d.attributes?.italic === true,
-    code: d.attributes?.code === true,
-  }));
-}
-
-/** Renders Y.Text with formatting for unfocused blocks */
-function FormattedText(props: { ytext: Y.Text }) {
-  const [segments, setSegments] = createSignal(buildSegments(props.ytext));
-
-  // Observe Y.Text changes to update segments
-  onMount(() => {
-    const observer = () => setSegments(buildSegments(props.ytext));
-    props.ytext.observe(observer);
-    onCleanup(() => props.ytext.unobserve(observer));
-  });
-
-  return (
-    <For each={segments()}>
-      {(segment) => {
-        // Code gets special treatment (monospace font + background)
-        if (segment.code) {
-          return (
-            <code
-              classList={{
-                "font-mono bg-neutral-100 px-1 rounded": true,
-                "font-bold": segment.bold,
-                italic: segment.italic,
-              }}
-            >
-              {segment.text}
-            </code>
-          );
-        }
-        // Plain text with optional bold/italic
-        if (segment.bold || segment.italic) {
-          return (
-            <span
-              classList={{
-                "font-bold": segment.bold,
-                italic: segment.italic,
-              }}
-            >
-              {segment.text}
-            </span>
-          );
-        }
-        return segment.text;
-      }}
-    </For>
-  );
-}
 
 /** Context passed to parent's action handler for navigation decisions */
 export interface BlockNavigationContext {
@@ -125,18 +51,17 @@ export interface BlockNavigationContext {
 interface BlockProps {
   blockId: Id.Block;
   /**
-   * Optional node ID for section blocks where nodeId cannot be derived from blockId.
-   * For section blocks, this should be the displayNodeId from the LinkedTuple.
-   * For buffer blocks, this can be omitted - nodeId is extracted from blockId.
-   */
-  nodeId?: Id.Node;
-  /**
    * Optional parent action handler for tree navigation.
    * Called BEFORE Block's internal handlers.
    * Return `true` to indicate the action was handled (Block skips internal handling).
    * Return `false` or `undefined` to let Block handle it.
    */
-  onAction?: ((action: EditorAction, context: BlockNavigationContext) => boolean | void) | undefined;
+  onAction?:
+    | ((
+        action: EditorAction,
+        context: BlockNavigationContext,
+      ) => boolean | void)
+    | undefined;
 }
 
 /**
@@ -149,7 +74,6 @@ interface BlockProps {
  */
 export default function Block({
   blockId,
-  nodeId: nodeIdProp,
   onAction: parentOnAction,
 }: BlockProps) {
   const runtime = useBrowserRuntime();
@@ -179,10 +103,8 @@ export default function Block({
     );
   });
 
-  const blockStream = Stream.unwrap(blockStreamEffect);
-
   const { store, start } = bindStreamToStore({
-    stream: blockStream,
+    stream: Stream.unwrap(blockStreamEffect),
     project: (view) => ({
       isActive: view.isActive,
       isSelected: view.isSelected,
@@ -205,70 +127,52 @@ export default function Block({
     },
   });
 
-  // Helper to get bufferId from any block context (buffer or section)
-  const getBufferIdFromBlockId = (bid: Id.Block) =>
-    Effect.gen(function* () {
-      const ctx = yield* Id.parseBlockContext(bid);
-      // Both buffer and section blocks now have bufferId directly
-      return ctx.bufferId;
-    }).pipe(Effect.orDie);
+  const blockContext = Id.parseBlockContextSync(blockId);
+  const bufferId = blockContext.bufferId;
+  const nodeId =
+    blockContext.type === "buffer"
+      ? blockContext.nodeId
+      : runtime.runSync(
+          Effect.gen(function* () {
+            const Tuple = yield* TupleT;
+            return yield* Tuple.getDisplayNode(
+              blockContext.tupleId,
+              blockContext.hostNodeId,
+            );
+          }),
+        );
 
-  // Get nodeId: use prop for section blocks, derive from context for buffer blocks
-  const blockContext = IdT.parseBlockContext(blockId).pipe(Effect.runSync);
-  const nodeId: Id.Node = nodeIdProp ?? (blockContext.type === "buffer" ? blockContext.nodeId : (() => {
-    throw new Error(`Section block ${blockId} requires nodeId prop`);
-  })());
+  // Title link: may display another node's text based on tuple relationships
+  const {
+    titleMode,
+    getYtext,
+    getUndoManager,
+    textContent,
+    start: startTitleLink,
+    handleDetach,
+  } = useTitleLink({ nodeId, runtime });
 
-  const Yjs = runtime.runSync(YjsT);
-
-  // Title link state: which node's text to display and how
-  const [titleLink, setTitleLink] = createSignal<TitleLink | null>(null);
-
-  // Compute display node: use source if linked, otherwise self
-  const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
-  // Title link mode for readonly/detach handling
-  const titleMode = () => titleLink()?.mode ?? null;
-
-  // Get Y.Text for the display node (reactive based on title link)
-  const getYtext = () => Yjs.getText(displayNodeId());
-  const getUndoManager = () => Yjs.getUndoManager(displayNodeId());
-
-  const [textContent, setTextContent] = createSignal(getYtext().toString());
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
   const getActiveElement = useContext(ActiveElementContext);
 
-  // Type picker state
-  const [pickerState, setPickerState] = createSignal<{
-    visible: boolean;
-    position: { x: number; y: number };
-    from: number;
-  } | null>(null);
-
-  const getPickerQuery = () => {
-    const state = pickerState();
-    if (!state) return "";
-    const text = textContent();
-    const cursorPos = store.selection?.head ?? text.length;
-    // Extract text after "#" (from + 1) up to cursor
-    return text.slice(state.from + 1, cursorPos);
-  };
-
-  // Flag to prevent blur handler from clearing state during block movement
-  let isMoving = false;
-
-  const waitForDomAndRefocus = Effect.gen(function* () {
-    yield* Effect.promise(
-      () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-    );
-    yield* Effect.sync(() => {
-      const blockEl = document.querySelector(
-        `[data-element-id="${CSS.escape(blockId)}"] .cm-content`,
-      );
-      if (blockEl instanceof HTMLElement) {
-        blockEl.focus();
-      }
-    });
+  // Type picker
+  const {
+    pickerState,
+    getPickerQuery,
+    handleTypePickerOpen,
+    handleTypePickerClose,
+    handleTypePickerSelect,
+    handleTypePickerCreate,
+  } = useTypePicker({
+    nodeId,
+    bufferId,
+    elementId: blockId,
+    getYtext,
+    getSelection: () => store.selection,
+    textContent,
+    runtime,
+    logPrefix: "[Block]",
   });
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
@@ -316,29 +220,8 @@ export default function Block({
       }
     }
 
-    // Track current ytext observer for cleanup
-    let currentYtext = getYtext();
-    const observer = () => setTextContent(getYtext().toString());
-    currentYtext.observe(observer);
-
-    // Subscribe to title link changes
-    const titleLinkFiber = runtime.runFork(
-      Effect.gen(function* () {
-        const TitleLink = yield* TitleLinkT;
-        const stream = yield* TitleLink.subscribe(nodeId);
-        yield* Stream.runForEach(stream, (link) =>
-          Effect.sync(() => {
-            // Unobserve old ytext before updating state
-            currentYtext.unobserve(observer);
-            setTitleLink(link);
-            // Update text content and re-observe new ytext
-            currentYtext = getYtext();
-            setTextContent(currentYtext.toString());
-            currentYtext.observe(observer);
-          }),
-        );
-      }),
-    );
+    // Start title link subscription (manages Y.Text observation internally)
+    const disposeTitleLink = startTitleLink();
 
     const typesFiber = runtime.runFork(
       Effect.gen(function* () {
@@ -354,8 +237,7 @@ export default function Block({
 
     onCleanup(() => {
       dispose();
-      currentYtext.unobserve(observer);
-      runtime.runFork(Fiber.interrupt(titleLinkFiber));
+      disposeTitleLink();
       runtime.runFork(Fiber.interrupt(typesFiber));
     });
   });
@@ -401,8 +283,7 @@ export default function Block({
 
     runtime.runPromise(
       Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Window = yield* WindowT;
+                const Window = yield* WindowT;
         const Buffer = yield* BufferT;
 
         // Clear block selection when entering text editing mode
@@ -418,7 +299,6 @@ export default function Block({
   // Text changes are now handled directly by Yjs via yCollab extension
 
   const handleSelectionChange = (selection: SelectionInfo) => {
-    const bufferId = runtime.runSync(getBufferIdFromBlockId(blockId));
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
@@ -444,15 +324,9 @@ export default function Block({
       return;
     }
 
-    // Don't clear selection during block movement (swap up/down)
-    if (isMoving) {
-      return;
-    }
-
     runtime.runPromise(
       Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Buffer = yield* BufferT;
+                const Buffer = yield* BufferT;
         const Window = yield* WindowT;
 
         // Only clear selection and activeElement if still pointing to this block.
@@ -477,8 +351,7 @@ export default function Block({
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-
+        
         // Check if any active type wants to be removed on empty Enter
         if (info.cursorPos === 0 && info.textAfter.length === 0) {
           for (const def of getActiveDefinitions()) {
@@ -520,93 +393,10 @@ export default function Block({
     );
   };
 
-  const handleTab = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        yield* Buffer.indent(bufferId, [nodeId]);
-        // Re-set selection to trigger ancestor expansion for new tree structure
-        const selection = yield* Buffer.getSelection(bufferId);
-        yield* Buffer.setSelection(bufferId, selection);
-      }),
-    );
-  };
-
-  const handleShiftTab = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        yield* Buffer.outdent(bufferId, [nodeId]);
-      }),
-    );
-  };
-
-  const handleMove = (action: "swapUp" | "swapDown" | "first" | "last") => {
-    isMoving = true;
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Block = yield* BlockT;
-        const Node = yield* NodeT;
-        const Store = yield* StoreT;
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-
-        // For swap actions, check if at buffer boundary (can't outdent past buffer root)
-        if (action === "swapUp" || action === "swapDown") {
-          const parentId = yield* Node.getParent(nodeId).pipe(
-            Effect.catchTag("NodeHasNoParentError", () =>
-              Effect.succeed<Id.Node | null>(null),
-            ),
-          );
-          const siblings = parentId
-            ? yield* Node.getNodeChildren(parentId)
-            : [];
-          const index = siblings.indexOf(nodeId);
-          const isAtBoundary =
-            (action === "swapUp" && index === 0) ||
-            (action === "swapDown" && index === siblings.length - 1);
-
-          if (isAtBoundary && parentId) {
-            // Check if parent is the buffer root
-            const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
-              Effect.orDie,
-            );
-            const assignedNodeId = Option.match(bufferDoc, {
-              onNone: () => null,
-              onSome: (doc) => doc.assignedNodeId,
-            });
-            if (parentId === assignedNodeId) {
-              // At buffer root boundary - can't outdent further
-              return;
-            }
-          }
-        }
-
-        const moved = yield* Match.value(action).pipe(
-          Match.when("swapUp", () => Block.swap(nodeId, "up")),
-          Match.when("swapDown", () => Block.swap(nodeId, "down")),
-          Match.when("first", () => Block.moveToFirst(nodeId)),
-          Match.when("last", () => Block.moveToLast(nodeId)),
-          Match.exhaustive,
-        );
-        if (moved) {
-          // Re-set selection to trigger ancestor expansion for new tree position
-          const Buffer = yield* BufferT;
-          const selection = yield* Buffer.getSelection(bufferId);
-          yield* Buffer.setSelection(bufferId, selection);
-          yield* waitForDomAndRefocus;
-        }
-      }).pipe(Effect.ensuring(Effect.sync(() => (isMoving = false)))),
-    );
-  };
-
+  // Only handles type removal - merge logic is in blockActionHandler
   const handleBackspaceAtStart = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-
-        // Check if any active type wants to be removed on backspace at start
         for (const def of getActiveDefinitions()) {
           if (def.backspace?.removeTypeAtStart) {
             const Type = yield* TypeT;
@@ -614,404 +404,6 @@ export default function Block({
             return;
           }
         }
-
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-
-        const result = yield* Buffer.mergeBackward(bufferId, nodeId);
-        if (Option.isNone(result)) return;
-
-        const { targetNodeId, cursorOffset, isTitle } = result.value;
-        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
-
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(targetElementId, cursorOffset),
-        );
-
-        if (isTitle) {
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
-        } else {
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetElementId }),
-          );
-        }
-      }),
-    );
-  };
-
-  const handleDeleteAtEnd = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Buffer = yield* BufferT;
-
-        const result = yield* Buffer.mergeForward(bufferId, nodeId);
-        if (Option.isNone(result)) return;
-
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(blockId, result.value.cursorOffset),
-        );
-      }),
-    );
-  };
-
-  const handleForceDelete = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Block = yield* BlockT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-        const Store = yield* StoreT;
-        const Node = yield* NodeT;
-        const Yjs = yield* YjsT;
-
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const rootNodeId = Option.isSome(bufferDoc)
-          ? (bufferDoc.value.assignedNodeId as Id.Node)
-          : null;
-
-        // Collect all descendants BEFORE deletion (they'll be gone from DB after)
-        const descendants = yield* Node.getAllDescendants(nodeId);
-        const allNodesToDelete = [nodeId, ...descendants];
-
-        // Find focus target before deletion
-        const prevNodeOpt = yield* Block.findPreviousNode(nodeId, bufferId);
-        const focusNodeId = Option.isSome(prevNodeOpt)
-          ? prevNodeOpt.value
-          : rootNodeId;
-
-        if (!focusNodeId) return;
-
-        // Delete the node (materializer cascades to descendants in DB)
-        yield* Node.deleteNode(nodeId);
-
-        // Clean up Yjs text for all deleted nodes
-        for (const deletedId of allNodesToDelete) {
-          Yjs.deleteText(deletedId);
-        }
-
-        // Set cursor at end of focus target
-        const targetYtext = Yjs.getText(focusNodeId);
-        const cursorOffset = targetYtext.length;
-        const focusElementId = Id.makeBufferBlockId(bufferId, focusNodeId);
-
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(focusElementId, cursorOffset),
-        );
-
-        // Update active element
-        if (focusNodeId === rootNodeId) {
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
-        } else {
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: focusElementId }),
-          );
-        }
-      }),
-    );
-  };
-
-  const handleArrowLeftAtStart = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Block = yield* BlockT;
-        const Store = yield* StoreT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-        const Yjs = yield* YjsT;
-
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const rootNodeId = Option.isSome(bufferDoc)
-          ? bufferDoc.value.assignedNodeId
-          : null;
-
-        const targetOpt = yield* Block.findPreviousNode(nodeId, bufferId);
-        if (Option.isNone(targetOpt)) return;
-
-        const targetNodeId = targetOpt.value;
-        const targetYtext = Yjs.getText(targetNodeId);
-        const endPos = targetYtext.length;
-        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
-
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(targetElementId, endPos),
-        );
-
-        if (targetNodeId === rootNodeId) {
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
-        } else {
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetElementId }),
-          );
-        }
-      }),
-    );
-  };
-
-  const handleArrowRightAtEnd = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Block = yield* BlockT;
-        const Node = yield* NodeT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-
-        // If has visible children (expanded), go to first child
-        const children = yield* Node.getNodeChildren(nodeId);
-        if (children.length > 0 && store.isExpanded) {
-          const firstChildId = children[0]!;
-          const targetBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(targetBlockId, 0),
-          );
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
-          );
-          return;
-        }
-
-        // Otherwise (no children or collapsed), find next node in document order
-        const nextNodeOpt = yield* Block.findNextNode(nodeId);
-        if (Option.isNone(nextNodeOpt)) return;
-
-        const nextNodeId = nextNodeOpt.value;
-        const targetBlockId = Id.makeBufferBlockId(bufferId, nextNodeId);
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(targetBlockId, 0),
-        );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-      }),
-    );
-  };
-
-  const handleArrowUpOnFirstLine = (cursorGoalX: number) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Block = yield* BlockT;
-        const Store = yield* StoreT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-
-        // Preserve existing goalX if set (for chained arrow navigation)
-        const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX =
-          Option.isSome(existingSelection) &&
-          existingSelection.value.goalX != null
-            ? existingSelection.value.goalX
-            : cursorGoalX;
-
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const rootNodeId = Option.isSome(bufferDoc)
-          ? bufferDoc.value.assignedNodeId
-          : null;
-
-        const targetOpt = yield* Block.findPreviousNode(nodeId, bufferId);
-        if (Option.isNone(targetOpt)) return;
-
-        const targetNodeId = targetOpt.value;
-        const targetElementId = Id.makeBufferBlockId(bufferId, targetNodeId);
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(targetElementId, 0, { goalX, goalLine: "last" }),
-        );
-
-        if (targetNodeId === rootNodeId) {
-          yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
-          );
-        } else {
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetElementId }),
-          );
-        }
-      }),
-    );
-  };
-
-  const handleArrowDownOnLastLine = (cursorGoalX: number) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Block = yield* BlockT;
-        const Node = yield* NodeT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-
-        // Preserve existing goalX if set (for chained arrow navigation)
-        const existingSelection = yield* Buffer.getSelection(bufferId);
-        const goalX =
-          Option.isSome(existingSelection) &&
-          existingSelection.value.goalX != null
-            ? existingSelection.value.goalX
-            : cursorGoalX;
-
-        yield* Effect.logDebug(
-          "[Block.handleArrowDownOnLastLine] Entered",
-        ).pipe(
-          Effect.annotateLogs({
-            blockId,
-            nodeId,
-            cursorGoalX,
-            resolvedGoalX: goalX,
-          }),
-        );
-
-        // If has visible children (expanded), go to first child
-        const children = yield* Node.getNodeChildren(nodeId);
-        if (children.length > 0 && store.isExpanded) {
-          const firstChildId = children[0]!;
-          const targetBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
-          yield* Effect.logDebug(
-            "[Block.handleArrowDownOnLastLine] Has visible children, going to first child",
-          ).pipe(
-            Effect.annotateLogs({
-              childrenCount: children.length,
-              targetNodeId: firstChildId,
-              isExpanded: store.isExpanded,
-            }),
-          );
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(targetBlockId, 0, {
-              goalX,
-              goalLine: "first",
-            }),
-          );
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
-          );
-          return;
-        }
-
-        // Find next node in document order (no children or collapsed)
-        const nextNodeOpt = yield* Block.findNextNode(nodeId);
-        yield* Effect.logDebug(
-          "[Block.handleArrowDownOnLastLine] findNextNode result",
-        ).pipe(
-          Effect.annotateLogs({
-            hasNext: Option.isSome(nextNodeOpt),
-            nextNodeId: Option.getOrNull(nextNodeOpt),
-          }),
-        );
-
-        if (Option.isNone(nextNodeOpt)) {
-          // No next block - move cursor to end of current block
-          const Yjs = yield* YjsT;
-          const textLength = Yjs.getText(nodeId).length;
-          yield* Effect.logDebug(
-            "[Block.handleArrowDownOnLastLine] No next block, staying at end",
-          ).pipe(Effect.annotateLogs({ textLength }));
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(blockId, textLength),
-          );
-          return;
-        }
-
-        const nextNodeId = nextNodeOpt.value;
-        const targetBlockId = Id.makeBufferBlockId(bufferId, nextNodeId);
-        yield* Effect.logDebug(
-          "[Block.handleArrowDownOnLastLine] Moving to next node",
-        ).pipe(Effect.annotateLogs({ nextNodeId, targetBlockId }));
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
-        );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-      }),
-    );
-  };
-
-  const handleZoomIn = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Navigation = yield* NavigationT;
-        const Window = yield* WindowT;
-        yield* Navigation.navigateTo(nodeId);
-        yield* Window.setActiveElement(
-          Option.some({ type: "title" as const, bufferId }),
-        );
-      }),
-    );
-  };
-
-  const handleDetach = () => {
-    const link = titleLink();
-    if (!link) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TitleLink = yield* TitleLinkT;
-        yield* TitleLink.detach(nodeId, link.sourceId);
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Block] Detach failed").pipe(
-            Effect.annotateLogs({ blockId, nodeId, error: String(err) }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
-    );
-  };
-
-  const handleZoomOut = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Store = yield* StoreT;
-        const Node = yield* NodeT;
-        const Navigation = yield* NavigationT;
-        const Window = yield* WindowT;
-        const Block = yield* BlockT;
-
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        if (Option.isNone(bufferDoc) || !bufferDoc.value.assignedNodeId) return;
-
-        const rootNodeId = Id.Node.make(bufferDoc.value.assignedNodeId);
-        const parentId = yield* Node.getParent(rootNodeId).pipe(
-          Effect.catchTag("NodeHasNoParentError", () =>
-            Effect.succeed<Id.Node | null>(null),
-          ),
-        );
-
-        if (!parentId) return;
-
-        yield* Navigation.navigateTo(parentId);
-
-        // Check if the previous root (now a block) is expanded
-        const rootBlockId = Id.makeBufferBlockId(bufferId, rootNodeId);
-        const isRootExpanded = yield* Block.isExpanded(rootBlockId);
-
-        // If expanded, select the original node; if collapsed, select the root block
-        const targetBlockId = isRootExpanded
-          ? Id.makeBufferBlockId(bufferId, nodeId)
-          : rootBlockId;
-
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-        // Block scrolls itself on mount via ActiveElementContext
       }),
     );
   };
@@ -1035,8 +427,7 @@ export default function Block({
     runtime
       .runPromise(
         Effect.gen(function* () {
-          const bufferId = yield* getBufferIdFromBlockId(blockId);
-          const Window = yield* WindowT;
+                    const Window = yield* WindowT;
           const Buffer = yield* BufferT;
 
           // Switch to block selection mode
@@ -1115,145 +506,6 @@ export default function Block({
     return true;
   };
 
-  // Property trigger handler: "> " at start creates a property and deletes this block
-  const handlePropertyTrigger = (): boolean => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        const Buffer = yield* BufferT;
-        const View = yield* ViewT;
-        const Property = yield* PropertyT;
-        const Node = yield* NodeT;
-
-        // Get the page (root node) for this buffer
-        const pageId = yield* Buffer.getAssignedNodeId(bufferId);
-        if (pageId === null) return;
-
-        // Get or create view for the page
-        const viewId = yield* View.getOrCreateView(pageId);
-
-        // Create property linked to the view
-        yield* Property.createProperty(viewId);
-
-        // Delete the triggering block
-        yield* Node.deleteNode(nodeId);
-      }),
-    );
-    return true;
-  };
-
-  // Type picker handlers
-  const handleTypePickerOpen = (
-    position: { x: number; y: number },
-    from: number,
-  ) => {
-    setPickerState({ visible: true, position, from });
-  };
-
-  const handleTypePickerClose = () => {
-    setPickerState(null);
-  };
-
-  const handleTypePickerSelect = (typeId: Id.Node) => {
-    const state = pickerState();
-    if (!state) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
-
-        yield* TypePicker.applyType(nodeId, typeId);
-
-        const cursorPos = store.selection?.head ?? getYtext().length;
-        const deleteLength = cursorPos - state.from;
-        if (deleteLength > 0) {
-          getYtext().delete(state.from, deleteLength);
-        }
-
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { elementId: blockId },
-            anchorOffset: state.from,
-            focus: { elementId: blockId },
-            focusOffset: state.from,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-
-        yield* Effect.logDebug("[Block] Type selected via picker").pipe(
-          Effect.annotateLogs({ blockId, nodeId, typeId }),
-        );
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Block] Type picker select failed").pipe(
-            Effect.annotateLogs({
-              blockId,
-              nodeId,
-              typeId,
-              error: String(err),
-            }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
-    );
-
-    setPickerState(null);
-  };
-
-  const handleTypePickerCreate = (name: string) => {
-    const state = pickerState();
-    if (!state) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
-
-        const typeId = yield* TypePicker.createType(name);
-        yield* TypePicker.applyType(nodeId, typeId);
-
-        const cursorPos = store.selection?.head ?? getYtext().length;
-        const deleteLength = cursorPos - state.from;
-        if (deleteLength > 0) {
-          getYtext().delete(state.from, deleteLength);
-        }
-
-        const bufferId = yield* getBufferIdFromBlockId(blockId);
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { elementId: blockId },
-            anchorOffset: state.from,
-            focus: { elementId: blockId },
-            focusOffset: state.from,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-
-        yield* Effect.logDebug("[Block] Type created via picker").pipe(
-          Effect.annotateLogs({ blockId, nodeId, typeId, name }),
-        );
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Block] Type picker create failed").pipe(
-            Effect.annotateLogs({ blockId, nodeId, name, error: String(err) }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
-    );
-
-    setPickerState(null);
-  };
-
   const handleAction = (action: EditorAction): boolean | void => {
     // Give parent a chance to handle tree navigation actions first
     if (parentOnAction) {
@@ -1266,6 +518,8 @@ export default function Block({
       if (handled === true) return true;
     }
 
+    // Block-local action handlers. Tree navigation actions (Tab, Navigate, Move, etc.)
+    // are handled by the parent (blockActionHandler.ts) and should never reach here.
     return Match.value(action).pipe(
       Match.tags({
         Enter: ({ info }) => {
@@ -1288,23 +542,11 @@ export default function Block({
           }
           return handleEnter(info);
         },
-        Tab: () => handleTab(),
-        ShiftTab: () => handleShiftTab(),
+        // Type removal on backspace - merge logic is in blockActionHandler
         BackspaceAtStart: () => handleBackspaceAtStart(),
-        DeleteAtEnd: () => handleDeleteAtEnd(),
-        ForceDelete: () => handleForceDelete(),
-        Navigate: ({ direction, goalX }) =>
-          Match.value(direction).pipe(
-            Match.when("left", () => handleArrowLeftAtStart()),
-            Match.when("right", () => handleArrowRightAtEnd()),
-            Match.when("up", () => handleArrowUpOnFirstLine(goalX ?? 0)),
-            Match.when("down", () => handleArrowDownOnLastLine(goalX ?? 0)),
-            Match.exhaustive,
-          ),
         SelectionChange: ({ selection }) => handleSelectionChange(selection),
         VerticalMove: ({ anchor, head, assoc, goalX }) => {
           // Update model with selection + preserved goalX (for intra-block vertical movement)
-          const bufferId = runtime.runSync(getBufferIdFromBlockId(blockId));
           runtime.runPromise(
             Effect.gen(function* () {
               const Buffer = yield* BufferT;
@@ -1332,26 +574,19 @@ export default function Block({
           }
           enterBlockSelectionMode();
         },
-        ZoomIn: () => handleZoomIn(),
-        ZoomOut: () => handleZoomOut(),
-        BlockSelect: () => enterBlockSelectionMode(),
-        Move: ({ action: moveAction }) => handleMove(moveAction),
         TypeTrigger: ({ typeId, trigger }) =>
           handleTypeTrigger(typeId, trigger),
-        PropertyTrigger: () => handlePropertyTrigger(),
         TypePickerOpen: ({ position, from }) =>
           handleTypePickerOpen(position, from),
         TypePickerUpdate: () => {
           // Query is computed reactively from textContent and selection
         },
         TypePickerClose: () => handleTypePickerClose(),
-        // Expand: toggle expand one level (no navigation)
         Expand: () => {
           runtime.runPromise(
             Effect.gen(function* () {
               const Block = yield* BlockT;
               const Node = yield* NodeT;
-              const bufferId = yield* getBufferIdFromBlockId(blockId);
 
               // Level-by-level expand: expand self first, then children
               const expandOneLevel = (nId: Id.Node): Effect.Effect<boolean> =>
@@ -1382,7 +617,8 @@ export default function Block({
           runtime.runPromise(BlockType.toggleCheckbox(nodeId));
         },
       }),
-      Match.exhaustive,
+      // Tree navigation actions are handled by parent (blockActionHandler.ts)
+      Match.orElse(() => undefined),
     );
   };
 

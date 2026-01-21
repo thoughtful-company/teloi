@@ -1,7 +1,8 @@
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { YjsT } from "@/services/external/Yjs";
-import { Effect, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
+import { getPropertyConfig } from "./getPropertyConfig";
 import { PropertyInfo } from "./index";
 
 /**
@@ -32,14 +33,9 @@ export const subscribePropertiesForView = (viewId: Id.Node) =>
           const ytext = Yjs.getText(propertyId);
           const title = ytext.toString();
 
-          // Check if property is bound via PROPERTY_USES_TUPLE
-          const usesTupleTuples = yield* Tuple.findByPosition(
-            System.PROPERTY_USES_TUPLE,
-            0,
-            propertyId,
-          );
+          const configOpt = yield* getPropertyConfig(propertyId, Tuple);
 
-          if (usesTupleTuples.length === 0) {
+          if (Option.isNone(configOpt)) {
             // Unbound property
             properties.push({
               id: propertyId,
@@ -47,25 +43,8 @@ export const subscribePropertiesForView = (viewId: Id.Node) =>
               isBound: false,
             });
           } else {
-            // Bound property - get tuple type and config
-            const tupleTypeId = usesTupleTuples[0]!.members[1] as Id.Node;
-
-            // Get position config from PROPERTY_CONFIG
-            const configTuples = yield* Tuple.findByPosition(
-              System.PROPERTY_CONFIG,
-              0,
-              propertyId,
-            );
-
-            let hostPosition: 0 | 1 = 0;
-            let displayPosition: 0 | 1 = 1;
-
-            if (configTuples.length > 0) {
-              const config = configTuples[0]!;
-              hostPosition = config.members[1] === System.POSITION_0 ? 0 : 1;
-              displayPosition = config.members[2] === System.POSITION_0 ? 0 : 1;
-            }
-
+            // Bound property
+            const { tupleTypeId, hostPosition, displayPosition } = configOpt.value;
             properties.push({
               id: propertyId,
               title,

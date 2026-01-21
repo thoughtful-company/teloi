@@ -7,6 +7,7 @@ import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
+import { forceDelete } from "./forceDelete";
 import { get } from "./get";
 import { indent } from "./indent";
 import { mergeBackward, type MergeResult } from "./mergeBackward";
@@ -57,7 +58,6 @@ export class BufferT extends Context.Tag("BufferT")<
 
     // Structural operations
     indent: (
-      bufferId: Id.Buffer,
       nodeIds: readonly Id.Node[],
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     outdent: (
@@ -72,6 +72,10 @@ export class BufferT extends Context.Tag("BufferT")<
       bufferId: Id.Buffer,
       nodeId: Id.Node,
     ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
+    forceDelete: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node,
+    ) => Effect.Effect<Option.Option<MergeResult>, never>;
   }
 >() {}
 
@@ -118,7 +122,7 @@ export const BufferLive = Layer.effect(
         ).pipe(Effect.provide(context)),
 
       // Structural operations
-      indent: (_bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>
+      indent: (nodeIds: readonly Id.Node[]) =>
         indent(nodeIds).pipe(Effect.provideService(NodeT, Node)),
       outdent: (bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>
         outdent(bufferId, nodeIds).pipe(Effect.provide(context)),
@@ -126,6 +130,8 @@ export const BufferLive = Layer.effect(
         mergeBackward(bufferId, nodeId).pipe(Effect.provide(context)),
       mergeForward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
         mergeForward(bufferId, nodeId).pipe(Effect.provide(context)),
+      forceDelete: (bufferId: Id.Buffer, nodeId: Id.Node) =>
+        forceDelete(bufferId, nodeId).pipe(Effect.provide(context)),
     };
   }),
 );

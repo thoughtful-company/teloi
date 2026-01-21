@@ -113,13 +113,16 @@ function GhostBlock(props: GhostBlockProps) {
     });
   });
 
-  // Handle requestFocus prop reactively (e.g., ArrowRight from property name)
-  createEffect(() => {
+  // Derive "should show editor" from both local state and requestFocus prop
+  const shouldShowEditor = () => isActive() || props.requestFocus;
+
+  // Derive selection: use prop-requested selection when requestFocus is true
+  const getEffectiveSelection = () => {
     if (props.requestFocus) {
-      setIsActive(true);
-      setSelection({ anchor: 0, head: 0, goalX: null, goalLine: null, assoc: 0 });
+      return { anchor: 0, head: 0, goalX: null, goalLine: null, assoc: 0 as const };
     }
-  });
+    return selection();
+  };
 
   const handleFocus = (e: MouseEvent) => {
     clickCoords = { x: e.clientX, y: e.clientY };
@@ -207,7 +210,7 @@ function GhostBlock(props: GhostBlockProps) {
     resolveSelectionStrategy({
       clickCoords,
       domSelection: null,
-      modelSelection: selection(),
+      modelSelection: getEffectiveSelection(),
     });
 
   return (
@@ -218,7 +221,7 @@ function GhostBlock(props: GhostBlockProps) {
       onClick={handleFocus}
     >
       <Show
-        when={isActive()}
+        when={shouldShowEditor()}
         fallback={
           <span class="text-neutral-400 italic cursor-text">click to add...</span>
         }
@@ -228,7 +231,7 @@ function GhostBlock(props: GhostBlockProps) {
           undoManager={undoManager}
           onAction={handleAction}
           initialStrategy={getInitialStrategy()}
-          selection={selection()}
+          selection={getEffectiveSelection()}
         />
       </Show>
     </div>
@@ -380,6 +383,9 @@ export default function PropertySection(props: PropertySectionProps) {
   // Auto-focus when activeElement matches this property
   createEffect(() => {
     const activeEl = getActiveElement();
+    // Don't steal focus when ghost block is being focused
+    if (ghostFocusRequested()) return;
+
     if (
       activeEl?.type === "property" &&
       activeEl.propertyId === props.propertyId &&
@@ -544,41 +550,39 @@ export default function PropertySection(props: PropertySectionProps) {
   };
 
   const handleArrowRightAtEnd = () => {
+    // Use local signal for already-bound check (synchronous path)
+    if (isBound()) {
+      const tuples = linkedTuples();
+      if (tuples.length > 0) {
+        // Focus first linked block
+        focusLinkedTuple(0);
+      } else {
+        // No linked blocks - focus ghost block
+        setGhostFocusRequested(true);
+      }
+      return;
+    }
+
+    // Unbound → trigger async quick-create flow
     runtime.runPromise(
       Effect.gen(function* () {
-        // Check if property is already bound
-        const bound = yield* checkIsBound();
-
-        if (bound) {
-          // Already bound - navigate to linked blocks or ghost
-          const tuples = linkedTuples();
-          if (tuples.length > 0) {
-            // Focus first linked block
-            yield* Effect.sync(() => focusLinkedTuple(0));
-          } else {
-            // No linked blocks - focus ghost block (don't create yet!)
-            yield* Effect.sync(() => setGhostFocusRequested(true));
-          }
-          return;
-        }
-
-        // Unbound + at end → trigger quick-create (binds property, shows ghost)
         const Property = yield* PropertyT;
         const tupleTypeId = yield* Property.quickCreateTupleType(
           props.propertyId,
-          props.pageId,
         );
 
-        // Reload linked tuples (will set isBound=true, linkedTuples=[])
-        yield* Effect.sync(() => loadLinkedTuples());
+        // Set focus request BEFORE loadLinkedTuples to prevent auto-focus effect
+        // from stealing focus when re-render happens
+        yield* Effect.sync(() => setGhostFocusRequested(true));
 
-        // Wait for DOM update, then focus the ghost block
+        // Reload linked tuples (will set isBound=true, linkedTuples=[])
+        // Must use Effect.promise to actually await the Promise returned by loadLinkedTuples
+        yield* Effect.promise(() => loadLinkedTuples());
+
+        // Wait for DOM update (for GhostBlock to mount and focus)
         yield* Effect.promise(
           () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
         );
-
-        // Focus ghost block (user types to create first linked block)
-        yield* Effect.sync(() => setGhostFocusRequested(true));
 
         yield* Effect.logDebug(
           "[PropertySection] Quick-created tuple type, ghost block ready",
@@ -705,7 +709,6 @@ export default function PropertySection(props: PropertySectionProps) {
             {(tuple) => (
               <Block
                 blockId={makePropertyBlockId(tuple.tupleId)}
-                nodeId={tuple.displayNodeId}
                 onAction={linkedBlockActionHandler}
               />
             )}

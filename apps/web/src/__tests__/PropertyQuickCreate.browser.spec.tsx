@@ -5,6 +5,7 @@ import { StoreT } from "@/services/external/Store";
 import { YjsT } from "@/services/external/Yjs";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
+import EditorBuffer from "@/ui/EditorBuffer";
 import PropertySection from "@/ui/PropertySection";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
@@ -459,6 +460,63 @@ describe("Property Quick-Create", () => {
         expect(tupleTypeCountAfter).toBe(tupleTypeCountBefore);
       }).pipe(runtime.runPromise);
     });
+
+    it("navigates to ghost block when bound property has no linked blocks", async () => {
+      await Effect.gen(function* () {
+        const Property = yield* PropertyT;
+        const Store = yield* StoreT;
+        const Yjs = yield* YjsT;
+
+        const { rootNodeId, propertyId, bufferId } =
+          yield* createUnboundProperty("EmptyBoundProp");
+
+        // Create a tuple type and bind the property to it
+        // This simulates a property that was previously set up via quick-create
+        // but has no linked blocks yet
+        const tupleTypeId = Id.Node.make(`test-tuple-type-${Date.now()}`);
+        yield* Store.commit(
+          events.nodeCreated({
+            timestamp: Date.now(),
+            data: { nodeId: tupleTypeId, parentId: System.SCHEMA },
+          }),
+        );
+        Yjs.getText(tupleTypeId).insert(0, "ExistingTupleType");
+
+        // Bind property to the tuple type (but do NOT create any linked blocks)
+        yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
+
+        render(() => (
+          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+        ));
+
+        // Click property name to focus
+        yield* clickPropertyName();
+
+        // Move to end and press ArrowRight - should navigate to ghost block
+        yield* When.USER_PRESSES("{End}");
+        yield* When.USER_PRESSES("{ArrowRight}");
+
+        // Wait for ghost block to appear and be focused
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              // Ghost block should be visible
+              const ghostBlock = document.querySelector(
+                "[data-testid='ghost-block']",
+              );
+              expect(ghostBlock).toBeTruthy();
+
+              // Ghost block should have a focused CodeMirror editor
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
+              expect(focusedEditor).toBeTruthy();
+            },
+            { timeout: 3000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
   });
 
   describe("Arrow Right mid-text moves cursor normally (no trigger)", () => {
@@ -501,6 +559,89 @@ describe("Property Quick-Create", () => {
         ).length;
 
         expect(tupleTypeCountAfter).toBe(tupleTypeCountBefore);
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("End-to-end flow via EditorBuffer", () => {
+    it("typing '> ' then property name then ArrowRight shows focused ghost block", async () => {
+      await Effect.gen(function* () {
+        // Setup: buffer with a child node (the trigger target)
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Test Page",
+          [{ text: "" }],
+        );
+        const childNodeId = childNodeIds[0];
+        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+
+        render(() => <EditorBuffer bufferId={bufferId} />);
+
+        // Wait for block to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const block = document.querySelector(
+                `[data-element-id="${childBlockId}"]`,
+              );
+              expect(block).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Click the block to focus it
+        yield* When.USER_CLICKS_BLOCK(childBlockId);
+
+        // Type "> " to trigger property creation (this creates an unbound property)
+        yield* When.USER_PRESSES(">");
+        yield* When.USER_PRESSES(" ");
+
+        // Wait for property section to appear and property name to be focused
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const propertySection = document.querySelector(
+                '[data-testid="property-section"]',
+              );
+              expect(propertySection).toBeTruthy();
+              const focusedEditor = propertySection!.querySelector(
+                ".property-name .cm-editor.cm-focused",
+              );
+              expect(focusedEditor).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Type a property name
+        yield* When.USER_PRESSES("Project");
+
+        // Ensure cursor is at end, then press ArrowRight to trigger quick-create
+        yield* When.USER_PRESSES("{End}");
+        yield* When.USER_PRESSES("{ArrowRight}");
+
+        // Assert: ghost block should be visible AND focused
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              // Ghost block should be visible
+              const ghostBlock = document.querySelector(
+                "[data-testid='ghost-block']",
+              );
+              expect(ghostBlock, "Ghost block should be visible").toBeTruthy();
+
+              // Ghost block should have a focused CodeMirror editor
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
+              expect(
+                focusedEditor,
+                "Ghost block should have focused CodeMirror editor",
+              ).toBeTruthy();
+            },
+            { timeout: 3000 },
+          ),
+        );
       }).pipe(runtime.runPromise);
     });
   });

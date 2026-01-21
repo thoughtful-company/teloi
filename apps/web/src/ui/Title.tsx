@@ -2,10 +2,9 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
-import { TitleLinkT, type TitleLink } from "@/services/domain/TitleLink";
-import { YjsT } from "@/services/external/Yjs";
+import { useTitleLink } from "./hooks/useTitleLink";
+import { useTypePicker } from "./hooks/useTypePicker";
 import { BlockT } from "@/services/ui/Block";
-import { BufferT } from "@/services/ui/Buffer";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import { NavigationT } from "@/services/ui/Navigation";
@@ -16,7 +15,7 @@ import {
   updateEditorSelection,
 } from "@/utils/selectionStrategy";
 import { Effect, Match, Option, Stream } from "effect";
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { onCleanup, onMount, Show } from "solid-js";
 import TextEditor, {
   type EditorAction,
   type SelectionInfo,
@@ -38,36 +37,21 @@ interface TitleProps {
 export default function Title({ bufferId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
 
-  // Get Yjs service for text access
-  const Yjs = runtime.runSync(YjsT);
+  // Title link: may display another node's text based on tuple relationships
+  const {
+    titleMode,
+    getYtext,
+    getUndoManager,
+    textContent,
+    start: startTitleLink,
+    handleDetach,
+  } = useTitleLink({ nodeId, runtime });
 
-  // Title link state: which node's text to display and how
-  const [titleLink, setTitleLink] = createSignal<TitleLink | null>(null);
-
-  // Compute display node: use source if linked, otherwise self
-  const displayNodeId = () => titleLink()?.sourceId ?? nodeId;
-  // Title link mode for readonly/detach handling
-  const titleMode = () => titleLink()?.mode ?? null;
-
-  // Get Y.Text for the display node (reactive based on title link)
-  const getYtext = () => Yjs.getText(displayNodeId());
-  const getUndoManager = () => Yjs.getUndoManager(displayNodeId());
-
-  // Reactive text content signal for unfocused view
-  const [textContent, setTextContent] = createSignal(getYtext().toString());
-
-  // Combined stream for title state and title link
+  // Title active state stream
   const titleStream = Stream.unwrap(
     Effect.gen(function* () {
       const Title = yield* TitleT;
       return yield* Title.subscribe(bufferId, nodeId);
-    }),
-  );
-
-  const titleLinkStream = Stream.unwrap(
-    Effect.gen(function* () {
-      const TitleLink = yield* TitleLinkT;
-      return yield* TitleLink.subscribe(nodeId);
     }),
   );
 
@@ -80,48 +64,32 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     },
   });
 
-  const { start: startTitleLink } = bindStreamToStore({
-    stream: titleLinkStream,
-    project: (link) => {
-      setTitleLink(link);
-      // Update text content when display node changes
-      setTextContent(Yjs.getText(link?.sourceId ?? nodeId).toString());
-      return { link };
-    },
-    initial: { link: null as TitleLink | null },
+  // Type picker
+  const {
+    pickerState,
+    getPickerQuery,
+    handleTypePickerOpen,
+    handleTypePickerClose,
+    handleTypePickerSelect,
+    handleTypePickerCreate,
+  } = useTypePicker({
+    nodeId,
+    bufferId,
+    elementId: IdT.makeBufferBlockId(bufferId, nodeId),
+    getYtext,
+    getSelection: () => store.selection,
+    textContent,
+    runtime,
+    logPrefix: "[Title]",
   });
-
-  // Type picker state
-  const [pickerState, setPickerState] = createSignal<{
-    visible: boolean;
-    position: { x: number; y: number };
-    from: number;
-  } | null>(null);
-
-  const getPickerQuery = () => {
-    const state = pickerState();
-    if (!state) return "";
-    const text = textContent();
-    const cursorPos = store.selection?.head ?? text.length;
-    return text.slice(state.from + 1, cursorPos);
-  };
 
   onMount(() => {
     const dispose = start(runtime);
-    const disposeTitleLink = startTitleLink(runtime);
-
-    // Track current ytext observer for cleanup when display node changes
-    const currentYtext = getYtext();
-    const observer = () => setTextContent(getYtext().toString());
-    currentYtext.observe(observer);
-
-    // Note: The title link subscription's project function handles text content updates
-    // when the display node changes
+    const disposeTitleLink = startTitleLink();
 
     onCleanup(() => {
       dispose();
       disposeTitleLink();
-      currentYtext.unobserve(observer);
     });
   });
 
@@ -158,117 +126,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
-  const handleTypePickerOpen = (
-    position: { x: number; y: number },
-    from: number,
-  ) => {
-    setPickerState({ visible: true, position, from });
-  };
-
-  const handleTypePickerClose = () => {
-    setPickerState(null);
-  };
-
-  const handleTypePickerSelect = (typeId: Id.Node) => {
-    const state = pickerState();
-    if (!state) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
-
-        yield* TypePicker.applyType(nodeId, typeId);
-
-        const cursorPos = store.selection?.head ?? getYtext().length;
-        const deleteLength = cursorPos - state.from;
-        if (deleteLength > 0) {
-          getYtext().delete(state.from, deleteLength);
-        }
-
-        const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { elementId },
-            anchorOffset: state.from,
-            focus: { elementId },
-            focusOffset: state.from,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-
-        yield* Effect.logDebug("[Title] Type selected via picker").pipe(
-          Effect.annotateLogs({ bufferId, nodeId, typeId }),
-        );
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Title] Type picker select failed").pipe(
-            Effect.annotateLogs({
-              bufferId,
-              nodeId,
-              typeId,
-              error: String(err),
-            }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
-    );
-
-    setPickerState(null);
-  };
-
-  const handleTypePickerCreate = (name: string) => {
-    const state = pickerState();
-    if (!state) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
-
-        const typeId = yield* TypePicker.createType(name);
-        yield* TypePicker.applyType(nodeId, typeId);
-
-        const cursorPos = store.selection?.head ?? getYtext().length;
-        const deleteLength = cursorPos - state.from;
-        if (deleteLength > 0) {
-          getYtext().delete(state.from, deleteLength);
-        }
-
-        const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { elementId },
-            anchorOffset: state.from,
-            focus: { elementId },
-            focusOffset: state.from,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-
-        yield* Effect.logDebug("[Title] Type created via picker").pipe(
-          Effect.annotateLogs({ bufferId, nodeId, typeId, name }),
-        );
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Title] Type picker create failed").pipe(
-            Effect.annotateLogs({ bufferId, nodeId, name, error: String(err) }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
-    );
-
-    setPickerState(null);
-  };
-
   const handleZoomOut = () => {
     runtime.runPromise(
       Effect.gen(function* () {
@@ -293,25 +150,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         );
         // Block scrolls itself on mount via ActiveElementContext
       }),
-    );
-  };
-
-  const handleDetach = () => {
-    const link = titleLink();
-    if (!link) return;
-
-    runtime.runFork(
-      Effect.gen(function* () {
-        const TitleLink = yield* TitleLinkT;
-        yield* TitleLink.detach(nodeId, link.sourceId);
-      }).pipe(
-        Effect.tapError((err) =>
-          Effect.logError("[Title] Detach failed").pipe(
-            Effect.annotateLogs({ bufferId, nodeId, error: String(err) }),
-          ),
-        ),
-        Effect.catchAll(() => Effect.void),
-      ),
     );
   };
 
