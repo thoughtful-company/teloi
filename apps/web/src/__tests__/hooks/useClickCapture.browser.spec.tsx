@@ -1,6 +1,6 @@
 import { createRoot, createSignal } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { useClickCapture } from "./useClickCapture";
+import { useClickCapture } from "@/ui/hooks/useClickCapture";
 
 /** Wait for SolidJS effects to flush (they run in microtasks) */
 const flushEffects = () =>

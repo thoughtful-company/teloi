@@ -9,6 +9,7 @@ import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
 import { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
+import { expandOneLevel } from "./expand";
 import {
   findDeepestLastChild,
   findNextNode,
@@ -70,6 +71,12 @@ export class BlockT extends Context.Tag("BlockT")<
     ) => Effect.Effect<boolean, never>;
     moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
     moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+
+    // Expand/collapse
+    expandOneLevel: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node,
+    ) => Effect.Effect<boolean, never>;
   }
 >() {}
 
@@ -112,6 +119,9 @@ export const BlockLive = Layer.effect(
       swap: withContext(swap)(context),
       moveToFirst: withContext(moveToFirst)(context),
       moveToLast: withContext(moveToLast)(context),
+
+      // Expand/collapse
+      expandOneLevel: withContext(expandOneLevel)(context),
     };
   }),
 );
