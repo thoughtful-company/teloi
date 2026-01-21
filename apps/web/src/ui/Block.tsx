@@ -2,6 +2,7 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { useClickCapture } from "./hooks/useClickCapture";
+import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
 import { useTypePicker } from "./hooks/useTypePicker";
 import { TypeT } from "@/services/domain/Type";
@@ -19,7 +20,6 @@ import {
 } from "@/utils/selectionStrategy";
 import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
-  createEffect,
   createSignal,
   For,
   onCleanup,
@@ -245,108 +245,41 @@ export default function Block({
     });
   });
 
-  // Block-specific mutable state (not shared with Title)
-  let initialSelection: { anchor: number; head: number } | null = null;
   // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
   let isTransitioningToBlockSelection = false;
 
-  // Clear initialSelection when block becomes inactive (clickCoords handled by useClickCapture)
-  createEffect(() => {
-    if (!store.isActive) {
-      initialSelection = null;
-    }
-  });
-
-  const handleFocus = (e: MouseEvent) => {
-    clickCapture.capture(e);
-    initialSelection = null;
-
-    const domSelection = window.getSelection();
-    if (
-      domSelection &&
-      domSelection.rangeCount > 0 &&
-      !domSelection.isCollapsed
-    ) {
-      const target = e.currentTarget as HTMLElement;
-      const paragraph = target.querySelector("p");
-
-      if (
-        paragraph &&
-        paragraph.contains(domSelection.anchorNode) &&
-        paragraph.contains(domSelection.focusNode)
-      ) {
-        initialSelection = {
-          anchor: domSelection.anchorOffset,
-          head: domSelection.focusOffset,
-        };
-      }
-    }
-
-    runtime.runPromise(
-      Effect.gen(function* () {
-                const Window = yield* WindowT;
+  const { handleFocus, handleBlur, getInitialSelection, clearInitialSelection } =
+    useFocusBlur({
+      isActive: () => store.isActive,
+      clickCapture,
+      runtime,
+      onFocusEffect: Effect.gen(function* () {
+        const Window = yield* WindowT;
         const Buffer = yield* BufferT;
-
         // Clear block selection when entering text editing mode
         yield* Buffer.setBlockSelection(bufferId, [], nodeId);
-
         yield* Window.setActiveElement(
           Option.some({ type: "block" as const, id: blockId }),
         );
       }),
-    );
-  };
-
-  // Text changes are now handled directly by Yjs via yCollab extension
-
-  const handleSelectionChange = (selection: SelectionInfo) => {
-    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
-  };
-
-  const handleBlur = () => {
-    console.debug("[Block.handleBlur] Called", {
-      blockId,
-      hasFocus: document.hasFocus(),
-      isTransitioning: isTransitioningToBlockSelection,
-    });
-
-    // Don't clear selection when window loses focus (alt-tab, tab switch).
-    // Only clear when user clicks elsewhere within the document.
-    if (!document.hasFocus()) {
-      console.debug("[Block.handleBlur] Document not focused, returning");
-      return;
-    }
-
-    // Don't clear if we're transitioning to block selection mode (Escape was pressed)
-    if (isTransitioningToBlockSelection) {
-      console.debug(
-        "[Block.handleBlur] Transitioning to block selection, returning",
-      );
-      return;
-    }
-
-    runtime.runPromise(
-      Effect.gen(function* () {
-                const Buffer = yield* BufferT;
+      onBlurEffect: Effect.gen(function* () {
+        const Buffer = yield* BufferT;
         const Window = yield* WindowT;
-
         // Only clear selection and activeElement if still pointing to this block.
         // If navigating to another block, they already point there - don't clear.
         const selectionOpt = yield* Buffer.getSelection(bufferId);
         const sel = Option.getOrNull(selectionOpt);
-        // Compare full block IDs - works for both buffer and section blocks
         const selBlockId = sel ? sel.anchor.elementId : null;
-        console.debug("[Block.handleBlur] Checking selection", {
-          blockId,
-          selBlockId,
-          willClear: sel && selBlockId === blockId,
-        });
         if (sel && selBlockId === blockId) {
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Window.setActiveElement(Option.none());
         }
       }),
-    );
+      shouldSkipBlur: () => isTransitioningToBlockSelection,
+    });
+
+  const handleSelectionChange = (selection: SelectionInfo) => {
+    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
   };
 
   const handleEnter = (info: EnterKeyInfo) => {
@@ -423,7 +356,7 @@ export default function Block({
     // Set flag synchronously to prevent handleBlur from clearing activeElement
     isTransitioningToBlockSelection = true;
     // Clear captured selection so Enter returns cursor to model position, not old DOM position
-    initialSelection = null;
+    clearInitialSelection();
 
     runtime
       .runPromise(
@@ -654,7 +587,7 @@ export default function Block({
               onAction={handleAction}
               initialStrategy={resolveSelectionStrategy({
                 clickCoords: clickCapture.get(),
-                domSelection: initialSelection,
+                domSelection: getInitialSelection(),
                 modelSelection: store.selection,
               })}
               selection={store.selection}
