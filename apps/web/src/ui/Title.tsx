@@ -3,6 +3,7 @@ import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
 import { useClickCapture } from "./hooks/useClickCapture";
+import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
 import { useTypePicker } from "./hooks/useTypePicker";
 import { BlockT } from "@/services/ui/Block";
@@ -96,32 +97,21 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     });
   });
 
-  const handleFocus = (e: MouseEvent) => {
-    clickCapture.capture(e);
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Window = yield* WindowT;
-        yield* Window.setActiveElement(
-          Option.some({ type: "title" as const, bufferId }),
-        );
-      }),
-    );
-  };
-
-  const handleBlur = () => {
-    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
-    // Only clear when user clicks elsewhere within the document.
-    if (!document.hasFocus()) {
-      return;
-    }
-
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Title = yield* TitleT;
-        yield* Title.blur(bufferId);
-      }),
-    );
-  };
+  const { handleFocus, handleBlur, getInitialSelection } = useFocusBlur({
+    isActive: () => store.isActive,
+    clickCapture,
+    runtime,
+    onFocusEffect: Effect.gen(function* () {
+      const Window = yield* WindowT;
+      yield* Window.setActiveElement(
+        Option.some({ type: "title" as const, bufferId }),
+      );
+    }),
+    onBlurEffect: Effect.gen(function* () {
+      const Title = yield* TitleT;
+      yield* Title.blur(bufferId);
+    }),
+  });
 
   const handleSelectionChange = (selection: SelectionInfo) => {
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
@@ -269,7 +259,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           onAction={handleAction}
           initialStrategy={resolveSelectionStrategy({
             clickCoords: clickCapture.get(),
-            domSelection: null,
+            domSelection: getInitialSelection(),
             modelSelection: store.selection,
           })}
           selection={store.selection}
