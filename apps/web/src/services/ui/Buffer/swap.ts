@@ -36,7 +36,6 @@ export const swap = (
 
     if (direction === "up") {
       if (siblingIndex === 0) {
-        // At first position - try cross-parent movement
         return yield* crossParentMove(nodeId, parentId, "up");
       }
       const prevSiblingId = siblings[siblingIndex - 1]!;
@@ -48,7 +47,6 @@ export const swap = (
       });
     } else {
       if (siblingIndex === siblings.length - 1) {
-        // At last position - try cross-parent movement
         return yield* crossParentMove(nodeId, parentId, "down");
       }
       const nextSiblingId = siblings[siblingIndex + 1]!;
@@ -63,7 +61,7 @@ export const swap = (
     return true;
   }).pipe(
     Effect.catchAll((error) =>
-      Effect.logError("[Block.swap] Operation failed").pipe(
+      Effect.logError("[Buffer.swap] Operation failed").pipe(
         Effect.annotateLogs({ nodeId, direction, error: String(error) }),
         Effect.as(false),
       ),
@@ -88,7 +86,6 @@ const crossParentMove = (
   Effect.gen(function* () {
     const Node = yield* NodeT;
 
-    // Get grandparent (parent's parent)
     const grandparentId = yield* Node.getParent(parentId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
         Effect.succeed<Id.Node | null>(null),
@@ -96,22 +93,19 @@ const crossParentMove = (
     );
     if (!grandparentId) return false;
 
-    // Get parent's siblings
     const parentSiblings = yield* Node.getNodeChildren(grandparentId);
     const parentIndex = parentSiblings.indexOf(parentId);
     if (parentIndex === -1) return false;
 
     if (direction === "up") {
       if (parentIndex > 0) {
-        // Parent HAS prev sibling → cross-parent move (become last child)
         const prevParentSiblingId = parentSiblings[parentIndex - 1]!;
         yield* Node.insertNode({
           nodeId,
           parentId: prevParentSiblingId,
-          insert: "after", // append at end
+          insert: "after",
         });
       } else {
-        // Parent has NO prev sibling → outdent (become sibling BEFORE parent)
         yield* Node.insertNode({
           nodeId,
           parentId: grandparentId,
@@ -121,7 +115,6 @@ const crossParentMove = (
       }
     } else {
       if (parentIndex < parentSiblings.length - 1) {
-        // Parent HAS next sibling → cross-parent move (become first child)
         const nextParentSiblingId = parentSiblings[parentIndex + 1]!;
         const targetChildren = yield* Node.getNodeChildren(nextParentSiblingId);
         if (targetChildren.length > 0) {
@@ -139,7 +132,6 @@ const crossParentMove = (
           });
         }
       } else {
-        // Parent has NO next sibling → outdent (become sibling AFTER parent)
         yield* Node.insertNode({
           nodeId,
           parentId: grandparentId,
@@ -150,9 +142,7 @@ const crossParentMove = (
     }
 
     return true;
-  }).pipe(
-    Effect.catchAll(() => Effect.succeed(false)),
-  );
+  }).pipe(Effect.catchAll(() => Effect.succeed(false)));
 
 /**
  * Move a node to be the first sibling.
@@ -175,7 +165,6 @@ export const moveToFirst = (
     const siblingIndex = siblings.indexOf(nodeId);
     if (siblingIndex === -1) return false;
 
-    // Already first
     if (siblingIndex === 0) return false;
 
     const firstSiblingId = siblings[0]!;
@@ -189,7 +178,7 @@ export const moveToFirst = (
     return true;
   }).pipe(
     Effect.catchAll((error) =>
-      Effect.logError("[Block.moveToFirst] Operation failed").pipe(
+      Effect.logError("[Buffer.moveToFirst] Operation failed").pipe(
         Effect.annotateLogs({ nodeId, error: String(error) }),
         Effect.as(false),
       ),
@@ -217,7 +206,6 @@ export const moveToLast = (
     const siblingIndex = siblings.indexOf(nodeId);
     if (siblingIndex === -1) return false;
 
-    // Already last
     if (siblingIndex === siblings.length - 1) return false;
 
     const lastSiblingId = siblings[siblings.length - 1]!;
@@ -231,7 +219,7 @@ export const moveToLast = (
     return true;
   }).pipe(
     Effect.catchAll((error) =>
-      Effect.logError("[Block.moveToLast] Operation failed").pipe(
+      Effect.logError("[Buffer.moveToLast] Operation failed").pipe(
         Effect.annotateLogs({ nodeId, error: String(error) }),
         Effect.as(false),
       ),

@@ -16,9 +16,11 @@ import { outdent } from "./outdent";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
+import { split, type SplitParams, type SplitResult } from "./split";
 import { BufferView, subscribe } from "./subscribe";
+import { moveToFirst, moveToLast, swap } from "./swap";
 
-export type { MergeResult };
+export type { MergeResult, SplitParams, SplitResult };
 
 export class BufferT extends Context.Tag("BufferT")<
   BufferT,
@@ -76,6 +78,13 @@ export class BufferT extends Context.Tag("BufferT")<
       bufferId: Id.Buffer,
       nodeId: Id.Node,
     ) => Effect.Effect<Option.Option<MergeResult>, never>;
+    split: (params: SplitParams) => Effect.Effect<SplitResult, never>;
+    swap: (
+      nodeId: Id.Node,
+      direction: "up" | "down",
+    ) => Effect.Effect<boolean, never>;
+    moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+    moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
   }
 >() {}
 
@@ -132,6 +141,14 @@ export const BufferLive = Layer.effect(
         mergeForward(bufferId, nodeId).pipe(Effect.provide(context)),
       forceDelete: (bufferId: Id.Buffer, nodeId: Id.Node) =>
         forceDelete(bufferId, nodeId).pipe(Effect.provide(context)),
+      split: (params: SplitParams) =>
+        split(params).pipe(Effect.provide(context)),
+      swap: (nodeId: Id.Node, direction: "up" | "down") =>
+        swap(nodeId, direction).pipe(Effect.provideService(NodeT, Node)),
+      moveToFirst: (nodeId: Id.Node) =>
+        moveToFirst(nodeId).pipe(Effect.provideService(NodeT, Node)),
+      moveToLast: (nodeId: Id.Node) =>
+        moveToLast(nodeId).pipe(Effect.provideService(NodeT, Node)),
     };
   }),
 );

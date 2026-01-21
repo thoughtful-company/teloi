@@ -16,13 +16,10 @@ import {
   findNextNodeInDocumentOrder,
   findPreviousNode,
 } from "./navigation";
-import { split, type SplitParams, type SplitResult } from "./split";
 import { BlockView, subscribe } from "./subscribe";
-import { moveToFirst, moveToLast, swap } from "./swap";
 
 export { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
 export type { BlockView } from "./subscribe";
-export type { SplitParams, SplitResult };
 
 export class BlockT extends Context.Tag("BlockT")<
   BlockT,
@@ -62,15 +59,6 @@ export class BlockT extends Context.Tag("BlockT")<
       currentId: Id.Node,
       bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
-
-    // Structural operations
-    split: (params: SplitParams) => Effect.Effect<SplitResult, never>;
-    swap: (
-      nodeId: Id.Node,
-      direction: "up" | "down",
-    ) => Effect.Effect<boolean, never>;
-    moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
-    moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
 
     // Expand/collapse
     expandOneLevel: (
@@ -113,12 +101,6 @@ export const BlockLive = Layer.effect(
       findNextNode: withContext(findNextNode)(context),
       findNextNodeInDocumentOrder: withContext(findNextNodeInDocumentOrder)(context),
       findPreviousNode: withContext(findPreviousNode)(context),
-
-      // Structural operations
-      split: withContext(split)(context),
-      swap: withContext(swap)(context),
-      moveToFirst: withContext(moveToFirst)(context),
-      moveToLast: withContext(moveToLast)(context),
 
       // Expand/collapse
       expandOneLevel: withContext(expandOneLevel)(context),
