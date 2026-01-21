@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
 import {
   Given,
@@ -19,15 +19,12 @@ describe("Block Mod+, key (ZoomOut)", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
     history.replaceState({}, "", "/");
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("zooms out from nested block when Mod+, pressed", async () => {
@@ -142,9 +139,11 @@ describe("Block Mod+, key (ZoomOut)", () => {
     await Effect.gen(function* () {
       // Create hierarchy with parent so we can zoom out
       const { bufferId, parentNodeId, rootNodeId } =
-        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN("Parent node", "Root node", [
-          { text: "First child" },
-        ]);
+        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+          "Parent node",
+          "Root node",
+          [{ text: "First child" }],
+        );
 
       // Set URL to root node (which has a parent)
       history.replaceState({}, "", `/workspace/${rootNodeId}`);

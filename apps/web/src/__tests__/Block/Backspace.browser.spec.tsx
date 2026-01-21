@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block Backspace key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("merges with previous sibling when Backspace pressed at start", async () => {
@@ -183,7 +180,7 @@ describe("Block Backspace key", () => {
     }).pipe(runtime.runPromise);
   });
 
-it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
+  it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [

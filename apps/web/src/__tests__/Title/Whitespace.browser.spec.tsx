@@ -2,7 +2,7 @@ import "@/index.css";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Title whitespace rendering", () => {
@@ -11,14 +11,11 @@ describe("Title whitespace rendering", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /**

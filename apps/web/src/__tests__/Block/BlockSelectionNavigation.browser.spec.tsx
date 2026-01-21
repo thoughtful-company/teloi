@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 import {
   Given,
   Then,
@@ -28,14 +28,11 @@ describe("Block selection document-order navigation - ArrowUp", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("ArrowUp from first child selects parent", async () => {
@@ -173,14 +170,11 @@ describe("Block selection document-order navigation - ArrowDown", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("ArrowDown from expanded parent selects first child", async () => {
@@ -357,14 +351,11 @@ describe("Block selection document-order navigation - Edge cases", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("ArrowUp respects collapsed state - stops at collapsed sibling", async () => {

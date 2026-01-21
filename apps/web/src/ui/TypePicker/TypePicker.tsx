@@ -1,6 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { AvailableType, TypePickerT } from "@/services/ui/TypePicker";
+import { useRuntimeEffect } from "@/utils/useRuntimeEffect";
 import { Effect } from "effect";
 import {
   createEffect,
@@ -37,15 +38,14 @@ export default function TypePicker(props: TypePickerProps) {
   >([]);
   const [selectedIndex, setSelectedIndex] = createSignal(0);
 
-  onMount(() => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const available = yield* TypePicker.getAvailableTypes();
-        setTypes(available);
-      }),
-    );
-  });
+  useRuntimeEffect(
+    runtime,
+    Effect.gen(function* () {
+      const TypePicker = yield* TypePickerT;
+      const available = yield* TypePicker.getAvailableTypes();
+      setTypes(available);
+    }),
+  );
 
   createEffect(() => {
     const available = types();

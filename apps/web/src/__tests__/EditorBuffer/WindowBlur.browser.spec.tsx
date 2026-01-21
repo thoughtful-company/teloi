@@ -5,7 +5,7 @@ import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
 
 describe("Window blur preserves selection", () => {
@@ -14,14 +14,11 @@ describe("Window blur preserves selection", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("preserves selection when window loses focus (alt-tab)", async () => {

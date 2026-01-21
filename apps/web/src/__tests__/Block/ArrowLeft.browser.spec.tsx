@@ -4,7 +4,7 @@ import { BlockT } from "@/services/ui/Block";
 import { StoreT } from "@/services/external/Store";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block ArrowLeft key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("moves to previous sibling at end when ArrowLeft pressed at position 0", async () => {
@@ -206,10 +203,9 @@ describe("Block ArrowLeft key", () => {
       ).not.toBe(nestedChildId);
 
       // Selection should be on the visible First block
-      expect(
-        actualNodeId,
-        "Selection should be on First block (visible)",
-      ).toBe(childNodeIds[0]);
+      expect(actualNodeId, "Selection should be on First block (visible)").toBe(
+        childNodeIds[0],
+      );
 
       // Cursor should be at end of "First" text
       expect(buffer.selection!.focusOffset).toBe(5);

@@ -17,8 +17,7 @@ describe("Block Down+Up navigation", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    if (cleanup) await cleanup();
-
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;

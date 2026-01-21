@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { cleanup, waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 import { Given, Then, When, setupClientTest, type BrowserRuntime } from "./bdd";
 
 /**
@@ -48,14 +48,11 @@ describe("Selection sync", () => {
   let cleanupTest: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanupTest?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanupTest = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanupTest();
   });
 
   it("syncs selection from model to CodeMirror", async () => {

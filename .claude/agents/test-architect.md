@@ -46,6 +46,8 @@ Tests use a **declarative BDD style** with Given/When/Then helpers from `src/__t
 
 ## Critical Anti-Patterns (DO NOT USE)
 
+**Cleanup in `afterEach`**: Always do cleanup in `beforeEach`, not `afterEach`.
+
 **Never use arbitrary sleep durations**:
 - `yield* Effect.sleep("50 millis")` or any arbitrary sleep makes tests slow and flaky
 - Total test time explodes when every test adds random delays

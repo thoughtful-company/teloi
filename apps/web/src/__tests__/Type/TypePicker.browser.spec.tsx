@@ -8,11 +8,9 @@ import EditorBuffer from "@/ui/EditorBuffer";
 import { waitFor } from "@testing-library/dom";
 import { Effect } from "effect";
 import { waitFor as stlWaitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
-  render,
-  runtime,
   setupClientTest,
   Then,
   When,
@@ -20,6 +18,18 @@ import {
 } from "../bdd";
 
 describe("TypePicker", () => {
+  let testRuntime: BrowserRuntime;
+  let testRender: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    await cleanup?.();
+    const setup = await setupClientTest();
+    testRuntime = setup.runtime;
+    testRender = setup.render;
+    cleanup = setup.cleanup;
+  });
+
   describe("In Block", () => {
     describe("Opening the picker", () => {
       it("shows picker popup when # is typed", async () => {
@@ -31,13 +41,13 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#");
 
           yield* Then.TYPE_PICKER_IS_VISIBLE();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("shows picker popup when # is typed in empty block", async () => {
@@ -47,13 +57,13 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#");
 
           yield* Then.TYPE_PICKER_IS_VISIBLE();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -72,13 +82,13 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#pa");
 
           yield* Then.TYPE_PICKER_HAS_OPTION("Page");
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("shows Create option when no exact match", async () => {
@@ -90,13 +100,13 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#newtype");
 
           yield* Then.TYPE_PICKER_SHOWS_CREATE("newtype");
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -116,7 +126,7 @@ describe("TypePicker", () => {
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
           const childNodeId = childNodeIds[0];
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
 
@@ -128,10 +138,11 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("test");
 
           // Wait for the text to update AND picker to show filtered result
+          // Get Yjs service from our runtime for use in waitFor callback
+          const Yjs = yield* YjsT;
           yield* Effect.promise(() =>
             waitFor(
               () => {
-                const Yjs = runtime.runSync(YjsT);
                 const text = Yjs.getText(childNodeId).toString();
                 if (!text.includes("#test"))
                   throw new Error("Text not updated: " + text);
@@ -157,12 +168,12 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Enter}");
 
           // Type should be applied
+          const Type = yield* TypeT;
           yield* Effect.promise(() =>
             waitFor(
               async () => {
-                const Type = await TypeT.pipe(runtime.runPromise);
                 const hasType = await Type.hasType(childNodeId, typeId).pipe(
-                  runtime.runPromise,
+                  testRuntime.runPromise,
                 );
                 expect(hasType).toBe(true);
               },
@@ -174,7 +185,7 @@ describe("TypePicker", () => {
           yield* Then.NODE_HAS_TEXT(childNodeId, "Hello");
 
           yield* Then.TYPE_PICKER_IS_CLOSED();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("creates and applies new type when selecting Create option", async () => {
@@ -187,7 +198,7 @@ describe("TypePicker", () => {
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
           const childNodeId = childNodeIds[0];
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#mytag");
@@ -198,14 +209,15 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Enter}");
 
           // Check that a new type was created under System.TYPES
+          // Get services from our runtime for use in waitFor callback
+          const Node = yield* NodeT;
+          const Yjs = yield* YjsT;
           yield* Effect.promise(() =>
             waitFor(
               async () => {
-                const Node = await NodeT.pipe(runtime.runPromise);
-                const Yjs = await YjsT.pipe(runtime.runPromise);
                 const typeChildren = await Node.getNodeChildren(
                   System.TYPES,
-                ).pipe(runtime.runPromise);
+                ).pipe(testRuntime.runPromise);
                 const typeNames = typeChildren.map((id) =>
                   Yjs.getText(id).toString(),
                 );
@@ -217,7 +229,7 @@ describe("TypePicker", () => {
 
           // # text should be removed
           yield* Then.NODE_HAS_TEXT(childNodeId, "Hello");
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -231,7 +243,7 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#test");
@@ -241,7 +253,7 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Escape}");
 
           yield* Then.TYPE_PICKER_IS_CLOSED();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("closes picker when # is deleted", async () => {
@@ -251,7 +263,7 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#");
@@ -261,7 +273,7 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Backspace}");
 
           yield* Then.TYPE_PICKER_IS_CLOSED();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("closes picker when space is typed", async () => {
@@ -271,7 +283,7 @@ describe("TypePicker", () => {
 
           const firstChildBlockId = Id.makeBlockId(bufferId, childNodeIds[0]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
           yield* When.USER_PRESSES("#foo");
@@ -281,7 +293,7 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES(" ");
 
           yield* Then.TYPE_PICKER_IS_CLOSED();
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -300,10 +312,10 @@ describe("TypePicker", () => {
           // Apply the type to the root node
           yield* TypePicker.applyType(rootNodeId, typeId);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* Then.TEXT_IS_VISIBLE("Important");
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
   });
@@ -317,7 +329,7 @@ describe("TypePicker", () => {
             [{ text: "Child" }],
           );
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_TITLE(bufferId);
           yield* When.USER_PRESSES("#");
@@ -333,7 +345,7 @@ describe("TypePicker", () => {
               { timeout: 2000 },
             ),
           );
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -349,7 +361,7 @@ describe("TypePicker", () => {
             [{ text: "Child" }],
           );
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_TITLE(bufferId);
 
@@ -374,10 +386,11 @@ describe("TypePicker", () => {
           // Type "title" to filter (matches our unique TitleType_xxx name)
           yield* When.USER_PRESSES("title");
 
+          // Get Yjs service from our runtime for use in waitFor callback
+          const Yjs = yield* YjsT;
           yield* Effect.promise(() =>
             stlWaitFor(
               () => {
-                const Yjs = runtime.runSync(YjsT);
                 const text = Yjs.getText(rootNodeId).toString();
                 if (!text.includes("#title"))
                   throw new Error("Text not updated: " + text);
@@ -402,12 +415,12 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Enter}");
 
           // Type should be applied to the root node (title)
+          const Type = yield* TypeT;
           yield* Effect.promise(() =>
             stlWaitFor(
               async () => {
-                const Type = await TypeT.pipe(runtime.runPromise);
                 const hasType = await Type.hasType(rootNodeId, typeId).pipe(
-                  runtime.runPromise,
+                  testRuntime.runPromise,
                 );
                 expect(hasType).toBe(true);
               },
@@ -430,7 +443,7 @@ describe("TypePicker", () => {
               { timeout: 2000 },
             ),
           );
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
 
       it("creates and applies new type from title", async () => {
@@ -440,7 +453,7 @@ describe("TypePicker", () => {
             [{ text: "Child" }],
           );
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_TITLE(bufferId);
           yield* When.USER_PRESSES("#newtitletag");
@@ -461,14 +474,15 @@ describe("TypePicker", () => {
           yield* When.USER_PRESSES("{Enter}");
 
           // Check that a new type was created under System.TYPES
+          // Get services from our runtime for use in waitFor callback
+          const Node = yield* NodeT;
+          const Yjs = yield* YjsT;
           yield* Effect.promise(() =>
             stlWaitFor(
               async () => {
-                const Node = await NodeT.pipe(runtime.runPromise);
-                const Yjs = await YjsT.pipe(runtime.runPromise);
                 const typeChildren = await Node.getNodeChildren(
                   System.TYPES,
-                ).pipe(runtime.runPromise);
+                ).pipe(testRuntime.runPromise);
                 const typeNames = typeChildren.map((id) =>
                   Yjs.getText(id).toString(),
                 );
@@ -480,7 +494,7 @@ describe("TypePicker", () => {
 
           // # text should be removed
           yield* Then.NODE_HAS_TEXT(rootNodeId, "My Title");
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -491,7 +505,7 @@ describe("TypePicker", () => {
             { text: "Child" },
           ]);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_TITLE(bufferId);
           yield* When.USER_PRESSES("#test");
@@ -523,7 +537,7 @@ describe("TypePicker", () => {
               { timeout: 2000 },
             ),
           );
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
 
@@ -541,7 +555,7 @@ describe("TypePicker", () => {
           // Apply the type to the root node (title)
           yield* TypePicker.applyType(rootNodeId, typeId);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          testRender(() => <EditorBuffer bufferId={bufferId} />);
 
           // Type badge should be visible below title
           yield* Effect.promise(() =>
@@ -553,7 +567,7 @@ describe("TypePicker", () => {
               { timeout: 2000 },
             ),
           );
-        }).pipe(runtime.runPromise);
+        }).pipe(testRuntime.runPromise);
       });
     });
   });
@@ -565,14 +579,11 @@ describe("TypePicker scroll behavior", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     testRuntime = setup.runtime;
     testRender = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /**
@@ -682,6 +693,16 @@ describe("TypePicker scroll behavior", () => {
 });
 
 describe("TypePickerT Service", () => {
+  let testRuntime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    await cleanup?.();
+    const setup = await setupClientTest();
+    testRuntime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
   it("getAvailableTypes returns children of Types node", async () => {
     await Effect.gen(function* () {
       const TypePicker = yield* TypePickerT;
@@ -695,7 +716,7 @@ describe("TypePickerT Service", () => {
       const names = types.map((t) => t.name);
       expect(names).toContain("TestType1");
       expect(names).toContain("TestType2");
-    }).pipe(runtime.runPromise);
+    }).pipe(testRuntime.runPromise);
   });
 
   it("filterTypes matches case-insensitively", async () => {
@@ -713,7 +734,7 @@ describe("TypePickerT Service", () => {
       expect(filtered.length).toBe(2);
       expect(filtered.map((t) => t.name)).toContain("Apple");
       expect(filtered.map((t) => t.name)).toContain("apricot");
-    }).pipe(runtime.runPromise);
+    }).pipe(testRuntime.runPromise);
   });
 
   it("createType adds child to Types node", async () => {
@@ -731,7 +752,7 @@ describe("TypePickerT Service", () => {
       // Should have the correct text
       const ytext = Yjs.getText(typeId);
       expect(ytext.toString()).toBe("NewType");
-    }).pipe(runtime.runPromise);
+    }).pipe(testRuntime.runPromise);
   });
 
   it("applyType adds type to node", async () => {
@@ -753,6 +774,6 @@ describe("TypePickerT Service", () => {
       // Check it was applied
       const hasType = yield* Type.hasType(nodeId, typeId);
       expect(hasType).toBe(true);
-    }).pipe(runtime.runPromise);
+    }).pipe(testRuntime.runPromise);
   });
 });

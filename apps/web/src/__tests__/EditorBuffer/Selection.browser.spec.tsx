@@ -6,7 +6,7 @@ import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   Given,
   Then,
@@ -21,15 +21,12 @@ describe("Block selection", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await cleanup();
   });
 
   it("selected block shows visual indicator", async () => {
@@ -153,8 +150,12 @@ describe("Block selection", () => {
               `[data-element-id="${secondBlockId}"]`,
             );
             // Check for ring class on a descendant (visual indicator moved to inner content div)
-            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
-            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(
+              firstBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
+            expect(
+              secondBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -320,8 +321,12 @@ describe("Block selection", () => {
               `[data-element-id="${secondBlockId}"]`,
             );
             // Check for ring class on a descendant (visual indicator moved to inner content div)
-            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
-            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(
+              firstBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
+            expect(
+              secondBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
           },
           { timeout: 2000 },
         ),

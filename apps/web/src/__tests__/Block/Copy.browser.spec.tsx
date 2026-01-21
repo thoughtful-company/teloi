@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it, vi } from "vitest";
+import { beforeEach, describe, it, vi } from "vitest";
 import {
   Given,
   Then,
@@ -18,6 +18,8 @@ describe("Copy selected blocks (Mod+C)", () => {
   let clipboardContent: string = "";
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
@@ -32,11 +34,6 @@ describe("Copy selected blocks (Mod+C)", () => {
     vi.spyOn(navigator.clipboard, "readText").mockImplementation(async () => {
       return clipboardContent;
     });
-  });
-
-  afterEach(async () => {
-    vi.restoreAllMocks();
-    await cleanup();
   });
 
   it("Mod+C copies single selected block text to clipboard", async () => {

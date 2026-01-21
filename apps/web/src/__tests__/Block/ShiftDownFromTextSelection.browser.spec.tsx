@@ -4,7 +4,7 @@ import { StoreT } from "@/services/external/Store";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Shift+Down from in-block text selection", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("enters block selection mode when focus offset is at document length", async () => {

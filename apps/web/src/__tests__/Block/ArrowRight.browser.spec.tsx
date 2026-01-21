@@ -4,7 +4,7 @@ import { BlockT } from "@/services/ui/Block";
 import { StoreT } from "@/services/external/Store";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block ArrowRight key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("moves to next sibling at start when ArrowRight pressed at end", async () => {

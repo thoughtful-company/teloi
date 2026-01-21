@@ -4,7 +4,7 @@ import { StoreT } from "@/services/external/Store";
 import { NavigationT } from "@/services/ui/Navigation";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
 import {
   Given,
@@ -20,15 +20,12 @@ describe("Block Mod+. key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
     history.replaceState({}, "", "/");
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("zooms into focused block when Mod+. pressed", async () => {

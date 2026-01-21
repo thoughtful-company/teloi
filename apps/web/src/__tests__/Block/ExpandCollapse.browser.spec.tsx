@@ -8,7 +8,7 @@ import EditorBuffer from "@/ui/EditorBuffer";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { screen, waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -39,14 +39,11 @@ describe("Progressive Mod+Up - Text editing mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Mod+Up on expanded block collapses it and stays on the block", async () => {
@@ -351,14 +348,11 @@ describe("Progressive Mod+Up - Block selection mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Mod+Up on expanded block collapses it and stays selected", async () => {
@@ -593,14 +587,11 @@ describe("Block expand/collapse - Text editing mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Cmd+Up collapses an expanded block that has children", async () => {
@@ -680,14 +671,11 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Cmd+Up collapses selected block and preserves selection", async () => {
@@ -999,14 +987,11 @@ describe("Block expand/collapse - Block selection mode (multiple blocks)", () =>
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Cmd+Down expands all collapsible selected blocks", async () => {
@@ -1080,14 +1065,11 @@ describe("Progressive Mod+Down - Text editing mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Mod+Down on childless block creates a child and focuses it", async () => {
@@ -1240,14 +1222,11 @@ describe("Progressive Mod+Down - Block selection mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Mod+Down on childless block creates a child and focuses it", async () => {
@@ -1386,14 +1365,11 @@ describe("Title expand/collapse", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Cmd+Down on title expands all first-level nodes with children", async () => {
@@ -1522,14 +1498,11 @@ describe("Auto-expand ancestors on selection", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   describe("Text selection", () => {
@@ -1829,14 +1802,11 @@ describe("Expand/collapse triangle positioning", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /**

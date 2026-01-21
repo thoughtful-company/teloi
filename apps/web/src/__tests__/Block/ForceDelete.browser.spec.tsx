@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { YjsT } from "@/services/external/Yjs";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   describe("in text editing mode", () => {
@@ -105,7 +102,9 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
 
         // Focus should be on First (previous sibling)
-        yield* Then.SELECTION_IS_ON_BLOCK(Id.makeBlockId(bufferId, firstNodeId));
+        yield* Then.SELECTION_IS_ON_BLOCK(
+          Id.makeBlockId(bufferId, firstNodeId),
+        );
       }).pipe(runtime.runPromise);
     });
 
@@ -115,8 +114,10 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //   Root
         //     - Parent
         //       - OnlyChild (will be deleted)
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
 
         const [parentNodeId] = childNodeIds;
 
@@ -282,12 +283,10 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - First
         //     - Second (will be deleted)
         //     - Third
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-            { text: "First" },
-            { text: "Second" },
-            { text: "Third" },
-          ]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
+        );
 
         const [firstNodeId, secondNodeId] = childNodeIds;
         const secondBlockId = Id.makeBlockId(bufferId, secondNodeId);
@@ -347,14 +346,11 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Delete in block selection mode cleans up Yjs text", async () => {

@@ -7,8 +7,14 @@ import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, Then, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 /**
  * Enter/Space buffer activation tests.
@@ -27,14 +33,11 @@ describe("Enter/Space buffer activation", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /**
@@ -80,7 +83,9 @@ describe("Enter/Space buffer activation", () => {
       }
 
       const Window = yield* WindowT;
-      yield* Window.setActiveElement(Option.some({ type: "buffer", id: bufferId }));
+      yield* Window.setActiveElement(
+        Option.some({ type: "buffer", id: bufferId }),
+      );
 
       // Verify the state
       const stream = yield* Window.subscribeActiveElement();
@@ -142,8 +147,11 @@ describe("Enter/Space buffer activation", () => {
   describe("Empty buffer behavior", () => {
     it("Enter on empty buffer creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
-        const { bufferId, nodeId: rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        const {
+          bufferId,
+          nodeId: rootNodeId,
+          windowId,
+        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -172,8 +180,11 @@ describe("Enter/Space buffer activation", () => {
 
     it("Space on empty buffer creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
-        const { bufferId, nodeId: rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        const {
+          bufferId,
+          nodeId: rootNodeId,
+          windowId,
+        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
         render(() => <EditorBuffer bufferId={bufferId} />);

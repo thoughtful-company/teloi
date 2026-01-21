@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
 import {
   Given,
@@ -20,14 +20,11 @@ describe("Space in block selection mode", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("creates sibling block after focused block and enters editing mode", async () => {
@@ -202,7 +199,9 @@ describe("Space in block selection mode", () => {
             );
             expect(Option.isSome(bufferDoc)).toBe(true);
             expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([]);
-            expect(Option.getOrThrow(bufferDoc).blockSelectionAnchor).toBeNull();
+            expect(
+              Option.getOrThrow(bufferDoc).blockSelectionAnchor,
+            ).toBeNull();
           },
           { timeout: 2000 },
         ),

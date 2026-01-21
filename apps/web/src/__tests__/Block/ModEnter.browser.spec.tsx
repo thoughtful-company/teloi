@@ -5,7 +5,7 @@ import { TypeT } from "@/services/domain/Type";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -32,15 +32,12 @@ describe("Block Mod+Enter todo toggle", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
     history.replaceState({}, "", "/");
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   describe("Editor mode (CodeMirror focused)", () => {
@@ -511,11 +508,7 @@ describe("Block Mod+Enter todo toggle", () => {
             { timeout: 2000 },
           ),
         );
-        tuples = yield* Tuple.findByPosition(
-          System.IS_CHECKED,
-          0,
-          childNodeId,
-        );
+        tuples = yield* Tuple.findByPosition(System.IS_CHECKED, 0, childNodeId);
         expect(tuples.length).toBe(0);
       }).pipe(runtime.runPromise);
     });

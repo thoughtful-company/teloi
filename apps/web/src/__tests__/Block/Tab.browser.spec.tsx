@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block Tab key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("indents block to become child of previous sibling when Tab pressed", async () => {
@@ -181,14 +178,11 @@ describe("Block selection Tab key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("Tab indents all selected blocks under previous sibling (grouped)", async () => {
@@ -321,11 +315,10 @@ describe("Block selection Tab key", () => {
    */
   it("auto-expands collapsed parent when indenting single block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "C" },
-        ]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "C" }],
+      );
 
       const [nodeA, nodeC] = childNodeIds;
 
@@ -365,12 +358,10 @@ describe("Block selection Tab key", () => {
    */
   it("auto-expands collapsed parent when indenting selected blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-          { text: "A" },
-          { text: "C" },
-          { text: "D" },
-        ]);
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "C" }, { text: "D" }],
+      );
 
       const [nodeA, nodeC] = childNodeIds;
 

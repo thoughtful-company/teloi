@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, it } from "vitest";
+import { beforeEach, describe, it } from "vitest";
 import {
   Given,
   Then,
@@ -19,14 +19,11 @@ describe("Block Delete key", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /**
@@ -167,7 +164,7 @@ describe("Block Delete key", () => {
     }).pipe(runtime.runPromise);
   });
 
-it("merges with next sibling when Cmd+Delete pressed at end", async () => {
+  it("merges with next sibling when Cmd+Delete pressed at end", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
