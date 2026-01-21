@@ -9,7 +9,7 @@ import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
-import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
+import { isSystemType } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -166,6 +166,7 @@ export default function Block({
     handleTypePickerClose,
     handleTypePickerSelect,
     handleTypePickerCreate,
+    handleEnterWithPicker,
   } = useTypePicker({
     nodeId,
     bufferId,
@@ -523,23 +524,7 @@ export default function Block({
     return Match.value(action).pipe(
       Match.tags({
         Enter: ({ info }) => {
-          // If picker is open, select the current item
-          if (pickerState()) {
-            const query = getPickerQuery();
-            const availableTypes = runtime.runSync(
-              Effect.gen(function* () {
-                const TypePicker = yield* TypePickerT;
-                const types = yield* TypePicker.getAvailableTypes();
-                return TypePicker.filterTypes(types, query);
-              }),
-            );
-            if (availableTypes.length > 0) {
-              handleTypePickerSelect(availableTypes[0]!.id);
-            } else if (query) {
-              handleTypePickerCreate(query);
-            }
-            return true;
-          }
+          if (handleEnterWithPicker()) return true;
           return handleEnter(info);
         },
         // Type removal on backspace - merge logic is in blockActionHandler
