@@ -565,7 +565,6 @@ export function createBlockActionHandler(
   ) {
     runtime.runPromise(
       Effect.gen(function* () {
-        const Block = yield* BlockT;
         const Node = yield* NodeT;
         const Store = yield* StoreT;
         const Buffer = yield* BufferT;
@@ -603,10 +602,10 @@ export function createBlockActionHandler(
         }
 
         const moved = yield* Match.value(moveAction).pipe(
-          Match.when("swapUp", () => Block.swap(nodeId, "up")),
-          Match.when("swapDown", () => Block.swap(nodeId, "down")),
-          Match.when("first", () => Block.moveToFirst(nodeId)),
-          Match.when("last", () => Block.moveToLast(nodeId)),
+          Match.when("swapUp", () => Buffer.swap(nodeId, "up")),
+          Match.when("swapDown", () => Buffer.swap(nodeId, "down")),
+          Match.when("first", () => Buffer.moveToFirst(nodeId)),
+          Match.when("last", () => Buffer.moveToLast(nodeId)),
           Match.exhaustive,
         );
         if (moved) {

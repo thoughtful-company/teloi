@@ -297,11 +297,10 @@ export default function Block({
           }
         }
 
-        const Block = yield* BlockT;
         const Window = yield* WindowT;
         const Buffer = yield* BufferT;
 
-        const result = yield* Block.split({
+        const result = yield* Buffer.split({
           nodeId,
           cursorPos: info.cursorPos,
           textAfter: info.textAfter,
