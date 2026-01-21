@@ -1,6 +1,5 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { useClickCapture } from "./hooks/useClickCapture";
 import { useTitleLink } from "./hooks/useTitleLink";
@@ -587,30 +586,7 @@ export default function Block({
           runtime.runPromise(
             Effect.gen(function* () {
               const Block = yield* BlockT;
-              const Node = yield* NodeT;
-
-              // Level-by-level expand: expand self first, then children
-              const expandOneLevel = (nId: Id.Node): Effect.Effect<boolean> =>
-                Effect.gen(function* () {
-                  const bId = Id.makeBufferBlockId(bufferId, nId);
-                  const isExpanded = yield* Block.isExpanded(bId);
-
-                  if (!isExpanded) {
-                    yield* Block.setExpanded(bId, true);
-                    return true;
-                  }
-
-                  // Already expanded - try to expand children
-                  const children = yield* Node.getNodeChildren(nId);
-                  for (const childId of children) {
-                    const didExpand = yield* expandOneLevel(childId);
-                    if (didExpand) return true;
-                  }
-
-                  return false;
-                });
-
-              yield* expandOneLevel(nodeId);
+              yield* Block.expandOneLevel(bufferId, nodeId);
             }),
           );
         },
