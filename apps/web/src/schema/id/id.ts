@@ -3,10 +3,17 @@ import { Data, Effect, ParseResult, Schema } from "effect";
 // Base schema that only allows nanoid-safe characters (A-Za-z0-9_-)
 const SafeIdString = Schema.String.pipe(Schema.pattern(/^[A-Za-z0-9_-]+$/));
 
+// System IDs follow namespace:name format (e.g., "system:root", "workspace:home")
+const SystemIdString = Schema.String.pipe(
+  Schema.pattern(/^[a-z]+:[a-z0-9-]+$/),
+);
+
 export const Window = SafeIdString.pipe(Schema.brand("WindowId"));
 export const Pane = SafeIdString.pipe(Schema.brand("PaneId"));
 export const Buffer = SafeIdString.pipe(Schema.brand("BufferId"));
-export const Node = SafeIdString.pipe(Schema.brand("NodeId"));
+export const Node = Schema.Union(SafeIdString, SystemIdString).pipe(
+  Schema.brand("NodeId"),
+);
 export const Tuple = SafeIdString.pipe(Schema.brand("TupleId"));
 
 // Block and Section are composite IDs containing : and / delimiters
