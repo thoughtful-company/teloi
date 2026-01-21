@@ -7,7 +7,6 @@ import { useTitleLink } from "./hooks/useTitleLink";
 import { useTypePicker } from "./hooks/useTypePicker";
 import { BlockT } from "@/services/ui/Block";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
-import { TypePickerT } from "@/services/ui/TypePicker";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -73,6 +72,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     handleTypePickerClose,
     handleTypePickerSelect,
     handleTypePickerCreate,
+    handleEnterWithPicker,
   } = useTypePicker({
     nodeId,
     bufferId,
@@ -157,22 +157,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   const handleAction = (action: EditorAction): void => {
     Match.value(action).pipe(
       Match.tag("Enter", ({ info }) => {
-        if (pickerState()) {
-          const query = getPickerQuery();
-          runtime.runPromise(
-            Effect.gen(function* () {
-              const TypePicker = yield* TypePickerT;
-              const types = yield* TypePicker.getAvailableTypes();
-              const filtered = TypePicker.filterTypes(types, query);
-              if (filtered.length > 0) {
-                handleTypePickerSelect(filtered[0]!.id);
-              } else if (query) {
-                handleTypePickerCreate(query);
-              }
-            }),
-          );
-          return;
-        }
+        if (handleEnterWithPicker()) return;
         runtime.runPromise(
           Effect.gen(function* () {
             const Title = yield* TitleT;

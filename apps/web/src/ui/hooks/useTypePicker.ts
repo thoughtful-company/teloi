@@ -158,6 +158,32 @@ export function useTypePicker({
     setPickerState(null);
   };
 
+  /**
+   * Handle Enter key when picker might be open.
+   * Returns true if picker was open and handled the Enter,
+   * false if caller should handle Enter normally.
+   */
+  const handleEnterWithPicker = (): boolean => {
+    if (!pickerState()) return false;
+
+    const query = getPickerQuery();
+    const availableTypes = runtime.runSync(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const types = yield* TypePicker.getAvailableTypes();
+        return TypePicker.filterTypes(types, query);
+      }),
+    );
+
+    if (availableTypes.length > 0) {
+      handleTypePickerSelect(availableTypes[0]!.id);
+    } else if (query) {
+      handleTypePickerCreate(query);
+    }
+
+    return true;
+  };
+
   return {
     pickerState,
     getPickerQuery,
@@ -165,5 +191,6 @@ export function useTypePicker({
     handleTypePickerClose,
     handleTypePickerSelect,
     handleTypePickerCreate,
+    handleEnterWithPicker,
   };
 }
