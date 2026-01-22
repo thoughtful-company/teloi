@@ -183,11 +183,19 @@ Tab in Block vs Tab in PropertySection behave differently because different pare
 
 ## Target Architecture
 
-### Core Principle
+### Core Principles
 
-**Components hold DOM refs and same-cycle DOM captures only. All other state belongs in services.**
+**1. Components hold DOM refs and same-cycle DOM captures only. All other state belongs in services.**
 
 If you're naming it (picker, selection, transition, mode), it's a concept — model it in a service, not a component signal.
+
+**2. Actions are primitive, not semantic. The model determines meaning.**
+
+Components emit what happened (KeyDown, Click, Blur), not what it means (BackspaceAtStart, Navigate). Interpretation happens in one place with full model context.
+
+**3. FocusModeT is the source of truth for routing.**
+
+The model knows where focus is. Routing decisions consult the model, not DOM heuristics.
 
 ### Overview
 
@@ -195,24 +203,25 @@ If you're naming it (picker, selection, transition, mode), it's a concept — mo
 ┌─────────────────────────────────────────────────────────────┐
 │                      Services                                │
 │                                                              │
-│  BlockActionT.handle(blockId, action, domContext)           │
-│    → Pattern matches ALL actions                            │
-│    → Calls other services (BufferT, WindowT, TypeT, etc.)   │
-│    → Returns DOMIntent { focus?, scroll? }                  │
+│  ActionT.handle(action: AppAction)                          │
+│    → Consults FocusModeT for routing context                │
+│    → Interprets primitive event based on model state        │
+│    → Calls domain services (BlockT, BufferT, TypeT, etc.)   │
+│    → Returns ActionResult { handled, intent? }              │
 │                                                              │
-│  State: selection, picker, focusMode, activeTypes, etc.     │
+│  State: FocusModeT, PickerT, BufferT, BlockT, etc.         │
 └─────────────────────────────────────────────────────────────┘
                           ↑
-                          │ Effect<DOMIntent>
+                          │ Effect<ActionResult>
                           │
 ┌─────────────────────────────────────────────────────────────┐
 │                      Component                               │
 │                                                              │
 │  1. Subscribe to service stream (unified view)              │
 │  2. DOM refs for imperative operations                      │
-│  3. Capture DOM context on events (coords, cursor pos)      │
-│  4. Forward action + context to service                     │
-│  5. Execute DOMIntent (focus, scroll)                       │
+│  3. On event: build AppAction with source context           │
+│  4. Forward primitive action to ActionT                     │
+│  5. If handled: execute DOMIntent (focus, scroll)           │
 │  6. Render from service state                               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -220,26 +229,25 @@ If you're naming it (picker, selection, transition, mode), it's a concept — mo
 ### Data Flow
 
 ```
-User Input (keyboard, mouse)
+User Input (keyboard, mouse, blur, etc.)
     ↓
-TextEditor emits EditorAction
+Component builds primitive AppAction:
+  - Event type (KeyDown, Click, Blur, SelectionChange)
+  - Key/modifiers (if keyboard)
+  - Source context (where it came from + cursor state)
     ↓
-Component captures DOM context:
-  - Click coordinates (if click event)
-  - Cursor coordinates (from CodeMirror)
+Component calls ActionT.handle(action)
     ↓
-Component calls service:
-  BlockActionT.handle(blockId, action, domContext)
+ActionT executes:
+  1. Consults FocusModeT: "Where are we conceptually?"
+  2. Consults PickerT, activeTypes, etc.: "What's the current state?"
+  3. INTERPRETS: primitive event + source context + model = semantic meaning
+  4. Calls domain services (BlockT, NodeT, TypeT, BufferT)
+  5. Returns ActionResult { handled: boolean, intent?: DOMIntent }
     ↓
-Service executes:
-  - Routes action via pattern matching
-  - Calls domain services (NodeT, TypeT, TupleT)
-  - Updates UI state services (BufferT, WindowT, PickerT)
-  - Returns DOMIntent
-    ↓
-Component executes DOMIntent:
-  - Focus element
-  - Scroll into view
+Component checks result:
+  - If handled: execute DOMIntent (focus, scroll), prevent default
+  - If not handled: let native behavior proceed
     ↓
 Service state changes
     ↓
@@ -247,6 +255,50 @@ Streams emit new values
     ↓
 Component re-renders with new state
 ```
+
+### Key Insight: Interpretation Happens in One Place
+
+The same `KeyDown("Backspace")` means different things:
+
+| Model State | Interpretation |
+|-------------|----------------|
+| Picker open | Delete character from query |
+| Cursor at start + has removable type | Remove type from block |
+| Cursor at start + no removable type | Merge with previous block |
+| Cursor not at start | Let CodeMirror handle (not handled) |
+| Block selection mode | Delete selected blocks |
+
+All this logic lives in `ActionT.handle()`, not scattered across components.
+
+### Synchronous Execution
+
+**Critical insight: All action handling is synchronous.**
+
+Keyboard event handling requires synchronous `preventDefault()` — by the time an async `.then()` runs, the event has already propagated. Fortunately, all our operations ARE synchronous:
+
+| Operation | Why It's Sync |
+|-----------|---------------|
+| `FocusModeT.get()` | Reads from SynchronizedRef |
+| `PickerT.getState()` | Reads state |
+| `Type.getTypes()` | SQLite query (sql.js is sync in browser) |
+| `Block.split()` | SQLite + Yjs mutations (both sync) |
+| LiveStore queries | sql.js is synchronous |
+| Yjs operations | Y.Text operations are synchronous |
+
+We use Effect for dependency injection and composability, not for async. Run handlers with `runSync`:
+
+```typescript
+// ✅ Correct — synchronous execution
+const result = runtime.runSync(ActionT.handle(action));
+if (result.handled) e.preventDefault();
+
+// ❌ Wrong — too late for preventDefault
+runtime.runPromise(ActionT.handle(action)).then((result) => {
+  if (result.handled) e.preventDefault();  // Event already propagated!
+});
+```
+
+**Constraint: ActionT handlers must remain synchronous.** No `Effect.promise()`, no `fetch()`, no async operations in the action handling path. This is enforced by using `runSync` — it throws if any async operation is encountered.
 
 ### No Action Bubbling
 
@@ -273,12 +325,36 @@ function Block({ blockId, onAction: parentOnAction }) {
 }
 ```
 
-**Target (no bubbling):**
+**Target (primitive actions, no bubbling, sync execution):**
 ```typescript
 function Block({ blockId }) {
-  const handleAction = (action, domContext) => {
-    // Always forward to service
-    runtime.runPromise(BlockActionT.handle(blockId, action, domContext));
+  const handleKeyDown = (e: KeyboardEvent, view: EditorView) => {
+    // Build primitive action with source context
+    const action: AppAction = {
+      _tag: "KeyDown",
+      key: e.key,
+      modifiers: { meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey },
+      source: {
+        type: "editor",
+        target: { type: "block", blockId },
+        cursor: getCursorContext(view),
+      },
+    };
+
+    // Forward to single ActionT service — SYNC execution
+    const result = runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
+      })
+    );
+
+    if (result.handled) {
+      e.preventDefault();
+      if (result.intent) executeDOMIntent(result.intent);
+    }
+
+    return result.handled;
   };
 
   return (
@@ -289,24 +365,41 @@ function Block({ blockId }) {
 }
 ```
 
-### Context-Specific Behavior
+### Context Lives in ActionSource
 
-Different contexts (buffer block, property block, title) are handled by:
+Different contexts (buffer block, property block, title, document-level) are encoded in the action's source:
 
-1. **Block ID format encodes context:**
-   - Buffer block: `buffer:{bufferId}/node:{nodeId}`
-   - Property block: `buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}`
-
-2. **Service inspects context and routes accordingly:**
 ```typescript
-handle: (blockId, action, domContext) => Effect.gen(function* () {
-  const context = yield* Id.parseBlockContext(blockId);
+type ActionSource =
+  | { type: "editor"; target: EditorTarget; cursor: CursorContext }
+  | { type: "document"; bufferId: Id.Buffer }  // Block selection mode, no editor
 
-  if (context.type === "buffer") {
-    return yield* handleBufferBlockAction(context, action, domContext);
-  } else if (context.type === "property") {
-    return yield* handlePropertyBlockAction(context, action, domContext);
+type EditorTarget =
+  | { type: "title"; bufferId: Id.Buffer }
+  | { type: "block"; blockId: Id.Block }
+  | { type: "property"; blockId: Id.Block; propertyId: Id.Node }
+```
+
+ActionT routes based on source + model state:
+```typescript
+handle: (action: AppAction) => Effect.gen(function* () {
+  const focusMode = yield* FocusMode.get();
+
+  // Routing based on source type
+  if (action.source.type === "document") {
+    // Block selection mode — handle buffer-level actions
+    return yield* handleDocumentAction(action);
   }
+
+  // Editor-sourced action — route by target type
+  const { target, cursor } = action.source;
+
+  return yield* Match.value(target).pipe(
+    Match.when({ type: "title" }, (t) => handleTitleAction(action, t, cursor)),
+    Match.when({ type: "block" }, (t) => handleBlockAction(action, t, cursor)),
+    Match.when({ type: "property" }, (t) => handlePropertyAction(action, t, cursor)),
+    Match.exhaustive,
+  );
 }),
 ```
 
@@ -360,57 +453,95 @@ interface FocusModeT {
 }
 ```
 
-#### BlockActionT
+#### ActionT
 
-Central action handler for blocks:
+Central action handler for ALL user interactions. Single entry point, routes internally based on source and model state.
 
 ```typescript
-interface DOMContext {
-  clickCoords: { x: number; y: number } | null;
-  cursorCoords: { x: number; y: number } | null;
-}
+// === Primitive Action Types ===
+
+type AppAction =
+  | { _tag: "KeyDown"; key: string; modifiers: Modifiers; source: ActionSource }
+  | { _tag: "KeyUp"; key: string; modifiers: Modifiers; source: ActionSource }
+  | { _tag: "Click"; coords: { x: number; y: number }; source: ActionSource }
+  | { _tag: "SelectionChange"; selection: SelectionInfo; source: ActionSource }
+  | { _tag: "Blur"; source: ActionSource }
+  | { _tag: "Focus"; source: ActionSource };
+
+type Modifiers = {
+  meta: boolean;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+};
+
+// === Source Context ===
+
+type ActionSource =
+  | { type: "editor"; target: EditorTarget; cursor: CursorContext }
+  | { type: "document"; bufferId: Id.Buffer };  // Block selection, no editor focused
+
+type EditorTarget =
+  | { type: "title"; bufferId: Id.Buffer }
+  | { type: "block"; blockId: Id.Block }
+  | { type: "property"; blockId: Id.Block; propertyId: Id.Node };
+
+type CursorContext = {
+  position: number;
+  anchor: number;
+  head: number;
+  atStart: boolean;
+  atEnd: boolean;
+  textBefore: string;
+  textAfter: string;
+  lineInfo: {
+    line: number;
+    totalLines: number;
+    atFirstLine: boolean;
+    atLastLine: boolean;
+    column: number;
+  };
+  coords: { x: number; y: number } | null;
+  goalX: number | null;
+};
+
+// === Result Types ===
+
+type ActionResult =
+  | { handled: true; intent: DOMIntent }
+  | { handled: false };  // Let native behavior proceed
 
 interface DOMIntent {
-  focus?: Id.Block | { type: "title"; bufferId: Id.Buffer };
+  focus?: FocusTarget;
   scroll?: Id.Block;
+  blur?: boolean;
 }
 
-interface BlockActionT {
-  handle: (
-    blockId: Id.Block,
-    action: EditorAction,
-    domContext: DOMContext
-  ) => Effect<DOMIntent>;
-}
-```
+type FocusTarget =
+  | { type: "title"; bufferId: Id.Buffer }
+  | { type: "block"; blockId: Id.Block; selection?: { anchor: number; head: number } }
+  | { type: "none" };  // Clear focus
 
-#### TitleActionT
+// === Service Interface ===
 
-Central action handler for title:
-
-```typescript
-interface TitleActionT {
-  handle: (
-    bufferId: Id.Buffer,
-    action: EditorAction,
-    domContext: DOMContext
-  ) => Effect<DOMIntent>;
+interface ActionT {
+  handle: (action: AppAction) => Effect<ActionResult>;
 }
 ```
 
-#### BufferActionT
+**Why primitive actions?**
 
-Central action handler for buffer-level operations (block selection mode):
+The same `KeyDown("Enter")` means different things depending on model state:
 
-```typescript
-interface BufferActionT {
-  handleKeyDown: (
-    bufferId: Id.Buffer,
-    key: string,
-    modifiers: { meta: boolean; ctrl: boolean; alt: boolean; shift: boolean }
-  ) => Effect<DOMIntent | null>;  // null = not handled
-}
-```
+| FocusModeT | PickerT | CursorContext | Interpretation |
+|------------|---------|---------------|----------------|
+| block editing | open | any | Select type from picker |
+| block editing | closed | atEnd, empty block, has LIST type | Remove list type |
+| block editing | closed | any | Split block, propagate types |
+| title editing | closed | any | Create first child block |
+| block selection | n/a | n/a | No-op (Enter starts editing) |
+
+All interpretation logic lives in `ActionT.handle()`, not scattered across components or pre-interpreted by TextEditor.
 
 ### Extended Services
 
@@ -605,95 +736,94 @@ function Block({ blockId, onAction: parentOnAction }) {
 }
 ```
 
-**After (~100 lines):**
+**After (~80 lines) — primitive actions:**
 ```typescript
 function Block({ blockId }) {
   const runtime = useBrowserRuntime();
+  const nodeId = Id.parseBlockId(blockId)[1];
 
   // 1. Single unified subscription
   const { store, start } = useServiceStream(BlockViewT.subscribe(blockId));
-  // store: { isActive, isExpanded, isSelected, childBlockIds, selection,
-  //          activeTypes, picker, ytext, textContent }
 
   // 2. DOM ref for imperative operations
   let containerRef!: HTMLDivElement;
 
-  // 3. DOM context capture (only on events, not stored)
-  const captureDOMContext = (): DOMContext => ({
-    clickCoords: null,  // Set by click handler
-    cursorCoords: getCursorCoords(containerRef),
+  // 3. Build primitive action from keyboard event
+  const buildKeyAction = (e: KeyboardEvent, view: EditorView): AppAction => ({
+    _tag: "KeyDown",
+    key: e.key,
+    modifiers: { meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey },
+    source: {
+      type: "editor",
+      target: { type: "block", blockId },
+      cursor: getCursorContext(view),  // Extract cursor state from CodeMirror
+    },
   });
 
-  // 4. Single action handler - forwards to service
-  const handleAction = (action: EditorAction) => {
-    runtime.runPromise(
+  // 4. Forward primitive action to single ActionT — SYNC!
+  const handleKeyDown = (e: KeyboardEvent, view: EditorView) => {
+    const action = buildKeyAction(e, view);
+
+    // runSync — all action handling is synchronous
+    const result = runtime.runSync(
       Effect.gen(function* () {
-        const BlockAction = yield* BlockActionT;
-        const intent = yield* BlockAction.handle(blockId, action, captureDOMContext());
-        yield* executeDOMIntent(intent);
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
       }),
     );
+
+    if (result.handled) {
+      e.preventDefault();
+      if (result.intent) executeDOMIntent(result.intent);
+    }
+
+    return result.handled;  // Tell CodeMirror whether we handled it
   };
 
-  // 5. Click handler captures coords and forwards
+  // 5. Click to focus — also sync
   const handleClick = (e: MouseEvent) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const BlockAction = yield* BlockActionT;
-        const intent = yield* BlockAction.handleClick(blockId, { x: e.clientX, y: e.clientY });
-        yield* executeDOMIntent(intent);
-      }),
-    );
+    const action: AppAction = {
+      _tag: "Click",
+      coords: { x: e.clientX, y: e.clientY },
+      source: { type: "editor", target: { type: "block", blockId }, cursor: null! },
+    };
+    runtime.runSync(ActionT.handle(action));
   };
 
-  // 6. Expand toggle
+  // 6. Expand toggle (direct service call, not an action) — sync
   const handleToggleExpand = (e: MouseEvent) => {
     e.stopPropagation();
-    runtime.runPromise(BlockT.toggleExpanded(blockId));
+    runtime.runSync(BlockT.toggleExpanded(blockId));
   };
 
   // 7. Start subscription
   onMount(() => start(runtime));
 
-  // 8. Helper to execute DOM intents
-  const executeDOMIntent = (intent: DOMIntent) =>
-    Effect.sync(() => {
-      if (intent.focus) focusElement(intent.focus);
-      if (intent.scroll) scrollToElement(intent.scroll);
-    });
-
-  // 9. Derived values (pure computations, no signals)
+  // 8. Derived values
   const userTypes = () => store.activeTypes.filter((t) => !isSystemType(t));
-  const primaryDecoration = () => {
-    for (const typeId of store.activeTypes) {
-      const def = BlockType.get(typeId);
-      if (def?.renderDecoration) return def.renderDecoration;
-    }
-    return null;
-  };
+  const primaryDecoration = () =>
+    store.activeTypes.map(BlockType.get).find((d) => d?.renderDecoration)?.renderDecoration;
 
-  // 10. Render - all state from store
+  // 9. Render — all state from store, no local signals
   return (
-    <div ref={containerRef} data-element-id={blockId} data-element-type="block" class="relative">
+    <div ref={containerRef} data-element-id={blockId} class="relative">
       <Show when={store.childBlockIds.length > 0}>
         <button onClick={handleToggleExpand}>
           <span classList={{ "rotate-90": store.isExpanded }} />
         </button>
       </Show>
 
-      <div onClick={handleClick} data-block-content class="flex" classList={{ "ring-2": store.isSelected }}>
-        <Transition>
-          <Show when={primaryDecoration()}>
-            {(render) => <span>{render()({ nodeId: store.nodeId })}</span>}
-          </Show>
-        </Transition>
+      <div onClick={handleClick} class="flex" classList={{ "ring-2": store.isSelected }}>
+        <Show when={primaryDecoration()}>
+          {(render) => <span>{render()({ nodeId })}</span>}
+        </Show>
 
         <div class="flex-1 min-w-0">
           <Show when={store.isActive} fallback={<FormattedText ytext={store.ytext} />}>
             <TextEditor
               ytext={store.ytext}
               undoManager={store.undoManager}
-              onAction={handleAction}
+              onKeyDown={handleKeyDown}  // Primitive events, not semantic actions
               selection={store.selection}
               inlineTypes={userTypes()}
             />
@@ -702,7 +832,7 @@ function Block({ blockId }) {
       </div>
 
       <Show when={store.isExpanded}>
-        <div class="pl-4 flex flex-col gap-1.5">
+        <div class="pl-4">
           <For each={store.childBlockIds}>
             {(childId) => <Block blockId={childId} />}
           </For>
@@ -717,11 +847,13 @@ function Block({ blockId }) {
 }
 ```
 
+Note how TextEditor now receives `onKeyDown` (primitive) instead of `onAction` (semantic). TextEditor becomes even simpler — it just passes through keyboard events.
+
 ### EditorBuffer Component
 
 **Before:** 800+ lines with massive keydown handler
 
-**After:**
+**After (~60 lines) — routes document-level events through same ActionT:**
 ```typescript
 function EditorBuffer({ bufferId }) {
   const runtime = useBrowserRuntime();
@@ -729,28 +861,32 @@ function EditorBuffer({ bufferId }) {
   // 1. Unified subscription
   const { store, start } = useServiceStream(BufferViewT.subscribe(bufferId));
 
-  // 2. Keyboard handler - forwards to service
+  // 2. Document-level keyboard handler for non-editor events — SYNC!
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if from CodeMirror (TextEditor handles its own keys)
+      // Skip if inside CodeMirror — TextEditor handles those
       if ((e.target as HTMLElement).closest(".cm-editor")) return;
 
-      runtime.runPromise(
-        Effect.gen(function* () {
-          const BufferAction = yield* BufferActionT;
-          const intent = yield* BufferAction.handleKeyDown(bufferId, e.key, {
-            meta: e.metaKey,
-            ctrl: e.ctrlKey,
-            alt: e.altKey,
-            shift: e.shiftKey,
-          });
+      // Build primitive action with document source (no editor context)
+      const action: AppAction = {
+        _tag: "KeyDown",
+        key: e.key,
+        modifiers: { meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey },
+        source: { type: "document", bufferId },  // No cursor context
+      };
 
-          if (intent) {
-            e.preventDefault();
-            yield* executeDOMIntent(intent);
-          }
+      // runSync — all action handling is synchronous
+      const result = runtime.runSync(
+        Effect.gen(function* () {
+          const Action = yield* ActionT;
+          return yield* Action.handle(action);
         }),
       );
+
+      if (result.handled) {
+        e.preventDefault();
+        if (result.intent) executeDOMIntent(result.intent);
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -759,7 +895,7 @@ function EditorBuffer({ bufferId }) {
     return start(runtime);
   });
 
-  // 3. Render
+  // 3. Render — no logic, just composition
   return (
     <div class="flex-1 flex flex-col overflow-hidden">
       <Show when={store.nodeId}>
@@ -775,6 +911,10 @@ function EditorBuffer({ bufferId }) {
   );
 }
 ```
+
+Note: Both Block and EditorBuffer call `ActionT.handle()`. The difference is `source.type`:
+- Block: `{ type: "editor", target: { type: "block", blockId }, cursor: {...} }`
+- EditorBuffer: `{ type: "document", bufferId }` (no cursor, used for block selection mode)
 
 ### TypePicker Component
 
@@ -825,136 +965,288 @@ function TypePicker(props: TypePickerProps) {
 
 ## Action Handler Implementation
 
-### BlockActionT Implementation
+### ActionT Implementation
+
+The single `ActionT` service handles ALL user actions. It receives primitive events and interprets them based on model state.
 
 ```typescript
-const BlockActionTLive = Layer.effect(
-  BlockActionT,
+const ActionTLive = Layer.effect(
+  ActionT,
   Effect.gen(function* () {
+    // Inject all dependencies
+    const FocusMode = yield* FocusModeT;
     const Buffer = yield* BufferT;
-    const Window = yield* WindowT;
     const Block = yield* BlockT;
     const Node = yield* NodeT;
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
     const Yjs = yield* YjsT;
 
-    const handle = (
-      blockId: Id.Block,
-      action: EditorAction,
-      domContext: DOMContext
-    ): Effect.Effect<DOMIntent> =>
+    const handle = (action: AppAction): Effect.Effect<ActionResult> =>
       Effect.gen(function* () {
-        const context = yield* Id.parseBlockContext(blockId);
-        const bufferId = context.bufferId;
-        const nodeId = context.type === "buffer"
-          ? context.nodeId
-          : yield* getDisplayNode(context);
-
-        // Get block state for routing decisions
-        const isExpanded = yield* Block.isExpanded(blockId);
-        const activeTypes = yield* Type.getTypes(nodeId);
-        const activeDefinitions = activeTypes.map(BlockType.get).filter(Boolean);
+        // 1. Get model state for interpretation
+        const focusMode = yield* FocusMode.get();
         const pickerState = yield* Picker.getState();
-        const pickerOpen = pickerState?.elementId === blockId;
 
-        return yield* Match.value(action).pipe(
-          Match.tags({
-            Enter: ({ info }) => handleEnter(context, info, activeDefinitions, pickerOpen),
-            Tab: () => handleTab(context),
-            ShiftTab: () => handleShiftTab(context),
-            BackspaceAtStart: () => handleBackspaceAtStart(context, activeDefinitions),
-            DeleteAtEnd: () => handleDeleteAtEnd(context),
-            ForceDelete: () => handleForceDelete(context),
-            Navigate: ({ direction, goalX }) => handleNavigate(context, direction, goalX, isExpanded),
-            SelectionChange: ({ selection }) => handleSelectionChange(context, selection),
-            VerticalMove: (params) => handleVerticalMove(context, params),
-            Blur: () => handleBlur(context),
-            Escape: () => handleEscape(context, pickerOpen),
-            ZoomIn: () => handleZoomIn(context),
-            ZoomOut: () => handleZoomOut(context),
-            BlockSelect: ({ direction }) => handleBlockSelect(context, direction),
-            Move: ({ action: moveAction }) => handleMove(context, moveAction),
-            Expand: ({ goalX }) => handleExpand(context, goalX),
-            TypeTrigger: ({ typeId, trigger }) => handleTypeTrigger(context, typeId, trigger, activeTypes),
-            TypePickerOpen: ({ position, from }) => handlePickerOpen(context, position, from),
-            TypePickerUpdate: ({ query }) => handlePickerUpdate(query),
-            TypePickerClose: () => handlePickerClose(),
-            ToggleTodo: () => handleToggleTodo(nodeId),
-            PropertyTrigger: () => handlePropertyTrigger(context),
-          }),
-          Match.exhaustive,
-        );
-      });
-
-    // Individual handlers
-    const handleEnter = (context, info, activeDefinitions, pickerOpen) =>
-      Effect.gen(function* () {
-        // Handle picker selection first
-        if (pickerOpen) {
-          yield* Picker.selectCurrentOrClose();
-          return { focus: context.blockId };
+        // 2. Route based on source type
+        if (action.source.type === "document") {
+          // Block selection mode — no editor focused
+          return yield* handleDocumentAction(action, focusMode);
         }
 
-        // Check type removal on empty
-        if (info.cursorPos === 0 && info.textAfter.length === 0) {
-          for (const def of activeDefinitions) {
-            if (def.enter?.removeOnEmpty) {
-              yield* Type.removeType(context.nodeId, def.id);
-              return {};
+        // 3. Editor-sourced action — get target context
+        const { target, cursor } = action.source;
+
+        // 4. Get additional context based on target
+        const context = yield* getTargetContext(target);
+        const activeTypes = yield* Type.getTypes(context.nodeId);
+        const activeDefinitions = activeTypes.map(BlockType.get).filter(Boolean);
+        const pickerOpen = pickerState?.elementId === context.blockId;
+
+        // 5. Interpret primitive action based on all context
+        return yield* interpretAction(action, {
+          focusMode,
+          target,
+          cursor,
+          context,
+          activeDefinitions,
+          pickerOpen,
+        });
+      });
+
+    // === Interpretation: Primitive → Semantic ===
+
+    const interpretAction = (
+      action: AppAction,
+      ctx: InterpretContext
+    ): Effect.Effect<ActionResult> =>
+      Effect.gen(function* () {
+        // KeyDown interpretation
+        if (action._tag === "KeyDown") {
+          return yield* interpretKeyDown(action, ctx);
+        }
+
+        // SelectionChange — always handle
+        if (action._tag === "SelectionChange") {
+          yield* Buffer.setSelection(ctx.context.bufferId, action.selection);
+          return { handled: true, intent: {} };
+        }
+
+        // Blur handling
+        if (action._tag === "Blur") {
+          return yield* handleBlur(ctx);
+        }
+
+        return { handled: false };
+      });
+
+    // === KeyDown Interpretation ===
+
+    const interpretKeyDown = (
+      action: AppAction & { _tag: "KeyDown" },
+      ctx: InterpretContext
+    ): Effect.Effect<ActionResult> =>
+      Effect.gen(function* () {
+        const { key, modifiers } = action;
+        const { cursor, pickerOpen, activeDefinitions, context } = ctx;
+
+        // --- Enter ---
+        if (key === "Enter" && !modifiers.shift) {
+          // Picker open? Select item
+          if (pickerOpen) {
+            yield* Picker.selectCurrentOrClose();
+            return { handled: true, intent: { focus: { type: "block", blockId: context.blockId } } };
+          }
+
+          // Title? Create first child
+          if (ctx.target.type === "title") {
+            const childId = yield* Node.createFirstChild(context.nodeId);
+            const blockId = Id.makeBufferBlockId(context.bufferId, childId);
+            return { handled: true, intent: { focus: { type: "block", blockId }, scroll: blockId } };
+          }
+
+          // Empty block with removable type? Remove type
+          if (cursor.atStart && cursor.atEnd) {
+            for (const def of activeDefinitions) {
+              if (def.enter?.removeOnEmpty) {
+                yield* Type.removeType(context.nodeId, def.id);
+                return { handled: true, intent: {} };
+              }
             }
           }
-        }
 
-        // Split block
-        const result = yield* Buffer.split({
-          nodeId: context.nodeId,
-          cursorPos: info.cursorPos,
-          textAfter: info.textAfter,
-        });
+          // Normal: split block
+          const result = yield* Block.split({
+            nodeId: context.nodeId,
+            cursorPos: cursor.position,
+            textAfter: cursor.textAfter,
+          });
 
-        // Propagate types
-        for (const def of activeDefinitions) {
-          if (def.enter?.propagateToNewBlock) {
-            yield* Type.addType(result.newNodeId, def.id);
+          // Propagate types
+          for (const def of activeDefinitions) {
+            if (def.enter?.propagateToNewBlock) {
+              yield* Type.addType(result.newNodeId, def.id);
+            }
           }
+
+          const newBlockId = Id.makeBufferBlockId(context.bufferId, result.newNodeId);
+          return {
+            handled: true,
+            intent: { focus: { type: "block", blockId: newBlockId, selection: { anchor: 0, head: 0 } }, scroll: newBlockId },
+          };
         }
 
-        // Update selection
-        const newBlockId = Id.makeBufferBlockId(context.bufferId, result.newNodeId);
-        yield* Buffer.setSelection(context.bufferId, makeCollapsedSelection(newBlockId, result.cursorOffset));
+        // --- Backspace ---
+        if (key === "Backspace" && !modifiers.meta && !modifiers.ctrl) {
+          // Picker open? Let native handle (delete from query)
+          if (pickerOpen) {
+            return { handled: false };
+          }
 
-        return { focus: newBlockId, scroll: newBlockId };
+          // Not at start? Let native handle
+          if (!cursor.atStart) {
+            return { handled: false };
+          }
+
+          // Has removable type? Remove it
+          for (const def of activeDefinitions) {
+            if (def.backspace?.removeTypeAtStart) {
+              yield* Type.removeType(context.nodeId, def.id);
+              return { handled: true, intent: {} };
+            }
+          }
+
+          // At start, no removable type: merge backward
+          const result = yield* Buffer.mergeBackward(context.bufferId, context.nodeId);
+          if (result) {
+            return {
+              handled: true,
+              intent: { focus: { type: "block", blockId: result.targetBlockId, selection: { anchor: result.cursorPos, head: result.cursorPos } } },
+            };
+          }
+
+          return { handled: true, intent: {} };  // Can't merge (root block)
+        }
+
+        // --- Tab ---
+        if (key === "Tab" && !modifiers.meta && !modifiers.ctrl && !modifiers.alt) {
+          if (ctx.target.type === "property") {
+            return { handled: false };  // Property blocks don't indent
+          }
+
+          if (modifiers.shift) {
+            yield* Buffer.outdent([context.nodeId]);
+          } else {
+            yield* Buffer.indent([context.nodeId]);
+          }
+          return { handled: true, intent: {} };
+        }
+
+        // --- Escape ---
+        if (key === "Escape") {
+          if (pickerOpen) {
+            yield* Picker.close();
+            return { handled: true, intent: {} };
+          }
+
+          // Enter block selection mode
+          yield* FocusMode.enterBlockSelection(context.bufferId, [context.nodeId]);
+          return { handled: true, intent: { focus: { type: "none" } } };
+        }
+
+        // --- Arrow keys at boundaries ---
+        if (key === "ArrowLeft" && cursor.atStart && !modifiers.shift) {
+          const prevBlock = yield* Block.findPreviousNode(context.nodeId, context.bufferId);
+          if (prevBlock) {
+            return { handled: true, intent: { focus: { type: "block", blockId: prevBlock, selection: { anchor: -1, head: -1 } } } };  // -1 = end
+          }
+          // Try title
+          return { handled: true, intent: { focus: { type: "title", bufferId: context.bufferId } } };
+        }
+
+        if (key === "ArrowRight" && cursor.atEnd && !modifiers.shift) {
+          const nextBlock = yield* Block.findNextNodeInDocumentOrder(context.nodeId, context.bufferId);
+          if (nextBlock) {
+            return { handled: true, intent: { focus: { type: "block", blockId: nextBlock, selection: { anchor: 0, head: 0 } } } };
+          }
+          return { handled: true, intent: {} };  // At end, no-op
+        }
+
+        // ... more key handlers (ArrowUp, ArrowDown, Cmd+., Cmd+,, etc.)
+
+        // Not handled — let native behavior proceed
+        return { handled: false };
       });
 
-    const handleTab = (context) =>
+    // === Document-level actions (block selection mode) ===
+
+    const handleDocumentAction = (
+      action: AppAction,
+      focusMode: FocusMode
+    ): Effect.Effect<ActionResult> =>
       Effect.gen(function* () {
-        if (context.type === "property") {
-          // Property blocks don't indent
-          return {};
-        }
-        yield* Buffer.indent([context.nodeId]);
-        return {};
-      });
-
-    const handleEscape = (context, pickerOpen) =>
-      Effect.gen(function* () {
-        if (pickerOpen) {
-          yield* Picker.close();
-          return {};
+        if (focusMode.type !== "blockSelection") {
+          return { handled: false };
         }
 
-        // Enter block selection mode
-        yield* FocusMode.enterBlockSelection(context.bufferId, [context.nodeId]);
-        return {};
-      });
+        if (action._tag !== "KeyDown") {
+          return { handled: false };
+        }
 
-    // ... more handlers
+        const { key, modifiers } = action;
+        const { bufferId, selectedNodes } = focusMode;
+
+        // Arrow navigation in block selection
+        if (key === "ArrowDown" && !modifiers.meta) {
+          const nextNode = yield* Block.findNextNodeInDocumentOrder(selectedNodes[selectedNodes.length - 1], bufferId);
+          if (nextNode) {
+            const newSelected = modifiers.shift
+              ? [...selectedNodes, nextNode]
+              : [nextNode];
+            yield* FocusMode.set({ type: "blockSelection", bufferId, selectedNodes: newSelected });
+          }
+          return { handled: true, intent: {} };
+        }
+
+        // Enter to start editing
+        if (key === "Enter") {
+          const blockId = Id.makeBufferBlockId(bufferId, selectedNodes[0]);
+          yield* FocusMode.exitBlockSelection(blockId);
+          return { handled: true, intent: { focus: { type: "block", blockId } } };
+        }
+
+        // Delete selected blocks
+        if (key === "Backspace" || key === "Delete") {
+          yield* Block.deleteNodes(selectedNodes);
+          // Focus previous or next block
+          const focusTarget = yield* findFocusAfterDelete(bufferId, selectedNodes);
+          yield* FocusMode.exitBlockSelection(focusTarget);
+          return { handled: true, intent: { focus: { type: "block", blockId: focusTarget } } };
+        }
+
+        // Escape to clear selection
+        if (key === "Escape") {
+          yield* FocusMode.set({ type: "none" });
+          return { handled: true, intent: {} };
+        }
+
+        // ... more block selection handlers
+
+        return { handled: false };
+      });
 
     return { handle };
   }),
 );
 ```
+
+### Key Design Decisions
+
+1. **Single entry point**: All actions flow through `ActionT.handle()`
+2. **Primitive → Semantic in one place**: `interpretKeyDown()` is where "Backspace at cursor position 0" becomes "merge backward"
+3. **Model-driven routing**: `FocusModeT` determines if we're in block selection mode, not DOM checks
+4. **Explicit `handled` flag**: Components know whether to `preventDefault()` or let native behavior proceed
+5. **Testable**: Pure Effect functions, no DOM dependencies
 
 ---
 
@@ -974,21 +1266,28 @@ const BlockActionTLive = Layer.effect(
 3. Move block selection state from `BufferT` to `FocusModeT`
 4. Update `WindowT.activeElement` to use `FocusModeT`
 
-### Phase 3: Create Action Services
+### Phase 3: Create Primitive Action Types
 
-1. Create `BlockActionT` with all action handlers
-2. Move handler logic from Block component to service
-3. Simplify Block to forward actions
-4. Remove `onAction` prop and bubbling
+1. Define `AppAction` type with primitive events (KeyDown, Click, Blur, etc.)
+2. Define `ActionSource` and `CursorContext` types
+3. Define `ActionResult` with `handled` flag and `DOMIntent`
 
-### Phase 4: Unify Buffer Keyboard Handling
+### Phase 4: Create Single ActionT Service
 
-1. Create `BufferActionT` for buffer-level keys
-2. Convert `handleKeyDown` to EditorAction where applicable
-3. Move logic from EditorBuffer to service
-4. Simplify EditorBuffer component
+1. Create `ActionT` with single `handle(action: AppAction)` method
+2. Implement `interpretKeyDown()` that converts primitives to semantics
+3. Move ALL handler logic from components to ActionT
+4. Implement routing based on `action.source.type` and `FocusModeT`
 
-### Phase 5: Create Unified View Subscriptions
+### Phase 5: Simplify Components to Emit Primitives
+
+1. Update TextEditor to emit primitive `KeyDown` instead of semantic `EditorAction`
+2. Update Block/Title to build `AppAction` with source context
+3. Update EditorBuffer to build document-sourced `AppAction` for non-editor events
+4. Remove `onAction` prop and bubbling entirely
+5. All components call `ActionT.handle()` directly
+
+### Phase 6: Create Unified View Subscriptions
 
 1. Create `BlockViewT.subscribe` that composes all block state
 2. Create `BufferViewT.subscribe` that composes all buffer state
@@ -1001,21 +1300,28 @@ const BlockActionTLive = Layer.effect(
 
 ### Tracing "What happens when I press Enter?"
 
-**Before:**
-1. TextEditor emits `Action.Enter(info)`
+**Before (semantic actions, scattered handling):**
+1. TextEditor emits `Action.Enter(info)` — already interpreted as "Enter"
 2. Block.handleAction receives it
 3. Block calls `parentOnAction` (blockActionHandler)
-4. blockActionHandler returns `false` for Enter
+4. blockActionHandler returns `false` for Enter (implicit knowledge of Block's picker logic)
 5. Block's Match.tags handles Enter
-6. Block checks `handleEnterWithPicker()` (hook)
+6. Block checks `handleEnterWithPicker()` (hook) — local picker state
 7. If no picker, Block calls `handleEnter(info)`
 8. handleEnter runs Effect with split, type propagation, selection update
 
-**After:**
-1. TextEditor emits `Action.Enter(info)`
-2. Block calls `BlockActionT.handle(blockId, action, domContext)`
-3. BlockActionT.handle matches on `Enter`
-4. `handleEnter` runs all logic in one place
+**After (primitive actions, centralized interpretation):**
+1. TextEditor captures KeyDown event
+2. Block builds primitive action:
+   ```typescript
+   { _tag: "KeyDown", key: "Enter", source: { type: "editor", target: { type: "block", blockId }, cursor: { position: 5, atStart: false, ... } } }
+   ```
+3. Block calls `ActionT.handle(action)`
+4. ActionT checks model: `FocusModeT.get()`, `PickerT.getState()`, `Type.getTypes()`
+5. ActionT interprets: "Enter key + picker open = select from picker" or "Enter key + no picker = split block"
+6. ActionT calls domain services: `Block.split()`, `Type.addType()`, `Buffer.setSelection()`
+7. ActionT returns `{ handled: true, intent: { focus: newBlockId } }`
+8. Block executes DOMIntent, calls `e.preventDefault()`
 
 ### State Location
 
@@ -1027,6 +1333,7 @@ const BlockActionTLive = Layer.effect(
 - Transition flag: Component local (mutable let)
 - Click coords: Component local (useClickCapture)
 - Active types: Component local (createSignal)
+- Action interpretation: Scattered across TextEditor, Block, blockActionHandler
 
 **After:**
 - Buffer selection: `BufferT`
@@ -1034,8 +1341,9 @@ const BlockActionTLive = Layer.effect(
 - Active element: `FocusModeT`
 - Picker state: `PickerT`
 - Transition flag: Not needed (atomic transitions in FocusModeT)
-- Click coords: DOM capture, passed to service
+- Cursor context: Captured at event time, passed in `ActionSource`
 - Active types: `BlockViewT.subscribe` (composed)
+- Action interpretation: Centralized in `ActionT.handle()`
 
 ### Component Lines of Code
 
@@ -1060,7 +1368,7 @@ Testing action handling requires:
 
 ### After Refactor
 
-Action handling can be tested as pure Effect:
+Action handling can be tested as pure Effect with primitive actions:
 
 ```typescript
 test("Enter splits block and propagates bullet type", async () => {
@@ -1068,24 +1376,42 @@ test("Enter splits block and propagates bullet type", async () => {
     Effect.gen(function* () {
       // Setup
       const nodeId = yield* createTestNode("Hello|World");
+      const blockId = Id.makeBufferBlockId(bufferId, nodeId);
       yield* Type.addType(nodeId, System.BULLET);
 
-      // Act
-      const intent = yield* BlockActionT.handle(
-        makeBlockId(nodeId),
-        Action.Enter({ cursorPos: 5, textBefore: "Hello", textAfter: "World" }),
-        { clickCoords: null, cursorCoords: null }
-      );
+      // Build primitive action (what component would build)
+      const action: AppAction = {
+        _tag: "KeyDown",
+        key: "Enter",
+        modifiers: { meta: false, ctrl: false, alt: false, shift: false },
+        source: {
+          type: "editor",
+          target: { type: "block", blockId },
+          cursor: {
+            position: 5,
+            atStart: false,
+            atEnd: false,
+            textBefore: "Hello",
+            textAfter: "World",
+            // ... other cursor context
+          },
+        },
+      };
+
+      // Act — single entry point
+      const result = yield* ActionT.handle(action);
 
       // Assert
+      expect(result.handled).toBe(true);
+
       const newNode = yield* getNextSibling(nodeId);
       const newNodeTypes = yield* Type.getTypes(newNode.id);
 
-      return { intent, newNode, newNodeTypes };
+      return { result, newNode, newNodeTypes };
     }).pipe(Effect.provide(TestLayer))
   );
 
-  expect(result.intent.focus).toBeDefined();
+  expect(result.result.intent?.focus).toBeDefined();
   expect(result.newNode.text).toBe("World");
   expect(result.newNodeTypes).toContain(System.BULLET);
 });
