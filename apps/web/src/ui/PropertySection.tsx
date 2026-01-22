@@ -2,16 +2,23 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { YjsT } from "@/services/external/Yjs";
-import { BufferT } from "@/services/ui/Buffer";
 import { PropertyT, type LinkedTuple } from "@/services/ui/Property";
 import { WindowT } from "@/services/ui/Window";
 import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
-import { Effect, Match, Option } from "effect";
+import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
-import { createEffect, createSignal, For, onCleanup, onMount, Show, useContext } from "solid-js";
-import Block, { type BlockNavigationContext } from "./Block";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+  useContext,
+} from "solid-js";
+import Block from "./Block";
 import { ActiveElementContext } from "./EditorBuffer";
-import TextEditor, { type EditorAction, type SelectionInfo } from "./TextEditor";
+import TextEditor, { type SelectionInfo } from "./TextEditor";
 
 interface PropertySectionProps {
   propertyId: Id.Node;
@@ -119,7 +126,13 @@ function GhostBlock(props: GhostBlockProps) {
   // Derive selection: use prop-requested selection when requestFocus is true
   const getEffectiveSelection = () => {
     if (props.requestFocus) {
-      return { anchor: 0, head: 0, goalX: null, goalLine: null, assoc: 0 as const };
+      return {
+        anchor: 0,
+        head: 0,
+        goalX: null,
+        goalLine: null,
+        assoc: 0 as const,
+      };
     }
     return selection();
   };
@@ -145,67 +158,6 @@ function GhostBlock(props: GhostBlockProps) {
     });
   };
 
-  const handleAction = (action: EditorAction): boolean | void =>
-    Match.value(action).pipe(
-      Match.tags({
-        // Navigation: ArrowUp/Left → property name
-        Navigate: ({ direction }) =>
-          Match.value(direction).pipe(
-            Match.when("up", () => {
-              props.onFocusPropertyName();
-              return true;
-            }),
-            Match.when("left", () => {
-              props.onFocusPropertyName();
-              return true;
-            }),
-            Match.when("down", () => true), // No-op, nothing below ghost
-            Match.when("right", () => true), // No-op at end
-            Match.exhaustive,
-          ),
-
-        // Tab/ShiftTab: no-op (flat list, no indent)
-        Tab: () => true,
-        ShiftTab: () => true,
-
-        // Enter: do nothing (only materialize on actual text input)
-        Enter: () => true,
-
-        // BackspaceAtStart: navigate to property name
-        BackspaceAtStart: () => {
-          props.onFocusPropertyName();
-          return true;
-        },
-
-        // Escape: blur without materializing
-        Escape: () => {
-          setIsActive(false);
-          setSelection(null);
-        },
-
-        // Pass through other events
-        SelectionChange: ({ selection: sel }) => handleSelectionChange(sel),
-        Blur: () => handleBlur(),
-
-        // No-ops for ghost block
-        DeleteAtEnd: () => true,
-        ForceDelete: () => true,
-        VerticalMove: () => true,
-        ZoomIn: () => true,
-        ZoomOut: () => true,
-        BlockSelect: () => true,
-        Move: () => true,
-        TypeTrigger: () => false,
-        PropertyTrigger: () => false,
-        TypePickerOpen: () => true,
-        TypePickerUpdate: () => true,
-        TypePickerClose: () => true,
-        Expand: () => true,
-        ToggleTodo: () => true,
-      }),
-      Match.exhaustive,
-    );
-
   const getInitialStrategy = () =>
     resolveSelectionStrategy({
       clickCoords,
@@ -223,13 +175,16 @@ function GhostBlock(props: GhostBlockProps) {
       <Show
         when={shouldShowEditor()}
         fallback={
-          <span class="text-neutral-400 italic cursor-text">click to add...</span>
+          <span class="text-neutral-400 italic cursor-text">
+            click to add...
+          </span>
         }
       >
         <TextEditor
           ytext={ytext}
           undoManager={undoManager}
-          onAction={handleAction}
+          onSelectionChange={handleSelectionChange}
+          onBlur={handleBlur}
           initialStrategy={getInitialStrategy()}
           selection={getEffectiveSelection()}
         />
@@ -323,49 +278,6 @@ export default function PropertySection(props: PropertySectionProps) {
       }),
     );
 
-  // Helper to find index of linked tuple by its block ID
-  const findLinkedTupleIndex = (blockId: Id.Block): number => {
-    const tuples = linkedTuples();
-    // Extract tupleId from property block ID format:
-    // buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
-    const tupleSegment = "/tuple:";
-    const tupleIndex = blockId.indexOf(tupleSegment);
-    if (tupleIndex === -1) return -1;
-    const tupleId = blockId.slice(tupleIndex + tupleSegment.length) as Id.Tuple;
-    return tuples.findIndex((t) => t.tupleId === tupleId);
-  };
-
-  // Focus a linked tuple by index
-  const focusLinkedTuple = (index: number) => {
-    const tuples = linkedTuples();
-    const tuple = tuples[index];
-    if (!tuple) return;
-    const blockId = makePropertyBlockId(tuple.tupleId);
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-        // Focus the block
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: blockId }),
-        );
-        // Set selection at start of block
-        yield* Buffer.setSelection(
-          props.bufferId,
-          Option.some({
-            anchor: { elementId: blockId },
-            anchorOffset: 0,
-            focus: { elementId: blockId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-      }),
-    );
-  };
-
   // Focus the property name
   const focusPropertyName = () => {
     setIsActive(true);
@@ -394,108 +306,6 @@ export default function PropertySection(props: PropertySectionProps) {
       focusPropertyName();
     }
   });
-
-  // Create a new linked block after the current one
-  const createNewLinkedBlock = (_afterIndex: number) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Property = yield* PropertyT;
-
-        // Create new linked block
-        const newNodeId = yield* Property.addLinkedBlock(
-          props.propertyId,
-          props.pageId,
-        );
-
-        // Reload linked tuples
-        yield* Effect.sync(() => loadLinkedTuples());
-
-        // Wait for DOM update, then focus the new block
-        yield* Effect.promise(
-          () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        // Find and focus the new tuple by its displayNodeId
-        const newIndex = linkedTuples().findIndex(
-          (t) => t.displayNodeId === newNodeId,
-        );
-        if (newIndex !== -1) {
-          focusLinkedTuple(newIndex);
-        }
-      }),
-    );
-  };
-
-  // Action handler for linked blocks - intercepts tree operations
-  const linkedBlockActionHandler = (
-    action: EditorAction,
-    context: BlockNavigationContext,
-  ): boolean => {
-    const currentIndex = findLinkedTupleIndex(context.blockId);
-    const tuples = linkedTuples();
-
-    return Match.value(action).pipe(
-      Match.tags({
-        Tab: () => true, // No indent in linked blocks (flat list)
-        ShiftTab: () => true, // No outdent in linked blocks
-
-        Navigate: ({ direction }) =>
-          Match.value(direction).pipe(
-            Match.when("up", () => {
-              if (currentIndex === 0) {
-                // First block - navigate to property name
-                focusPropertyName();
-              } else if (currentIndex > 0) {
-                // Navigate to previous linked block
-                focusLinkedTuple(currentIndex - 1);
-              }
-              return true;
-            }),
-            Match.when("down", () => {
-              if (currentIndex < tuples.length - 1) {
-                // Navigate to next linked block
-                focusLinkedTuple(currentIndex + 1);
-              }
-              // At last block - no-op
-              return true;
-            }),
-            Match.when("left", () => {
-              // Navigate to property name (at start of first)
-              focusPropertyName();
-              return true;
-            }),
-            Match.when("right", () => {
-              if (currentIndex < tuples.length - 1) {
-                // Navigate to next linked block
-                focusLinkedTuple(currentIndex + 1);
-              }
-              // At last block - no-op
-              return true;
-            }),
-            Match.exhaustive,
-          ),
-
-        Enter: () => {
-          // Create new linked block after current one
-          createNewLinkedBlock(currentIndex);
-          return true;
-        },
-
-        BackspaceAtStart: () => {
-          // Navigate to previous block or property name (don't merge)
-          if (currentIndex === 0) {
-            focusPropertyName();
-          } else if (currentIndex > 0) {
-            focusLinkedTuple(currentIndex - 1);
-          }
-          return true;
-        },
-
-        DeleteAtEnd: () => true, // Don't merge linked blocks
-      }),
-      Match.orElse(() => false), // Let Block handle everything else
-    );
-  };
 
   onMount(() => {
     // Observe Y.Text changes for property name
@@ -549,95 +359,6 @@ export default function PropertySection(props: PropertySectionProps) {
     });
   };
 
-  const handleArrowRightAtEnd = () => {
-    // Use local signal for already-bound check (synchronous path)
-    if (isBound()) {
-      const tuples = linkedTuples();
-      if (tuples.length > 0) {
-        // Focus first linked block
-        focusLinkedTuple(0);
-      } else {
-        // No linked blocks - focus ghost block
-        setGhostFocusRequested(true);
-      }
-      return;
-    }
-
-    // Unbound → trigger async quick-create flow
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Property = yield* PropertyT;
-        const tupleTypeId = yield* Property.quickCreateTupleType(
-          props.propertyId,
-        );
-
-        // Set focus request BEFORE loadLinkedTuples to prevent auto-focus effect
-        // from stealing focus when re-render happens
-        yield* Effect.sync(() => setGhostFocusRequested(true));
-
-        // Reload linked tuples (will set isBound=true, linkedTuples=[])
-        // Must use Effect.promise to actually await the Promise returned by loadLinkedTuples
-        yield* Effect.promise(() => loadLinkedTuples());
-
-        // Wait for DOM update (for GhostBlock to mount and focus)
-        yield* Effect.promise(
-          () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
-        );
-
-        yield* Effect.logDebug(
-          "[PropertySection] Quick-created tuple type, ghost block ready",
-        ).pipe(
-          Effect.annotateLogs({
-            propertyId: props.propertyId,
-            tupleTypeId,
-          }),
-        );
-      }),
-    );
-  };
-
-  const handleAction = (action: EditorAction): boolean | void =>
-    Match.value(action).pipe(
-      Match.tags({
-        Navigate: ({ direction }) =>
-          Match.value(direction).pipe(
-            Match.when("right", () => {
-              handleArrowRightAtEnd();
-              return true; // Prevent default navigation
-            }),
-            Match.orElse(() => undefined),
-          ),
-        SelectionChange: ({ selection: sel }) => handleSelectionChange(sel),
-        Blur: () => handleBlur(),
-        Escape: () => {
-          setIsActive(false);
-          setSelection(null);
-        },
-        // Handle other actions as needed
-        Enter: () => {
-          // Enter could navigate to linked blocks area
-        },
-        Tab: () => {},
-        ShiftTab: () => {},
-        BackspaceAtStart: () => {},
-        DeleteAtEnd: () => {},
-        ForceDelete: () => {},
-        VerticalMove: () => {},
-        ZoomIn: () => {},
-        ZoomOut: () => {},
-        BlockSelect: () => {},
-        Move: () => {},
-        TypeTrigger: () => false,
-        PropertyTrigger: () => false,
-        TypePickerOpen: () => {},
-        TypePickerUpdate: () => {},
-        TypePickerClose: () => {},
-        Expand: () => {},
-        ToggleTodo: () => {},
-      }),
-      Match.exhaustive,
-    );
-
   // Resolve initial selection strategy when clicking
   const getInitialStrategy = () =>
     resolveSelectionStrategy({
@@ -668,7 +389,8 @@ export default function PropertySection(props: PropertySectionProps) {
             <TextEditor
               ytext={getYtext()}
               undoManager={getUndoManager()}
-              onAction={handleAction}
+              onSelectionChange={handleSelectionChange}
+              onBlur={handleBlur}
               initialStrategy={getInitialStrategy()}
               selection={selection()}
             />
@@ -706,12 +428,7 @@ export default function PropertySection(props: PropertySectionProps) {
           }
         >
           <For each={linkedTuples()}>
-            {(tuple) => (
-              <Block
-                blockId={makePropertyBlockId(tuple.tupleId)}
-                onAction={linkedBlockActionHandler}
-              />
-            )}
+            {(tuple) => <Block blockId={makePropertyBlockId(tuple.tupleId)} />}
           </For>
         </Show>
       </div>

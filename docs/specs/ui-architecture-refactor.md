@@ -1418,3 +1418,420 @@ test("Enter splits block and propagates bullet type", async () => {
 ```
 
 No DOM, no component mounting, no event simulation. Pure business logic testing.
+
+---
+
+## Implementation Status
+
+> **Last Updated:** 2026-01-22
+
+This section tracks the actual implementation progress against the migration plan.
+
+### Phase 1: Extract Picker State — ✅ COMPLETE
+
+**Files Created:**
+- `apps/web/src/services/ui/Picker/index.ts` (~230 lines)
+- `apps/web/src/services/ui/Picker/Picker.unit.test.ts`
+
+**Implementation Details:**
+- `PickerT` service uses `SubscriptionRef` for reactive state
+- Interface: `open`, `close`, `updateQuery`, `getState`, `subscribe`, `selectType`, `createAndSelectType`
+- `finishPickerAction` helper handles cleanup (delete trigger text, set selection, close)
+- Dependencies: `BufferT`, `TypePickerT`, `YjsT`
+
+**Deviation from Plan:**
+- `PickerT.selectType` and `createAndSelectType` handle the full workflow (apply type + cleanup + close), rather than ActionT calling multiple services
+
+**Integration:**
+- Block and Title components use `PickerStateContext` from EditorBuffer to read picker state
+- Query updates pushed to `PickerT.updateQuery` via `createEffect` watching `textContent()` and selection
+- EditorBuffer renders `TypePicker` based on picker state filtered to current buffer
+
+---
+
+### Phase 2: Unify Focus Mode — ✅ COMPLETE
+
+**Files Created:**
+- `apps/web/src/services/ui/EditorMode/index.ts` (~110 lines)
+
+**Implementation Details:**
+- Named `EditorModeT` (not `FocusModeT` as in spec)
+- Three modes: `none`, `block` (with blockId), `blockSelection` (with bufferId)
+- Uses `SubscriptionRef` for reactive state
+- Atomic transitions via `enterBlockSelection` and `exitBlockSelection`
+- `shouldSkipBlur()` returns internal `skipBlur` flag for blur handlers
+- `skipBlur` flag cleared after microtask via `queueMicrotask`
+
+**Deviation from Plan:**
+- No separate `title` or `property` mode variants — Title IS a block where `nodeId === buffer.assignedNodeId`
+- `selectedNodes` not stored in EditorModeT — read from `buffer.selectedBlocks` in LiveStore instead
+- Block selection state remains in `BufferT` (not moved to EditorModeT)
+
+**Integration:**
+- ActionT consults `EditorModeT.get()` to determine routing
+- ActionT calls `EditorMode.enterBlockSelection()` on Escape key
+- Block's `handleBlurEvent` checks `EditorMode.shouldSkipBlur()`
+
+---
+
+### Phase 3: Create Primitive Action Types — ✅ COMPLETE
+
+**Files Created:**
+- `apps/web/src/services/ui/Action/types.ts` (~207 lines)
+- `apps/web/src/utils/cursorContext.ts` (~106 lines)
+
+**Type Definitions (`types.ts`):**
+```typescript
+// Modifiers
+interface Modifiers { meta, ctrl, alt, shift: boolean }
+
+// CursorContext - captured from CodeMirror
+interface CursorContext {
+  position, anchor, head: number;
+  atStart, atEnd: boolean;
+  textBefore, textAfter, docText: string;
+  lineInfo: { line, totalLines, column: number; atFirstLine, atLastLine: boolean };
+  coords: { x, y } | null;
+  goalX: number | null;
+  assoc: -1 | 0 | 1;
+}
+
+// ActionSource - simplified from spec (no EditorTarget sub-type)
+type ActionSource =
+  | { type: "editor"; blockId: Id.Block; cursor: CursorContext }
+  | { type: "document"; bufferId: Id.Buffer };
+
+// AppAction - primitive events
+type AppAction =
+  | { _tag: "KeyDown"; key: string; modifiers: Modifiers; source: ActionSource }
+  | { _tag: "Click"; coords: { x, y }; source: ActionSource }
+  | { _tag: "SelectionChange"; selection: SelectionInfo; source: ActionSource }
+  | { _tag: "Blur"; source: ActionSource }
+  | { _tag: "Focus"; source: ActionSource };
+
+// ActionResult
+type ActionResult =
+  | { handled: true; intent: DOMIntent }
+  | { handled: false };
+
+// DOMIntent
+interface DOMIntent {
+  focus?: FocusTarget;
+  scroll?: Id.Block;
+  blur?: boolean;
+}
+
+// Helper constructors
+const AppAction = { KeyDown, Click, SelectionChange, Blur, Focus };
+const ActionResult = { handled, notHandled };
+```
+
+**CursorContext Utility (`cursorContext.ts`):**
+- `getCursorContext(view: EditorView): CursorContext`
+- Extracts position, text, line info from CodeMirror state
+- Uses `view.moveVertically()` to detect first/last visual line (handles wrapping)
+- Calculates `assoc` at wrap boundaries
+
+**Deviation from Plan:**
+- `ActionSource` simplified: `{ type: "editor"; blockId; cursor }` instead of nested `EditorTarget`
+- No `KeyUp` action type (not needed)
+- Added `docText` to CursorContext (useful for ActionT interpretation)
+
+---
+
+### Phase 4: Create Single ActionT Service — ✅ COMPLETE
+
+**Files Created:**
+- `apps/web/src/services/ui/Action/index.ts` (~1210 lines)
+
+**Service Interface:**
+```typescript
+class ActionT extends Context.Tag("ActionT")<ActionT, {
+  handle: (action: AppAction) => Effect.Effect<ActionResult>;
+}>() {}
+```
+
+**Implementation Structure:**
+- `handle()` — main entry point, routes by `source.type`
+- `buildContext()` — creates `InterpretContext` from blockId
+- `interpretKeyDown()` — central key interpretation (~300 lines)
+- Arrow navigation helpers: `handleArrowLeftAtStart`, `handleArrowRightAtEnd`, `handleArrowUpOnFirstLine`, `handleArrowDownOnLastLine`
+- `enterBlockSelectionWithExtend()` — Shift+Arrow block selection entry
+- `handleZoomOut()` — Cmd+, navigation
+- `handleMove()` — Alt+Cmd+Arrow move operations
+- `handleSelectionChange()`, `handleBlur()`, `handleFocus()`, `handleClick()`
+- `handleDocumentAction()` — block selection mode (~250 lines)
+- `handleBlockSelectionArrow()` — navigation within block selection
+
+**Keys Handled by ActionT:**
+| Key | Modifiers | Handler |
+|-----|-----------|---------|
+| Enter | none | Split block / picker select / type removal |
+| Enter | Cmd | Toggle todo |
+| Backspace | none | Type removal / merge backward |
+| Backspace | Cmd+Shift | Force delete |
+| Delete | none (at end) | Merge forward |
+| Tab | none/Shift | Indent / outdent |
+| Escape | none | Close picker / enter block selection |
+| ArrowLeft | none (at start) | Navigate to previous block |
+| ArrowRight | none (at end) | Navigate to next block |
+| ArrowUp | none (first line) | Navigate to previous block |
+| ArrowDown | none (last line) | Navigate to next block |
+| ArrowUp/Down | Shift (at boundary) | Enter block selection |
+| ArrowUp/Down | Alt+Cmd | Move block (swap) |
+| ArrowUp/Down | Alt+Cmd+Shift | Move block (first/last) |
+| ArrowDown | Cmd | Expand one level |
+| . | Cmd | Zoom in |
+| , | Cmd | Zoom out |
+
+**Block Selection Mode Keys:**
+| Key | Handler |
+|-----|---------|
+| Enter | Start editing selected block |
+| Escape | Clear selection |
+| ArrowUp/Down | Navigate selection |
+| ArrowUp/Down + Shift | Extend selection |
+| Tab/Shift+Tab | Indent/outdent selected blocks |
+
+**Dependencies:**
+`EditorModeT`, `BufferT`, `BlockT`, `NodeT`, `TypeT`, `TupleT`, `PickerT`, `TypePickerT`, `WindowT`, `YjsT`, `StoreT`, `NavigationT`
+
+**Error Handling:**
+- All handlers wrapped in `safe()` which catches errors and returns `notHandled()`
+- Ensures action handling never throws
+
+---
+
+### Phase 5: Simplify Components to Emit Primitives — ⚠️ PARTIALLY COMPLETE
+
+#### Block.tsx (~730 lines, target ~100)
+
+**Completed:**
+- ✅ Uses `onKeyDown` primitive callback → `handleKeyDown()` builds `AppAction` and calls `ActionT.handle()`
+- ✅ Uses `onSelectionChange` primitive callback → `handleSelectionChangeAction()`
+- ✅ Uses `onBlur` primitive callback → `handleBlurEvent()`
+- ✅ Has `executeDOMIntent()` helper for focus/scroll/blur
+- ✅ Picker state read from `PickerStateContext` (not local)
+- ✅ Query updates pushed to `PickerT` via `createEffect`
+
+**Still Present (Legacy):**
+- ❌ `onAction` prop still exists and passed to children
+- ❌ `handleAction()` still handles `TypePickerOpen`, `TypePickerUpdate`, `TypePickerClose` for property blocks
+- ❌ `handleTypeTrigger()` still local (type trigger patterns like "- " for list)
+- ❌ `handlePropertyTrigger()` still local ("> " creates property)
+- ❌ Multiple subscriptions: `BlockT.subscribe`, `TypeT.subscribeTypes` (separate)
+- ❌ Local `activeTypes` signal
+- ❌ `useFocusBlur` hook still used
+- ❌ `useClickCapture` hook still used
+- ❌ `useTitleLink` hook still used
+
+**Property Block Bypass:**
+```typescript
+// Property blocks have different structure (linkedBlockActionHandler).
+// ActionT doesn't understand their navigation, so skip it.
+if (blockId.includes("/property:")) {
+  return false;
+}
+```
+
+#### Title.tsx (~550 lines, target ~80)
+
+**Completed:**
+- ✅ Uses `onKeyDown` primitive callback → `handleKeyDown()` builds `AppAction`
+- ✅ Uses `onSelectionChange` primitive callback → `handleSelectionChangeAction()`
+- ✅ Uses `onBlur` primitive callback → `handleBlurEvent()`
+- ✅ Has `executeDOMIntent()` helper
+- ✅ Picker state read from `PickerStateContext`
+
+**Still Present (Legacy):**
+- ❌ Enter key explicitly falls through to legacy `handleAction`:
+  ```typescript
+  if (event.key === "Enter") {
+    return false;  // Let it fall through to legacy handleAction
+  }
+  ```
+- ❌ `handleAction()` still handles `Enter`, `Navigate`, `Escape`, `Expand`, `ZoomOut`, `TypePicker*`
+- ❌ `handleEnterWithPicker()` local function
+- ❌ Multiple hooks: `useFocusBlur`, `useClickCapture`, `useTitleLink`
+
+**Reason for Enter bypass:**
+Title's Enter behavior differs from Block's — it calls `Title.enter()` which creates a first child, not `Buffer.split()`. ActionT currently only handles Block's split behavior.
+
+#### EditorBuffer.tsx (~900+ lines, target ~150)
+
+**Completed:**
+- ✅ Has `tryActionTDocumentKeyDown()` that routes to ActionT for block selection mode
+- ✅ Has `executeDOMIntent()` helper
+- ✅ Picker state managed via `PickerT` service
+- ✅ `PickerStateContext` provider for child components
+
+**Still Present (Legacy):**
+- ❌ Massive `handleKeyDown` function (~400 lines) for non-block-selection keys
+- ❌ Direct keyboard event listener on document
+- ❌ Block selection state managed locally (`isBlockSelectionMode` signal)
+- ❌ `crossParentMoveBlocks` helper function
+- ❌ All the legacy block selection handling (Backspace delete, move, etc.)
+
+**ActionT Integration Point:**
+```typescript
+const tryActionTDocumentKeyDown = (e: KeyboardEvent): boolean => {
+  if (!isBlockSelectionMode()) return false;
+  // Only for: Enter, Escape, Tab, ArrowUp, ArrowDown
+  const action: AppAction = {
+    _tag: "KeyDown",
+    key: e.key,
+    modifiers: { ... },
+    source: { type: "document", bufferId },
+  };
+  const result = runtime.runSync(ActionT.handle(action));
+  if (result.handled) {
+    e.preventDefault();
+    executeDOMIntent(result.intent);
+  }
+  return result.handled;
+};
+```
+
+#### TextEditor.tsx (~1560 lines)
+
+**Completed:**
+- ✅ Supports primitive callbacks: `onKeyDown`, `onSelectionChange`, `onBlur`, `onFocus`
+- ✅ High-priority DOM event handler intercepts structural keys when `onKeyDown` provided
+- ✅ Fallback to legacy `emit()` when primitive callbacks not provided
+
+**Still Present (Legacy):**
+- ❌ Full `EditorAction` type definition (26 action variants)
+- ❌ `Action` constructor namespace
+- ❌ `onAction` prop (marked `@deprecated`)
+- ❌ All keymap definitions still emit `EditorAction` via `emit()`
+- ❌ Input handlers emit `TypeTrigger`, `TypePickerOpen`, `PropertyTrigger`
+
+**Dual Mode Operation:**
+```typescript
+// New callback path
+if (props.onKeyDown) {
+  const handled = props.onKeyDown!(event, view);
+  if (handled) return true;
+}
+// Legacy path (still fires for unhandled keys)
+emit(Action.Navigate("up", goalX));
+```
+
+---
+
+### Phase 6: Create Unified View Subscriptions — ❌ NOT STARTED
+
+**Not Implemented:**
+- No `BlockViewT` service
+- No `BufferViewT` service
+- No `useServiceStream` hook
+- Components still use `bindStreamToStore` with multiple subscriptions
+
+**Current State:**
+Block has 3 separate subscriptions:
+1. `BlockT.subscribe(blockId)` — isActive, isExpanded, childBlockIds, selection
+2. `TypeT.subscribeTypes(nodeId)` — activeTypes
+3. `PickerT` via context — picker state
+
+**Blocked By:**
+Phase 5 completion — unified view subscriptions only make sense once components are fully migrated to primitive actions.
+
+---
+
+### Files Deleted
+
+- `apps/web/src/ui/EditorBuffer/blockActionHandler.ts` — Action routing logic moved to ActionT
+
+---
+
+### Remaining Work
+
+#### High Priority (Complete Phase 5)
+
+1. **Migrate Title's Enter key to ActionT**
+   - Add `TitleT.enter` equivalent in ActionT
+   - Detect title context via `blockId === bufferRootBlockId`
+   - Remove Enter bypass in Title's `handleKeyDown`
+
+2. **Migrate Property blocks to ActionT**
+   - Define property block context in ActionSource
+   - Add property-specific routing in ActionT
+   - Remove property block bypass in Block
+
+3. **Remove legacy `handleAction` from Block/Title**
+   - Move remaining handlers (TypeTrigger patterns, PropertyTrigger) to input handlers
+   - Remove `onAction` prop from Block
+   - Remove bubbling to children
+
+4. **Simplify EditorBuffer**
+   - Route all block selection keys through ActionT
+   - Remove duplicate handling in legacy `handleKeyDown`
+   - Remove `crossParentMoveBlocks` (move to ActionT or BufferT)
+
+#### Medium Priority
+
+5. **Clean up TextEditor**
+   - Remove `EditorAction` type (once all consumers migrated)
+   - Remove `onAction` prop
+   - Keep only input handlers (`onTypeTrigger`, `onPickerOpen`, `onPropertyTrigger`)
+
+6. **Start Phase 6: Unified View Subscriptions**
+   - Create `BlockViewT.subscribe` composing block + types + picker
+   - Create `BufferViewT.subscribe`
+   - Replace `bindStreamToStore` with `useServiceStream`
+
+#### Low Priority
+
+7. **Remove legacy hooks if possible**
+   - Evaluate if `useFocusBlur`, `useClickCapture`, `useTitleLink` can be simplified
+   - Some DOM capture logic may still be needed
+
+---
+
+### Architecture Diagram (Current State)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        ActionT Service                           │
+│  ✅ Central handler for most keyboard actions                    │
+│  ✅ Interprets primitives based on model state                   │
+│  ✅ Returns ActionResult with DOMIntent                          │
+└─────────────────────────────────────────────────────────────────┘
+        ↑                    ↑                    ↑
+        │ KeyDown            │ KeyDown            │ KeyDown
+        │ (most keys)        │ (block sel mode)   │ (most keys)
+        │                    │                    │
+┌───────┴───────┐    ┌───────┴───────┐    ┌───────┴───────┐
+│    Block      │    │ EditorBuffer  │    │    Title      │
+│  ✅ onKeyDown │    │ ⚠️ tryActionT │    │ ✅ onKeyDown  │
+│  ❌ onAction  │    │ ❌ handleKeyDn│    │ ❌ onAction   │
+│  (fallback)   │    │   (legacy)    │    │ (Enter only)  │
+└───────┬───────┘    └───────────────┘    └───────┬───────┘
+        │                                         │
+        │ onKeyDown/onAction                      │ onKeyDown/onAction
+        ↓                                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      TextEditor                                  │
+│  ✅ Primitive callbacks (onKeyDown, onSelectionChange, onBlur)  │
+│  ❌ Legacy EditorAction type + keymaps still present             │
+└─────────────────────────────────────────────────────────────────┘
+
+Legend: ✅ = Migrated, ❌ = Legacy, ⚠️ = Partial
+```
+
+---
+
+### Summary
+
+| Phase | Status | Completion |
+|-------|--------|------------|
+| 1. Extract Picker State | ✅ Complete | 100% |
+| 2. Unify Focus Mode | ✅ Complete | 100% |
+| 3. Primitive Action Types | ✅ Complete | 100% |
+| 4. ActionT Service | ✅ Complete | 100% |
+| 5. Simplify Components | ⚠️ Partial | ~60% |
+| 6. Unified View Subscriptions | ❌ Not Started | 0% |
+
+**Overall Progress: ~75%**
+
+The core infrastructure (ActionT, EditorModeT, PickerT, primitive types) is complete and working. The main remaining work is finishing the component migration (Phase 5) and then creating unified view subscriptions (Phase 6).

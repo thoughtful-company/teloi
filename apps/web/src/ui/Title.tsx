@@ -1,28 +1,21 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
-import { NodeT } from "@/services/domain/Node";
 import { useClickCapture } from "./hooks/useClickCapture";
 import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
-import { BlockT } from "@/services/ui/Block";
 import { PickerT } from "@/services/ui/Picker";
-import { TypePickerT } from "@/services/ui/TypePicker";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
-import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
+import { ActionT, type AppAction, type DOMIntent } from "@/services/ui/Action";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import {
-  resolveSelectionStrategy,
-  updateEditorSelection,
-} from "@/utils/selectionStrategy";
-import { Effect, Match, Option, Stream } from "effect";
+import { getCursorContext } from "@/utils/cursorContext";
+import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
+import { Effect, Option, Stream } from "effect";
 import { createEffect, onCleanup, onMount, Show, useContext } from "solid-js";
 import { PickerStateContext } from "./EditorBuffer";
-import TextEditor, {
-  type EditorAction,
-  type SelectionInfo,
-} from "./TextEditor";
+import TextEditor, { type SelectionInfo } from "./TextEditor";
+import type { EditorView } from "@codemirror/view";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -102,59 +95,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     );
   };
 
-  const handleTypePickerClose = () => {
-    runtime.runSync(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.close();
-      }),
-    );
-  };
-
-  const handleTypePickerSelect = (typeId: Id.Node) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.selectType(typeId);
-      }),
-    );
-  };
-
-  const handleTypePickerCreate = (name: string) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.createAndSelectType(name);
-      }),
-    );
-  };
-
-  /**
-   * Handle Enter key when picker might be open.
-   * Returns true if picker was open and handled the Enter,
-   * false if caller should handle Enter normally.
-   */
-  const handleEnterWithPicker = (): boolean => {
-    const state = getPickerState();
-    if (!state || state.elementId !== elementId) return false;
-
-    const availableTypes = runtime.runSync(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const types = yield* TypePicker.getAvailableTypes();
-        return TypePicker.filterTypes(types, state.query);
-      }),
-    );
-
-    if (availableTypes.length > 0) {
-      handleTypePickerSelect(availableTypes[0]!.id);
-    } else if (state.query) {
-      handleTypePickerCreate(state.query);
-    }
-
-    return true;
-  };
-
   const clickCapture = useClickCapture({ isActive: () => store.isActive });
 
   onMount(() => {
@@ -177,7 +117,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     });
   });
 
-  const { handleFocus, handleBlur, getInitialSelection } = useFocusBlur({
+  const { handleFocus, getInitialSelection } = useFocusBlur({
     isActive: () => store.isActive,
     clickCapture,
     runtime,
@@ -193,133 +133,179 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     }),
   });
 
-  const handleSelectionChange = (selection: SelectionInfo) => {
-    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
+  /**
+   * Execute DOMIntent returned by ActionT.
+   * Uses rAF + setTimeout to ensure DOM has fully updated.
+   */
+  const executeDOMIntent = (intent: DOMIntent) => {
+    const { focus, scroll, blur } = intent;
+
+    if (blur) {
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLElement) {
+        activeEl.blur();
+      }
+    }
+
+    if (focus) {
+      if (focus.type === "title") {
+        requestAnimationFrame(() =>
+          setTimeout(() => {
+            const titleEl = document.querySelector<HTMLElement>(
+              `[data-element-id="${CSS.escape(focus.bufferId)}"][data-element-type="title"] .cm-content`,
+            );
+            titleEl?.focus();
+          }, 0),
+        );
+      } else if (focus.type === "block") {
+        requestAnimationFrame(() =>
+          setTimeout(() => {
+            const blockEl = document.querySelector<HTMLElement>(
+              `[data-element-id="${CSS.escape(focus.blockId)}"][data-element-type="block"] .cm-content`,
+            );
+            blockEl?.focus();
+          }, 0),
+        );
+      }
+    }
+
+    if (scroll) {
+      requestAnimationFrame(() => {
+        const blockEl = document.querySelector<HTMLElement>(
+          `[data-element-id="${CSS.escape(scroll)}"][data-element-type="block"] [data-block-content]`,
+        );
+        if (blockEl) {
+          blockEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      });
+    }
   };
 
-  const handleZoomOut = () => {
-    runtime.runPromise(
+  /**
+   * Handle keydown events from TextEditor via ActionT.
+   */
+  const handleKeyDown = (event: KeyboardEvent, view: EditorView): boolean => {
+    const cursor = getCursorContext(view);
+
+    // Normalize "Mod" key: ActionT uses `modifiers.meta` to check for "Mod" shortcuts.
+    // Accept both metaKey and ctrlKey as "Mod" since tests may send either.
+    const modKeyPressed = event.metaKey || event.ctrlKey;
+
+    const action: AppAction = {
+      _tag: "KeyDown",
+      key: event.key,
+      modifiers: {
+        meta: modKeyPressed, // Normalized: true when "Mod" key is pressed
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+      },
+      source: {
+        type: "editor",
+        blockId: elementId,
+        cursor,
+      },
+    };
+
+    const result = runtime.runSync(
       Effect.gen(function* () {
-        const Node = yield* NodeT;
-        const Navigation = yield* NavigationT;
-        const Window = yield* WindowT;
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
+      }),
+    );
 
-        const parentId = yield* Node.getParent(nodeId).pipe(
-          Effect.catchTag("NodeHasNoParentError", () =>
-            Effect.succeed<Id.Node | null>(null),
-          ),
-        );
+    if (result.handled) {
+      executeDOMIntent(result.intent);
+      return true;
+    }
 
-        if (!parentId) return;
+    return false;
+  };
 
-        yield* Navigation.navigateTo(parentId);
+  /**
+   * Handle selection change from TextEditor via ActionT.
+   */
+  const handleSelectionChangeAction = (selection: SelectionInfo) => {
+    const action: AppAction = {
+      _tag: "SelectionChange",
+      selection,
+      source: {
+        type: "editor",
+        blockId: elementId,
+        cursor: {
+          position: selection.head,
+          anchor: selection.anchor,
+          head: selection.head,
+          atStart: selection.anchor === 0 && selection.head === 0,
+          atEnd: false,
+          textBefore: "",
+          textAfter: "",
+          docText: "",
+          lineInfo: {
+            line: 0,
+            totalLines: 1,
+            atFirstLine: true,
+            atLastLine: true,
+            column: 0,
+          },
+          coords: null,
+          goalX: null,
+          assoc: selection.assoc,
+        },
+      },
+    };
 
-        // Preserve selection: title's nodeId becomes a block in the parent view
-        const newBlockId = Id.makeBufferBlockId(bufferId, nodeId);
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: newBlockId }),
-        );
-        // Block scrolls itself on mount via ActiveElementContext
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
       }),
     );
   };
 
-  const handleAction = (action: EditorAction): void => {
-    Match.value(action).pipe(
-      Match.tag("Enter", ({ info }) => {
-        if (handleEnterWithPicker()) return;
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Title = yield* TitleT;
-            yield* Title.enter(bufferId, nodeId, {
-              cursorPos: info.cursorPos,
-              textAfter: info.textAfter,
-            });
-          }),
-        );
+  /**
+   * Handle blur from TextEditor via ActionT.
+   */
+  const handleBlurEvent = () => {
+    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
+    const action: AppAction = {
+      _tag: "Blur",
+      source: {
+        type: "editor",
+        blockId: elementId,
+        cursor: {
+          position: 0,
+          anchor: 0,
+          head: 0,
+          atStart: true,
+          atEnd: true,
+          textBefore: "",
+          textAfter: "",
+          docText: "",
+          lineInfo: {
+            line: 0,
+            totalLines: 1,
+            atFirstLine: true,
+            atLastLine: true,
+            column: 0,
+          },
+          coords: null,
+          goalX: null,
+          assoc: 0,
+        },
+      },
+    };
+
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
       }),
-      Match.tag("Blur", () => handleBlur()),
-      Match.tag("SelectionChange", ({ selection }) =>
-        handleSelectionChange(selection),
-      ),
-      Match.tag("Navigate", ({ direction, goalX }) => {
-        Match.value(direction).pipe(
-          Match.when("right", () => {
-            runtime.runPromise(
-              Effect.gen(function* () {
-                const Title = yield* TitleT;
-                yield* Title.navigateToFirstChild(bufferId, nodeId);
-              }),
-            );
-          }),
-          Match.when("down", () => {
-            runtime.runPromise(
-              Effect.gen(function* () {
-                const Title = yield* TitleT;
-                yield* Title.navigateToFirstChild(bufferId, nodeId, goalX ?? 0);
-              }),
-            );
-          }),
-          Match.orElse(() => {}),
-        );
-      }),
-      Match.tag("Escape", () => {
-        // Only close picker if it's open for THIS element
-        if (getPickerState()?.elementId === elementId) {
-          handleTypePickerClose();
-        }
-      }),
-      Match.tag("TypePickerOpen", ({ position, from }) =>
-        handleTypePickerOpen(position, from),
-      ),
-      Match.tag("TypePickerUpdate", () => {
-        // Query is computed reactively from textContent and selection
-      }),
-      Match.tag("TypePickerClose", () => handleTypePickerClose()),
-      Match.tag("Expand", () => {
-        // Drill down level by level, expanding all collapsed nodes at each level
-        runtime.runPromise(
-          Effect.gen(function* () {
-            const Node = yield* NodeT;
-            const Block = yield* BlockT;
-
-            let currentLevel = yield* Node.getNodeChildren(nodeId);
-
-            while (currentLevel.length > 0) {
-              const collapsedExpandable: Id.Node[] = [];
-
-              for (const childId of currentLevel) {
-                const grandchildren = yield* Node.getNodeChildren(childId);
-                if (grandchildren.length === 0) continue;
-
-                const childBlockId = Id.makeBufferBlockId(bufferId, childId);
-                const isExpanded = yield* Block.isExpanded(childBlockId);
-                if (!isExpanded) {
-                  collapsedExpandable.push(childId);
-                }
-              }
-
-              if (collapsedExpandable.length > 0) {
-                for (const childId of collapsedExpandable) {
-                  const childBlockId = Id.makeBufferBlockId(bufferId, childId);
-                  yield* Block.setExpanded(childBlockId, true);
-                }
-                return;
-              }
-
-              // Go deeper - collect all children
-              const nextLevel: Id.Node[] = [];
-              for (const childId of currentLevel) {
-                const grandchildren = yield* Node.getNodeChildren(childId);
-                nextLevel.push(...grandchildren);
-              }
-              currentLevel = nextLevel;
-            }
-          }),
-        );
-      }),
-      Match.tag("ZoomOut", () => handleZoomOut()),
-      Match.orElse(() => {}),
     );
   };
 
@@ -341,7 +327,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         <TextEditor
           ytext={getYtext()}
           undoManager={getUndoManager()}
-          onAction={handleAction}
+          // New primitive callbacks (Phase 5 refactor)
+          onKeyDown={handleKeyDown}
+          onSelectionChange={handleSelectionChangeAction}
+          onBlur={handleBlurEvent}
+          // Input handler callbacks
+          onPickerOpen={handleTypePickerOpen}
           initialStrategy={resolveSelectionStrategy({
             clickCoords: clickCapture.get(),
             domSelection: getInitialSelection(),
