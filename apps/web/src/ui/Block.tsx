@@ -4,21 +4,22 @@ import { TupleT } from "@/services/domain/Tuple";
 import { useClickCapture } from "./hooks/useClickCapture";
 import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
+import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { PickerT } from "@/services/ui/Picker";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
-import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
+import { PropertyT } from "@/services/ui/Property";
+import { isSystemType } from "@/services/ui/TypePicker";
+import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
+import { ActionT, type AppAction, type DOMIntent } from "@/services/ui/Action";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import {
-  makeCollapsedSelection,
-  resolveSelectionStrategy,
-  updateEditorSelection,
-} from "@/utils/selectionStrategy";
-import { Effect, Fiber, Match, Option, Stream } from "effect";
+import { getCursorContext } from "@/utils/cursorContext";
+import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
+import { Effect, Fiber, Option, Stream } from "effect";
 import {
   createEffect,
   createSignal,
@@ -31,37 +32,12 @@ import {
 import { Transition } from "solid-transition-group";
 import { ActiveElementContext, PickerStateContext } from "./EditorBuffer";
 import { FormattedText } from "./FormattedText";
-import TextEditor, {
-  type EditorAction,
-  type EnterKeyInfo,
-  type SelectionInfo,
-} from "./TextEditor";
+import TextEditor, { type SelectionInfo } from "./TextEditor";
 import TypeBadge from "./TypeBadge";
-
-/** Context passed to parent's action handler for navigation decisions */
-export interface BlockNavigationContext {
-  /** The block ID that emitted the action */
-  blockId: Id.Block;
-  /** Whether this block is currently expanded (children visible) */
-  isExpanded: boolean;
-  /** Active block type definitions for this block */
-  activeDefinitions: readonly BlockType.BlockTypeDefinition[];
-}
+import type { EditorView } from "@codemirror/view";
 
 interface BlockProps {
   blockId: Id.Block;
-  /**
-   * Optional parent action handler for tree navigation.
-   * Called BEFORE Block's internal handlers.
-   * Return `true` to indicate the action was handled (Block skips internal handling).
-   * Return `false` or `undefined` to let Block handle it.
-   */
-  onAction?:
-    | ((
-        action: EditorAction,
-        context: BlockNavigationContext,
-      ) => boolean | void)
-    | undefined;
 }
 
 /**
@@ -72,10 +48,7 @@ interface BlockProps {
  * @param blockId - The block identifier to render and synchronize (Id.Block)
  * @returns The block's rendered TSX element containing the editor or read-only view and its child blocks
  */
-export default function Block({
-  blockId,
-  onAction: parentOnAction,
-}: BlockProps) {
+export default function Block({ blockId }: BlockProps) {
   const runtime = useBrowserRuntime();
 
   // Lazy block creation: if block doesn't exist, create it then subscribe
@@ -191,59 +164,6 @@ export default function Block({
     );
   };
 
-  const handleTypePickerClose = () => {
-    runtime.runSync(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.close();
-      }),
-    );
-  };
-
-  const handleTypePickerSelect = (typeId: Id.Node) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.selectType(typeId);
-      }),
-    );
-  };
-
-  const handleTypePickerCreate = (name: string) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.createAndSelectType(name);
-      }),
-    );
-  };
-
-  /**
-   * Handle Enter key when picker might be open.
-   * Returns true if picker was open and handled the Enter,
-   * false if caller should handle Enter normally.
-   */
-  const handleEnterWithPicker = (): boolean => {
-    const state = getPickerState();
-    if (!state || state.elementId !== blockId) return false;
-
-    const availableTypes = runtime.runSync(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const types = yield* TypePicker.getAvailableTypes();
-        return TypePicker.filterTypes(types, state.query);
-      }),
-    );
-
-    if (availableTypes.length > 0) {
-      handleTypePickerSelect(availableTypes[0]!.id);
-    } else if (state.query) {
-      handleTypePickerCreate(state.query);
-    }
-
-    return true;
-  };
-
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
   const userTypes = () =>
     activeTypes().filter((typeId) => !isSystemType(typeId));
@@ -321,15 +241,7 @@ export default function Block({
     });
   });
 
-  // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
-  let isTransitioningToBlockSelection = false;
-
-  const {
-    handleFocus,
-    handleBlur,
-    getInitialSelection,
-    clearInitialSelection,
-  } = useFocusBlur({
+  const { handleFocus, getInitialSelection } = useFocusBlur({
     isActive: () => store.isActive,
     clickCapture,
     runtime,
@@ -342,83 +254,10 @@ export default function Block({
         Option.some({ type: "block" as const, id: blockId }),
       );
     }),
-    onBlurEffect: Effect.gen(function* () {
-      const Buffer = yield* BufferT;
-      const Window = yield* WindowT;
-      // Only clear selection and activeElement if still pointing to this block.
-      // If navigating to another block, they already point there - don't clear.
-      const selectionOpt = yield* Buffer.getSelection(bufferId);
-      const sel = Option.getOrNull(selectionOpt);
-      const selBlockId = sel ? sel.anchor.elementId : null;
-      if (sel && selBlockId === blockId) {
-        yield* Buffer.setSelection(bufferId, Option.none());
-        yield* Window.setActiveElement(Option.none());
-      }
-    }),
-    shouldSkipBlur: () => isTransitioningToBlockSelection,
+    // Blur is handled by ActionT via handleBlurEvent
+    onBlurEffect: Effect.succeed(undefined),
+    shouldSkipBlur: () => false,
   });
-
-  const handleSelectionChange = (selection: SelectionInfo) => {
-    runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
-  };
-
-  const handleEnter = (info: EnterKeyInfo) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        // Check if any active type wants to be removed on empty Enter
-        if (info.cursorPos === 0 && info.textAfter.length === 0) {
-          for (const def of getActiveDefinitions()) {
-            if (def.enter?.removeOnEmpty) {
-              const Type = yield* TypeT;
-              yield* Type.removeType(nodeId, def.id);
-              return;
-            }
-          }
-        }
-
-        const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
-
-        const result = yield* Buffer.split({
-          nodeId,
-          cursorPos: info.cursorPos,
-          textAfter: info.textAfter,
-        });
-
-        // Propagate types that want to be propagated
-        const Type = yield* TypeT;
-        for (const def of getActiveDefinitions()) {
-          if (def.enter?.propagateToNewBlock) {
-            yield* Type.addType(result.newNodeId, def.id);
-          }
-        }
-
-        const newBlockId = Id.makeBufferBlockId(bufferId, result.newNodeId);
-        yield* Buffer.setSelection(
-          bufferId,
-          makeCollapsedSelection(newBlockId, result.cursorOffset),
-        );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: newBlockId }),
-        );
-      }),
-    );
-  };
-
-  // Only handles type removal - merge logic is in blockActionHandler
-  const handleBackspaceAtStart = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        for (const def of getActiveDefinitions()) {
-          if (def.backspace?.removeTypeAtStart) {
-            const Type = yield* TypeT;
-            yield* Type.removeType(nodeId, def.id);
-            return;
-          }
-        }
-      }),
-    );
-  };
 
   const handleToggleExpand = (e: MouseEvent) => {
     e.stopPropagation();
@@ -428,32 +267,6 @@ export default function Block({
         yield* Block.setExpanded(blockId, !store.isExpanded);
       }),
     );
-  };
-
-  const enterBlockSelectionMode = () => {
-    // Set flag synchronously to prevent handleBlur from clearing activeElement
-    isTransitioningToBlockSelection = true;
-    // Clear captured selection so Enter returns cursor to model position, not old DOM position
-    clearInitialSelection();
-
-    runtime
-      .runPromise(
-        Effect.gen(function* () {
-          const Window = yield* WindowT;
-          const Buffer = yield* BufferT;
-
-          // Switch to block selection mode
-          yield* Window.setActiveElement(
-            Option.some({ type: "buffer" as const, id: bufferId }),
-          );
-          // Clear text selection - when returning from block selection, cursor should start fresh
-          yield* Buffer.setSelection(bufferId, Option.none());
-          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
-        }),
-      )
-      .finally(() => {
-        isTransitioningToBlockSelection = false;
-      });
   };
 
   const getExistingDecorativeTypeId = (): Id.Node | undefined => {
@@ -518,80 +331,227 @@ export default function Block({
     return true;
   };
 
-  const handleAction = (action: EditorAction): boolean | void => {
-    // Give parent a chance to handle tree navigation actions first
-    if (parentOnAction) {
-      const context: BlockNavigationContext = {
-        blockId,
-        isExpanded: store.isExpanded,
-        activeDefinitions: getActiveDefinitions(),
-      };
-      const handled = parentOnAction(action, context);
-      if (handled === true) return true;
+  /**
+   * Handle ;; property trigger - creates a new property section.
+   */
+  const handlePropertyTrigger = (): boolean => {
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Buffer = yield* BufferT;
+        const View = yield* ViewT;
+        const Property = yield* PropertyT;
+        const Node = yield* NodeT;
+        const Window = yield* WindowT;
+
+        const pageId = yield* Buffer.getAssignedNodeId(bufferId);
+        if (pageId === null) return;
+
+        const viewId = yield* View.getOrCreateView(pageId);
+        const propertyId = yield* Property.createProperty(viewId);
+        yield* Node.deleteNode(nodeId);
+
+        yield* Window.setActiveElement(
+          Option.some({
+            type: "property" as const,
+            propertyId,
+            bufferId,
+          }),
+        );
+      }),
+    );
+    return true;
+  };
+
+  /**
+   * Execute DOMIntent returned by ActionT.
+   * This handles focus, scroll, and blur intents.
+   * Uses rAF + setTimeout to ensure DOM has fully updated (for Move operations).
+   */
+  const executeDOMIntent = (intent: DOMIntent) => {
+    const { focus, scroll, blur } = intent;
+
+    // Execute blur
+    if (blur) {
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLElement) {
+        activeEl.blur();
+      }
     }
 
-    // Block-local action handlers. Tree navigation actions (Tab, Navigate, Move, etc.)
-    // are handled by the parent (blockActionHandler.ts) and should never reach here.
-    return Match.value(action).pipe(
-      Match.tags({
-        Enter: ({ info }) => {
-          if (handleEnterWithPicker()) return true;
-          return handleEnter(info);
-        },
-        // Type removal on backspace - merge logic is in blockActionHandler
-        BackspaceAtStart: () => handleBackspaceAtStart(),
-        SelectionChange: ({ selection }) => handleSelectionChange(selection),
-        VerticalMove: ({ anchor, head, assoc, goalX }) => {
-          // Update model with selection + preserved goalX (for intra-block vertical movement)
-          runtime.runPromise(
-            Effect.gen(function* () {
-              const Buffer = yield* BufferT;
-              yield* Buffer.setSelection(
-                bufferId,
-                Option.some({
-                  anchor: { elementId: blockId },
-                  anchorOffset: anchor,
-                  focus: { elementId: blockId },
-                  focusOffset: head,
-                  goalX,
-                  goalLine: null,
-                  assoc,
-                }),
-              );
-            }),
-          );
-        },
-        Blur: () => handleBlur(),
-        Escape: () => {
-          // If picker is open for THIS block, close it instead of entering block selection
-          if (getPickerState()?.elementId === blockId) {
-            handleTypePickerClose();
-            return;
-          }
-          enterBlockSelectionMode();
-        },
-        TypeTrigger: ({ typeId, trigger }) =>
-          handleTypeTrigger(typeId, trigger),
-        TypePickerOpen: ({ position, from }) =>
-          handleTypePickerOpen(position, from),
-        TypePickerUpdate: () => {
-          // Query is computed reactively from textContent and selection
-        },
-        TypePickerClose: () => handleTypePickerClose(),
-        Expand: () => {
-          runtime.runPromise(
-            Effect.gen(function* () {
-              const Block = yield* BlockT;
-              yield* Block.expandOneLevel(bufferId, nodeId);
-            }),
-          );
-        },
-        ToggleTodo: () => {
-          runtime.runPromise(BlockType.toggleCheckbox(nodeId));
-        },
+    // Execute focus - use rAF + setTimeout to wait for DOM updates
+    if (focus) {
+      if (focus.type === "title") {
+        requestAnimationFrame(() =>
+          setTimeout(() => {
+            const titleEl = document.querySelector<HTMLElement>(
+              `[data-element-id="${CSS.escape(focus.bufferId)}"][data-element-type="title"] .cm-content`,
+            );
+            titleEl?.focus();
+          }, 0),
+        );
+      } else if (focus.type === "block") {
+        requestAnimationFrame(() =>
+          setTimeout(() => {
+            const blockEl = document.querySelector<HTMLElement>(
+              `[data-element-id="${CSS.escape(focus.blockId)}"][data-element-type="block"] .cm-content`,
+            );
+            blockEl?.focus();
+          }, 0),
+        );
+      }
+      // type: "none" - no focus change needed
+    }
+
+    // Execute scroll
+    if (scroll) {
+      requestAnimationFrame(() => {
+        const blockEl = document.querySelector<HTMLElement>(
+          `[data-element-id="${CSS.escape(scroll)}"][data-element-type="block"] [data-block-content]`,
+        );
+        if (blockEl) {
+          blockEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      });
+    }
+  };
+
+  /**
+   * Handle keydown events from TextEditor.
+   * Builds AppAction and calls ActionT.handle().
+   * Returns true if handled, false to let TextEditor/CodeMirror handle.
+   */
+  const handleKeyDown = (event: KeyboardEvent, view: EditorView): boolean => {
+    // Property blocks have different structure (linkedBlockActionHandler).
+    // ActionT doesn't understand their navigation, so skip it.
+    if (blockId.includes("/property:")) {
+      return false;
+    }
+
+    // Build AppAction with cursor context
+    const cursor = getCursorContext(view);
+
+    // Normalize "Mod" key: ActionT uses `modifiers.meta` to check for "Mod" shortcuts.
+    // Accept both metaKey and ctrlKey as "Mod" since tests may send either.
+    const modKeyPressed = event.metaKey || event.ctrlKey;
+
+    const action: AppAction = {
+      _tag: "KeyDown",
+      key: event.key,
+      modifiers: {
+        meta: modKeyPressed, // Normalized: true when "Mod" key is pressed
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+      },
+      source: {
+        type: "editor",
+        blockId,
+        cursor,
+      },
+    };
+
+    // Call ActionT.handle() synchronously
+    const result = runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
       }),
-      // Tree navigation actions are handled by parent (blockActionHandler.ts)
-      Match.orElse(() => undefined),
+    );
+
+    if (result.handled) {
+      executeDOMIntent(result.intent);
+      return true;
+    }
+
+    return false;
+  };
+
+  /**
+   * Handle selection change from TextEditor via ActionT.
+   * Builds AppAction.SelectionChange and calls ActionT.handle().
+   */
+  const handleSelectionChangeAction = (selection: SelectionInfo) => {
+    const action: AppAction = {
+      _tag: "SelectionChange",
+      selection,
+      source: {
+        type: "editor",
+        blockId,
+        cursor: {
+          position: selection.head,
+          anchor: selection.anchor,
+          head: selection.head,
+          atStart: selection.anchor === 0 && selection.head === 0,
+          atEnd: false, // Not known at this point, but not needed for selection changes
+          textBefore: "",
+          textAfter: "",
+          docText: "",
+          lineInfo: {
+            line: 0,
+            totalLines: 1,
+            atFirstLine: true,
+            atLastLine: true,
+            column: 0,
+          },
+          coords: null,
+          goalX: null,
+          assoc: selection.assoc,
+        },
+      },
+    };
+
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
+      }),
+    );
+  };
+
+  /**
+   * Handle blur from TextEditor.
+   * Builds AppAction.Blur and calls ActionT.handle().
+   */
+  const handleBlurEvent = () => {
+    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
+    // Only clear when user clicks elsewhere within the document.
+    if (!document.hasFocus()) {
+      return;
+    }
+
+    const action: AppAction = {
+      _tag: "Blur",
+      source: {
+        type: "editor",
+        blockId,
+        cursor: {
+          position: 0,
+          anchor: 0,
+          head: 0,
+          atStart: true,
+          atEnd: true,
+          textBefore: "",
+          textAfter: "",
+          docText: "",
+          lineInfo: {
+            line: 0,
+            totalLines: 1,
+            atFirstLine: true,
+            atLastLine: true,
+            column: 0,
+          },
+          coords: null,
+          goalX: null,
+          assoc: 0,
+        },
+      },
+    };
+
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Action = yield* ActionT;
+        return yield* Action.handle(action);
+      }),
     );
   };
 
@@ -662,7 +622,14 @@ export default function Block({
             <TextEditor
               ytext={getYtext()}
               undoManager={getUndoManager()}
-              onAction={handleAction}
+              // New primitive callbacks (Phase 5 refactor)
+              onKeyDown={handleKeyDown}
+              onSelectionChange={handleSelectionChangeAction}
+              onBlur={handleBlurEvent}
+              // Input handler callbacks
+              onTypeTrigger={handleTypeTrigger}
+              onPickerOpen={handleTypePickerOpen}
+              onPropertyTrigger={handlePropertyTrigger}
               initialStrategy={resolveSelectionStrategy({
                 clickCoords: clickCapture.get(),
                 domSelection: getInitialSelection(),
@@ -688,7 +655,7 @@ export default function Block({
             <div class="w-max h-0"> </div>
           </Show>
           <For each={store.childBlockIds}>
-            {(childId) => <Block blockId={childId} onAction={parentOnAction} />}
+            {(childId) => <Block blockId={childId} />}
           </For>
         </div>
       </Show>

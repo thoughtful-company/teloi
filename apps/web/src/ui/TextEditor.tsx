@@ -31,15 +31,6 @@ import * as Y from "yjs";
 
 export type TextEditorVariant = "block" | "title";
 
-// === Keymap Condition Types ===
-
-type KeymapCondition =
-  | "always"
-  | "atStart" // anchor === 0 && head === 0
-  | "atEnd" // anchor === docLen && head === docLen
-  | "headAtStart" // head === 0
-  | "headAtEnd"; // head === docLen
-
 interface VariantStyles {
   fontSize: string;
   lineHeight: string;
@@ -281,119 +272,52 @@ export interface SelectionInfo {
   assoc: -1 | 0 | 1;
 }
 
-// === Editor Actions (Discriminated Union) ===
-
-export type EditorAction =
-  | { _tag: "Enter"; info: EnterKeyInfo }
-  | { _tag: "Tab" }
-  | { _tag: "ShiftTab" }
-  | { _tag: "BackspaceAtStart" }
-  | { _tag: "DeleteAtEnd" }
-  | { _tag: "ForceDelete" }
-  | {
-      _tag: "Navigate";
-      direction: "left" | "right" | "up" | "down";
-      goalX?: number;
-    }
-  | { _tag: "SelectionChange"; selection: SelectionInfo }
-  | {
-      _tag: "VerticalMove";
-      anchor: number;
-      head: number;
-      assoc: -1 | 0 | 1;
-      goalX: number;
-    }
-  | { _tag: "Blur" }
-  | { _tag: "Escape" }
-  | { _tag: "ZoomIn" }
-  | { _tag: "ZoomOut" }
-  | { _tag: "BlockSelect"; direction: "up" | "down" }
-  | { _tag: "Move"; action: "swapUp" | "swapDown" | "first" | "last" }
-  | { _tag: "Expand"; goalX?: number }
-  | {
-      _tag: "TypeTrigger";
-      typeId: Id.Node;
-      trigger: BlockType.TriggerDefinition;
-    }
-  | {
-      _tag: "TypePickerOpen";
-      position: { x: number; y: number };
-      from: number;
-    }
-  | { _tag: "TypePickerUpdate"; query: string }
-  | { _tag: "TypePickerClose" }
-  | { _tag: "ToggleTodo" }
-  | { _tag: "PropertyTrigger" };
-
-/** Action constructors for type-safe action creation */
-export const Action = {
-  Enter: (info: EnterKeyInfo): EditorAction => ({ _tag: "Enter", info }),
-  Tab: (): EditorAction => ({ _tag: "Tab" }),
-  ShiftTab: (): EditorAction => ({ _tag: "ShiftTab" }),
-  BackspaceAtStart: (): EditorAction => ({ _tag: "BackspaceAtStart" }),
-  DeleteAtEnd: (): EditorAction => ({ _tag: "DeleteAtEnd" }),
-  ForceDelete: (): EditorAction => ({ _tag: "ForceDelete" }),
-  Navigate: (
-    direction: "left" | "right" | "up" | "down",
-    goalX?: number,
-  ): EditorAction =>
-    goalX !== undefined
-      ? { _tag: "Navigate", direction, goalX }
-      : { _tag: "Navigate", direction },
-  SelectionChange: (selection: SelectionInfo): EditorAction => ({
-    _tag: "SelectionChange",
-    selection,
-  }),
-  VerticalMove: (
-    anchor: number,
-    head: number,
-    assoc: -1 | 0 | 1,
-    goalX: number,
-  ): EditorAction => ({
-    _tag: "VerticalMove",
-    anchor,
-    head,
-    assoc,
-    goalX,
-  }),
-  Blur: (): EditorAction => ({ _tag: "Blur" }),
-  Escape: (): EditorAction => ({ _tag: "Escape" }),
-  ZoomIn: (): EditorAction => ({ _tag: "ZoomIn" }),
-  ZoomOut: (): EditorAction => ({ _tag: "ZoomOut" }),
-  BlockSelect: (direction: "up" | "down"): EditorAction => ({
-    _tag: "BlockSelect",
-    direction,
-  }),
-  Move: (action: "swapUp" | "swapDown" | "first" | "last"): EditorAction => ({
-    _tag: "Move",
-    action,
-  }),
-  Expand: (goalX?: number): EditorAction =>
-    goalX !== undefined ? { _tag: "Expand", goalX } : { _tag: "Expand" },
-  TypeTrigger: (
-    typeId: Id.Node,
-    trigger: BlockType.TriggerDefinition,
-  ): EditorAction => ({ _tag: "TypeTrigger", typeId, trigger }),
-  TypePickerOpen: (
-    position: { x: number; y: number },
-    from: number,
-  ): EditorAction => ({ _tag: "TypePickerOpen", position, from }),
-  TypePickerUpdate: (query: string): EditorAction => ({
-    _tag: "TypePickerUpdate",
-    query,
-  }),
-  TypePickerClose: (): EditorAction => ({ _tag: "TypePickerClose" }),
-  ToggleTodo: (): EditorAction => ({ _tag: "ToggleTodo" }),
-  PropertyTrigger: (): EditorAction => ({ _tag: "PropertyTrigger" }),
-} as const;
-
 interface TextEditorProps {
   /** Yjs Y.Text instance for collaborative text */
   ytext: Y.Text;
   /** Yjs UndoManager for undo/redo */
   undoManager: Y.UndoManager;
-  /** Single handler for all editor actions */
-  onAction?: (action: EditorAction) => boolean | void;
+
+  // === Primitive Event Callbacks (Phase 5 refactor) ===
+
+  /**
+   * Called for structural keydown events (Enter, Tab, Backspace, Delete, Arrow, Escape, Mod+shortcuts).
+   * Parent builds AppAction and calls ActionT.handle().
+   * Return true if handled (prevents default), false to let CodeMirror handle.
+   */
+  onKeyDown?: (e: KeyboardEvent, view: EditorView) => boolean;
+
+  /**
+   * Called when selection changes.
+   * Parent builds AppAction.SelectionChange and calls ActionT.handle().
+   */
+  onSelectionChange?: (selection: SelectionInfo) => void;
+
+  /** Called when editor loses focus. */
+  onBlur?: () => void;
+
+  /** Called when editor gains focus. */
+  onFocus?: () => void;
+
+  // === Input Handler Callbacks (not routed through ActionT) ===
+
+  /**
+   * Called when a type trigger pattern is detected (e.g., "- " for list).
+   * Return true to consume the trigger text, false to insert literally.
+   */
+  onTypeTrigger?: (
+    typeId: Id.Node,
+    trigger: BlockType.TriggerDefinition,
+  ) => boolean;
+
+  /** Called when "#" is typed to open type picker. */
+  onPickerOpen?: (position: { x: number; y: number }, from: number) => void;
+
+  /** Called when "> " is typed at start to create a property. */
+  onPropertyTrigger?: () => boolean;
+
+  // === Other props ===
+
   /** Strategy for initial cursor positioning on mount */
   initialStrategy: SelectionStrategy;
   /** Reactive selection from model (for ongoing sync after mount) */
@@ -422,19 +346,7 @@ interface TextEditorProps {
  * (doc transitions from empty to non-empty) to prevent cursor flash at position 0.
  */
 export default function TextEditor(props: TextEditorProps) {
-  const {
-    ytext,
-    undoManager,
-    onAction,
-    initialStrategy,
-    variant = "block",
-  } = props;
-
-  /** Emit an action, returning true if handled */
-  const emit = (action: EditorAction): boolean => {
-    const result = onAction?.(action);
-    return result === true;
-  };
+  const { ytext, undoManager, initialStrategy, variant = "block" } = props;
 
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
@@ -673,127 +585,62 @@ export default function TextEditor(props: TextEditorProps) {
             coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
           // If at wrap boundary, use CodeMirror's assoc; otherwise null
           const assoc = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
-          emit(
-            Action.SelectionChange({
-              anchor: sel.anchor,
-              head: sel.head,
-              assoc,
-            }),
-          );
+          props.onSelectionChange?.({
+            anchor: sel.anchor,
+            head: sel.head,
+            assoc,
+          });
         }
         if (update.focusChanged && !update.view.hasFocus) {
           console.debug(
             "[TextEditor.updateListener] Blur detected, emitting Blur action",
           );
-          emit(Action.Blur());
+          props.onBlur?.();
         }
       }),
     ];
 
-    // Declarative keymap configuration - emits actions
-    interface ActionKeyDef {
-      key: string;
-      action: EditorAction | ((view: EditorView) => EditorAction);
-      condition?: KeymapCondition;
-    }
+    // High-priority keydown handler for new onKeyDown callback.
+    // If provided, calls onKeyDown for structural keys BEFORE keymaps process them.
+    // This allows parent (Block) to build AppAction and call ActionT.handle().
+    if (props.onKeyDown) {
+      const structuralKeys = new Set([
+        "Enter",
+        "Tab",
+        "Backspace",
+        "Delete",
+        "Escape",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+      ]);
 
-    const actionKeyDefs: ActionKeyDef[] = [
-      // Enter - extracts cursor info
-      {
-        key: "Enter",
-        action: (view) => {
-          const cursorPos = view.state.selection.main.head;
-          const doc = view.state.doc.toString();
-          return Action.Enter({
-            cursorPos,
-            textBefore: doc.slice(0, cursorPos),
-            textAfter: doc.slice(cursorPos),
-          });
-        },
-      },
-
-      // Simple keybindings (always fire)
-      { key: "Tab", action: Action.Tab() },
-      { key: "Shift-Tab", action: Action.ShiftTab() },
-      { key: "Mod-.", action: Action.ZoomIn() },
-      { key: "Mod-,", action: Action.ZoomOut() },
-      { key: "Escape", action: Action.Escape() },
-      { key: "Mod-Shift-Backspace", action: Action.ForceDelete() },
-      { key: "Alt-Mod-ArrowUp", action: Action.Move("swapUp") },
-      { key: "Alt-Mod-ArrowDown", action: Action.Move("swapDown") },
-      { key: "Shift-Alt-Mod-ArrowUp", action: Action.Move("first") },
-      { key: "Shift-Alt-Mod-ArrowDown", action: Action.Move("last") },
-      { key: "Mod-Enter", action: Action.ToggleTodo() },
-      // Mod-ArrowUp/Down handled below with custom goalX calculation
-
-      // Position-conditional (anchor AND head at position)
-      {
-        key: "Backspace",
-        action: Action.BackspaceAtStart(),
-        condition: "atStart",
-      },
-      {
-        key: "ArrowLeft",
-        action: Action.Navigate("left"),
-        condition: "atStart",
-      },
-      { key: "Delete", action: Action.DeleteAtEnd(), condition: "atEnd" },
-      {
-        key: "ArrowRight",
-        action: Action.Navigate("right"),
-        condition: "atEnd",
-      },
-
-      // Head-only conditional (for extending selection)
-      {
-        key: "Shift-ArrowUp",
-        action: Action.BlockSelect("up"),
-        condition: "headAtStart",
-      },
-      {
-        key: "Shift-ArrowDown",
-        action: Action.BlockSelect("down"),
-        condition: "headAtEnd",
-      },
-    ];
-
-    // Build keymaps from action definitions
-    for (const def of actionKeyDefs) {
       extensions.push(
-        keymap.of([
-          {
-            key: def.key,
-            run: (view) => {
-              const sel = view.state.selection.main;
-              const docLen = view.state.doc.length;
+        Prec.high(
+          EditorView.domEventHandlers({
+            keydown(event, view) {
+              // Only intercept structural keys and modifier combinations
+              const isStructural =
+                structuralKeys.has(event.key) ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.altKey;
 
-              // Check condition
-              switch (def.condition) {
-                case "atStart":
-                  if (sel.anchor !== 0 || sel.head !== 0) return false;
-                  break;
-                case "atEnd":
-                  if (sel.anchor !== docLen || sel.head !== docLen)
-                    return false;
-                  break;
-                case "headAtStart":
-                  if (sel.head !== 0) return false;
-                  break;
-                case "headAtEnd":
-                  if (sel.head !== docLen) return false;
-                  break;
+              if (!isStructural) return false;
+
+              // Call the onKeyDown callback
+              const handled = props.onKeyDown!(event, view);
+              if (handled) {
+                event.preventDefault();
+                return true;
               }
 
-              // Emit action
-              const action =
-                typeof def.action === "function"
-                  ? def.action(view)
-                  : def.action;
-              emit(action);
-              return true;
+              // Not handled - let keymaps/CodeMirror process it
+              return false;
             },
-          },
-        ]),
+          }),
+        ),
       );
     }
 
@@ -837,175 +684,6 @@ export default function TextEditor(props: TextEditorProps) {
       ]),
     );
 
-    // ArrowUp handler - handles both inter-block navigation and goalX-aware intra-editor navigation
-    extensions.push(
-      keymap.of([
-        {
-          key: "ArrowUp",
-          run: (view) => {
-            const sel = view.state.selection.main;
-            // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
-            const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentCoords = view.coordsAtPos(sel.head, side);
-            const currentY = currentCoords?.top;
-            const moved = view.moveVertically(sel, false);
-            // Use moved.assoc for movedY to get correct line when landing at wrap boundary
-            const movedSide = moved.assoc === 1 ? 1 : -1;
-            const movedY = view.coordsAtPos(moved.head, movedSide)?.top;
-
-            if (currentY === movedY) {
-              // On first visual line - delegate to parent
-              emit(Action.Navigate("up", currentCoords?.left ?? 0));
-              return true;
-            }
-
-            // Moving between visual lines within editor
-            if (movedY != null && currentY !== movedY) {
-              // Preserve existing goalX or use current cursor X
-              const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
-
-              // If we have a goalX, use it to position cursor at that X coordinate
-              let finalPos = moved.head;
-
-              if (props.selection?.goalX != null) {
-                const pos = view.posAtCoords({
-                  x: props.selection.goalX,
-                  y: movedY + 1,
-                });
-                if (pos !== null) {
-                  finalPos = pos;
-                }
-              }
-
-              // Determine assoc: if at wrap boundary, pick assoc so cursor stays on target line (movedY)
-              const coordsBefore = view.coordsAtPos(finalPos, -1);
-              const coordsAfter = view.coordsAtPos(finalPos, 1);
-              const isAtWrapBoundary =
-                coordsBefore &&
-                coordsAfter &&
-                coordsBefore.top !== coordsAfter.top;
-              let finalAssoc: -1 | 0 | 1 = 0;
-              if (isAtWrapBoundary) {
-                // Pick assoc that keeps cursor on the target visual line
-                finalAssoc = coordsBefore?.top === movedY ? -1 : 1;
-              }
-
-              // Suppress selection change - we'll emit VerticalMove instead
-              suppressSelectionChange = true;
-              view.dispatch({
-                selection: EditorSelection.create([
-                  EditorSelection.cursor(finalPos, finalAssoc),
-                ]),
-                scrollIntoView: true,
-              });
-              suppressSelectionChange = false;
-
-              // Emit VerticalMove to update model with goalX preserved
-              emit(Action.VerticalMove(finalPos, finalPos, finalAssoc, goalX));
-              return true;
-            }
-
-            return false;
-          },
-        },
-      ]),
-    );
-
-    // ArrowDown handler - handles both inter-block navigation and goalX-aware intra-editor navigation
-    extensions.push(
-      keymap.of([
-        {
-          key: "ArrowDown",
-          run: (view) => {
-            const sel = view.state.selection.main;
-            // assoc: -1 = end of prev line, 1 = start of next line (at wrap boundaries)
-            // coordsAtPos only accepts -1 | 1, so treat 0 as -1 (default)
-            const side = props.selection?.assoc === 1 ? 1 : -1;
-            const currentCoords = view.coordsAtPos(sel.head, side);
-            const currentY = currentCoords?.top;
-            const moved = view.moveVertically(sel, true);
-            // Use moved.assoc for movedY to get correct line when landing at wrap boundary
-            const movedSide = moved.assoc === 1 ? 1 : -1;
-            const movedY = view.coordsAtPos(moved.head, movedSide)?.top;
-
-            if (currentY === movedY) {
-              // On last visual line - delegate to parent
-              emit(Action.Navigate("down", currentCoords?.left ?? 0));
-              return true;
-            }
-
-            // Moving between visual lines within editor
-            if (movedY != null && currentY !== movedY) {
-              // Preserve existing goalX or use current cursor X
-              const goalX = props.selection?.goalX ?? currentCoords?.left ?? 0;
-
-              // If we have a goalX, use it to position cursor at that X coordinate
-              let finalPos = moved.head;
-
-              if (props.selection?.goalX != null) {
-                const pos = view.posAtCoords({
-                  x: props.selection.goalX,
-                  y: movedY + 1,
-                });
-                if (pos !== null) {
-                  finalPos = pos;
-                }
-              }
-
-              // Determine assoc: if at wrap boundary, pick assoc so cursor stays on target line (movedY)
-              const coordsBefore = view.coordsAtPos(finalPos, -1);
-              const coordsAfter = view.coordsAtPos(finalPos, 1);
-              const isAtWrapBoundary =
-                coordsBefore &&
-                coordsAfter &&
-                coordsBefore.top !== coordsAfter.top;
-              let finalAssoc: -1 | 0 | 1 = 0;
-              if (isAtWrapBoundary) {
-                // Pick assoc that keeps cursor on the target visual line
-                finalAssoc = coordsBefore?.top === movedY ? -1 : 1;
-              }
-
-              // Suppress selection change - we'll emit VerticalMove instead
-              suppressSelectionChange = true;
-              view.dispatch({
-                selection: EditorSelection.create([
-                  EditorSelection.cursor(finalPos, finalAssoc),
-                ]),
-                scrollIntoView: true,
-              });
-              suppressSelectionChange = false;
-
-              // Emit VerticalMove to update model with goalX preserved
-              emit(Action.VerticalMove(finalPos, finalPos, finalAssoc, goalX));
-              return true;
-            }
-
-            return false;
-          },
-        },
-      ]),
-    );
-
-    // Mod-ArrowDown toggles expand (no navigation).
-    // Mod-ArrowUp: intercept here to prevent CodeMirror's default processing,
-    // but let the event bubble to EditorBuffer which handles progressive collapse→navigate.
-    extensions.push(
-      keymap.of([
-        {
-          key: "Mod-ArrowDown",
-          run: () => {
-            emit(Action.Expand());
-            return true;
-          },
-        },
-        {
-          key: "Mod-ArrowUp",
-          run: () => true, // Intercept to preserve selection state; EditorBuffer handles the logic
-        },
-      ]),
-    );
-
     // Yjs undo manager keymap (Cmd+Z, Cmd+Shift+Z) - must come before defaultKeymap
     extensions.push(keymap.of(yUndoManagerKeymap));
 
@@ -1026,8 +704,8 @@ export default function TextEditor(props: TextEditorProps) {
             if (from === consume && to === consume) {
               const prefix = doc.slice(0, consume);
               if (trigger.pattern.test(prefix)) {
-                // Emit action - if handler returns true, consume the trigger text
-                if (emit(Action.TypeTrigger(definition.id, trigger))) {
+                const handled = props.onTypeTrigger?.(definition.id, trigger);
+                if (handled) {
                   view.dispatch({
                     changes: { from: 0, to: consume, insert: "" },
                     selection: { anchor: 0 },
@@ -1055,12 +733,8 @@ export default function TextEditor(props: TextEditorProps) {
           // Doc must be exactly ">"
           if (doc !== ">") return false;
 
-          // Emit PropertyTrigger - if handled, the block will be deleted
-          // so we don't need to modify the text here
-          if (emit(Action.PropertyTrigger())) {
-            return true;
-          }
-          return false;
+          const handled = props.onPropertyTrigger?.();
+          return handled ?? false;
         }),
       );
     }
@@ -1079,7 +753,7 @@ export default function TextEditor(props: TextEditorProps) {
               const rect = view.contentDOM.getBoundingClientRect();
               return { x: rect.left, y: rect.top + 20 };
             })();
-        emit(Action.TypePickerOpen(position, from));
+        props.onPickerOpen?.(position, from);
         // Don't consume - let "#" be inserted
         return false;
       }),
@@ -1101,38 +775,6 @@ export default function TextEditor(props: TextEditorProps) {
         binding.mac !== "Alt-Delete",
     );
     extensions.push(keymap.of(filteredDefaultKeymap));
-
-    // Lowest-priority fallback for Backspace/Delete with ANY modifier combination.
-    // When Cmd+Backspace is pressed at cursor position 0, the default handler
-    // deletes to line start (no-op at pos 0). This fallback triggers merge instead.
-    extensions.push(
-      Prec.lowest(
-        EditorView.domEventHandlers({
-          keydown(event, view) {
-            const sel = view.state.selection.main;
-            const docLen = view.state.doc.length;
-
-            if (event.key === "Backspace") {
-              if (sel.anchor === 0 && sel.head === 0) {
-                emit(Action.BackspaceAtStart());
-                event.preventDefault();
-                return true;
-              }
-            }
-
-            if (event.key === "Delete") {
-              if (sel.anchor === docLen && sel.head === docLen) {
-                emit(Action.DeleteAtEnd());
-                event.preventDefault();
-                return true;
-              }
-            }
-
-            return false;
-          },
-        }),
-      ),
-    );
 
     const state = EditorState.create({
       doc: ytext.toString(),

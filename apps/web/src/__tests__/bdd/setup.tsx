@@ -12,8 +12,10 @@ import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeYjsLive } from "@/services/external/Yjs";
+import { ActionLive } from "@/services/ui/Action";
 import { BlockLive } from "@/services/ui/Block";
 import { BufferLive } from "@/services/ui/Buffer";
+import { EditorModeLive } from "@/services/ui/EditorMode";
 import { TitleLive } from "@/services/ui/Title";
 import { TypeColorLive } from "@/services/ui/TypeColor";
 import { PickerLive } from "@/services/ui/Picker";
@@ -93,12 +95,21 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   // Group layers to avoid pipe's argument limit (max 20)
   const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
   const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
+  // EditorModeLive is independent - merge it with TypePickerGroup
+  const EditorModePickerGroup = Layer.merge(EditorModeLive, TypePickerGroup);
+  // Group DataPort and Bootstrap (both independent domain services)
+  const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
+  // Group Keyboard and URL browser services
+  const BrowserServicesGroup = Layer.merge(
+    makeKeyboardLive(window),
+    makeURLServiceLive(window),
+  );
 
   const TestLayer = pipe(
-    NavigationLive,
-    Layer.provideMerge(BootstrapLive),
-    Layer.provideMerge(DataPortLive),
-    Layer.provideMerge(TypePickerGroup),
+    ActionLive,
+    Layer.provideMerge(NavigationLive),
+    Layer.provideMerge(DataPortBootstrapGroup),
+    Layer.provideMerge(EditorModePickerGroup),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(BlockLive),
@@ -110,8 +121,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(NodeLive),
     Layer.provideMerge(makeYjsLive({ roomName: "test-room", persist: false })),
-    Layer.provideMerge(makeKeyboardLive(window)),
-    Layer.provideMerge(makeURLServiceLive(window)),
+    Layer.provideMerge(BrowserServicesGroup),
     Layer.provideMerge(getStoreLayer(Effect.succeed(store))),
     Layer.provideMerge(
       Logger.minimumLogLevel(options?.logLevel ?? LogLevel.Error),
