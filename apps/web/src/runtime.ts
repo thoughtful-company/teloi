@@ -20,6 +20,7 @@ import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
+import { PickerLive } from "./services/ui/Picker";
 import { TypePickerLive } from "./services/ui/TypePicker";
 import { TypeColorLive } from "./services/ui/TypeColor";
 import { PropertyLive } from "./services/ui/Property";
@@ -61,12 +62,13 @@ const yjsPersist = true;
 
 // Group layers to avoid pipe's argument limit (max 20)
 const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
+const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
 
 const BrowserLayer = pipe(
   NavigationLive,
   Layer.provideMerge(DataPortLive),
   Layer.provideMerge(BootstrapLive),
-  Layer.provideMerge(TypePickerLive),
+  Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(BlockLive),

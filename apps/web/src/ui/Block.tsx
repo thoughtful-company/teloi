@@ -4,13 +4,13 @@ import { TupleT } from "@/services/domain/Tuple";
 import { useClickCapture } from "./hooks/useClickCapture";
 import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
-import { useTypePicker } from "./hooks/useTypePicker";
 import { TypeT } from "@/services/domain/Type";
+import { PickerT } from "@/services/ui/Picker";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
-import { isSystemType } from "@/services/ui/TypePicker";
+import { isSystemType, TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/utils/selectionStrategy";
 import { Effect, Fiber, Match, Option, Stream } from "effect";
 import {
+  createEffect,
   createSignal,
   For,
   onCleanup,
@@ -28,7 +29,7 @@ import {
   useContext,
 } from "solid-js";
 import { Transition } from "solid-transition-group";
-import { ActiveElementContext } from "./EditorBuffer";
+import { ActiveElementContext, PickerStateContext } from "./EditorBuffer";
 import { FormattedText } from "./FormattedText";
 import TextEditor, {
   type EditorAction,
@@ -36,7 +37,6 @@ import TextEditor, {
   type SelectionInfo,
 } from "./TextEditor";
 import TypeBadge from "./TypeBadge";
-import { TypePicker } from "./TypePicker";
 
 /** Context passed to parent's action handler for navigation decisions */
 export interface BlockNavigationContext {
@@ -157,26 +157,92 @@ export default function Block({
   const [activeTypes, setActiveTypes] = createSignal<readonly Id.Node[]>([]);
 
   const getActiveElement = useContext(ActiveElementContext);
+  const getPickerState = useContext(PickerStateContext);
 
-  // Type picker
-  const {
-    pickerState,
-    getPickerQuery,
-    handleTypePickerOpen,
-    handleTypePickerClose,
-    handleTypePickerSelect,
-    handleTypePickerCreate,
-    handleEnterWithPicker,
-  } = useTypePicker({
-    nodeId,
-    bufferId,
-    elementId: blockId,
-    getYtext,
-    getSelection: () => store.selection,
-    textContent,
-    runtime,
-    logPrefix: "[Block]",
+  // Push query updates to PickerT when text/selection changes
+  createEffect(() => {
+    // Track reactive dependencies
+    const text = textContent();
+    const cursorPos = store.selection?.head ?? text.length;
+    const state = getPickerState(); // O(1) context read
+
+    if (!state || state.elementId !== blockId) return;
+
+    const query = text.slice(state.from + 1, cursorPos);
+    if (query !== state.query) {
+      runtime.runSync(
+        Effect.gen(function* () {
+          const Picker = yield* PickerT;
+          yield* Picker.updateQuery(query);
+        }),
+      );
+    }
   });
+
+  const handleTypePickerOpen = (
+    position: { x: number; y: number },
+    from: number,
+  ) => {
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.open(blockId, position, from);
+      }),
+    );
+  };
+
+  const handleTypePickerClose = () => {
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.close();
+      }),
+    );
+  };
+
+  const handleTypePickerSelect = (typeId: Id.Node) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.selectType(typeId);
+      }),
+    );
+  };
+
+  const handleTypePickerCreate = (name: string) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.createAndSelectType(name);
+      }),
+    );
+  };
+
+  /**
+   * Handle Enter key when picker might be open.
+   * Returns true if picker was open and handled the Enter,
+   * false if caller should handle Enter normally.
+   */
+  const handleEnterWithPicker = (): boolean => {
+    const state = getPickerState();
+    if (!state || state.elementId !== blockId) return false;
+
+    const availableTypes = runtime.runSync(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const types = yield* TypePicker.getAvailableTypes();
+        return TypePicker.filterTypes(types, state.query);
+      }),
+    );
+
+    if (availableTypes.length > 0) {
+      handleTypePickerSelect(availableTypes[0]!.id);
+    } else if (state.query) {
+      handleTypePickerCreate(state.query);
+    }
+
+    return true;
+  };
 
   const hasType = (typeId: Id.Node) => activeTypes().includes(typeId);
   const userTypes = () =>
@@ -242,41 +308,55 @@ export default function Block({
       dispose();
       disposeTitleLink();
       runtime.runFork(Fiber.interrupt(typesFiber));
+      // Close picker if this block has it open (using sync check)
+      runtime.runFork(
+        Effect.gen(function* () {
+          const Picker = yield* PickerT;
+          const state = yield* Picker.getState();
+          if (state?.elementId === blockId) {
+            yield* Picker.close();
+          }
+        }),
+      );
     });
   });
 
   // Flag to prevent handleBlur from clearing activeElement when transitioning to block selection
   let isTransitioningToBlockSelection = false;
 
-  const { handleFocus, handleBlur, getInitialSelection, clearInitialSelection } =
-    useFocusBlur({
-      isActive: () => store.isActive,
-      clickCapture,
-      runtime,
-      onFocusEffect: Effect.gen(function* () {
-        const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
-        // Clear block selection when entering text editing mode
-        yield* Buffer.setBlockSelection(bufferId, [], nodeId);
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: blockId }),
-        );
-      }),
-      onBlurEffect: Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-        // Only clear selection and activeElement if still pointing to this block.
-        // If navigating to another block, they already point there - don't clear.
-        const selectionOpt = yield* Buffer.getSelection(bufferId);
-        const sel = Option.getOrNull(selectionOpt);
-        const selBlockId = sel ? sel.anchor.elementId : null;
-        if (sel && selBlockId === blockId) {
-          yield* Buffer.setSelection(bufferId, Option.none());
-          yield* Window.setActiveElement(Option.none());
-        }
-      }),
-      shouldSkipBlur: () => isTransitioningToBlockSelection,
-    });
+  const {
+    handleFocus,
+    handleBlur,
+    getInitialSelection,
+    clearInitialSelection,
+  } = useFocusBlur({
+    isActive: () => store.isActive,
+    clickCapture,
+    runtime,
+    onFocusEffect: Effect.gen(function* () {
+      const Window = yield* WindowT;
+      const Buffer = yield* BufferT;
+      // Clear block selection when entering text editing mode
+      yield* Buffer.setBlockSelection(bufferId, [], nodeId);
+      yield* Window.setActiveElement(
+        Option.some({ type: "block" as const, id: blockId }),
+      );
+    }),
+    onBlurEffect: Effect.gen(function* () {
+      const Buffer = yield* BufferT;
+      const Window = yield* WindowT;
+      // Only clear selection and activeElement if still pointing to this block.
+      // If navigating to another block, they already point there - don't clear.
+      const selectionOpt = yield* Buffer.getSelection(bufferId);
+      const sel = Option.getOrNull(selectionOpt);
+      const selBlockId = sel ? sel.anchor.elementId : null;
+      if (sel && selBlockId === blockId) {
+        yield* Buffer.setSelection(bufferId, Option.none());
+        yield* Window.setActiveElement(Option.none());
+      }
+    }),
+    shouldSkipBlur: () => isTransitioningToBlockSelection,
+  });
 
   const handleSelectionChange = (selection: SelectionInfo) => {
     runtime.runPromise(updateEditorSelection(bufferId, nodeId, selection));
@@ -285,7 +365,6 @@ export default function Block({
   const handleEnter = (info: EnterKeyInfo) => {
     runtime.runPromise(
       Effect.gen(function* () {
-        
         // Check if any active type wants to be removed on empty Enter
         if (info.cursorPos === 0 && info.textAfter.length === 0) {
           for (const def of getActiveDefinitions()) {
@@ -360,7 +439,7 @@ export default function Block({
     runtime
       .runPromise(
         Effect.gen(function* () {
-                    const Window = yield* WindowT;
+          const Window = yield* WindowT;
           const Buffer = yield* BufferT;
 
           // Switch to block selection mode
@@ -484,8 +563,8 @@ export default function Block({
         },
         Blur: () => handleBlur(),
         Escape: () => {
-          // If picker is open, close it instead of entering block selection
-          if (pickerState()) {
+          // If picker is open for THIS block, close it instead of entering block selection
+          if (getPickerState()?.elementId === blockId) {
             handleTypePickerClose();
             return;
           }
@@ -612,19 +691,6 @@ export default function Block({
             {(childId) => <Block blockId={childId} onAction={parentOnAction} />}
           </For>
         </div>
-      </Show>
-
-      <Show when={pickerState()}>
-        {(state) => (
-          <TypePicker
-            position={state().position}
-            query={getPickerQuery()}
-            nodeId={nodeId}
-            onSelect={handleTypePickerSelect}
-            onCreate={handleTypePickerCreate}
-            onClose={handleTypePickerClose}
-          />
-        )}
       </Show>
     </div>
   );

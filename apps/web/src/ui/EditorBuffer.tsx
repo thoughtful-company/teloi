@@ -6,6 +6,7 @@ import { YjsT } from "@/services/external/Yjs";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { BufferT } from "@/services/ui/Buffer";
+import { PickerT, type PickerState } from "@/services/ui/Picker";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import {
@@ -31,6 +32,7 @@ import { createBlockActionHandler } from "./EditorBuffer/blockActionHandler";
 import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
+import { TypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
 import ViewTabs from "./ViewTabs";
 
@@ -38,6 +40,11 @@ const isMac = navigator.platform.toUpperCase().includes("MAC");
 
 /** Context to expose activeElement to child components for scroll-on-mount behavior */
 export const ActiveElementContext = createContext<() => Entity.Element | null>(
+  () => null,
+);
+
+/** Context to expose picker state to Block/Title for query updates */
+export const PickerStateContext = createContext<() => PickerState | null>(
   () => null,
 );
 
@@ -192,9 +199,7 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
               }
               // Subscribe to properties of first view
               const viewId = viewIds[0]!;
-              return Stream.unwrap(
-                Property.subscribePropertiesForView(viewId),
-              );
+              return Stream.unwrap(Property.subscribePropertiesForView(viewId));
             },
             { switch: true }, // Cancel previous subscription when views change
           ),
@@ -213,7 +218,11 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
       <div class="mx-auto max-w-[var(--max-line-width)] w-full py-2">
         <Index each={properties()}>
           {(prop) => (
-            <PropertySection propertyId={prop().id} pageId={props.pageId} bufferId={props.bufferId} />
+            <PropertySection
+              propertyId={prop().id}
+              pageId={props.pageId}
+              bufferId={props.bufferId}
+            />
           )}
         </Index>
       </div>
@@ -279,6 +288,50 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   const [activeElement, setActiveElement] = createSignal<Entity.Element | null>(
     null,
   );
+  const [pickerState, setPickerState] = createSignal<PickerState | null>(null);
+
+  // Filter picker state to only show when it belongs to this buffer
+  const getPickerForBuffer = (): {
+    state: PickerState;
+    nodeId: Id.Node;
+  } | null => {
+    const state = pickerState();
+    if (!state) return null;
+
+    const blockContext = Id.parseBlockContextSync(state.elementId);
+    // Only show picker if it belongs to this buffer
+    if (blockContext.type === "buffer" && blockContext.bufferId === bufferId) {
+      return { state, nodeId: blockContext.nodeId };
+    }
+    return null;
+  };
+
+  const handleTypePickerSelect = (typeId: Id.Node) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.selectType(typeId);
+      }),
+    );
+  };
+
+  const handleTypePickerCreate = (name: string) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.createAndSelectType(name);
+      }),
+    );
+  };
+
+  const handleTypePickerClose = () => {
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.close();
+      }),
+    );
+  };
 
   onMount(() => {
     const dispose = start(runtime);
@@ -323,10 +376,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
             setIsBlockSelectionMode(isBufferActive);
 
             // Scroll block into view when navigating in text editing mode
-            if (
-              Option.isSome(activeEl) &&
-              activeEl.value.type === "block"
-            ) {
+            if (Option.isSome(activeEl) && activeEl.value.type === "block") {
               const [elBufferId] = yield* Id.parseBlockId(activeEl.value.id);
               if (elBufferId === bufferId) {
                 scrollBlockIntoView(activeEl.value.id);
@@ -568,14 +618,15 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
             // Get current focused node: block selection takes priority over text selection
             // Only buffer blocks can be selected in block selection mode
-            const selectionContext =
-              Option.isSome(currentSelection)
-                ? yield* Id.parseBlockContext(
-                    currentSelection.value.anchor.elementId,
-                  ).pipe(Effect.orDie)
-                : null;
+            const selectionContext = Option.isSome(currentSelection)
+              ? yield* Id.parseBlockContext(
+                  currentSelection.value.anchor.elementId,
+                ).pipe(Effect.orDie)
+              : null;
             const selectionNodeId =
-              selectionContext?.type === "buffer" ? selectionContext.nodeId : null;
+              selectionContext?.type === "buffer"
+                ? selectionContext.nodeId
+                : null;
             const nodeId = bufferDoc?.selectedBlocks[0] ?? selectionNodeId;
 
             if (!nodeId) return;
@@ -783,7 +834,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                   targetBlock,
                   targetBlock,
                 );
-                scrollBlockIntoView(Id.makeBufferBlockId(bufferId, targetBlock));
+                scrollBlockIntoView(
+                  Id.makeBufferBlockId(bufferId, targetBlock),
+                );
                 return;
               }
 
@@ -793,7 +846,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
                 lastFocusedBlockId,
                 lastFocusedBlockId,
               );
-              scrollBlockIntoView(Id.makeBufferBlockId(bufferId, lastFocusedBlockId));
+              scrollBlockIntoView(
+                Id.makeBufferBlockId(bufferId, lastFocusedBlockId),
+              );
               return;
             }
 
@@ -1325,9 +1380,23 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
     document.addEventListener("keydown", handleKeyDown);
 
+    // Subscribe to global picker state for this buffer
+    const pickerFiber = runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        const stream = yield* Picker.subscribe();
+        yield* Stream.runForEach(stream, (state) =>
+          Effect.sync(() => {
+            setPickerState(state);
+          }),
+        );
+      }),
+    );
+
     onCleanup(() => {
       dispose();
       runtime.runFork(Fiber.interrupt(activeElementFiber));
+      runtime.runFork(Fiber.interrupt(pickerFiber));
       document.removeEventListener("keydown", handleKeyDown);
     });
   });
@@ -1387,53 +1456,75 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   };
 
   return (
-    <ActiveElementContext.Provider value={activeElement}>
-      <div data-testid="editor-buffer" class="h-full flex flex-col">
-        <Show when={store.nodeId} keyed>
-          {(nodeId) => (
-            <>
-              <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-                <Title bufferId={bufferId} nodeId={nodeId} />
-                <TypeList nodeId={nodeId} />
-              </header>
-            <ViewTabs
-              bufferId={bufferId}
-              nodeId={nodeId}
-              activeViewId={store.activeViewId}
-            />
-            <PropertyList pageId={nodeId} bufferId={bufferId} />
-            <Show
-              when={store.activeViewId}
-              fallback={
-                <div
-                  data-testid="editor-body"
-                  class="flex-1 flex flex-col pt-4"
-                >
-                  <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
-                    <For each={store.childBlockIds}>
-                      {(childId) => <Block blockId={childId} onAction={blockActionHandler} />}
-                    </For>
-                  </div>
-                  <div
-                    data-testid="editor-click-zone"
-                    class="flex-1 min-h-[25vh] cursor-text"
-                    onClick={(e) => handleClickZone(e, nodeId)}
-                  />
-                </div>
-              }
-            >
-              <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
-                <TableView
+    <PickerStateContext.Provider value={pickerState}>
+      <ActiveElementContext.Provider value={activeElement}>
+        <div data-testid="editor-buffer" class="h-full flex flex-col">
+          <Show when={store.nodeId} keyed>
+            {(nodeId) => (
+              <>
+                <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+                  <Title bufferId={bufferId} nodeId={nodeId} />
+                  <TypeList nodeId={nodeId} />
+                </header>
+                <ViewTabs
                   bufferId={bufferId}
                   nodeId={nodeId}
-                  childNodeIds={getChildNodeIds()}
+                  activeViewId={store.activeViewId}
                 />
-              </div>
-            </Show>
-          </>
-        )}
-        </Show>
-      </div>
-    </ActiveElementContext.Provider>
+                <PropertyList pageId={nodeId} bufferId={bufferId} />
+                <Show
+                  when={store.activeViewId}
+                  fallback={
+                    <div
+                      data-testid="editor-body"
+                      class="flex-1 flex flex-col pt-4"
+                    >
+                      <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
+                        <For each={store.childBlockIds}>
+                          {(childId) => (
+                            <Block
+                              blockId={childId}
+                              onAction={blockActionHandler}
+                            />
+                          )}
+                        </For>
+                      </div>
+                      <div
+                        data-testid="editor-click-zone"
+                        class="flex-1 min-h-[25vh] cursor-text"
+                        onClick={(e) => handleClickZone(e, nodeId)}
+                      />
+                    </div>
+                  }
+                >
+                  <div
+                    data-testid="editor-body"
+                    class="flex-1 flex flex-col pt-4"
+                  >
+                    <TableView
+                      bufferId={bufferId}
+                      nodeId={nodeId}
+                      childNodeIds={getChildNodeIds()}
+                    />
+                  </div>
+                </Show>
+              </>
+            )}
+          </Show>
+          <Show when={getPickerForBuffer()}>
+            {(picker) => (
+              <TypePicker
+                position={picker().state.position}
+                query={picker().state.query}
+                nodeId={picker().nodeId}
+                onSelect={handleTypePickerSelect}
+                onCreate={handleTypePickerCreate}
+                onClose={handleTypePickerClose}
+              />
+            )}
+          </Show>
+        </div>
+      </ActiveElementContext.Provider>
+    </PickerStateContext.Provider>
   );
 }

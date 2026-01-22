@@ -5,8 +5,9 @@ import { NodeT } from "@/services/domain/Node";
 import { useClickCapture } from "./hooks/useClickCapture";
 import { useFocusBlur } from "./hooks/useFocusBlur";
 import { useTitleLink } from "./hooks/useTitleLink";
-import { useTypePicker } from "./hooks/useTypePicker";
 import { BlockT } from "@/services/ui/Block";
+import { PickerT } from "@/services/ui/Picker";
+import { TypePickerT } from "@/services/ui/TypePicker";
 import { TitleT, type TitleSelection } from "@/services/ui/Title";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
@@ -16,12 +17,12 @@ import {
   updateEditorSelection,
 } from "@/utils/selectionStrategy";
 import { Effect, Match, Option, Stream } from "effect";
-import { onCleanup, onMount, Show } from "solid-js";
+import { createEffect, onCleanup, onMount, Show, useContext } from "solid-js";
+import { PickerStateContext } from "./EditorBuffer";
 import TextEditor, {
   type EditorAction,
   type SelectionInfo,
 } from "./TextEditor";
-import { TypePicker } from "./TypePicker";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -65,25 +66,94 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     },
   });
 
-  // Type picker
-  const {
-    pickerState,
-    getPickerQuery,
-    handleTypePickerOpen,
-    handleTypePickerClose,
-    handleTypePickerSelect,
-    handleTypePickerCreate,
-    handleEnterWithPicker,
-  } = useTypePicker({
-    nodeId,
-    bufferId,
-    elementId: IdT.makeBufferBlockId(bufferId, nodeId),
-    getYtext,
-    getSelection: () => store.selection,
-    textContent,
-    runtime,
-    logPrefix: "[Title]",
+  // Type picker - Title's elementId is the buffer block ID
+  const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
+  const getPickerState = useContext(PickerStateContext);
+
+  // Push query updates to PickerT when text/selection changes
+  createEffect(() => {
+    // Track reactive dependencies
+    const text = textContent();
+    const cursorPos = store.selection?.head ?? text.length;
+    const state = getPickerState(); // O(1) context read
+
+    if (!state || state.elementId !== elementId) return;
+
+    const query = text.slice(state.from + 1, cursorPos);
+    if (query !== state.query) {
+      runtime.runSync(
+        Effect.gen(function* () {
+          const Picker = yield* PickerT;
+          yield* Picker.updateQuery(query);
+        }),
+      );
+    }
   });
+
+  const handleTypePickerOpen = (
+    position: { x: number; y: number },
+    from: number,
+  ) => {
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.open(elementId, position, from);
+      }),
+    );
+  };
+
+  const handleTypePickerClose = () => {
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.close();
+      }),
+    );
+  };
+
+  const handleTypePickerSelect = (typeId: Id.Node) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.selectType(typeId);
+      }),
+    );
+  };
+
+  const handleTypePickerCreate = (name: string) => {
+    runtime.runFork(
+      Effect.gen(function* () {
+        const Picker = yield* PickerT;
+        yield* Picker.createAndSelectType(name);
+      }),
+    );
+  };
+
+  /**
+   * Handle Enter key when picker might be open.
+   * Returns true if picker was open and handled the Enter,
+   * false if caller should handle Enter normally.
+   */
+  const handleEnterWithPicker = (): boolean => {
+    const state = getPickerState();
+    if (!state || state.elementId !== elementId) return false;
+
+    const availableTypes = runtime.runSync(
+      Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const types = yield* TypePicker.getAvailableTypes();
+        return TypePicker.filterTypes(types, state.query);
+      }),
+    );
+
+    if (availableTypes.length > 0) {
+      handleTypePickerSelect(availableTypes[0]!.id);
+    } else if (state.query) {
+      handleTypePickerCreate(state.query);
+    }
+
+    return true;
+  };
 
   const clickCapture = useClickCapture({ isActive: () => store.isActive });
 
@@ -94,6 +164,16 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     onCleanup(() => {
       dispose();
       disposeTitleLink();
+      // Close picker if this element has it open (using sync check)
+      runtime.runFork(
+        Effect.gen(function* () {
+          const Picker = yield* PickerT;
+          const state = yield* Picker.getState();
+          if (state?.elementId === elementId) {
+            yield* Picker.close();
+          }
+        }),
+      );
     });
   });
 
@@ -183,7 +263,12 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           Match.orElse(() => {}),
         );
       }),
-      Match.tag("Escape", () => handleTypePickerClose()),
+      Match.tag("Escape", () => {
+        // Only close picker if it's open for THIS element
+        if (getPickerState()?.elementId === elementId) {
+          handleTypePickerClose();
+        }
+      }),
       Match.tag("TypePickerOpen", ({ position, from }) =>
         handleTypePickerOpen(position, from),
       ),
@@ -267,18 +352,6 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           readonly={titleMode() === "readonly"}
           onDetachEdit={titleMode() === "detach" ? handleDetach : undefined}
         />
-      </Show>
-      <Show when={pickerState()}>
-        {(state) => (
-          <TypePicker
-            position={state().position}
-            query={getPickerQuery()}
-            nodeId={nodeId}
-            onSelect={handleTypePickerSelect}
-            onCreate={handleTypePickerCreate}
-            onClose={handleTypePickerClose}
-          />
-        )}
       </Show>
     </div>
   );
