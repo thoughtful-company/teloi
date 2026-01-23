@@ -1,15 +1,12 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
+import type { Entity } from "@/schema";
 import { Id } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
-import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
-import { PickerT, type PickerState } from "@/services/ui/Picker";
-import { WindowT } from "@/services/ui/Window";
-import { ActionT, type AppAction, type DOMIntent } from "@/services/ui/Action";
+import type { PickerState } from "@/services/ui/Picker";
+import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
+import { ViewT } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { SCROLL_MARGIN, scrollElementIntoView } from "@/utils/scroll";
-import { Effect, Fiber, Option, Stream } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import {
   createContext,
   createSignal,
@@ -19,18 +16,13 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import type { Entity } from "@/schema";
-import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
-import { ViewT } from "@/services/ui/View";
 import Block from "./Block";
 import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
-import { TypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
+import { TypePicker } from "./TypePicker";
 import ViewTabs from "./ViewTabs";
-
-const isMac = navigator.platform.toUpperCase().includes("MAC");
 
 /** Context to expose activeElement to child components for scroll-on-mount behavior */
 export const ActiveElementContext = createContext<() => Entity.Element | null>(
@@ -41,16 +33,6 @@ export const ActiveElementContext = createContext<() => Entity.Element | null>(
 export const PickerStateContext = createContext<() => PickerState | null>(
   () => null,
 );
-
-function scrollBlockIntoView(blockId: Id.Block) {
-  requestAnimationFrame(() => {
-    const el = document.querySelector<HTMLElement>(
-      `[data-element-id="${blockId}"][data-element-type="block"] [data-block-content]`,
-    );
-    if (!el) return;
-    scrollElementIntoView(el, SCROLL_MARGIN);
-  });
-}
 
 /** Helper component to render properties for a page's view */
 function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
@@ -154,11 +136,9 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
       return nodeId;
     });
 
-  const [isBlockSelectionMode, setIsBlockSelectionMode] = createSignal(false);
-  const [activeElement, setActiveElement] = createSignal<Entity.Element | null>(
-    null,
-  );
-  const [pickerState, setPickerState] = createSignal<PickerState | null>(null);
+  // TODO: These should be populated by ViewModel subscriptions passed as props
+  const [activeElement] = createSignal<Entity.Element | null>(null);
+  const [pickerState] = createSignal<PickerState | null>(null);
 
   // Filter picker state to only show when it belongs to this buffer
   const getPickerForBuffer = (): {
@@ -176,283 +156,13 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
     return null;
   };
 
-  const handleTypePickerSelect = (typeId: Id.Node) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.selectType(typeId);
-      }),
-    );
-  };
-
-  const handleTypePickerCreate = (name: string) => {
-    runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.createAndSelectType(name);
-      }),
-    );
-  };
-
-  const handleTypePickerClose = () => {
-    runtime.runSync(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        yield* Picker.close();
-      }),
-    );
-  };
-
   onMount(() => {
     const dispose = start(runtime);
 
-    const activeElementFiber = runtime.runFork(
-      Effect.gen(function* () {
-        const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
-        const Store = yield* StoreT;
-        const stream = yield* Window.subscribeActiveElement();
-
-        let wasBufferActive = false;
-
-        yield* Stream.runForEach(stream, (activeEl) =>
-          Effect.gen(function* () {
-            // Update context signal for child components
-            const elementValue = Option.getOrNull(activeEl);
-            setActiveElement(elementValue);
-
-            const isBufferActive = Option.match(activeEl, {
-              onNone: () => false,
-              onSome: (el) => el.type === "buffer" && el.id === bufferId,
-            });
-
-            // When transitioning OUT of block selection mode, clear selection
-            if (wasBufferActive && !isBufferActive) {
-              const bufferDoc = yield* Store.getDocument(
-                "buffer",
-                bufferId,
-              ).pipe(Effect.orDie);
-              const anchor = Option.match(bufferDoc, {
-                onNone: () => null,
-                onSome: (buf) => buf.blockSelectionAnchor,
-              });
-
-              if (anchor) {
-                yield* Buffer.setBlockSelection(bufferId, [], anchor);
-              }
-            }
-
-            wasBufferActive = isBufferActive;
-            setIsBlockSelectionMode(isBufferActive);
-
-            // Scroll block into view when navigating in text editing mode
-            if (Option.isSome(activeEl) && activeEl.value.type === "block") {
-              const [elBufferId] = yield* Id.parseBlockId(activeEl.value.id);
-              if (elBufferId === bufferId) {
-                scrollBlockIntoView(activeEl.value.id);
-              }
-            }
-          }),
-        );
-      }),
-    );
-
-    /**
-     * Execute DOMIntent from ActionT result.
-     */
-    const executeDOMIntent = (intent: DOMIntent) => {
-      const { focus, scroll, blur } = intent;
-
-      if (blur) {
-        const activeEl = document.activeElement;
-        if (activeEl instanceof HTMLElement) {
-          activeEl.blur();
-        }
-      }
-
-      if (focus) {
-        if (focus.type === "title") {
-          requestAnimationFrame(() => {
-            const titleEl = document.querySelector<HTMLElement>(
-              `[data-element-id="${CSS.escape(focus.bufferId)}"][data-element-type="title"] .cm-content`,
-            );
-            titleEl?.focus();
-          });
-        } else if (focus.type === "block") {
-          requestAnimationFrame(() => {
-            const blockEl = document.querySelector<HTMLElement>(
-              `[data-element-id="${CSS.escape(focus.blockId)}"][data-element-type="block"] .cm-content`,
-            );
-            blockEl?.focus();
-          });
-        }
-      }
-
-      if (scroll) {
-        scrollBlockIntoView(scroll);
-      }
-    };
-
-    /**
-     * Try routing a document-level keydown through ActionT.
-     * Returns true if ActionT handled it, false otherwise.
-     */
-    const tryActionTDocumentKeyDown = (e: KeyboardEvent): boolean => {
-      // Only try for block selection mode
-      if (!isBlockSelectionMode()) return false;
-
-      // Only try for keys that ActionT handles in document mode
-      const actionTHandledKeys = new Set([
-        "Enter",
-        "Escape",
-        "Tab",
-        "ArrowUp",
-        "ArrowDown",
-      ]);
-
-      // Skip if modifiers that ActionT doesn't handle for these keys
-      const modPressed = isMac ? e.metaKey : e.ctrlKey;
-      if (e.key === "Enter" && modPressed) return false; // Mod+Enter is toggle todo
-      if (
-        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
-        (e.altKey || modPressed)
-      ) {
-        return false; // Alt/Cmd+Arrow is move/collapse
-      }
-
-      if (!actionTHandledKeys.has(e.key)) return false;
-
-      // Normalize "Mod" key: Accept both metaKey and ctrlKey as "Mod"
-      const modKeyPressed = e.metaKey || e.ctrlKey;
-
-      const action: AppAction = {
-        _tag: "KeyDown",
-        key: e.key,
-        modifiers: {
-          meta: modKeyPressed, // Normalized: true when "Mod" key is pressed
-          ctrl: e.ctrlKey,
-          alt: e.altKey,
-          shift: e.shiftKey,
-        },
-        source: {
-          type: "document",
-          bufferId,
-        },
-      };
-
-      const result = runtime.runSync(
-        Effect.gen(function* () {
-          const Action = yield* ActionT;
-          return yield* Action.handle(action);
-        }),
-      );
-
-      if (result.handled) {
-        e.preventDefault();
-        executeDOMIntent(result.intent);
-        return true;
-      }
-
-      return false;
-    };
-
-    // Handle keyboard events in block selection mode
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if event came from inside CodeMirror, EXCEPT for Mod+Up
-      // (Mod+Up needs to work in both text editing and block selection modes)
-      const target = e.target;
-      const isModUp =
-        e.key === "ArrowUp" &&
-        !e.altKey &&
-        !e.shiftKey &&
-        (isMac ? e.metaKey : e.ctrlKey);
-      if (
-        target instanceof HTMLElement &&
-        target.closest(".cm-editor") &&
-        !isModUp
-      ) {
-        return;
-      }
-
-      // Route all document-level keydown through ActionT
-      tryActionTDocumentKeyDown(e);
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    // Subscribe to global picker state for this buffer
-    const pickerFiber = runtime.runFork(
-      Effect.gen(function* () {
-        const Picker = yield* PickerT;
-        const stream = yield* Picker.subscribe();
-        yield* Stream.runForEach(stream, (state) =>
-          Effect.sync(() => {
-            setPickerState(state);
-          }),
-        );
-      }),
-    );
-
     onCleanup(() => {
       dispose();
-      runtime.runFork(Fiber.interrupt(activeElementFiber));
-      runtime.runFork(Fiber.interrupt(pickerFiber));
-      document.removeEventListener("keydown", handleKeyDown);
     });
   });
-  const handleClickZone = (_e: MouseEvent, nodeId: Id.Node) => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Node = yield* NodeT;
-        const Yjs = yield* YjsT;
-        const Buffer = yield* BufferT;
-        const Window = yield* WindowT;
-
-        const children = yield* Node.getNodeChildren(nodeId);
-        const lastChildId =
-          children.length > 0 ? children[children.length - 1] : null;
-
-        let targetNodeId: Id.Node;
-        let targetBlockId: Id.Block;
-
-        if (lastChildId) {
-          const lastChildText = Yjs.getText(lastChildId).toString();
-          if (lastChildText === "") {
-            targetNodeId = lastChildId;
-            targetBlockId = Id.makeBufferBlockId(bufferId, lastChildId);
-          } else {
-            targetNodeId = yield* Node.insertNode({
-              parentId: nodeId,
-              insert: "after",
-            });
-            targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
-          }
-        } else {
-          targetNodeId = yield* Node.insertNode({
-            parentId: nodeId,
-            insert: "after",
-          });
-          targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
-        }
-
-        yield* Buffer.setSelection(
-          bufferId,
-          Option.some({
-            anchor: { elementId: targetBlockId },
-            anchorOffset: 0,
-            focus: { elementId: targetBlockId },
-            focusOffset: 0,
-            goalX: null,
-            goalLine: null,
-            assoc: 0,
-          }),
-        );
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-      }),
-    );
-  };
 
   return (
     <PickerStateContext.Provider value={pickerState}>

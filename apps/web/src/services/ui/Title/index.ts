@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
@@ -30,7 +30,7 @@ export class TitleT extends Context.Tag("TitleT")<
       nodeId: Id.Node,
       params: EnterParams,
     ) => Effect.Effect<void>;
-    blur: (bufferId: Id.Buffer) => Effect.Effect<void>;
+    blur: (bufferId: Id.Buffer, nodeId: Id.Node) => Effect.Effect<void>;
   }
 >() {}
 
@@ -40,13 +40,13 @@ export const TitleLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const Buffer = yield* BufferT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(WindowT, Window),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
       Context.add(BufferT, Buffer),
     );
 

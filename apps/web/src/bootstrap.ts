@@ -1,7 +1,7 @@
 import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 
@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
  */
 export const bootstrap = Effect.gen(function* () {
   const Store = yield* StoreT;
-  const Yjs = yield* YjsT;
+  const Automerge = yield* AutomergeT;
   const sessionId = yield* Store.getSessionId();
   const windowId = Id.Window.make(sessionId);
 
@@ -48,8 +48,8 @@ export const bootstrap = Effect.gen(function* () {
       data: { nodeId },
     }),
   );
-  Yjs.getText(nodeId).insert(
-    0,
+  yield* Automerge.setText(
+    nodeId,
     "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
   );
 
@@ -64,8 +64,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(childId1).insert(
-    0,
+  yield* Automerge.setText(
+    childId1,
     "Once or twice she had peeped into the book her sister was reading.",
   );
 
@@ -80,8 +80,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(childId2).insert(
-    0,
+  yield* Automerge.setText(
+    childId2,
     "But it had no pictures or conversations in it.",
   );
 
@@ -96,8 +96,8 @@ export const bootstrap = Effect.gen(function* () {
       },
     }),
   );
-  Yjs.getText(grandchildId).insert(
-    0,
+  yield* Automerge.setText(
+    grandchildId,
     "And what is the use of a book without pictures or conversations?",
   );
 

@@ -2,7 +2,7 @@ import "@/index.css";
 import { events, tables } from "@/livestore/schema";
 import { Id, System } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import EditorBuffer from "@/ui/EditorBuffer";
@@ -52,7 +52,7 @@ describe("Property Quick-Create", () => {
     Effect.gen(function* () {
       const Property = yield* PropertyT;
       const View = yield* ViewT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
 
       // Create a page with a child node
       const { bufferId, rootNodeId, childNodeIds } =
@@ -64,8 +64,8 @@ describe("Property Quick-Create", () => {
       const viewId = yield* View.getOrCreateView(rootNodeId);
       const propertyId = yield* Property.createProperty(viewId);
 
-      // Set property name via Y.Text
-      Yjs.getText(propertyId).insert(0, propertyName);
+      // Set property name via Automerge
+      yield* Automerge.setText(propertyId, propertyName);
 
       return {
         bufferId,
@@ -96,13 +96,15 @@ describe("Property Quick-Create", () => {
   describe("Arrow Right at end of unbound property creates tuple type", () => {
     it("creates a tuple type named '{propertyName}_Tuple'", async () => {
       await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
-
         const { rootNodeId, propertyId, propertyName, bufferId } =
           yield* createUnboundProperty("Author");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Wait for property section to appear
@@ -130,19 +132,21 @@ describe("Property Quick-Create", () => {
           waitFor(
             async () => {
               // Check for a tuple type node with the expected name pattern
-              const tupleTypes = await Effect.gen(function* () {
+              const tupleType = await Effect.gen(function* () {
                 const Store = yield* StoreT;
+                const Automerge = yield* AutomergeT;
                 const nodes = yield* Store.query(
                   queryDb(tables.nodes.select()),
                 );
-                return nodes;
+                // Find the tuple type by checking Automerge text
+                for (const node of nodes) {
+                  const text = yield* Automerge.getText(node.id as Id.Node);
+                  if (text === `${propertyName}_Tuple`) {
+                    return node;
+                  }
+                }
+                return undefined;
               }).pipe(runtime.runPromise);
-
-              // Find the tuple type by checking Y.Text
-              const tupleType = tupleTypes.find((node) => {
-                const text = Yjs.getText(node.id as Id.Node).toString();
-                return text === `${propertyName}_Tuple`;
-              });
 
               expect(tupleType).toBeDefined();
             },
@@ -160,7 +164,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("Category");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Wait for property section and trigger quick-create
@@ -221,7 +229,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("Status");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Trigger quick-create
@@ -293,7 +305,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("Priority");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Verify property is initially unbound
@@ -334,7 +350,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("Tags");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Trigger quick-create
@@ -373,7 +393,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("Assignee");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Trigger quick-create
@@ -432,7 +456,11 @@ describe("Property Quick-Create", () => {
         yield* Property.addLinkedBlock(propertyId, rootNodeId);
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Wait for property section
@@ -443,7 +471,9 @@ describe("Property Quick-Create", () => {
         // Count tuple types before ArrowRight
         const nodesBefore = yield* Store.query(queryDb(tables.nodes.select()));
         const tupleTypeCountBefore = nodesBefore.filter((n) =>
-          Yjs.getText(n.id as Id.Node).toString().includes("_Tuple"),
+          Yjs.getText(n.id as Id.Node)
+            .toString()
+            .includes("_Tuple"),
         ).length;
 
         yield* When.USER_PRESSES("{ArrowRight}");
@@ -454,7 +484,9 @@ describe("Property Quick-Create", () => {
         // Verify no NEW tuple type was created
         const nodesAfter = yield* Store.query(queryDb(tables.nodes.select()));
         const tupleTypeCountAfter = nodesAfter.filter((n) =>
-          Yjs.getText(n.id as Id.Node).toString().includes("_Tuple"),
+          Yjs.getText(n.id as Id.Node)
+            .toString()
+            .includes("_Tuple"),
         ).length;
 
         expect(tupleTypeCountAfter).toBe(tupleTypeCountBefore);
@@ -486,7 +518,11 @@ describe("Property Quick-Create", () => {
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Click property name to focus
@@ -529,7 +565,11 @@ describe("Property Quick-Create", () => {
           yield* createUnboundProperty("LongPropertyName");
 
         render(() => (
-          <PropertySection propertyId={propertyId} pageId={rootNodeId} bufferId={bufferId} />
+          <PropertySection
+            propertyId={propertyId}
+            pageId={rootNodeId}
+            bufferId={bufferId}
+          />
         ));
 
         // Click property name to focus
@@ -543,7 +583,9 @@ describe("Property Quick-Create", () => {
         // Count tuple types before another ArrowRight
         const nodesBefore = yield* Store.query(queryDb(tables.nodes.select()));
         const tupleTypeCountBefore = nodesBefore.filter((n) =>
-          Yjs.getText(n.id as Id.Node).toString().includes("_Tuple"),
+          Yjs.getText(n.id as Id.Node)
+            .toString()
+            .includes("_Tuple"),
         ).length;
 
         // Press ArrowRight mid-text - should just move cursor, not trigger quick-create
@@ -555,7 +597,9 @@ describe("Property Quick-Create", () => {
         // Verify no tuple type was created
         const nodesAfter = yield* Store.query(queryDb(tables.nodes.select()));
         const tupleTypeCountAfter = nodesAfter.filter((n) =>
-          Yjs.getText(n.id as Id.Node).toString().includes("_Tuple"),
+          Yjs.getText(n.id as Id.Node)
+            .toString()
+            .includes("_Tuple"),
         ).length;
 
         expect(tupleTypeCountAfter).toBe(tupleTypeCountBefore);

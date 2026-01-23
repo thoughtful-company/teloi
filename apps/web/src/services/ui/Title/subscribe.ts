@@ -1,6 +1,7 @@
 import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
@@ -17,12 +18,17 @@ export interface TitleSelection {
 export interface TitleView {
   isActive: boolean;
   selection: TitleSelection | null;
+  textContent: string;
 }
 
 export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
   Effect.gen(function* () {
     const Window = yield* WindowT;
     const Store = yield* StoreT;
+    const Automerge = yield* AutomergeT;
+
+    // Title is just the root block of a buffer
+    const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
 
     const activeElementStream = yield* Window.subscribeActiveElement();
 
@@ -30,7 +36,7 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
       Stream.map((maybeActive) =>
         Option.match(maybeActive, {
           onNone: () => false,
-          onSome: (el) => el.type === "title" && el.bufferId === bufferId,
+          onSome: (el) => el.type === "block" && el.id === titleBlockId,
         }),
       ),
       Stream.changesWith((a, b) => a === b),
@@ -71,12 +77,21 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
       Stream.changesWith(deepEqual),
     );
 
-    return Stream.zipLatestWith(
+    // Text content stream
+    const textStream = yield* Automerge.subscribeText(nodeId);
+    const textContentStream = textStream.pipe(
+      Stream.map((textData) => textData.content),
+    );
+
+    return Stream.zipLatestAll(
       isActiveStream,
       selectionStream,
-      (isActive, selection) => ({
+      textContentStream,
+    ).pipe(
+      Stream.map(([isActive, selection, textContent]) => ({
         isActive,
         selection,
-      }),
+        textContent,
+      })),
     );
   });

@@ -3,7 +3,7 @@ import { events, tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { DataPortT, ExportData } from "@/services/domain/DataPort";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -123,7 +123,7 @@ describe("DataPort", () => {
     it("imports data and populates store", async () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
         const DataPort = yield* DataPortT;
 
         const importData: ExportData = {
@@ -170,9 +170,9 @@ describe("DataPort", () => {
         const childLink = links.find((l) => l.childId === "imported-child");
         expect(childLink?.parentId).toBe("imported-root");
 
-        // Verify Yjs text content
-        const rootText = Yjs.getText("imported-root" as Id.Node).toString();
-        const childText = Yjs.getText("imported-child" as Id.Node).toString();
+        // Verify Automerge text content
+        const rootText = yield* Automerge.getText("imported-root" as Id.Node);
+        const childText = yield* Automerge.getText("imported-child" as Id.Node);
         expect(rootText).toBe("Imported root text");
         expect(childText).toBe("Imported child text");
       }).pipe(runtime.runPromise);
@@ -181,7 +181,7 @@ describe("DataPort", () => {
     it("skips existing nodes and only adds new ones", async () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
         const DataPort = yield* DataPortT;
 
         const { nodeId: existingNodeId } = yield* Given.A_BUFFER_WITH_TEXT(
@@ -216,13 +216,13 @@ describe("DataPort", () => {
         const nodes = yield* Store.query(queryDb(tables.nodes.select()));
         const existingNode = nodes.find((n) => n.id === existingNodeId);
         expect(existingNode).toBeDefined();
-        const existingText = Yjs.getText(existingNodeId).toString();
+        const existingText = yield* Automerge.getText(existingNodeId);
         expect(existingText).toBe("Original content - should be preserved");
 
         // New node should be added
         const newNode = nodes.find((n) => n.id === "brand-new-node");
         expect(newNode).toBeDefined();
-        const newText = Yjs.getText("brand-new-node" as Id.Node).toString();
+        const newText = yield* Automerge.getText("brand-new-node" as Id.Node);
         expect(newText).toBe("New node content");
       }).pipe(runtime.runPromise);
     });
@@ -230,7 +230,7 @@ describe("DataPort", () => {
     it("adds child nodes when parent exists locally", async () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
         const DataPort = yield* DataPortT;
 
         // Create existing parent node
@@ -269,17 +269,15 @@ describe("DataPort", () => {
         yield* DataPort.importData(importData);
 
         // Parent should still have original text
-        expect(Yjs.getText(existingParentId).toString()).toBe(
-          "Existing parent",
-        );
+        const parentText = yield* Automerge.getText(existingParentId);
+        expect(parentText).toBe("Existing parent");
 
         // Child should be created under existing parent
         const links = yield* Store.query(queryDb(tables.parentLinks.select()));
         const childLink = links.find((l) => l.childId === "new-child");
         expect(childLink?.parentId).toBe(existingParentId);
-        expect(Yjs.getText("new-child" as Id.Node).toString()).toBe(
-          "New child text",
-        );
+        const childText = yield* Automerge.getText("new-child" as Id.Node);
+        expect(childText).toBe("New child text");
       }).pipe(runtime.runPromise);
     });
 
@@ -302,7 +300,7 @@ describe("DataPort", () => {
 
         // Verify structure is preserved
         const Store = yield* StoreT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         const nodes = yield* Store.query(queryDb(tables.nodes.select()));
         expect(nodes.find((n) => n.id === rootNodeId)).toBeDefined();
@@ -310,9 +308,12 @@ describe("DataPort", () => {
         expect(nodes.find((n) => n.id === childNodeIds[1])).toBeDefined();
 
         // Verify text content
-        expect(Yjs.getText(rootNodeId).toString()).toBe("Root node");
-        expect(Yjs.getText(childNodeIds[0]).toString()).toBe("Child 1");
-        expect(Yjs.getText(childNodeIds[1]).toString()).toBe("Child 2");
+        const rootText = yield* Automerge.getText(rootNodeId);
+        const child1Text = yield* Automerge.getText(childNodeIds[0]);
+        const child2Text = yield* Automerge.getText(childNodeIds[1]);
+        expect(rootText).toBe("Root node");
+        expect(child1Text).toBe("Child 1");
+        expect(child2Text).toBe("Child 2");
 
         // Verify parent links
         const links = yield* Store.query(queryDb(tables.parentLinks.select()));

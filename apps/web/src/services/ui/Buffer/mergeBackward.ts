@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { findDeepestLastChild } from "@/services/ui/Block/navigation";
 import { Effect, Option } from "effect";
 
@@ -26,10 +26,14 @@ export interface MergeResult {
 export const mergeBackward = (
   bufferId: Id.Buffer,
   nodeId: Id.Node,
-): Effect.Effect<Option.Option<MergeResult>, never, NodeT | YjsT | StoreT> =>
+): Effect.Effect<
+  Option.Option<MergeResult>,
+  never,
+  NodeT | AutomergeT | StoreT
+> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const Store = yield* StoreT;
 
     // Can't delete a node that has children (would orphan them)
@@ -53,17 +57,16 @@ export const mergeBackward = (
 
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
-    const currentYtext = Yjs.getText(nodeId);
-    const currentText = currentYtext.toString();
+    const currentText = yield* Automerge.getText(nodeId);
 
     // First sibling: merge into parent
     if (siblingIndex === 0) {
-      const parentYtext = Yjs.getText(parentId);
-      const mergePoint = parentYtext.length;
+      const parentText = yield* Automerge.getText(parentId);
+      const mergePoint = parentText.length;
 
-      parentYtext.insert(mergePoint, currentText);
+      yield* Automerge.setText(parentId, parentText + currentText);
       yield* Node.deleteNode(nodeId);
-      Yjs.deleteText(nodeId);
+      yield* Automerge.deleteText(nodeId);
 
       return Option.some({
         targetNodeId: parentId,
@@ -75,12 +78,12 @@ export const mergeBackward = (
     // Merge into previous sibling's deepest last child (respects collapsed state)
     const prevSiblingId = siblings[siblingIndex - 1]!;
     const targetNodeId = yield* findDeepestLastChild(prevSiblingId, bufferId);
-    const targetYtext = Yjs.getText(targetNodeId);
-    const mergePoint = targetYtext.length;
+    const targetText = yield* Automerge.getText(targetNodeId);
+    const mergePoint = targetText.length;
 
-    targetYtext.insert(mergePoint, currentText);
+    yield* Automerge.setText(targetNodeId, targetText + currentText);
     yield* Node.deleteNode(nodeId);
-    Yjs.deleteText(nodeId);
+    yield* Automerge.deleteText(nodeId);
 
     return Option.some({
       targetNodeId,

@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
@@ -20,9 +20,9 @@ export const enter = (
     const Node = yield* NodeT;
     const Buffer = yield* BufferT;
     const Window = yield* WindowT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
-    const ytext = Yjs.getText(nodeId);
+    const currentText = yield* Automerge.getText(nodeId);
 
     // Create new node as first child
     const newNodeId = yield* Node.insertNode({
@@ -30,13 +30,13 @@ export const enter = (
       insert: "before",
     });
 
-    // Update Y.Text atomically: title keeps text before cursor, new block gets text after
-    const clampedPos = Math.max(0, Math.min(params.cursorPos, ytext.length));
-    Yjs.doc.transact(() => {
-      ytext.delete(clampedPos, ytext.length - clampedPos);
-      const newYtext = Yjs.getText(newNodeId);
-      newYtext.insert(0, params.textAfter);
-    });
+    // Update text: title keeps text before cursor, new block gets text after
+    const clampedPos = Math.max(
+      0,
+      Math.min(params.cursorPos, currentText.length),
+    );
+    yield* Automerge.setText(nodeId, currentText.slice(0, clampedPos));
+    yield* Automerge.setText(newNodeId, params.textAfter);
 
     const newBlockId = Id.makeBufferBlockId(bufferId, newNodeId);
     yield* Buffer.setSelection(bufferId, makeCollapsedSelection(newBlockId, 0));

@@ -3,7 +3,7 @@ import { LiveStoreError, StoreT } from "../../external/Store";
 
 import { Id, Model } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
@@ -93,11 +93,11 @@ export const BufferLive = Layer.effect(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
     );
 
     return {

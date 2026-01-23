@@ -13,6 +13,8 @@
 import { Id } from "@/schema";
 import { Context, Effect, Layer, Stream, SubscriptionRef } from "effect";
 
+let skipBlurSetCount = 0;
+
 /**
  * Editor interaction mode.
  *
@@ -60,6 +62,13 @@ export class EditorModeT extends Context.Tag("EditorModeT")<
      * Used by focus/blur handlers to avoid race conditions.
      */
     shouldSkipBlur: () => Effect.Effect<boolean>;
+
+    /**
+     * Temporarily skip blur handling. Used during Focus action to prevent
+     * race conditions where blur fires before DOM focus is established.
+     * Clears after a microtask.
+     */
+    withSkipBlur: () => Effect.Effect<void>;
   }
 >() {}
 
@@ -104,6 +113,26 @@ export const EditorModeLive = Layer.effect(
         SubscriptionRef.set(modeRef, { type: "block", blockId: targetBlockId }),
 
       shouldSkipBlur: (): Effect.Effect<boolean> => Effect.sync(() => skipBlur),
+
+      withSkipBlur: (): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          const id = ++skipBlurSetCount;
+          yield* Effect.sync(() => {
+            skipBlur = true;
+          });
+          yield* Effect.logDebug(
+            "[EditorMode.withSkipBlur] Skip blur enabled",
+          ).pipe(Effect.annotateLogs({ skipBlurId: id }));
+          yield* Effect.sync(() => {
+            queueMicrotask(() => {
+              skipBlur = false;
+              // Can't use Effect.logDebug in microtask, use console
+              console.debug(
+                `[EditorMode.withSkipBlur] Skip blur cleared (id: ${id})`,
+              );
+            });
+          });
+        }),
     };
   }),
 );

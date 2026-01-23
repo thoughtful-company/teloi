@@ -1,5 +1,6 @@
 import { events, tables } from "@/livestore/schema";
 import { Id, System } from "@/schema";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
@@ -12,6 +13,7 @@ import { nanoid } from "nanoid";
 export const createRootNode = () =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
+    const Automerge = yield* AutomergeT;
     const nodeId = nanoid() as Id.Node;
 
     const lastChild = yield* Store.query(
@@ -32,6 +34,9 @@ export const createRootNode = () =>
         data: { nodeId, parentId: System.WORKSPACE, position },
       }),
     );
+
+    // Initialize text content for the new node
+    yield* Automerge.setText(nodeId, "");
 
     return nodeId;
   });

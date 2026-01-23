@@ -2,7 +2,7 @@ import "@/index.css";
 import { System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
@@ -26,7 +26,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
             },
             { timeout: 2000 },
@@ -58,7 +60,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
               const buttons = picker.querySelectorAll("button");
               if (buttons.length === 0) throw new Error("Types not loaded yet");
@@ -72,19 +76,25 @@ describe("TypePicker in Title", () => {
 
         yield* Effect.promise(() =>
           waitFor(
-            () => {
-              const Yjs = runtime.runSync(YjsT);
-              const text = Yjs.getText(rootNodeId).toString();
+            async () => {
+              const Automerge = await AutomergeT.pipe(runtime.runPromise);
+              const text = await Automerge.getText(rootNodeId).pipe(
+                runtime.runPromise,
+              );
               if (!text.includes("#title"))
                 throw new Error("Text not updated: " + text);
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker closed unexpectedly");
               const buttons = picker.querySelectorAll("button");
               const hasType = Array.from(buttons).some((btn) =>
                 btn.textContent?.includes(uniqueTypeName),
               );
               if (!hasType)
-                throw new Error(`${uniqueTypeName} not showing in filtered list`);
+                throw new Error(
+                  `${uniqueTypeName} not showing in filtered list`,
+                );
             },
             { timeout: 2000 },
           ),
@@ -114,7 +124,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },
@@ -138,7 +150,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -153,12 +167,14 @@ describe("TypePicker in Title", () => {
           waitFor(
             async () => {
               const Node = await NodeT.pipe(runtime.runPromise);
-              const Yjs = await YjsT.pipe(runtime.runPromise);
-              const typeChildren = await Node.getNodeChildren(System.SCHEMA).pipe(
-                runtime.runPromise,
-              );
-              const typeNames = typeChildren.map((id) =>
-                Yjs.getText(id).toString(),
+              const Automerge = await AutomergeT.pipe(runtime.runPromise);
+              const typeChildren = await Node.getNodeChildren(
+                System.SCHEMA,
+              ).pipe(runtime.runPromise);
+              const typeNames = await Promise.all(
+                typeChildren.map((id) =>
+                  Automerge.getText(id).pipe(runtime.runPromise),
+                ),
               );
               expect(typeNames).toContain("newtitletag");
             },
@@ -187,7 +203,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -201,7 +219,9 @@ describe("TypePicker in Title", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },

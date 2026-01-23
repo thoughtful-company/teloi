@@ -2,7 +2,7 @@ import { events, tables } from "@/livestore/schema";
 import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Stream } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -27,7 +27,7 @@ describe("Sidebar Workspace Pages", () => {
       Effect.gen(function* () {
         const Store = yield* StoreT;
         const Node = yield* NodeT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Create a page under workspace
         const pageNodeId = Id.Node.make(nanoid());
@@ -43,8 +43,7 @@ describe("Sidebar Workspace Pages", () => {
         );
 
         // Set some text so we can identify it
-        const ytext = Yjs.getText(pageNodeId);
-        ytext.insert(0, "My Page");
+        yield* Automerge.setText(pageNodeId, "My Page");
 
         // Subscribe to workspace pages
         const pagesStream = yield* Node.subscribeRootNodes();

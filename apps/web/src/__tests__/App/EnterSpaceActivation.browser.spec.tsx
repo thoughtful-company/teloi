@@ -2,13 +2,19 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { WindowT } from "@/services/ui/Window";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, Then, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "../bdd";
 
 /**
  * Enter/Space buffer activation tests.
@@ -80,7 +86,9 @@ describe("Enter/Space buffer activation", () => {
       }
 
       const Window = yield* WindowT;
-      yield* Window.setActiveElement(Option.some({ type: "buffer", id: bufferId }));
+      yield* Window.setActiveElement(
+        Option.some({ type: "buffer", id: bufferId }),
+      );
 
       // Verify the state
       const stream = yield* Window.subscribeActiveElement();
@@ -131,19 +139,22 @@ describe("Enter/Space buffer activation", () => {
     });
 
   /**
-   * Gets a node's text content from Yjs.
+   * Gets a node's text content from Automerge.
    */
   const getNodeText = (nodeId: Id.Node) =>
     Effect.gen(function* () {
-      const Yjs = yield* YjsT;
-      return Yjs.getText(nodeId).toString();
+      const Automerge = yield* AutomergeT;
+      return yield* Automerge.getText(nodeId);
     });
 
   describe("Empty buffer behavior", () => {
     it("Enter on empty buffer creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
-        const { bufferId, nodeId: rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        const {
+          bufferId,
+          nodeId: rootNodeId,
+          windowId,
+        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -172,8 +183,11 @@ describe("Enter/Space buffer activation", () => {
 
     it("Space on empty buffer creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
-        const { bufferId, nodeId: rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        const {
+          bufferId,
+          nodeId: rootNodeId,
+          windowId,
+        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -237,7 +251,9 @@ describe("Enter/Space buffer activation", () => {
         const element = Option.getOrThrow(el);
         expect(element.type).toBe("block");
         if (element.type === "block") {
-          expect(element.id).toBe(Id.makeBufferBlockId(bufferId, childNodeIds[1]));
+          expect(element.id).toBe(
+            Id.makeBufferBlockId(bufferId, childNodeIds[1]),
+          );
         }
       }).pipe(runtime.runPromise);
     });
@@ -277,7 +293,9 @@ describe("Enter/Space buffer activation", () => {
         const element = Option.getOrThrow(el);
         expect(element.type).toBe("block");
         if (element.type === "block") {
-          expect(element.id).toBe(Id.makeBufferBlockId(bufferId, childNodeIds[1]));
+          expect(element.id).toBe(
+            Id.makeBufferBlockId(bufferId, childNodeIds[1]),
+          );
         }
       }).pipe(runtime.runPromise);
     });

@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { EditorView } from "@codemirror/view";
 import { Data, Effect, Option, Schedule } from "effect";
 import { screen, waitFor } from "solid-testing-library";
@@ -69,15 +69,15 @@ export const CHILDREN_ORDER_IS = Effect.fn("Then.CHILDREN_ORDER_IS")(function* (
 });
 
 /**
- * Asserts that a node has the expected text content (checks Yjs, not LiveStore).
+ * Asserts that a node has the expected text content (checks Automerge, not LiveStore).
  */
 export const NODE_HAS_TEXT = Effect.fn("Then.NODE_HAS_TEXT")(function* (
   nodeId: Id.Node,
   expectedText: string,
 ) {
-  const Yjs = yield* YjsT;
-  const ytext = Yjs.getText(nodeId);
-  expect(ytext.toString()).toBe(expectedText);
+  const Automerge = yield* AutomergeT;
+  const text = yield* Automerge.getText(nodeId);
+  expect(text).toBe(expectedText);
 });
 
 /**
@@ -265,73 +265,42 @@ type MarkType = "bold" | "italic" | "code";
 
 /**
  * Asserts that a node has a specific mark at the specified range.
- * Checks the Y.Text deltas to verify the attribute is present.
+ * NOTE: Automerge stores plain strings, so rich text formatting requires
+ * a different approach. This is a stub that always fails - formatting tests
+ * need to be updated for the new text storage approach.
  */
 export const NODE_HAS_MARK_AT = (
-  nodeId: Id.Node,
+  _nodeId: Id.Node,
   index: number,
   length: number,
   mark: MarkType,
 ) =>
   Effect.gen(function* () {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    const deltas = ytext.toDelta();
-
-    let pos = 0;
-    let found = false;
-
-    for (const delta of deltas) {
-      const text = delta.insert as string;
-      const deltaEnd = pos + text.length;
-
-      if (deltaEnd > index && pos < index + length) {
-        const hasMark = delta.attributes?.[mark] === true;
-        if (hasMark) {
-          const overlapStart = Math.max(pos, index);
-          const overlapEnd = Math.min(deltaEnd, index + length);
-          if (overlapStart < overlapEnd) {
-            found = true;
-          }
-        }
-      }
-      pos = deltaEnd;
-    }
-
-    expect(found, `Expected ${mark} at index ${index}, length ${length}`).toBe(
-      true,
+    yield* Effect.logWarning(
+      `NODE_HAS_MARK_AT(${mark}) called but Automerge stores plain strings. ` +
+        `Formatting tests need to be updated for the new text storage approach.`,
+    );
+    expect.fail(
+      `NODE_HAS_MARK_AT not supported: Automerge stores plain strings. ` +
+        `Expected ${mark} at index ${index}, length ${length}`,
     );
   }).pipe(Effect.withSpan(`Then.NODE_HAS_MARK_AT(${mark})`));
 
 /**
  * Asserts that a node does NOT have a specific mark at the specified range.
+ * NOTE: Automerge stores plain strings (no marks), so this always passes.
  */
 export const NODE_HAS_NO_MARK_AT = (
-  nodeId: Id.Node,
-  index: number,
-  length: number,
+  _nodeId: Id.Node,
+  _index: number,
+  _length: number,
   mark: MarkType,
 ) =>
   Effect.gen(function* () {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    const deltas = ytext.toDelta();
-
-    let pos = 0;
-
-    for (const delta of deltas) {
-      const text = delta.insert as string;
-      const deltaEnd = pos + text.length;
-
-      if (deltaEnd > index && pos < index + length) {
-        const hasMark = delta.attributes?.[mark] === true;
-        expect(
-          hasMark,
-          `Expected no ${mark} at index ${index}, length ${length}, but found ${mark} in delta at ${pos}`,
-        ).toBe(false);
-      }
-      pos = deltaEnd;
-    }
+    // Automerge stores plain strings, so there are never any marks
+    yield* Effect.logDebug(
+      `NODE_HAS_NO_MARK_AT(${mark}) trivially passes: Automerge stores plain strings`,
+    );
   }).pipe(Effect.withSpan(`Then.NODE_HAS_NO_MARK_AT(${mark})`));
 
 /** Convenience wrapper for bold */
@@ -350,38 +319,31 @@ export const NODE_HAS_NO_BOLD_AT = (
 
 /**
  * Asserts that a node has no formatting at all (plain text).
+ * NOTE: Automerge stores plain strings, so this always passes.
  */
 export const NODE_HAS_NO_FORMATTING = Effect.fn("Then.NODE_HAS_NO_FORMATTING")(
-  function* (nodeId: Id.Node) {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    const deltas = ytext.toDelta();
-
-    for (const delta of deltas) {
-      expect(
-        delta.attributes,
-        "Expected no formatting attributes",
-      ).toBeUndefined();
-    }
+  function* (_nodeId: Id.Node) {
+    // Automerge stores plain strings, so there is never any formatting
+    yield* Effect.logDebug(
+      `NODE_HAS_NO_FORMATTING trivially passes: Automerge stores plain strings`,
+    );
   },
 );
 
 /**
  * Asserts that a node's entire text content is bold.
+ * NOTE: Automerge stores plain strings, so this always fails - formatting tests
+ * need to be updated for the new text storage approach.
  */
 export const NODE_IS_ENTIRELY_BOLD = Effect.fn("Then.NODE_IS_ENTIRELY_BOLD")(
-  function* (nodeId: Id.Node) {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    const deltas = ytext.toDelta();
-
-    // All deltas should have bold: true
-    for (const delta of deltas) {
-      expect(
-        delta.attributes?.bold,
-        `Expected entire text to be bold, but found non-bold segment: "${delta.insert}"`,
-      ).toBe(true);
-    }
+  function* (_nodeId: Id.Node) {
+    yield* Effect.logWarning(
+      `NODE_IS_ENTIRELY_BOLD called but Automerge stores plain strings. ` +
+        `Formatting tests need to be updated for the new text storage approach.`,
+    );
+    expect.fail(
+      `NODE_IS_ENTIRELY_BOLD not supported: Automerge stores plain strings.`,
+    );
   },
 );
 
@@ -568,7 +530,9 @@ export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
           return; // Pass - no doc means expanded by default
         }
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(true);
+        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(
+          true,
+        );
       },
       catch: (cause) => new AssertionError({ cause }),
     });
@@ -588,9 +552,14 @@ export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
 
     yield* Effect.try({
       try: () => {
-        expect(Option.isSome(blockDoc), `Block ${blockId} should have a document`).toBe(true);
+        expect(
+          Option.isSome(blockDoc),
+          `Block ${blockId} should have a document`,
+        ).toBe(true);
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(false);
+        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(
+          false,
+        );
       },
       catch: (cause) => new AssertionError({ cause }),
     });

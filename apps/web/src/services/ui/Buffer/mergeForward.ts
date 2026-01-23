@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { isBlockExpanded } from "@/services/ui/Block/navigation";
 import { Effect, Option } from "effect";
 
@@ -10,11 +10,11 @@ import { Effect, Option } from "effect";
  *
  * Decision tree:
  * - Has VISIBLE children (expanded AND has children)?
- *   - YES: First child has no children? → merge first child
+ *   - YES: First child has no children? -> merge first child
  *   - NO: no-op (would orphan grandchildren)
  * - No visible children (collapsed OR no children)?
  *   - Has next sibling?
- *     - YES: Next sibling has no children? → merge next sibling
+ *     - YES: Next sibling has no children? -> merge next sibling
  *     - NO: no-op (would orphan nieces/nephews)
  *   - No next sibling: no-op (don't cross hierarchy)
  *
@@ -26,14 +26,14 @@ export const mergeForward = (
 ): Effect.Effect<
   Option.Option<{ cursorOffset: number }>,
   never,
-  NodeT | YjsT | StoreT
+  NodeT | AutomergeT | StoreT
 > =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
-    const currentYtext = Yjs.getText(nodeId);
-    const mergePoint = currentYtext.length;
+    const currentText = yield* Automerge.getText(nodeId);
+    const mergePoint = currentText.length;
 
     const children = yield* Node.getNodeChildren(nodeId);
     const isExpanded = yield* isBlockExpanded(bufferId, nodeId);
@@ -48,19 +48,12 @@ export const mergeForward = (
         return Option.none();
       }
 
-      const childYtext = Yjs.getText(firstChildId);
+      const childText = yield* Automerge.getText(firstChildId);
 
-      // Get formatted deltas before modification
-      const childDeltas = yield* Yjs.getDeltasWithFormats(
-        firstChildId,
-        0,
-        childYtext.length,
-      );
-
-      // Insert with formatting preservation
-      yield* Yjs.insertWithFormats(nodeId, mergePoint, childDeltas);
+      // Merge child text into current node
+      yield* Automerge.setText(nodeId, currentText + childText);
       yield* Node.deleteNode(firstChildId);
-      Yjs.deleteText(firstChildId);
+      yield* Automerge.deleteText(firstChildId);
 
       return Option.some({ cursorOffset: mergePoint });
     }
@@ -77,7 +70,7 @@ export const mergeForward = (
     const siblings = yield* Node.getNodeChildren(parentId);
     const siblingIndex = siblings.indexOf(nodeId);
 
-    // No next sibling (last child of parent) → no-op
+    // No next sibling (last child of parent) -> no-op
     if (siblingIndex === -1 || siblingIndex === siblings.length - 1) {
       return Option.none();
     }
@@ -85,24 +78,17 @@ export const mergeForward = (
     const nextSiblingId = siblings[siblingIndex + 1]!;
     const nextSiblingChildren = yield* Node.getNodeChildren(nextSiblingId);
 
-    // Next sibling has children → no-op (would orphan them)
+    // Next sibling has children -> no-op (would orphan them)
     if (nextSiblingChildren.length > 0) {
       return Option.none();
     }
 
-    const nextYtext = Yjs.getText(nextSiblingId);
+    const nextText = yield* Automerge.getText(nextSiblingId);
 
-    // Get formatted deltas before modification
-    const nextDeltas = yield* Yjs.getDeltasWithFormats(
-      nextSiblingId,
-      0,
-      nextYtext.length,
-    );
-
-    // Insert with formatting preservation
-    yield* Yjs.insertWithFormats(nodeId, mergePoint, nextDeltas);
+    // Merge sibling text into current node
+    yield* Automerge.setText(nodeId, currentText + nextText);
     yield* Node.deleteNode(nextSiblingId);
-    Yjs.deleteText(nextSiblingId);
+    yield* Automerge.deleteText(nextSiblingId);
 
     return Option.some({ cursorOffset: mergePoint });
   });

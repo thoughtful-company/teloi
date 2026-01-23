@@ -1,8 +1,8 @@
 import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 
@@ -17,7 +17,9 @@ export interface CommandContext {
 export interface Command {
   id: string;
   label: string;
-  action: (context: CommandContext) => Effect.Effect<void, unknown, StoreT | TupleT | YjsT>;
+  action: (
+    context: CommandContext,
+  ) => Effect.Effect<void, unknown, StoreT | TupleT | AutomergeT>;
 }
 
 /**
@@ -28,7 +30,7 @@ const addTableViewAction = (ctx: CommandContext) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const viewNodeId = Id.Node.make(nanoid());
     yield* Store.commit(
@@ -37,7 +39,7 @@ const addTableViewAction = (ctx: CommandContext) =>
         data: { nodeId: viewNodeId },
       }),
     );
-    Yjs.getText(viewNodeId).insert(0, "Table View");
+    yield* Automerge.setText(viewNodeId, "Table View");
 
     yield* Tuple.create(HAS_VIEW_TUPLE_TYPE, [ctx.nodeId, viewNodeId]);
 

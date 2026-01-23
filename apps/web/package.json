@@ -15,6 +15,11 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@automerge/automerge": "^3.2.3",
+    "@automerge/automerge-codemirror": "^0.2.0",
+    "@automerge/automerge-repo": "^2.5.1",
+    "@automerge/automerge-repo-solid-primitives": "^2.5.1",
+    "@automerge/automerge-repo-storage-indexeddb": "^2.5.1",
     "@codemirror/commands": "^6.10.0",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.39.9",
@@ -30,10 +35,7 @@
     "fractional-indexing": "^3.2.0",
     "solid-js": "^1.9.5",
     "solid-transition-group": "^0.3.0",
-    "tailwind-merge": "^3.3.1",
-    "y-codemirror.next": "^0.3.5",
-    "y-indexeddb": "^9.0.12",
-    "yjs": "^13.6.28"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@effect/language-service": "^0.20.1",
@@ -50,6 +52,8 @@
     "vite-plugin-mkcert": "^1.17.9",
     "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-solid": "^2.11.6",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.5.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   }

@@ -6,12 +6,11 @@ import { makeURLServiceLive } from "@/services/browser/URLService";
 import { BootstrapLive } from "@/services/domain/Bootstrap";
 import { DataPortLive } from "@/services/domain/DataPort";
 import { NodeLive } from "@/services/domain/Node";
-import { TitleLinkLive } from "@/services/domain/TitleLink";
 import { TupleLive } from "@/services/domain/Tuple";
 import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
-import { makeYjsLive } from "@/services/external/Yjs";
+import { makeAutomergeLive } from "@/services/external/Automerge";
 import { ActionLive } from "@/services/ui/Action";
 import { BlockLive } from "@/services/ui/Block";
 import { BufferLive } from "@/services/ui/Buffer";
@@ -106,21 +105,23 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   );
 
   const TestLayer = pipe(
-    ActionLive,
+    ActionLive, // needs BlockT from below
     Layer.provideMerge(NavigationLive),
     Layer.provideMerge(DataPortBootstrapGroup),
+    Layer.provideMerge(TitleLive),
+    // BlockLive needs TypeT, PickerT from layers below
+    Layer.provideMerge(BlockLive),
     Layer.provideMerge(EditorModePickerGroup),
     Layer.provideMerge(TypeColorLive),
-    Layer.provideMerge(TitleLive),
-    Layer.provideMerge(BlockLive),
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(ViewPropertyLive),
     Layer.provideMerge(WindowLive),
-    Layer.provideMerge(TitleLinkLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(NodeLive),
-    Layer.provideMerge(makeYjsLive({ roomName: "test-room", persist: false })),
+    Layer.provideMerge(
+      makeAutomergeLive({ workspaceName: "test-workspace", persist: false }),
+    ),
     Layer.provideMerge(BrowserServicesGroup),
     Layer.provideMerge(getStoreLayer(Effect.succeed(store))),
     Layer.provideMerge(
