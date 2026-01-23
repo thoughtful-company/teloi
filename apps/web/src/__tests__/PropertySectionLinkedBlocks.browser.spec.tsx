@@ -3,7 +3,7 @@ import { events } from "@/livestore/schema";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import PropertySection from "@/ui/PropertySection";
@@ -76,7 +76,7 @@ describe("PropertySection Linked Blocks", () => {
   const createTupleType = (name: string) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
       const tupleTypeId = Id.Node.make(nanoid());
 
       // Create node as shadow child of SCHEMA
@@ -99,7 +99,7 @@ describe("PropertySection Linked Blocks", () => {
       );
 
       // Set title
-      Yjs.getText(tupleTypeId).insert(0, name);
+      yield* Automerge.setText(tupleTypeId, name);
 
       return tupleTypeId;
     });
@@ -108,7 +108,7 @@ describe("PropertySection Linked Blocks", () => {
   const createLinkedNode = (text: string) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
       const nodeId = Id.Node.make(nanoid());
 
       yield* Store.commit(
@@ -118,7 +118,7 @@ describe("PropertySection Linked Blocks", () => {
         }),
       );
 
-      Yjs.getText(nodeId).insert(0, text);
+      yield* Automerge.setText(nodeId, text);
       return nodeId;
     });
 
@@ -132,11 +132,11 @@ describe("PropertySection Linked Blocks", () => {
       const Property = yield* PropertyT;
       const View = yield* ViewT;
       const Tuple = yield* TupleT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
 
       const viewId = yield* View.getOrCreateView(pageId);
       const propertyId = yield* Property.createProperty(viewId);
-      Yjs.getText(propertyId).insert(0, propertyName);
+      yield* Automerge.setText(propertyId, propertyName);
 
       // Create tuple type and bind
       const tupleTypeId = yield* createTupleType(`${propertyName}_Tuple`);
@@ -147,7 +147,10 @@ describe("PropertySection Linked Blocks", () => {
       const tupleIds: Id.Tuple[] = [];
       for (const text of linkedBlockTexts) {
         const linkedNodeId = yield* createLinkedNode(text);
-        const tupleId = yield* Tuple.create(tupleTypeId, [pageId, linkedNodeId]);
+        const tupleId = yield* Tuple.create(tupleTypeId, [
+          pageId,
+          linkedNodeId,
+        ]);
         linkedNodeIds.push(linkedNodeId);
         tupleIds.push(tupleId);
       }
@@ -158,10 +161,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Block renders with property block ID", () => {
     it("renders linked blocks with data-element-type='block' attribute", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId } = yield* setupBoundProperty(
           pageId,
@@ -194,10 +195,8 @@ describe("PropertySection Linked Blocks", () => {
 
     it("renders linked block with property block ID format", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -207,7 +206,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const expectedBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const expectedBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Verify the block has the correct property block ID
         yield* Effect.promise(() =>
@@ -217,7 +221,9 @@ describe("PropertySection Linked Blocks", () => {
                 `[data-element-id="${expectedBlockId}"]`,
               );
               expect(blockElement).toBeTruthy();
-              expect(blockElement?.getAttribute("data-element-type")).toBe("block");
+              expect(blockElement?.getAttribute("data-element-type")).toBe(
+                "block",
+              );
             },
             { timeout: 2000 },
           ),
@@ -229,10 +235,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Ghost block for empty bound property", () => {
     it("shows ghost block when property is bound but has no linked blocks", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         // Bound property with NO linked blocks
         const { propertyId } = yield* setupBoundProperty(
@@ -262,10 +266,8 @@ describe("PropertySection Linked Blocks", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId } = yield* setupBoundProperty(
           pageId,
@@ -298,7 +300,9 @@ describe("PropertySection Linked Blocks", () => {
               );
               expect(ghostBlock).toBeTruthy();
 
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -306,7 +310,10 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // No linked tuple should be created yet
-        const linkedTuples = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuples = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuples.length).toBe(0);
       }).pipe(runtime.runPromise);
     });
@@ -314,23 +321,20 @@ describe("PropertySection Linked Blocks", () => {
     it("typing in ghost block creates real linked block with typed content", async () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
         // Before typing: no linked tuples
-        const linkedTuplesBefore = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuplesBefore = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuplesBefore.length).toBe(0);
 
         // Focus ghost block
@@ -370,12 +374,15 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // After materialization: exactly 1 linked tuple should exist
-        const linkedTuplesAfter = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuplesAfter = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuplesAfter.length).toBe(1);
 
         // The typed text should be preserved in the real block
         const displayNodeId = linkedTuplesAfter[0]!.displayNodeId;
-        const nodeText = Yjs.getText(displayNodeId).toString();
+        const nodeText = yield* Automerge.getText(displayNodeId);
         expect(nodeText).toBe("New Task");
       }).pipe(runtime.runPromise);
     });
@@ -384,16 +391,10 @@ describe("PropertySection Linked Blocks", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
@@ -418,7 +419,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -432,7 +435,9 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const focusedEditor = document.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = document.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeNull();
             },
             { timeout: 2000 },
@@ -440,23 +445,20 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // No linked tuple should have been created
-        const linkedTuples = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuples = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuples.length).toBe(0);
       }).pipe(runtime.runPromise);
     });
 
     it("ArrowUp in ghost navigates to property name", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
@@ -481,7 +483,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -508,16 +512,10 @@ describe("PropertySection Linked Blocks", () => {
 
     it("ArrowLeft in ghost navigates to property name", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
@@ -542,7 +540,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -569,16 +569,10 @@ describe("PropertySection Linked Blocks", () => {
 
     it("Tab in ghost is a no-op (stays focused)", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
@@ -603,7 +597,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -620,7 +616,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -631,16 +629,10 @@ describe("PropertySection Linked Blocks", () => {
 
     it("ShiftTab in ghost is a no-op (stays focused)", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId } = yield* setupBoundProperty(
-          pageId,
-          "Tasks",
-          [],
-        );
+        const { propertyId } = yield* setupBoundProperty(pageId, "Tasks", []);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
@@ -665,7 +657,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -673,7 +667,9 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // Press Shift+Tab
-        yield* Effect.promise(() => userEvent.keyboard("{Shift>}{Tab}{/Shift}"));
+        yield* Effect.promise(() =>
+          userEvent.keyboard("{Shift>}{Tab}{/Shift}"),
+        );
 
         // Ghost should still be focused (ShiftTab is a no-op)
         yield* Effect.promise(() =>
@@ -682,7 +678,9 @@ describe("PropertySection Linked Blocks", () => {
               const ghostBlock = document.querySelector(
                 "[data-testid='ghost-block']",
               );
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -695,10 +693,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Navigation from property name to linked blocks", () => {
     it("ArrowRight at end of property name focuses first linked block", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -724,7 +720,9 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const focusedEditor = document.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = document.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -735,7 +733,12 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() => userEvent.keyboard("{End}{ArrowRight}"));
 
         // First linked block should now be focused
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         yield* Effect.promise(() =>
           waitFor(
@@ -756,10 +759,8 @@ describe("PropertySection Linked Blocks", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId } = yield* setupBoundProperty(
           pageId,
@@ -793,7 +794,9 @@ describe("PropertySection Linked Blocks", () => {
               );
               expect(ghostBlock).toBeTruthy();
 
-              const focusedEditor = ghostBlock!.querySelector(".cm-editor.cm-focused");
+              const focusedEditor = ghostBlock!.querySelector(
+                ".cm-editor.cm-focused",
+              );
               expect(focusedEditor).toBeTruthy();
             },
             { timeout: 2000 },
@@ -801,7 +804,10 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // No linked block should be created yet
-        const linkedTuples = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuples = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuples.length).toBe(0);
       }).pipe(runtime.runPromise);
     });
@@ -810,10 +816,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Arrow navigation between linked blocks", () => {
     it("ArrowDown from first linked block focuses second linked block", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -823,8 +827,18 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
-        const secondBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[1]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
+        const secondBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[1]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -860,10 +874,8 @@ describe("PropertySection Linked Blocks", () => {
 
     it("ArrowUp from second linked block focuses first linked block", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -873,8 +885,18 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
-        const secondBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[1]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
+        const secondBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[1]!,
+        );
 
         // Click second linked block
         yield* Effect.promise(() =>
@@ -910,10 +932,8 @@ describe("PropertySection Linked Blocks", () => {
 
     it("ArrowUp from first linked block focuses property name", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -923,7 +943,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -963,10 +988,8 @@ describe("PropertySection Linked Blocks", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -976,7 +999,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -996,7 +1024,10 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() => userEvent.keyboard("{End}{Enter}"));
 
         // Should now have two linked tuples
-        const linkedTuples = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuples = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuples.length).toBe(2);
 
         // DOM should reflect the new block
@@ -1016,10 +1047,8 @@ describe("PropertySection Linked Blocks", () => {
 
     it("Enter focuses the new linked block", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -1029,7 +1058,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -1079,10 +1113,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Tab/ShiftTab are no-op in linked blocks", () => {
     it("Tab does not indent linked blocks", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -1092,7 +1124,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const secondBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[1]!);
+        const secondBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[1]!,
+        );
 
         // Click second linked block
         yield* Effect.promise(() =>
@@ -1133,10 +1170,8 @@ describe("PropertySection Linked Blocks", () => {
 
     it("ShiftTab does not outdent linked blocks", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -1146,7 +1181,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -1163,7 +1203,9 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // Press Shift+Tab
-        yield* Effect.promise(() => userEvent.keyboard("{Shift>}{Tab}{/Shift}"));
+        yield* Effect.promise(() =>
+          userEvent.keyboard("{Shift>}{Tab}{/Shift}"),
+        );
 
         // Block should still be in linked blocks area (not moved elsewhere)
         yield* Effect.promise(() =>
@@ -1187,22 +1229,22 @@ describe("PropertySection Linked Blocks", () => {
   describe("BackspaceAtStart navigation", () => {
     it("BackspaceAtStart in first linked block navigates to property name", async () => {
       await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId, linkedNodeIds, tupleIds } = yield* setupBoundProperty(
-          pageId,
-          "Items",
-          ["First Item"],
-        );
+        const { propertyId, linkedNodeIds, tupleIds } =
+          yield* setupBoundProperty(pageId, "Items", ["First Item"]);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
 
         // Click first linked block
         yield* Effect.promise(() =>
@@ -1235,30 +1277,38 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // Linked block should still exist (not merged)
-        const linkedBlockText = Yjs.getText(linkedNodeIds[0]!).toString();
+        const linkedBlockText = yield* Automerge.getText(linkedNodeIds[0]!);
         expect(linkedBlockText).toBe("First Item");
       }).pipe(runtime.runPromise);
     });
 
     it("BackspaceAtStart in second linked block navigates to first linked block", async () => {
       await Effect.gen(function* () {
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
-        const { propertyId, linkedNodeIds, tupleIds } = yield* setupBoundProperty(
-          pageId,
-          "Items",
-          ["First Item", "Second Item"],
-        );
+        const { propertyId, linkedNodeIds, tupleIds } =
+          yield* setupBoundProperty(pageId, "Items", [
+            "First Item",
+            "Second Item",
+          ]);
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const firstBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[0]!);
-        const secondBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[1]!);
+        const firstBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[0]!,
+        );
+        const secondBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[1]!,
+        );
 
         // Click second linked block
         yield* Effect.promise(() =>
@@ -1291,8 +1341,10 @@ describe("PropertySection Linked Blocks", () => {
         );
 
         // Both blocks should still exist (not merged)
-        expect(Yjs.getText(linkedNodeIds[0]!).toString()).toBe("First Item");
-        expect(Yjs.getText(linkedNodeIds[1]!).toString()).toBe("Second Item");
+        const firstText = yield* Automerge.getText(linkedNodeIds[0]!);
+        const secondText = yield* Automerge.getText(linkedNodeIds[1]!);
+        expect(firstText).toBe("First Item");
+        expect(secondText).toBe("Second Item");
       }).pipe(runtime.runPromise);
     });
 
@@ -1300,10 +1352,8 @@ describe("PropertySection Linked Blocks", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId, tupleIds } = yield* setupBoundProperty(
           pageId,
@@ -1313,7 +1363,12 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, bufferId }));
 
-        const secondBlockId = Id.makePropertyBlockId(bufferId, pageId, propertyId, tupleIds[1]!);
+        const secondBlockId = Id.makePropertyBlockId(
+          bufferId,
+          pageId,
+          propertyId,
+          tupleIds[1]!,
+        );
 
         // Click second linked block
         yield* Effect.promise(() =>
@@ -1332,7 +1387,10 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() => userEvent.keyboard("{Home}{Backspace}"));
 
         // Still should have 2 linked tuples
-        const linkedTuples = yield* Property.getLinkedTuples(propertyId, pageId);
+        const linkedTuples = yield* Property.getLinkedTuples(
+          propertyId,
+          pageId,
+        );
         expect(linkedTuples.length).toBe(2);
       }).pipe(runtime.runPromise);
     });
@@ -1341,10 +1399,8 @@ describe("PropertySection Linked Blocks", () => {
   describe("Linked blocks display text content", () => {
     it("displays linked block text content", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId: pageId, bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Test Page",
-          [],
-        );
+        const { rootNodeId: pageId, bufferId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", []);
 
         const { propertyId } = yield* setupBoundProperty(pageId, "Related", [
           "Linked Item One",

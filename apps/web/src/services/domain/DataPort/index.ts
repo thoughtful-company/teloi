@@ -1,7 +1,7 @@
 import { events, tables } from "@/livestore/schema";
 import { Id } from "@/schema";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { queryDb } from "@livestore/livestore";
 import { Context, Effect, Layer } from "effect";
 import { ExportData } from "./schema";
@@ -20,7 +20,7 @@ export const DataPortLive = Layer.effect(
   DataPortT,
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const exportData = (): Effect.Effect<ExportData> =>
       Effect.gen(function* () {
@@ -35,7 +35,7 @@ export const DataPortLive = Layer.effect(
         // Get text content for each node
         const textContent: Record<string, string> = {};
         for (const node of nodes) {
-          const text = Yjs.getText(node.id as Id.Node).toString();
+          const text = yield* Automerge.getText(node.id as Id.Node);
           if (text.length > 0) {
             textContent[node.id] = text;
           }
@@ -133,15 +133,14 @@ export const DataPortLive = Layer.effect(
           }
         }
 
-        // 6. Populate Yjs text content only for newly added nodes
+        // 6. Populate Automerge text content only for newly added nodes
         // Future: could optionally update text if modifiedAt is newer
         const addedNodeIdSet = new Set(addedNodeIds);
         for (const [nodeId, text] of Object.entries(data.data.textContent)) {
           if (!addedNodeIdSet.has(nodeId)) {
             continue;
           }
-          const ytext = Yjs.getText(nodeId as Id.Node);
-          ytext.insert(0, text);
+          yield* Automerge.setText(nodeId as Id.Node, text);
         }
 
         // 7. Import nodeTypes (skip existing)

@@ -1,6 +1,6 @@
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Context, Effect, Layer, Stream } from "effect";
 import { TypeColors, DEFAULT_COLORS } from "./types";
 
@@ -37,7 +37,9 @@ export class TypeColorT extends Context.Tag("TypeColorT")<
      * Subscribe to color changes for a type.
      * Emits whenever TYPE_HAS_COLOR or color definition tuples change.
      */
-    subscribeColors: (typeId: Id.Node) => Effect.Effect<Stream.Stream<TypeColors>>;
+    subscribeColors: (
+      typeId: Id.Node,
+    ) => Effect.Effect<Stream.Stream<TypeColors>>;
   }
 >() {}
 
@@ -53,7 +55,7 @@ export class TypeColorT extends Context.Tag("TypeColorT")<
 const resolveColorRef = (colorRef: Id.Node) =>
   Effect.gen(function* () {
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Check for COLOR_HAS_BACKGROUND tuple (position 0 = color node)
     const bgTuples = yield* Tuple.findByPosition(
@@ -74,14 +76,14 @@ const resolveColorRef = (colorRef: Id.Node) =>
 
     if (bgValueNodeId && fgValueNodeId) {
       // Full color node with both bg and fg defined
-      const bgText = Yjs.getText(bgValueNodeId).toString();
-      const fgText = Yjs.getText(fgValueNodeId).toString();
+      const bgText = yield* Automerge.getText(bgValueNodeId);
+      const fgText = yield* Automerge.getText(fgValueNodeId);
 
       return { bg: bgText, fg: fgText } satisfies TypeColors;
     }
 
     // Direct value node - treat as background, derive foreground
-    const bgText = Yjs.getText(colorRef).toString();
+    const bgText = yield* Automerge.getText(colorRef);
     if (bgText.length === 0) {
       return DEFAULT_COLORS;
     }
@@ -93,8 +95,10 @@ export const TypeColorLive = Layer.effect(
   TypeColorT,
   Effect.gen(function* () {
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
-    const context = Context.make(TupleT, Tuple).pipe(Context.add(YjsT, Yjs));
+    const Automerge = yield* AutomergeT;
+    const context = Context.make(TupleT, Tuple).pipe(
+      Context.add(AutomergeT, Automerge),
+    );
 
     const getColorsImpl = (typeId: Id.Node) =>
       Effect.gen(function* () {

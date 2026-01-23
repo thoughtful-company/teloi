@@ -4,7 +4,7 @@ import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import { queryDb } from "@livestore/livestore";
@@ -62,7 +62,7 @@ describe("PropertyT", () => {
   const createTupleType = (name: string) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
       const tupleTypeId = Id.Node.make(nanoid());
 
       // Create node as shadow child of SCHEMA
@@ -75,12 +75,17 @@ describe("PropertyT", () => {
       yield* Store.commit(
         events.nodeMoved({
           timestamp: Date.now(),
-          data: { nodeId: tupleTypeId, newParentId: System.SCHEMA, position: "", inShadow: true },
+          data: {
+            nodeId: tupleTypeId,
+            newParentId: System.SCHEMA,
+            position: "",
+            inShadow: true,
+          },
         }),
       );
 
       // Set title
-      Yjs.getText(tupleTypeId).insert(0, name);
+      yield* Automerge.setText(tupleTypeId, name);
 
       return tupleTypeId;
     });
@@ -88,10 +93,8 @@ describe("PropertyT", () => {
   /** Sets title text on a node */
   const setTitle = (nodeId: Id.Node, title: string) =>
     Effect.gen(function* () {
-      const Yjs = yield* YjsT;
-      const ytext = Yjs.getText(nodeId);
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, title);
+      const Automerge = yield* AutomergeT;
+      yield* Automerge.setText(nodeId, title);
     });
 
   describe("createProperty", () => {
@@ -112,7 +115,9 @@ describe("PropertyT", () => {
 
         // Verify parent is SCHEMA
         const link = yield* Store.query(
-          queryDb(tables.parentLinks.select().where({ childId: propertyId }).first()),
+          queryDb(
+            tables.parentLinks.select().where({ childId: propertyId }).first(),
+          ),
         );
         expect(link).toBeDefined();
         expect(link!.parentId).toBe(System.SCHEMA);
@@ -129,7 +134,10 @@ describe("PropertyT", () => {
         const propertyId = yield* Property.createProperty(viewId);
 
         // Check node has type PROPERTY via nodeTypes table
-        const hasPropertyType = yield* Type.hasType(propertyId, System.PROPERTY);
+        const hasPropertyType = yield* Type.hasType(
+          propertyId,
+          System.PROPERTY,
+        );
         expect(hasPropertyType).toBe(true);
       }).pipe(runtime.runPromise);
     });
@@ -144,7 +152,11 @@ describe("PropertyT", () => {
         const propertyId = yield* Property.createProperty(viewId);
 
         // Verify HAS_PROPERTY tuple exists
-        const tuples = yield* Tuple.findByPosition(System.HAS_PROPERTY, 0, viewId);
+        const tuples = yield* Tuple.findByPosition(
+          System.HAS_PROPERTY,
+          0,
+          viewId,
+        );
         expect(tuples).toHaveLength(1);
         const tuple = tuples[0];
         expect(tuple).toBeDefined();
@@ -229,7 +241,11 @@ describe("PropertyT", () => {
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
         // Verify PROPERTY_USES_TUPLE tuple exists
-        const tuples = yield* Tuple.findByPosition(System.PROPERTY_USES_TUPLE, 0, propertyId);
+        const tuples = yield* Tuple.findByPosition(
+          System.PROPERTY_USES_TUPLE,
+          0,
+          propertyId,
+        );
         expect(tuples).toHaveLength(1);
         expect(tuples[0]!.members[0]).toBe(propertyId);
         expect(tuples[0]!.members[1]).toBe(tupleTypeId);
@@ -248,7 +264,11 @@ describe("PropertyT", () => {
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
         // Verify PROPERTY_CONFIG tuple exists with correct positions
-        const tuples = yield* Tuple.findByPosition(System.PROPERTY_CONFIG, 0, propertyId);
+        const tuples = yield* Tuple.findByPosition(
+          System.PROPERTY_CONFIG,
+          0,
+          propertyId,
+        );
         expect(tuples).toHaveLength(1);
         expect(tuples[0]!.members[0]).toBe(propertyId);
         expect(tuples[0]!.members[1]).toBe(System.POSITION_0); // hostPosition 0
@@ -288,7 +308,10 @@ describe("PropertyT", () => {
         const propertyId = yield* Property.createProperty(viewId);
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
-        const linkedBlocks = yield* Property.getLinkedBlocks(propertyId, pageId);
+        const linkedBlocks = yield* Property.getLinkedBlocks(
+          propertyId,
+          pageId,
+        );
 
         expect(linkedBlocks).toEqual([]);
       }).pipe(runtime.runPromise);
@@ -316,7 +339,10 @@ describe("PropertyT", () => {
         yield* Tuple.create(tupleTypeId, [pageId, linkedNode1]);
         yield* Tuple.create(tupleTypeId, [pageId, linkedNode2]);
 
-        const linkedBlocks = yield* Property.getLinkedBlocks(propertyId, pageId);
+        const linkedBlocks = yield* Property.getLinkedBlocks(
+          propertyId,
+          pageId,
+        );
 
         expect(linkedBlocks).toHaveLength(2);
         expect(linkedBlocks).toContain(linkedNode1);
@@ -344,7 +370,10 @@ describe("PropertyT", () => {
         yield* Tuple.create(tupleTypeId, [linkedNode1, pageId]);
         yield* Tuple.create(tupleTypeId, [linkedNode2, pageId]);
 
-        const linkedBlocks = yield* Property.getLinkedBlocks(propertyId, pageId);
+        const linkedBlocks = yield* Property.getLinkedBlocks(
+          propertyId,
+          pageId,
+        );
 
         expect(linkedBlocks).toHaveLength(2);
         expect(linkedBlocks).toContain(linkedNode1);
@@ -432,7 +461,10 @@ describe("PropertyT", () => {
         const newNodeId = yield* Property.addLinkedBlock(propertyId, pageId);
 
         // Verify it appears in getLinkedBlocks
-        const linkedBlocks = yield* Property.getLinkedBlocks(propertyId, pageId);
+        const linkedBlocks = yield* Property.getLinkedBlocks(
+          propertyId,
+          pageId,
+        );
         expect(linkedBlocks).toContain(newNodeId);
       }).pipe(runtime.runPromise);
     });

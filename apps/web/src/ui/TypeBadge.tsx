@@ -1,7 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { TypeT } from "@/services/domain/Type";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { NavigationT } from "@/services/ui/Navigation";
 import { TypeColorT, TypeColors } from "@/services/ui/TypeColor";
 import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
@@ -25,12 +25,16 @@ export default function TypeBadge({
   const [colors, setColors] = createSignal<TypeColors>(DEFAULT_COLORS);
 
   onMount(() => {
-    const Yjs = runtime.runSync(YjsT);
-    const ytext = Yjs.getText(typeId);
-    setName(ytext.toString());
+    const Automerge = runtime.runSync(AutomergeT);
 
-    const observer = () => setName(ytext.toString());
-    ytext.observe(observer);
+    // Load initial name from Automerge
+    runtime.runPromise(Automerge.getText(typeId)).then(setName);
+
+    // Subscribe to Automerge changes
+    const onChange = () => {
+      runtime.runPromise(Automerge.getText(typeId)).then(setName);
+    };
+    Automerge.handle.on("change", onChange);
 
     // Subscribe to color changes
     const colorAbortController = new AbortController();
@@ -49,7 +53,7 @@ export default function TypeBadge({
     );
 
     onCleanup(() => {
-      ytext.unobserve(observer);
+      Automerge.handle.off("change", onChange);
       colorAbortController.abort();
     });
   });
@@ -91,7 +95,9 @@ export default function TypeBadge({
         onClick={handleRemove}
         class="pl-1 pr-0.5 opacity-60 group-hover:opacity-100 hover:text-red-500 cursor-pointer"
       >
-        <span class="group-hover:hidden inline-block w-2 max-w-2 text-center">#</span>
+        <span class="group-hover:hidden inline-block w-2 max-w-2 text-center">
+          #
+        </span>
         <svg
           viewBox="6 6 12 12"
           fill="none"

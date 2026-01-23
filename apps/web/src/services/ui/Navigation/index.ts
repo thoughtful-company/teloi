@@ -124,14 +124,21 @@ export const NavigationLive = Layer.effect(
 
               if (Option.isSome(selection)) {
                 const anchorBlockId = selection.value.anchor.elementId;
-                const selContext = yield* IdT.parseBlockContext(anchorBlockId).pipe(
-                  Effect.orDie,
-                );
+                const selContext = yield* IdT.parseBlockContext(
+                  anchorBlockId,
+                ).pipe(Effect.orDie);
 
-                if (selContext.type === "buffer" && selContext.nodeId === validatedNodeId) {
-                  // Selection is on the title node
+                if (
+                  selContext.type === "buffer" &&
+                  selContext.nodeId === validatedNodeId
+                ) {
+                  // Selection is on the title node (title is just a block)
+                  const titleBlockId = Id.makeBufferBlockId(
+                    bufferId,
+                    validatedNodeId,
+                  );
                   yield* Window.setActiveElement(
-                    Option.some({ type: "title" as const, bufferId }),
+                    Option.some({ type: "block" as const, id: titleBlockId }),
                   );
                   // Title scrolls itself or EditorBuffer handles it
                 } else {
@@ -166,9 +173,11 @@ export const NavigationLive = Layer.effect(
         yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
         yield* URL.setPath(makePathFromNodeId(validatedNodeId));
 
-        if (options?.focusTitle) {
+        if (options?.focusTitle && validatedNodeId) {
+          // Title is just a block
+          const titleBlockId = Id.makeBufferBlockId(bufferId, validatedNodeId);
           yield* Window.setActiveElement(
-            Option.some({ type: "title" as const, bufferId }),
+            Option.some({ type: "block" as const, id: titleBlockId }),
           );
         }
 

@@ -2,8 +2,8 @@ import { events } from "@/livestore/schema";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import { bindToTupleType } from "./bindToTupleType";
@@ -31,10 +31,10 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
     const Store = yield* StoreT;
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
-    // 1. Get property name from Y.Text
-    const propertyName = Yjs.getText(propertyId).toString() || "Untitled";
+    // 1. Get property name from Automerge
+    const propertyName = (yield* Automerge.getText(propertyId)) || "Untitled";
 
     // 2. Create tuple type node as shadow child of SCHEMA
     const tupleTypeId = Id.Node.make(nanoid());
@@ -61,7 +61,7 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
     yield* Type.addType(tupleTypeId, System.TUPLE_TYPE);
 
     // 4. Set tuple type title to "{propertyName}_Tuple"
-    Yjs.getText(tupleTypeId).insert(0, `${propertyName}_Tuple`);
+    yield* Automerge.setText(tupleTypeId, `${propertyName}_Tuple`);
 
     // 5. Create position 0 node (shadow child of tuple type), title = property name
     const position0Id = Id.Node.make(nanoid());
@@ -82,7 +82,7 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
         },
       }),
     );
-    Yjs.getText(position0Id).insert(0, propertyName);
+    yield* Automerge.setText(position0Id, propertyName);
 
     // 6. Create position 1 node (shadow child of tuple type), title = "Is {name} For"
     const position1Id = Id.Node.make(nanoid());
@@ -103,7 +103,7 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
         },
       }),
     );
-    Yjs.getText(position1Id).insert(0, `Is ${propertyName} For`);
+    yield* Automerge.setText(position1Id, `Is ${propertyName} For`);
 
     // 7. Add roles via Tuple.addRole for both positions
     yield* Tuple.addRole(tupleTypeId, 0, propertyName, true);

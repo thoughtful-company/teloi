@@ -84,11 +84,13 @@ export interface SelectionInfo {
 /**
  * Where the action originated from.
  *
- * - "editor": Action from a text editor (Block or Title)
+ * - "editor": Action from within an active text editor (has cursor context)
+ * - "activation": Initial activation click on an inactive element (no cursor yet)
  * - "document": Action from document level (block selection mode, no editor focused)
  */
 export type ActionSource =
   | { type: "editor"; blockId: Id.Block; cursor: CursorContext }
+  | { type: "activation"; blockId: Id.Block }
   | { type: "document"; bufferId: Id.Buffer };
 
 // ============================================================================
@@ -108,7 +110,7 @@ export type AppAction =
       source: ActionSource;
     }
   | { _tag: "Blur"; source: ActionSource }
-  | { _tag: "Focus"; source: ActionSource };
+  | { _tag: "Focus"; blockId: Id.Block; offset?: number };
 
 // ============================================================================
 // Action Result
@@ -149,6 +151,11 @@ export type ActionResult =
   | { handled: true; intent: DOMIntent }
   | { handled: false };
 
+/**
+ * Dispatch function signature for components that emit actions.
+ */
+export type Dispatch = (action: AppAction) => ActionResult;
+
 // ============================================================================
 // Helper Constructors
 // ============================================================================
@@ -188,10 +195,10 @@ export const AppAction = {
     source,
   }),
 
-  Focus: (source: ActionSource): AppAction => ({
-    _tag: "Focus",
-    source,
-  }),
+  Focus: (blockId: Id.Block, offset?: number): AppAction =>
+    offset !== undefined
+      ? { _tag: "Focus", blockId, offset }
+      : { _tag: "Focus", blockId },
 } as const;
 
 export const ActionResult = {

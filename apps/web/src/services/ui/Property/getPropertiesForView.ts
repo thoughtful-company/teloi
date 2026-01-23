@@ -1,6 +1,6 @@
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Option } from "effect";
 import { getPropertyConfig } from "./getPropertyConfig";
 import { PropertyInfo } from "./index";
@@ -12,7 +12,7 @@ import { PropertyInfo } from "./index";
 export const getPropertiesForView = (viewId: Id.Node) =>
   Effect.gen(function* () {
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Query HAS_PROPERTY tuples where position 0 = viewId
     const hasPropertyTuples = yield* Tuple.findByPosition(
@@ -26,9 +26,8 @@ export const getPropertiesForView = (viewId: Id.Node) =>
     for (const tuple of hasPropertyTuples) {
       const propertyId = tuple.members[1] as Id.Node;
 
-      // Get title from Yjs
-      const ytext = Yjs.getText(propertyId);
-      const title = ytext.toString();
+      // Get title from Automerge
+      const title = yield* Automerge.getText(propertyId);
 
       const configOpt = yield* getPropertyConfig(propertyId, Tuple);
 

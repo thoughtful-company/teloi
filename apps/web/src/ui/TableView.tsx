@@ -2,7 +2,7 @@ import { tables } from "@/livestore/schema";
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect } from "effect";
 import {
   ColumnDef,
@@ -45,7 +45,7 @@ export default function TableView(props: TableViewProps) {
 
     const loadData = Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
 
       const tupleTypeMap = new Map<string, TupleTypeInfo>();
       const childTuples = new Map<string, Map<string, string>>();
@@ -80,7 +80,9 @@ export default function TableView(props: TableViewProps) {
 
               // Register tuple type if not seen
               if (!tupleTypeMap.has(tupleTypeId)) {
-                const typeName = Yjs.getText(tupleTypeId as Id.Node).toString();
+                const typeName = yield* Automerge.getText(
+                  tupleTypeId as Id.Node,
+                );
                 tupleTypeMap.set(tupleTypeId, {
                   id: tupleTypeId as Id.Node,
                   name: typeName || tupleTypeId,
@@ -88,7 +90,7 @@ export default function TableView(props: TableViewProps) {
               }
 
               // Get value text
-              const valueText = Yjs.getText(valueNodeId).toString();
+              const valueText = yield* Automerge.getText(valueNodeId);
 
               // Store in childTuples map
               if (!childTuples.has(childId)) {
@@ -100,7 +102,8 @@ export default function TableView(props: TableViewProps) {
         }
       }
 
-      const rows: RowData[] = childNodeIds.map((childId) => {
+      const rows: RowData[] = [];
+      for (const childId of childNodeIds) {
         const properties: Record<string, string> = {};
         const childProps = childTuples.get(childId);
         if (childProps) {
@@ -109,12 +112,13 @@ export default function TableView(props: TableViewProps) {
           }
         }
 
-        return {
+        const title = yield* Automerge.getText(childId);
+        rows.push({
           nodeId: childId,
-          title: Yjs.getText(childId).toString(),
+          title,
           properties,
-        };
-      });
+        });
+      }
 
       const titleColumn: ColumnDef<RowData, unknown> = {
         id: "title",

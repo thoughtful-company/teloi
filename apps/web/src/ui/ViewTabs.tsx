@@ -2,7 +2,7 @@ import { tables } from "@/livestore/schema";
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Option } from "effect";
 import { createSignal, For, onMount, Show } from "solid-js";
 
@@ -35,7 +35,7 @@ export default function ViewTabs(props: ViewTabsProps) {
   onMount(() => {
     const loadViews = Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
 
       // Find all HAS_VIEW tuples where this node is at position 0
       // HAS_VIEW tuple format: (targetNode, viewNode)
@@ -65,7 +65,7 @@ export default function ViewTabs(props: ViewTabsProps) {
 
           if (viewMember) {
             const viewNodeId = viewMember.nodeId as Id.Node;
-            const viewName = Yjs.getText(viewNodeId).toString() || "View";
+            const viewName = (yield* Automerge.getText(viewNodeId)) || "View";
 
             viewInfos.push({
               id: viewNodeId,

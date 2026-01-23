@@ -1,8 +1,8 @@
 import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
 import { addLinkedBlock, type AddLinkedBlockOptions } from "./addLinkedBlock";
@@ -60,7 +60,9 @@ export class PropertyT extends Context.Tag("PropertyT")<
      * Get all properties for a view via HAS_PROPERTY tuples.
      * Returns PropertyInfo with title, binding status, and configuration.
      */
-    getPropertiesForView: (viewId: Id.Node) => Effect.Effect<readonly PropertyInfo[]>;
+    getPropertiesForView: (
+      viewId: Id.Node,
+    ) => Effect.Effect<readonly PropertyInfo[]>;
 
     /**
      * Subscribe to properties for a view.
@@ -147,18 +149,20 @@ export const PropertyLive = Layer.effect(
     const Store = yield* StoreT;
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(TypeT, Type),
       Context.add(TupleT, Tuple),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
     );
 
     return {
       createProperty: withContext(createProperty)(context),
       getPropertiesForView: withContext(getPropertiesForView)(context),
-      subscribePropertiesForView: withContext(subscribePropertiesForView)(context),
+      subscribePropertiesForView: withContext(subscribePropertiesForView)(
+        context,
+      ),
       bindToTupleType: withContext(bindToTupleType)(context),
       getLinkedBlocks: withContext(getLinkedBlocks)(context),
       getLinkedTuples: withContext(getLinkedTuples)(context),

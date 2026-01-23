@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -105,7 +105,9 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
 
         // Focus should be on First (previous sibling)
-        yield* Then.SELECTION_IS_ON_BLOCK(Id.makeBufferBlockId(bufferId, firstNodeId));
+        yield* Then.SELECTION_IS_ON_BLOCK(
+          Id.makeBufferBlockId(bufferId, firstNodeId),
+        );
       }).pipe(runtime.runPromise);
     });
 
@@ -115,8 +117,10 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //   Root
         //     - Parent
         //       - OnlyChild (will be deleted)
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
 
         const [parentNodeId] = childNodeIds;
 
@@ -142,7 +146,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("cleans up Yjs text content for deleted nodes", async () => {
+    it("cleans up Automerge text content for deleted nodes", async () => {
       await Effect.gen(function* () {
         // Structure:
         //   Root
@@ -168,13 +172,13 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         yield* When.USER_CLICKS_BLOCK(parentBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
-        // Verify Yjs text is cleaned up for both parent and child
-        const Yjs = yield* YjsT;
-        const parentYtext = Yjs.getText(parentNodeId);
-        const childYtext = Yjs.getText(childNodeId);
+        // Verify Automerge text is cleaned up for both parent and child
+        const Automerge = yield* AutomergeT;
+        const parentText = yield* Automerge.getText(parentNodeId);
+        const childText = yield* Automerge.getText(childNodeId);
 
-        expect(parentYtext.toString()).toBe("");
-        expect(childYtext.toString()).toBe("");
+        expect(parentText).toBe("");
+        expect(childText).toBe("");
       }).pipe(runtime.runPromise);
     });
   });
@@ -282,12 +286,10 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - First
         //     - Second (will be deleted)
         //     - Third
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-            { text: "First" },
-            { text: "Second" },
-            { text: "Third" },
-          ]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
+        );
 
         const [firstNodeId, secondNodeId] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
@@ -302,7 +304,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("cleans up Yjs text content for all deleted nodes", async () => {
+    it("cleans up Automerge text content for all deleted nodes", async () => {
       await Effect.gen(function* () {
         // Structure:
         //   Root
@@ -329,19 +331,19 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
-        // Verify Yjs text is cleaned up for both parent and child
-        const Yjs = yield* YjsT;
-        const parentYtext = Yjs.getText(parentNodeId);
-        const childYtext = Yjs.getText(childNodeId);
+        // Verify Automerge text is cleaned up for both parent and child
+        const Automerge = yield* AutomergeT;
+        const parentText = yield* Automerge.getText(parentNodeId);
+        const childText = yield* Automerge.getText(childNodeId);
 
-        expect(parentYtext.toString()).toBe("");
-        expect(childYtext.toString()).toBe("");
+        expect(parentText).toBe("");
+        expect(childText).toBe("");
       }).pipe(runtime.runPromise);
     });
   });
 });
 
-describe("Regular Delete Yjs cleanup (Bug fix)", () => {
+describe("Regular Delete Automerge cleanup (Bug fix)", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -357,7 +359,7 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
     await cleanup();
   });
 
-  it("Delete in block selection mode cleans up Yjs text", async () => {
+  it("Delete in block selection mode cleans up Automerge text", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root",
@@ -376,14 +378,14 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       // Press Delete to delete the block
       yield* When.USER_PRESSES("{Delete}");
 
-      // Verify Yjs text is cleaned up for the deleted node
-      const Yjs = yield* YjsT;
-      const firstYtext = Yjs.getText(firstNodeId);
-      expect(firstYtext.toString()).toBe("");
+      // Verify Automerge text is cleaned up for the deleted node
+      const Automerge = yield* AutomergeT;
+      const firstText = yield* Automerge.getText(firstNodeId);
+      expect(firstText).toBe("");
     }).pipe(runtime.runPromise);
   });
 
-  it("Backspace in block selection mode cleans up Yjs text", async () => {
+  it("Backspace in block selection mode cleans up Automerge text", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root",
@@ -402,14 +404,14 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       // Press Backspace to delete the block
       yield* When.USER_PRESSES("{Backspace}");
 
-      // Verify Yjs text is cleaned up for the deleted node
-      const Yjs = yield* YjsT;
-      const secondYtext = Yjs.getText(secondNodeId);
-      expect(secondYtext.toString()).toBe("");
+      // Verify Automerge text is cleaned up for the deleted node
+      const Automerge = yield* AutomergeT;
+      const secondText = yield* Automerge.getText(secondNodeId);
+      expect(secondText).toBe("");
     }).pipe(runtime.runPromise);
   });
 
-  it("deleting multiple blocks cleans up Yjs text for all", async () => {
+  it("deleting multiple blocks cleans up Automerge text for all", async () => {
     await Effect.gen(function* () {
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Root",
@@ -433,13 +435,16 @@ describe("Regular Delete Yjs cleanup (Bug fix)", () => {
       // Press Delete to delete both blocks
       yield* When.USER_PRESSES("{Delete}");
 
-      // Verify Yjs text is cleaned up for both deleted nodes
-      const Yjs = yield* YjsT;
-      expect(Yjs.getText(firstNodeId).toString()).toBe("");
-      expect(Yjs.getText(secondNodeId).toString()).toBe("");
+      // Verify Automerge text is cleaned up for both deleted nodes
+      const Automerge = yield* AutomergeT;
+      const firstText = yield* Automerge.getText(firstNodeId);
+      const secondText = yield* Automerge.getText(secondNodeId);
+      expect(firstText).toBe("");
+      expect(secondText).toBe("");
 
       // Third block's text should still be there
-      expect(Yjs.getText(thirdNodeId).toString()).toBe("Third remains");
+      const thirdText = yield* Automerge.getText(thirdNodeId);
+      expect(thirdText).toBe("Third remains");
     }).pipe(runtime.runPromise);
   });
 });

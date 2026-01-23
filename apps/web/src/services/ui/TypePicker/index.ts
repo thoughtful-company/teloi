@@ -3,8 +3,8 @@ import { COLOR_PALETTE, Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer } from "effect";
 
@@ -58,7 +58,7 @@ export class TypePickerT extends Context.Tag("TypePickerT")<
 const getAvailableTypes = () =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Get all children of the Types node
     // When selecting a single column, LiveStore returns an array of values
@@ -70,11 +70,10 @@ const getAvailableTypes = () =>
         .orderBy("position", "asc"),
     );
 
-    // Get names for each type from Yjs
+    // Get names for each type from Automerge
     const types: AvailableType[] = [];
     for (const id of childIds as Id.Node[]) {
-      const yText = Yjs.getText(id);
-      const name = yText.toString();
+      const name = yield* Automerge.getText(id);
       types.push({ id, name });
     }
 
@@ -100,7 +99,7 @@ const filterTypes = (
 const createType = (name: string) =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const Tuple = yield* TupleT;
 
     const typeId = yield* Node.insertNode({
@@ -109,8 +108,7 @@ const createType = (name: string) =>
     });
 
     // Set the text content
-    const yText = Yjs.getText(typeId);
-    yText.insert(0, name);
+    yield* Automerge.setText(typeId, name);
 
     // Assign a random color from the palette
     const randomIndex = Math.floor(Math.random() * COLOR_PALETTE.length);
@@ -131,22 +129,22 @@ const applyType = (nodeId: Id.Node, typeId: Id.Node) =>
       Effect.annotateLogs({ nodeId, typeId }),
     );
     yield* Type.addType(nodeId, typeId);
-    yield* Effect.logDebug("[TypePicker.applyType] Type applied successfully").pipe(
-      Effect.annotateLogs({ nodeId, typeId }),
-    );
+    yield* Effect.logDebug(
+      "[TypePicker.applyType] Type applied successfully",
+    ).pipe(Effect.annotateLogs({ nodeId, typeId }));
   });
 
 export const TypePickerLive = Layer.effect(
   TypePickerT,
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
 
     const context = Context.make(StoreT, Store).pipe(
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),
       Context.add(TypeT, Type),
       Context.add(TupleT, Tuple),

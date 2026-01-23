@@ -2,7 +2,7 @@ import "@/index.css";
 import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import EditorBuffer from "@/ui/EditorBuffer";
@@ -85,10 +85,10 @@ describe("Property Creation Trigger", () => {
         const Store = yield* StoreT;
 
         // Setup: buffer with a child node (the trigger target)
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [
-            { text: "" },
-          ]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Page Title",
+          [{ text: "" }],
+        );
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
@@ -196,8 +196,10 @@ describe("Property Creation Trigger", () => {
     it("focuses the property name field after creation", async () => {
       await Effect.gen(function* () {
         // Setup: buffer with a child node (the trigger target)
-        const { bufferId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [{ text: "" }]);
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Page Title",
+          [{ text: "" }],
+        );
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
@@ -254,7 +256,7 @@ describe("Property Creation Trigger", () => {
       await Effect.gen(function* () {
         const View = yield* ViewT;
         const Property = yield* PropertyT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: buffer with a child node that has existing text
         const { bufferId, rootNodeId, childNodeIds } =
@@ -295,8 +297,8 @@ describe("Property Creation Trigger", () => {
         expect(properties).toHaveLength(0);
 
         // Verify: text was inserted literally ("> " appended)
-        const ytext = Yjs.getText(childNodeId);
-        expect(ytext.toString()).toBe("some text> ");
+        const text = yield* Automerge.getText(childNodeId);
+        expect(text).toBe("some text> ");
       }).pipe(runtime.runPromise);
     });
 
@@ -304,11 +306,13 @@ describe("Property Creation Trigger", () => {
       await Effect.gen(function* () {
         const View = yield* ViewT;
         const Property = yield* PropertyT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: buffer with root node
-        const { bufferId, rootNodeId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("", [{ text: "child" }]);
+        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "",
+          [{ text: "child" }],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -341,8 +345,8 @@ describe("Property Creation Trigger", () => {
         expect(properties).toHaveLength(0);
 
         // Verify: text was inserted literally in title
-        const ytext = Yjs.getText(rootNodeId);
-        expect(ytext.toString()).toBe("> ");
+        const text = yield* Automerge.getText(rootNodeId);
+        expect(text).toBe("> ");
       }).pipe(runtime.runPromise);
     });
   });

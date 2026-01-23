@@ -1,7 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
@@ -22,20 +22,24 @@ interface PageItemProps {
 
 function PageItem(props: PageItemProps) {
   const runtime = useBrowserRuntime();
-  const Yjs = runtime.runSync(YjsT);
-  const ytext = Yjs.getText(props.nodeId);
+  const Automerge = runtime.runSync(AutomergeT);
 
-  const [title, setTitle] = createSignal(
-    truncate(ytext.toString()) || "Untitled",
-  );
+  const [title, setTitle] = createSignal("Untitled");
 
   onMount(() => {
-    const observer = () => {
-      const text = ytext.toString();
+    // Load initial title from Automerge
+    runtime.runPromise(Automerge.getText(props.nodeId)).then((text) => {
       setTitle(truncate(text) || "Untitled");
+    });
+
+    // Subscribe to Automerge changes
+    const onChange = () => {
+      runtime.runPromise(Automerge.getText(props.nodeId)).then((text) => {
+        setTitle(truncate(text) || "Untitled");
+      });
     };
-    ytext.observe(observer);
-    onCleanup(() => ytext.unobserve(observer));
+    Automerge.handle.on("change", onChange);
+    onCleanup(() => Automerge.handle.off("change", onChange));
   });
 
   const handleClick = (e: MouseEvent) => {

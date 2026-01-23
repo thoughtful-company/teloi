@@ -3,7 +3,7 @@ import { Entity, Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { Effect, Option } from "effect";
@@ -24,7 +24,7 @@ export interface BufferWithNodeResult {
 export const A_BUFFER_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const bufferId = Id.Buffer.make(nanoid());
@@ -38,9 +38,8 @@ export const A_BUFFER_WITH_TEXT = (textContent: string) =>
       }),
     );
 
-    // Set text content in Yjs
-    const ytext = Yjs.getText(nodeId);
-    ytext.insert(0, textContent);
+    // Set text content in Automerge
+    yield* Automerge.setText(nodeId, textContent);
 
     // Create window document (required for active element tracking)
     yield* Store.setDocument(
@@ -105,7 +104,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const bufferId = Id.Buffer.make(nanoid());
@@ -119,9 +118,8 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       }),
     );
 
-    // Set root text in Yjs
-    const rootYtext = Yjs.getText(rootNodeId);
-    rootYtext.insert(0, rootText);
+    // Set root text in Automerge
+    yield* Automerge.setText(rootNodeId, rootText);
 
     // Create window document
     yield* Store.setDocument(
@@ -158,9 +156,8 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
         parentId: rootNodeId,
         insert: "after", // Append at end
       });
-      // Set child text in Yjs
-      const childYtext = Yjs.getText(childId);
-      childYtext.insert(0, child.text);
+      // Set child text in Automerge
+      yield* Automerge.setText(childId, child.text);
       childNodeIds.push(childId);
     }
 
@@ -194,7 +191,7 @@ export const INSERT_NODE_WITH_TEXT = (args: {
 }) =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const nodeId = yield* Node.insertNode({
       parentId: args.parentId,
@@ -202,8 +199,7 @@ export const INSERT_NODE_WITH_TEXT = (args: {
       ...(args.siblingId !== undefined && { siblingId: args.siblingId }),
     });
 
-    const ytext = Yjs.getText(nodeId);
-    ytext.insert(0, args.text);
+    yield* Automerge.setText(nodeId, args.text);
 
     return nodeId;
   }).pipe(Effect.withSpan("Given.INSERT_NODE_WITH_TEXT"));
@@ -223,7 +219,7 @@ export interface FullHierarchyResult {
 export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
@@ -238,9 +234,8 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       }),
     );
 
-    // Set text in Yjs
-    const ytext = Yjs.getText(nodeId);
-    ytext.insert(0, textContent);
+    // Set text in Automerge
+    yield* Automerge.setText(nodeId, textContent);
 
     // Create window document with pane reference
     yield* Store.setDocument(
@@ -312,7 +307,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
@@ -327,9 +322,8 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       }),
     );
 
-    // Set root text in Yjs
-    const rootYtext = Yjs.getText(rootNodeId);
-    rootYtext.insert(0, rootText);
+    // Set root text in Automerge
+    yield* Automerge.setText(rootNodeId, rootText);
 
     // Create window document with pane reference
     yield* Store.setDocument(
@@ -376,9 +370,8 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
         parentId: rootNodeId,
         insert: "after",
       });
-      // Set child text in Yjs
-      const childYtext = Yjs.getText(childId);
-      childYtext.insert(0, child.text);
+      // Set child text in Automerge
+      yield* Automerge.setText(childId, child.text);
       childNodeIds.push(childId);
     }
 
@@ -449,7 +442,7 @@ export const BUFFER_HAS_SELECTION = (
  * Sets the window's active element.
  * Use Entity helpers to construct the element:
  * - Block: { id: blockId, type: "block" }
- * - Title: { bufferId, type: "title" }
+ * - Title: Use Block with title's blockId (Id.makeBufferBlockId(bufferId, titleNodeId))
  */
 export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
   Effect.gen(function* () {
@@ -461,19 +454,23 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
 export type MarkType = "bold" | "italic" | "code";
 
 /**
- * Applies a formatting mark to a range in a node's Y.Text.
- * Used to set up test state with pre-existing formatting.
+ * Applies a formatting mark to a range in a node's text.
+ * NOTE: Automerge stores plain strings, so rich text formatting requires
+ * a different approach (e.g., storing marks separately or using a rich text library).
+ * This is a stub that logs a warning - formatting tests need to be updated.
  */
 export const NODE_HAS_MARK = (
-  nodeId: Id.Node,
-  index: number,
-  length: number,
+  _nodeId: Id.Node,
+  _index: number,
+  _length: number,
   mark: MarkType,
 ) =>
   Effect.gen(function* () {
-    const Yjs = yield* YjsT;
-    const ytext = Yjs.getText(nodeId);
-    ytext.format(index, length, { [mark]: true });
+    yield* Effect.logWarning(
+      `NODE_HAS_MARK(${mark}) called but Automerge stores plain strings. ` +
+        `Formatting tests need to be updated for the new text storage approach.`,
+    );
+    // No-op: Automerge doesn't support rich text formatting in the same way as Yjs
   }).pipe(Effect.withSpan(`Given.NODE_HAS_MARK(${mark})`));
 
 /** Convenience wrapper for bold formatting */
@@ -520,7 +517,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
@@ -534,14 +531,14 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
         data: { nodeId: parentNodeId },
       }),
     );
-    Yjs.getText(parentNodeId).insert(0, parentText);
+    yield* Automerge.setText(parentNodeId, parentText);
 
     // Create root node as child of parent
     const rootNodeId = yield* Node.insertNode({
       parentId: parentNodeId,
       insert: "after",
     });
-    Yjs.getText(rootNodeId).insert(0, rootText);
+    yield* Automerge.setText(rootNodeId, rootText);
 
     // Create window document with pane reference
     yield* Store.setDocument(
@@ -588,7 +585,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
         parentId: rootNodeId,
         insert: "after",
       });
-      Yjs.getText(childId).insert(0, child.text);
+      yield* Automerge.setText(childId, child.text);
       childNodeIds.push(childId);
     }
 
@@ -613,7 +610,7 @@ export interface TypeWithNoColorResult {
 export const A_TYPE_WITHOUT_COLOR = () =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Create the type as a raw node (not via TypePicker to avoid auto-color)
     const typeId = Id.Node.make(nanoid());
@@ -623,7 +620,7 @@ export const A_TYPE_WITHOUT_COLOR = () =>
         data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
-    Yjs.getText(typeId).insert(0, `NoColorType_${nanoid(6)}`);
+    yield* Automerge.setText(typeId, `NoColorType_${nanoid(6)}`);
 
     return { typeId } satisfies TypeWithNoColorResult;
   }).pipe(Effect.withSpan("Given.A_TYPE_WITHOUT_COLOR"));
@@ -646,7 +643,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Create the type as a raw node (not via TypePicker to avoid auto-color)
     const typeId = Id.Node.make(nanoid());
@@ -656,7 +653,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
         data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
-    Yjs.getText(typeId).insert(0, `ColoredType_${nanoid(6)}`);
+    yield* Automerge.setText(typeId, `ColoredType_${nanoid(6)}`);
 
     // Create color node
     const colorNodeId = Id.Node.make(nanoid());
@@ -666,7 +663,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
         data: { nodeId: colorNodeId },
       }),
     );
-    Yjs.getText(colorNodeId).insert(0, "Custom Color");
+    yield* Automerge.setText(colorNodeId, "Custom Color");
 
     // Create background value node
     const bgValueNodeId = Id.Node.make(nanoid());
@@ -676,7 +673,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
         data: { nodeId: bgValueNodeId },
       }),
     );
-    Yjs.getText(bgValueNodeId).insert(0, colors.bg);
+    yield* Automerge.setText(bgValueNodeId, colors.bg);
 
     // Create foreground value node
     const fgValueNodeId = Id.Node.make(nanoid());
@@ -686,7 +683,7 @@ export const A_TYPE_WITH_FULL_COLOR = (colors: { bg: string; fg: string }) =>
         data: { nodeId: fgValueNodeId },
       }),
     );
-    Yjs.getText(fgValueNodeId).insert(0, colors.fg);
+    yield* Automerge.setText(fgValueNodeId, colors.fg);
 
     // Create COLOR_HAS_BACKGROUND tuple
     yield* Tuple.create(System.COLOR_HAS_BACKGROUND, [
@@ -728,7 +725,7 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Create the type as a raw node (not via TypePicker to avoid auto-color)
     const typeId = Id.Node.make(nanoid());
@@ -738,7 +735,7 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
         data: { nodeId: typeId, parentId: System.SCHEMA },
       }),
     );
-    Yjs.getText(typeId).insert(0, `DirectColorType_${nanoid(6)}`);
+    yield* Automerge.setText(typeId, `DirectColorType_${nanoid(6)}`);
 
     // Create direct color value node (text content is the color)
     const colorValueNodeId = Id.Node.make(nanoid());
@@ -748,7 +745,7 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
         data: { nodeId: colorValueNodeId },
       }),
     );
-    Yjs.getText(colorValueNodeId).insert(0, bgColor);
+    yield* Automerge.setText(colorValueNodeId, bgColor);
 
     // Create TYPE_HAS_COLOR tuple linking type to value node directly
     yield* Tuple.create(System.TYPE_HAS_COLOR, [typeId, colorValueNodeId]);

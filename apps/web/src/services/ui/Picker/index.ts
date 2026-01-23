@@ -6,7 +6,7 @@
  */
 
 import { Id } from "@/schema";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import {
   Context,
   Effect,
@@ -95,7 +95,7 @@ const finishPickerAction = (
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Parse blockId to get bufferId and nodeId
     const blockContext = Id.parseBlockContextSync(state.elementId);
@@ -106,10 +106,14 @@ const finishPickerAction = (
         : blockContext.hostNodeId;
 
     // Delete trigger text: from position to from + query.length + 1 (for the "#" trigger char)
-    const ytext = Yjs.getText(nodeId);
+    const currentText = yield* Automerge.getText(nodeId);
     const deleteLength = state.query.length + 1; // +1 for the trigger character
     if (deleteLength > 0) {
-      ytext.delete(state.from, deleteLength);
+      // Remove the trigger text by taking the text before and after the trigger
+      const newText =
+        currentText.slice(0, state.from) +
+        currentText.slice(state.from + deleteLength);
+      yield* Automerge.setText(nodeId, newText);
     }
 
     // Set selection back to where the trigger was
@@ -138,11 +142,11 @@ export const PickerLive = Layer.effect(
     // Capture dependencies for withContext pattern
     const TypePicker = yield* TypePickerT;
     const Buffer = yield* BufferT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const context = Context.make(TypePickerT, TypePicker).pipe(
       Context.add(BufferT, Buffer),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
     );
 
     return {

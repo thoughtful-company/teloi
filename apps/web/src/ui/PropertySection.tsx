@@ -1,10 +1,9 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT, type LinkedTuple } from "@/services/ui/Property";
 import { WindowT } from "@/services/ui/Window";
-import { resolveSelectionStrategy } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import {
@@ -18,7 +17,8 @@ import {
 } from "solid-js";
 import Block from "./Block";
 import { ActiveElementContext } from "./EditorBuffer";
-import TextEditor, { type SelectionInfo } from "./TextEditor";
+// TODO: Re-enable TextEditor import once blockId support is added
+// import TextEditor from "./TextEditor";
 
 interface PropertySectionProps {
   propertyId: Id.Node;
@@ -41,38 +41,24 @@ interface GhostBlockProps {
  * GhostBlock: A phantom block that shows a TextEditor but doesn't create a
  * LiveStore node until the user actually types something.
  *
- * The key insight is that Y.Text is independent of LiveStore - we can bind
- * TextEditor to a Y.Text with a pre-generated nodeId, then only materialize
+ * The key insight is that text content is independent of LiveStore - we can bind
+ * TextEditor to text with a pre-generated nodeId, then only materialize
  * the actual node when the user types. The typed content is preserved because
- * the real Block will use the same nodeId (same Y.Text!).
+ * the real Block will use the same nodeId (same Automerge text!).
  */
 function GhostBlock(props: GhostBlockProps) {
   const runtime = useBrowserRuntime();
-  const Yjs = runtime.runSync(YjsT);
+  const Automerge = runtime.runSync(AutomergeT);
 
   // Pre-generate nodeId on component initialization
   // This ID is ephemeral until materialization
   const ghostNodeId = Id.Node.make(nanoid());
-
-  // Get Y.Text for our phantom node (Yjs creates it lazily)
-  const ytext = Yjs.getText(ghostNodeId);
-  const undoManager = Yjs.getUndoManager(ghostNodeId);
 
   // Track if we've materialized (to prevent double-trigger)
   let materialized = false;
 
   // Local focus state
   const [isActive, setIsActive] = createSignal(false);
-  const [selection, setSelection] = createSignal<{
-    anchor: number;
-    head: number;
-    goalX: number | null;
-    goalLine: "first" | "last" | null;
-    assoc: -1 | 0 | 1;
-  } | null>(null);
-
-  // Click coordinates for selection strategy
-  let clickCoords: { x: number; y: number } | null = null;
 
   // Materialize: create the real node and tuple in LiveStore
   const materialize = () => {
@@ -94,12 +80,13 @@ function GhostBlock(props: GhostBlockProps) {
     );
   };
 
-  // Observe Y.Text for first change → materialize (debounced to allow typing)
+  // Subscribe to Automerge text changes for first change → materialize
   onMount(() => {
     let materializeTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    const observer = () => {
-      if (ytext.length > 0 && !materialized) {
+    const checkAndMaterialize = async () => {
+      const text = await runtime.runPromise(Automerge.getText(ghostNodeId));
+      if (text.length > 0 && !materialized) {
         // Debounce materialization to allow rapid typing to complete
         // 50ms is enough for most keyboard input to settle
         if (materializeTimeout) clearTimeout(materializeTimeout);
@@ -108,14 +95,26 @@ function GhostBlock(props: GhostBlockProps) {
         }, 50);
       }
     };
-    ytext.observe(observer);
+
+    // Subscribe to changes via handle
+    const onChange = () => {
+      checkAndMaterialize();
+    };
+    Automerge.handle.on("change", onChange);
 
     onCleanup(() => {
       if (materializeTimeout) clearTimeout(materializeTimeout);
-      ytext.unobserve(observer);
-      // Clean up orphan Y.Text if never materialized and empty
-      if (!materialized && ytext.length === 0) {
-        Yjs.deleteText(ghostNodeId);
+      Automerge.handle.off("change", onChange);
+      // Clean up orphan text if never materialized and empty
+      if (!materialized) {
+        runtime.runPromise(
+          Effect.gen(function* () {
+            const text = yield* Automerge.getText(ghostNodeId);
+            if (text.length === 0) {
+              yield* Automerge.deleteText(ghostNodeId);
+            }
+          }),
+        );
       }
     });
   });
@@ -123,47 +122,12 @@ function GhostBlock(props: GhostBlockProps) {
   // Derive "should show editor" from both local state and requestFocus prop
   const shouldShowEditor = () => isActive() || props.requestFocus;
 
-  // Derive selection: use prop-requested selection when requestFocus is true
-  const getEffectiveSelection = () => {
-    if (props.requestFocus) {
-      return {
-        anchor: 0,
-        head: 0,
-        goalX: null,
-        goalLine: null,
-        assoc: 0 as const,
-      };
-    }
-    return selection();
-  };
-
-  const handleFocus = (e: MouseEvent) => {
-    clickCoords = { x: e.clientX, y: e.clientY };
+  const handleFocus = (_e: MouseEvent) => {
     setIsActive(true);
   };
 
-  const handleBlur = () => {
-    if (!document.hasFocus()) return;
-    setIsActive(false);
-    setSelection(null);
-  };
-
-  const handleSelectionChange = (sel: SelectionInfo) => {
-    setSelection({
-      anchor: sel.anchor,
-      head: sel.head,
-      goalX: null,
-      goalLine: null,
-      assoc: 0,
-    });
-  };
-
-  const getInitialStrategy = () =>
-    resolveSelectionStrategy({
-      clickCoords,
-      domSelection: null,
-      modelSelection: getEffectiveSelection(),
-    });
+  // TODO: handleBlur/handleSelectionChange will be handled via ActionT once
+  // blockId support is added. For now, focus/blur state is broken.
 
   return (
     <div
@@ -180,14 +144,10 @@ function GhostBlock(props: GhostBlockProps) {
           </span>
         }
       >
-        <TextEditor
-          ytext={ytext}
-          undoManager={undoManager}
-          onSelectionChange={handleSelectionChange}
-          onBlur={handleBlur}
-          initialStrategy={getInitialStrategy()}
-          selection={getEffectiveSelection()}
-        />
+        {/* TODO: Pre-generate blockId for ghost block and pass to TextEditor.
+            The ghost block pattern needs a blockId before materialization.
+            See: TextEditor now requires blockId for ActionT integration. */}
+        <div class="text-neutral-400">[Ghost editor placeholder]</div>
       </Show>
     </div>
   );
@@ -205,27 +165,16 @@ function GhostBlock(props: GhostBlockProps) {
  */
 export default function PropertySection(props: PropertySectionProps) {
   const runtime = useBrowserRuntime();
-  const Yjs = runtime.runSync(YjsT);
+  const Automerge = runtime.runSync(AutomergeT);
 
   // Subscribe to activeElement for auto-focus
   const getActiveElement = useContext(ActiveElementContext);
 
-  // Property name from Y.Text
-  const getYtext = () => Yjs.getText(props.propertyId);
-  const getUndoManager = () => Yjs.getUndoManager(props.propertyId);
-  const [propertyName, setPropertyName] = createSignal(getYtext().toString());
+  // Property name from Automerge
+  const [propertyName, setPropertyName] = createSignal("");
 
   // Local focus state for property name
   const [isActive, setIsActive] = createSignal(false);
-
-  // Selection state for TextEditor
-  const [selection, setSelection] = createSignal<{
-    anchor: number;
-    head: number;
-    goalX: number | null;
-    goalLine: "first" | "last" | null;
-    assoc: -1 | 0 | 1;
-  } | null>(null);
 
   // Linked tuples (tuple instances for property relationships)
   const [linkedTuples, setLinkedTuples] = createSignal<readonly LinkedTuple[]>(
@@ -281,15 +230,7 @@ export default function PropertySection(props: PropertySectionProps) {
   // Focus the property name
   const focusPropertyName = () => {
     setIsActive(true);
-    // Set selection at end of property name
-    const textLength = getYtext().length;
-    setSelection({
-      anchor: textLength,
-      head: textLength,
-      goalX: null,
-      goalLine: null,
-      assoc: 0,
-    });
+    // Selection is handled by CodeMirror internally now
   };
 
   // Auto-focus when activeElement matches this property
@@ -308,23 +249,28 @@ export default function PropertySection(props: PropertySectionProps) {
   });
 
   onMount(() => {
-    // Observe Y.Text changes for property name
-    const ytext = getYtext();
-    const observer = () => setPropertyName(ytext.toString());
-    ytext.observe(observer);
+    // Load initial property name from Automerge
+    runtime
+      .runPromise(Automerge.getText(props.propertyId))
+      .then(setPropertyName);
+
+    // Subscribe to Automerge changes for property name
+    const onChange = () => {
+      runtime
+        .runPromise(Automerge.getText(props.propertyId))
+        .then(setPropertyName);
+    };
+    Automerge.handle.on("change", onChange);
 
     // Load linked tuples
     loadLinkedTuples();
 
     onCleanup(() => {
-      ytext.unobserve(observer);
+      Automerge.handle.off("change", onChange);
     });
   });
 
-  let clickCoords: { x: number; y: number } | null = null;
-
-  const handleFocus = (e: MouseEvent) => {
-    clickCoords = { x: e.clientX, y: e.clientY };
+  const handleFocus = (_e: MouseEvent) => {
     setIsActive(true);
     runtime.runPromise(
       Effect.gen(function* () {
@@ -340,32 +286,8 @@ export default function PropertySection(props: PropertySectionProps) {
     );
   };
 
-  const handleBlur = () => {
-    // Don't clear when window loses focus (alt-tab, tab switch)
-    if (!document.hasFocus()) {
-      return;
-    }
-    setIsActive(false);
-    setSelection(null);
-  };
-
-  const handleSelectionChange = (sel: SelectionInfo) => {
-    setSelection({
-      anchor: sel.anchor,
-      head: sel.head,
-      goalX: null,
-      goalLine: null,
-      assoc: 0,
-    });
-  };
-
-  // Resolve initial selection strategy when clicking
-  const getInitialStrategy = () =>
-    resolveSelectionStrategy({
-      clickCoords,
-      domSelection: null,
-      modelSelection: selection(),
-    });
+  // TODO: handleBlur/handleSelectionChange will be handled via ActionT once
+  // blockId support is added. For now, focus/blur state is broken.
 
   return (
     <div
@@ -386,14 +308,9 @@ export default function PropertySection(props: PropertySectionProps) {
               </span>
             }
           >
-            <TextEditor
-              ytext={getYtext()}
-              undoManager={getUndoManager()}
-              onSelectionChange={handleSelectionChange}
-              onBlur={handleBlur}
-              initialStrategy={getInitialStrategy()}
-              selection={selection()}
-            />
+            {/* TODO: Pre-generate blockId for property header and pass to TextEditor.
+                TextEditor now requires blockId for ActionT integration. */}
+            <div class="text-neutral-400">[Property editor placeholder]</div>
           </Show>
         </div>
       </div>

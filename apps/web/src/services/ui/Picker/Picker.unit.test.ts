@@ -6,7 +6,7 @@
  */
 
 import { Id, Model } from "@/schema";
-import { makeYjsLive, YjsT } from "@/services/external/Yjs";
+import { makeAutomergeLive, AutomergeT } from "@/services/external/Automerge";
 import { Context, Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BufferT } from "../Buffer";
@@ -48,7 +48,7 @@ const createBasicMockLayer = () => {
     moveToLast: () => Effect.succeed(false),
   } as unknown as Context.Tag.Service<BufferT>);
 
-  const YjsLayer = makeYjsLive({
+  const AutomergeLayer = makeAutomergeLive({
     roomName: "test-picker-basic",
     persist: false,
   });
@@ -56,7 +56,7 @@ const createBasicMockLayer = () => {
   return PickerLive.pipe(
     Layer.provideMerge(MockTypePickerT),
     Layer.provideMerge(MockBufferT),
-    Layer.provideMerge(YjsLayer),
+    Layer.provideMerge(AutomergeLayer),
   );
 };
 
@@ -65,7 +65,7 @@ describe("PickerT", () => {
     let runtime: ManagedRuntime.ManagedRuntime<PickerT, never>;
 
     beforeEach(async () => {
-      // PickerLive requires TypePickerT, BufferT, YjsT dependencies
+      // PickerLive requires TypePickerT, BufferT, AutomergeT dependencies
       const layer = createBasicMockLayer();
       runtime = ManagedRuntime.make(layer);
     });
@@ -157,7 +157,7 @@ describe("PickerT", () => {
     let runtime: ManagedRuntime.ManagedRuntime<PickerT, never>;
 
     beforeEach(async () => {
-      // PickerLive requires TypePickerT, BufferT, YjsT dependencies
+      // PickerLive requires TypePickerT, BufferT, AutomergeT dependencies
       const layer = createBasicMockLayer();
       runtime = ManagedRuntime.make(layer);
     });
@@ -196,7 +196,7 @@ describe("PickerT", () => {
   });
 
   describe("selectType()", () => {
-    let runtime: ManagedRuntime.ManagedRuntime<PickerT | YjsT, never>;
+    let runtime: ManagedRuntime.ManagedRuntime<PickerT | AutomergeT, never>;
     let applyTypeMock: ReturnType<typeof vi.fn>;
     let setSelectionMock: ReturnType<typeof vi.fn>;
 
@@ -230,7 +230,7 @@ describe("PickerT", () => {
         moveToLast: () => Effect.succeed(false),
       } as unknown as Context.Tag.Service<BufferT>);
 
-      const YjsLayer = makeYjsLive({
+      const AutomergeLayer = makeAutomergeLive({
         roomName: "test-picker-select",
         persist: false,
       });
@@ -238,7 +238,7 @@ describe("PickerT", () => {
       const layer = PickerLive.pipe(
         Layer.provideMerge(MockTypePickerT),
         Layer.provideMerge(MockBufferT),
-        Layer.provideMerge(YjsLayer),
+        Layer.provideMerge(AutomergeLayer),
       );
 
       runtime = ManagedRuntime.make(layer);
@@ -251,10 +251,10 @@ describe("PickerT", () => {
     it("calls TypePickerT.applyType with correct nodeId (parsed from elementId)", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text with content including trigger
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @per world");
 
         // Open picker and set some query
@@ -270,14 +270,13 @@ describe("PickerT", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("deletes trigger text from Y.Text (from `from` position to `from + query.length + 1`)", async () => {
+    it("deletes trigger text from Automerge (from `from` position to `from + query.length + 1`)", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
-        // Set up Y.Text with content including trigger
-        const ytext = Yjs.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @per world"); // trigger @ at position 6, query "per"
+        // Set up text content including trigger
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @per world"); // trigger @ at position 6, query "per"
 
         // Open picker at position 6 (the @), query will be "per"
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -286,18 +285,19 @@ describe("PickerT", () => {
         // Select type - should delete "@per" (4 chars: trigger + query)
         yield* Picker.selectType(TEST_TYPE_ID);
 
-        // Verify Y.Text content: "@per" deleted
-        expect(ytext.toString()).toBe("Hello  world");
+        // Verify text content: "@per" deleted
+        const text = yield* Automerge.getText(TEST_NODE_ID);
+        expect(text).toBe("Hello  world");
       }).pipe(runtime.runPromise);
     });
 
     it("sets selection back to `from` position via BufferT", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @test world");
 
         // Open picker at position 6
@@ -324,10 +324,10 @@ describe("PickerT", () => {
     it("closes picker (state becomes null)", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @test");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -342,7 +342,7 @@ describe("PickerT", () => {
   });
 
   describe("createAndSelectType()", () => {
-    let runtime: ManagedRuntime.ManagedRuntime<PickerT | YjsT, never>;
+    let runtime: ManagedRuntime.ManagedRuntime<PickerT | AutomergeT, never>;
     let createTypeMock: ReturnType<typeof vi.fn>;
     let applyTypeMock: ReturnType<typeof vi.fn>;
     let setSelectionMock: ReturnType<typeof vi.fn>;
@@ -380,7 +380,7 @@ describe("PickerT", () => {
         moveToLast: () => Effect.succeed(false),
       } as unknown as Context.Tag.Service<BufferT>);
 
-      const YjsLayer = makeYjsLive({
+      const AutomergeLayer = makeAutomergeLive({
         roomName: "test-picker-create",
         persist: false,
       });
@@ -388,7 +388,7 @@ describe("PickerT", () => {
       const layer = PickerLive.pipe(
         Layer.provideMerge(MockTypePickerT),
         Layer.provideMerge(MockBufferT),
-        Layer.provideMerge(YjsLayer),
+        Layer.provideMerge(AutomergeLayer),
       );
 
       runtime = ManagedRuntime.make(layer);
@@ -401,10 +401,10 @@ describe("PickerT", () => {
     it("creates type via TypePickerT.createType", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -420,10 +420,10 @@ describe("PickerT", () => {
     it("applies created type via applyType", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -440,10 +440,10 @@ describe("PickerT", () => {
     it("deletes trigger text and closes picker", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @NewType world");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -463,10 +463,10 @@ describe("PickerT", () => {
     it("sets selection back to from position", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Yjs.getText(TEST_NODE_ID);
+        const ytext = Automerge.getText(TEST_NODE_ID);
         ytext.insert(0, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);

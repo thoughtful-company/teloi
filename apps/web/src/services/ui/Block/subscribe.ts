@@ -4,12 +4,15 @@ import * as IdT from "@/schema/id/id";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
+import { PickerState, PickerT } from "@/services/ui/Picker";
+import { isSystemType } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
-import { attestExistence } from "./attestExistence";
-import { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
+import { BlockGoneError, VirtualBlockError } from "./errors";
 
 export interface BlockSelection {
   anchor: number;
@@ -20,12 +23,23 @@ export interface BlockSelection {
 }
 
 export interface BlockView {
+  // Base block properties
   nodeData: TeloiNode;
   childBlockIds: readonly Id.Block[];
   isActive: boolean;
   isSelected: boolean;
   isExpanded: boolean;
   selection: BlockSelection | null;
+
+  // Type information
+  activeTypes: readonly Id.Node[];
+  userTypes: readonly Id.Node[]; // activeTypes without system types (for rendering badges)
+
+  // Text content
+  textContent: string;
+
+  // Picker state (filtered by blockId)
+  picker: PickerState | null;
 }
 
 export const subscribe = (blockId: Id.Block) =>
@@ -34,6 +48,9 @@ export const subscribe = (blockId: Id.Block) =>
     const Node = yield* NodeT;
     const Window = yield* WindowT;
     const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
+    const Picker = yield* PickerT;
+    const Automerge = yield* AutomergeT;
 
     // Extract bufferId and nodeId based on block type
     let bufferId: Id.Buffer;
@@ -70,9 +87,9 @@ export const subscribe = (blockId: Id.Block) =>
       nodeId = tuple.members[displayPosition] as Id.Node;
     }
 
-    yield* attestExistence(blockId);
     yield* Node.attestExistence(nodeId);
 
+    // Base block streams
     const block$ = yield* makeBlockStreamEither(blockId);
     const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
@@ -96,6 +113,27 @@ export const subscribe = (blockId: Id.Block) =>
       ),
     );
 
+    // Type stream
+    const typesStream = yield* Type.subscribeTypes(nodeId);
+
+    // Picker stream (filtered by blockId)
+    // Prepend current state since ref.changes might not emit initial value immediately
+    const initialPickerState = yield* Picker.getState();
+    const pickerStream = yield* Picker.subscribe();
+    const filteredPickerStream = Stream.concat(
+      Stream.make(initialPickerState),
+      pickerStream,
+    ).pipe(
+      Stream.map((state) => (state?.elementId === blockId ? state : null)),
+    );
+
+    // Text content stream
+    const textStream = yield* Automerge.subscribeText(nodeId);
+    const textContentStream = textStream.pipe(
+      Stream.map((textData) => textData.content),
+    );
+
+    // Combine all streams
     const view$ = Stream.zipLatestAll(
       block$,
       childrenBlockIds$,
@@ -103,6 +141,9 @@ export const subscribe = (blockId: Id.Block) =>
       isActiveStream,
       selection$,
       isSelected$,
+      typesStream,
+      filteredPickerStream,
+      textContentStream,
     ).pipe(
       Stream.map(
         ([
@@ -112,10 +153,11 @@ export const subscribe = (blockId: Id.Block) =>
           isActive,
           selection,
           isSelected,
+          activeTypes,
+          picker,
+          textContent,
         ]) => {
-          if (Either.isLeft(blockEither)) {
-            return Either.left(new BlockGoneError({ blockId, nodeId }));
-          }
+          // Block doc uses default if missing (created lazily)
           if (Either.isLeft(nodeEither)) {
             return Either.left(new BlockGoneError({ blockId, nodeId }));
           }
@@ -124,12 +166,20 @@ export const subscribe = (blockId: Id.Block) =>
           const nodeData = Either.getOrThrow(nodeEither);
 
           return Either.right({
-            ...block,
+            // Base block properties
+            nodeData,
+            childBlockIds: blockChildrenIds,
             isActive,
             isSelected,
-            childBlockIds: blockChildrenIds,
-            nodeData,
+            isExpanded: block.isExpanded,
             selection,
+            // Type information
+            activeTypes,
+            userTypes: activeTypes.filter((t) => !isSystemType(t)),
+            // Text content
+            textContent,
+            // Picker state
+            picker,
           } satisfies BlockView);
         },
       ),
@@ -178,11 +228,11 @@ const makeBlockStreamEither = (blockId: Id.Block) =>
           Effect.annotateLogs({ blockId, ...(b || {}) }),
         ),
       ),
+      // Don't fail on missing block doc - use default value (expanded)
+      // Block docs are created lazily, so the first emission might be null
       Stream.map(
-        (b): Either.Either<BlockDoc, BlockNotFoundError> =>
-          b != null
-            ? Either.right(b)
-            : Either.left(new BlockNotFoundError({ blockId })),
+        (b): Either.Either<BlockDoc, never> =>
+          Either.right(b ?? { isExpanded: true }),
       ),
     );
   });

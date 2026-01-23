@@ -2,11 +2,15 @@ import tailwindcss from "@tailwindcss/vite";
 import mkcert from "vite-plugin-mkcert";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import solidPlugin from "vite-plugin-solid";
+import topLevelAwait from "vite-plugin-top-level-await";
 import viteTsconfigPaths from "vite-tsconfig-paths";
+import wasm from "vite-plugin-wasm";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [
+    wasm(),
+    topLevelAwait(),
     mkcert(),
     tailwindcss(),
     solidPlugin(),

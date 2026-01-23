@@ -1,5 +1,6 @@
 import { TeloiNode } from "@/livestore/schema";
 import { Id } from "@/schema";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
 import { Context, Effect, Either, Layer, Stream } from "effect";
@@ -87,7 +88,11 @@ export const NodeLive = Layer.effect(
   NodeT,
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const context = Context.make(StoreT, Store);
+    const Automerge = yield* AutomergeT;
+    const context = Context.empty().pipe(
+      Context.add(StoreT, Store),
+      Context.add(AutomergeT, Automerge),
+    );
 
     return {
       subscribe: withContext(subscribe)(context),

@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
@@ -65,7 +65,10 @@ describe("TableView", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Expected a <table> element to be rendered").toBeTruthy();
+              expect(
+                table,
+                "Expected a <table> element to be rendered",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),
@@ -116,7 +119,9 @@ describe("TableView", () => {
           waitFor(
             () => {
               // Wait for blocks to render first
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -125,14 +130,23 @@ describe("TableView", () => {
 
         // Verify no table is present
         const table = document.querySelector("table");
-        expect(table, "Expected no <table> when activeViewId is not set").toBeFalsy();
+        expect(
+          table,
+          "Expected no <table> when activeViewId is not set",
+        ).toBeFalsy();
 
         // Then: Normal blocks should be visible
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
         const blockElement = document.querySelector(
           `[data-element-id="${firstChildBlockId}"]`,
         );
-        expect(blockElement, "Expected block elements to be rendered").toBeTruthy();
+        expect(
+          blockElement,
+          "Expected block elements to be rendered",
+        ).toBeTruthy();
       }).pipe(runtime.runPromise);
     });
   });
@@ -142,7 +156,7 @@ describe("TableView", () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
         const Tuple = yield* TupleT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Given: A buffer with children
         const { bufferId, rootNodeId, childNodeIds } =
@@ -160,7 +174,7 @@ describe("TableView", () => {
             data: { nodeId: statusTupleTypeId },
           }),
         );
-        Yjs.getText(statusTupleTypeId).insert(0, "Status");
+        yield* Automerge.setText(statusTupleTypeId, "Status");
 
         // Given: Value nodes for status options
         const doneNodeId = Id.Node.make(nanoid());
@@ -173,7 +187,7 @@ describe("TableView", () => {
             data: { nodeId: doneNodeId },
           }),
         );
-        Yjs.getText(doneNodeId).insert(0, "Done");
+        yield* Automerge.setText(doneNodeId, "Done");
 
         yield* Store.commit(
           events.nodeCreated({
@@ -181,7 +195,7 @@ describe("TableView", () => {
             data: { nodeId: inProgressNodeId },
           }),
         );
-        Yjs.getText(inProgressNodeId).insert(0, "In Progress");
+        yield* Automerge.setText(inProgressNodeId, "In Progress");
 
         yield* Store.commit(
           events.nodeCreated({
@@ -189,12 +203,15 @@ describe("TableView", () => {
             data: { nodeId: todoNodeId },
           }),
         );
-        Yjs.getText(todoNodeId).insert(0, "Todo");
+        yield* Automerge.setText(todoNodeId, "Todo");
 
         // Given: Tuples linking child nodes to their status values
         // Tuple format: (ChildNode, StatusValue) with StatusTupleType
         yield* Tuple.create(statusTupleTypeId, [childNodeIds[0], doneNodeId]);
-        yield* Tuple.create(statusTupleTypeId, [childNodeIds[1], inProgressNodeId]);
+        yield* Tuple.create(statusTupleTypeId, [
+          childNodeIds[1],
+          inProgressNodeId,
+        ]);
         yield* Tuple.create(statusTupleTypeId, [childNodeIds[2], todoNodeId]);
 
         // Given: A TableView linked to the root node
@@ -211,7 +228,10 @@ describe("TableView", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Expected a <table> element to be rendered").toBeTruthy();
+              expect(
+                table,
+                "Expected a <table> element to be rendered",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),
@@ -280,7 +300,9 @@ describe("TableView", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const tabBar = document.querySelector('[data-testid="view-tabs"]');
+              const tabBar = document.querySelector(
+                '[data-testid="view-tabs"]',
+              );
               expect(tabBar, "Expected a tab bar to be rendered").toBeTruthy();
             },
             { timeout: 2000 },
@@ -291,7 +313,9 @@ describe("TableView", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const tabs = document.querySelectorAll('[data-testid="view-tab"]');
+              const tabs = document.querySelectorAll(
+                '[data-testid="view-tab"]',
+              );
               expect(tabs.length, "Expected 2 tab buttons").toBe(2);
             },
             { timeout: 2000 },
@@ -322,7 +346,10 @@ describe("TableView", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Expected a <table> element to be rendered").toBeTruthy();
+              expect(
+                table,
+                "Expected a <table> element to be rendered",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),
@@ -330,7 +357,10 @@ describe("TableView", () => {
 
         // Then: No tab bar element should exist (single view = no tabs)
         const tabBar = document.querySelector('[data-testid="view-tabs"]');
-        expect(tabBar, "Expected no tab bar when only one view exists").toBeFalsy();
+        expect(
+          tabBar,
+          "Expected no tab bar when only one view exists",
+        ).toBeFalsy();
       }).pipe(runtime.runPromise);
     });
 
@@ -358,7 +388,9 @@ describe("TableView", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const tabs = document.querySelectorAll('[data-testid="view-tab"]');
+              const tabs = document.querySelectorAll(
+                '[data-testid="view-tab"]',
+              );
               expect(tabs.length, "Expected 2 tabs").toBe(2);
             },
             { timeout: 2000 },
@@ -369,7 +401,9 @@ describe("TableView", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const tabs = document.querySelectorAll('[data-testid="view-tab"]');
+              const tabs = document.querySelectorAll(
+                '[data-testid="view-tab"]',
+              );
               // Find the tab for View B by its text content
               const viewBTab = Array.from(tabs).find((tab) =>
                 tab.textContent?.includes("View B"),
@@ -386,7 +420,9 @@ describe("TableView", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const activeTab = document.querySelector('[data-testid="view-tab"][data-active="true"]');
+              const activeTab = document.querySelector(
+                '[data-testid="view-tab"][data-active="true"]',
+              );
               expect(activeTab?.textContent).toContain("View B");
             },
             { timeout: 2000 },
@@ -396,8 +432,12 @@ describe("TableView", () => {
         // Additionally verify the model state changed
         const bufferDoc = yield* Store.getDocument("buffer", bufferId);
         expect(Option.isSome(bufferDoc)).toBe(true);
-        const buf = Option.getOrThrow(bufferDoc) as { activeViewId: Id.Node | null };
-        expect(buf.activeViewId, "Expected activeViewId to be View B").toBe(viewB);
+        const buf = Option.getOrThrow(bufferDoc) as {
+          activeViewId: Id.Node | null;
+        };
+        expect(buf.activeViewId, "Expected activeViewId to be View B").toBe(
+          viewB,
+        );
       }).pipe(runtime.runPromise);
     });
   });
@@ -415,7 +455,7 @@ const createTableViewForNode = (nodeId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Create the TableView node
     const tableViewNodeId = Id.Node.make(nanoid());
@@ -428,8 +468,7 @@ const createTableViewForNode = (nodeId: Id.Node) =>
     );
 
     // Set text content for the view (optional, for debugging)
-    const ytext = Yjs.getText(tableViewNodeId);
-    ytext.insert(0, "Table View");
+    yield* Automerge.setText(tableViewNodeId, "Table View");
 
     // Create HAS_VIEW tuple: (nodeId, tableViewNodeId)
     // This links the node to its view
@@ -470,7 +509,7 @@ const createNamedTableViewForNode = (nodeId: Id.Node, viewName: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     // Create the TableView node
     const tableViewNodeId = Id.Node.make(nanoid());
@@ -483,8 +522,7 @@ const createNamedTableViewForNode = (nodeId: Id.Node, viewName: string) =>
     );
 
     // Set custom text content for the view name
-    const ytext = Yjs.getText(tableViewNodeId);
-    ytext.insert(0, viewName);
+    yield* Automerge.setText(tableViewNodeId, viewName);
 
     // Create HAS_VIEW tuple: (nodeId, tableViewNodeId)
     yield* Tuple.create(SystemTupleTypes.HAS_VIEW, [nodeId, tableViewNodeId]);

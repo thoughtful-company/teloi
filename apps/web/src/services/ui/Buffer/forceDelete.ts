@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { findPreviousNode } from "@/services/ui/Block/navigation";
 import { Effect, Option } from "effect";
 import { MergeResult } from "./mergeBackward";
@@ -10,17 +10,21 @@ import { MergeResult } from "./mergeBackward";
  * Force delete a node and all its descendants (Cmd+Shift+Backspace).
  *
  * Unlike mergeBackward, this deletes the node regardless of whether it has children.
- * All descendant text content is also deleted from Yjs.
+ * All descendant text content is also deleted from Automerge.
  *
  * Returns focus target info (previous node, or buffer root if first node).
  */
 export const forceDelete = (
   bufferId: Id.Buffer,
   nodeId: Id.Node,
-): Effect.Effect<Option.Option<MergeResult>, never, NodeT | YjsT | StoreT> =>
+): Effect.Effect<
+  Option.Option<MergeResult>,
+  never,
+  NodeT | AutomergeT | StoreT
+> =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const Store = yield* StoreT;
 
     // Get buffer root for isTitle check and fallback focus
@@ -44,14 +48,14 @@ export const forceDelete = (
     // Delete the node (materializer cascades to descendants in DB)
     yield* Node.deleteNode(nodeId);
 
-    // Clean up Yjs text for all deleted nodes
+    // Clean up Automerge text for all deleted nodes
     for (const deletedId of allNodesToDelete) {
-      Yjs.deleteText(deletedId);
+      yield* Automerge.deleteText(deletedId);
     }
 
     // Get cursor position at end of focus target
-    const targetYtext = Yjs.getText(focusNodeId);
-    const cursorOffset = targetYtext.length;
+    const targetText = yield* Automerge.getText(focusNodeId);
+    const cursorOffset = targetText.length;
 
     return Option.some({
       targetNodeId: focusNodeId,

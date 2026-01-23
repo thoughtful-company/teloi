@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect } from "effect";
 
 export interface SplitParams {
@@ -24,11 +24,11 @@ export interface SplitResult {
  */
 export const split = (
   params: SplitParams,
-): Effect.Effect<SplitResult, never, NodeT | YjsT> =>
+): Effect.Effect<SplitResult, never, NodeT | AutomergeT> =>
   Effect.gen(function* () {
     const { nodeId, cursorPos, textAfter } = params;
     const Node = yield* NodeT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
 
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
@@ -45,18 +45,16 @@ export const split = (
     });
 
     if (!isAtStart) {
-      const ytext = Yjs.getText(nodeId);
-      const deleteLength = ytext.length - cursorPos;
+      // Get current text
+      const currentText = yield* Automerge.getText(nodeId);
 
-      const deltas = yield* Yjs.getDeltasWithFormats(
-        nodeId,
-        cursorPos,
-        deleteLength,
-      );
+      // Keep text before cursor in current node
+      const textBefore = currentText.slice(0, cursorPos);
+      yield* Automerge.setText(nodeId, textBefore);
 
-      ytext.delete(cursorPos, deleteLength);
-
-      yield* Yjs.insertWithFormats(newNodeId, 0, deltas);
+      // Put text after cursor in new node
+      const textToMove = currentText.slice(cursorPos);
+      yield* Automerge.setText(newNodeId, textToMove);
     }
 
     return {

@@ -3,7 +3,7 @@ import { events } from "@/livestore/schema";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import EditorBuffer from "@/ui/EditorBuffer";
@@ -44,7 +44,7 @@ describe("PropertySection", () => {
   const createTupleType = (name: string) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
       const tupleTypeId = Id.Node.make(nanoid());
 
       // Create node as shadow child of SCHEMA
@@ -67,7 +67,7 @@ describe("PropertySection", () => {
       );
 
       // Set title
-      Yjs.getText(tupleTypeId).insert(0, name);
+      yield* Automerge.setText(tupleTypeId, name);
 
       return tupleTypeId;
     });
@@ -91,10 +91,8 @@ describe("PropertySection", () => {
   /** Sets title text on a node */
   const setTitle = (nodeId: Id.Node, title: string) =>
     Effect.gen(function* () {
-      const Yjs = yield* YjsT;
-      const ytext = Yjs.getText(nodeId);
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, title);
+      const Automerge = yield* AutomergeT;
+      yield* Automerge.setText(nodeId, title);
     });
 
   /** Creates a linked node with text */
@@ -105,12 +103,12 @@ describe("PropertySection", () => {
       return nodeId;
     });
 
-  describe("renders property name from Y.Text", () => {
+  describe("renders property name from Automerge", () => {
     it("displays property name when rendered directly", async () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
         const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -120,12 +118,18 @@ describe("PropertySection", () => {
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
 
-        // Set property name via Y.Text
-        Yjs.getText(propertyId).insert(0, "My Property Name");
+        // Set property name via Automerge
+        yield* Automerge.setText(propertyId, "My Property Name");
 
         // Render the PropertySection directly
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: property name is visible
         yield* Effect.promise(() =>
@@ -157,7 +161,13 @@ describe("PropertySection", () => {
 
         // Render the PropertySection
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: component renders without error (no crash on empty name)
         yield* Effect.promise(() =>
@@ -181,7 +191,7 @@ describe("PropertySection", () => {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
         const Tuple = yield* TupleT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
         const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -190,7 +200,7 @@ describe("PropertySection", () => {
         );
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
-        Yjs.getText(propertyId).insert(0, "Related Items");
+        yield* Automerge.setText(propertyId, "Related Items");
 
         // Create a tuple type and bind the property to it
         const tupleTypeId = yield* createTupleType("RelatedTo");
@@ -206,7 +216,13 @@ describe("PropertySection", () => {
 
         // Render the PropertySection
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: both linked block titles are visible
         yield* Effect.promise(() =>
@@ -226,7 +242,7 @@ describe("PropertySection", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property (unbound)
         const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -235,13 +251,19 @@ describe("PropertySection", () => {
         );
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
-        Yjs.getText(propertyId).insert(0, "Unbound Property");
+        yield* Automerge.setText(propertyId, "Unbound Property");
 
         // Don't bind to any tuple type
 
         // Render the PropertySection
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: property name is visible and "no linked items" placeholder shown
         yield* Effect.promise(() =>
@@ -261,7 +283,7 @@ describe("PropertySection", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
         const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -270,7 +292,7 @@ describe("PropertySection", () => {
         );
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
-        Yjs.getText(propertyId).insert(0, "Empty Bound Property");
+        yield* Automerge.setText(propertyId, "Empty Bound Property");
 
         // Create tuple type and bind, but don't create any tuple instances
         const tupleTypeId = yield* createTupleType("EmptyRelation");
@@ -278,7 +300,13 @@ describe("PropertySection", () => {
 
         // Render the PropertySection
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: property name visible, linked blocks section exists but empty
         yield* Effect.promise(() =>
@@ -338,14 +366,14 @@ describe("PropertySection", () => {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
         const Tuple = yield* TupleT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a full hierarchy
         const { rootNodeId: pageId, bufferId } =
           yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Test Page", []);
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
-        Yjs.getText(propertyId).insert(0, "Related Items");
+        yield* Automerge.setText(propertyId, "Related Items");
 
         // Create a tuple type and bind the property to it
         const tupleTypeId = yield* createTupleType("RelatedTo");
@@ -358,7 +386,13 @@ describe("PropertySection", () => {
         yield* Tuple.create(tupleTypeId, [pageId, linkedNode]);
 
         // Render the PropertySection
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Wait for linked block to appear as a Block component (not a button)
         yield* Effect.promise(() =>
@@ -384,7 +418,7 @@ describe("PropertySection", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
         const View = yield* ViewT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
         const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
@@ -395,12 +429,17 @@ describe("PropertySection", () => {
         const propertyId = yield* Property.createProperty(viewId);
 
         // Set initial property name
-        const ytext = Yjs.getText(propertyId);
-        ytext.insert(0, "Initial Name");
+        yield* Automerge.setText(propertyId, "Initial Name");
 
         // Render the PropertySection
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
-        render(() => <PropertySection propertyId={propertyId} pageId={pageId} bufferId={bufferId} />);
+        render(() => (
+          <PropertySection
+            propertyId={propertyId}
+            pageId={pageId}
+            bufferId={bufferId}
+          />
+        ));
 
         // Assert: initial name is visible
         yield* Effect.promise(() =>
@@ -413,8 +452,7 @@ describe("PropertySection", () => {
         );
 
         // Update the property name
-        ytext.delete(0, ytext.length);
-        ytext.insert(0, "Updated Name");
+        yield* Automerge.setText(propertyId, "Updated Name");
 
         // Assert: updated name is now visible
         yield* Effect.promise(() =>

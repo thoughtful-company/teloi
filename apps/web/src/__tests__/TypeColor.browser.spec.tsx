@@ -2,7 +2,7 @@ import "@/index.css";
 import { COLOR_PALETTE, Id, System } from "@/schema";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { TupleT } from "@/services/domain/Tuple";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { TypeColorT } from "@/services/ui/TypeColor";
 import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { TypePickerT } from "@/services/ui/TypePicker";
@@ -83,9 +83,8 @@ describe("TypeColorT Service", () => {
       await Effect.gen(function* () {
         const TypeColor = yield* TypeColorT;
         // Create a type with invalid color format (missing closing paren)
-        const { typeId } = yield* Given.A_TYPE_WITH_DIRECT_COLOR(
-          "oklch(0.9 0.05 250",
-        );
+        const { typeId } =
+          yield* Given.A_TYPE_WITH_DIRECT_COLOR("oklch(0.9 0.05 250");
 
         const colors = yield* TypeColor.getColors(typeId);
 
@@ -116,7 +115,7 @@ describe("TypeColorT Service", () => {
       await Effect.gen(function* () {
         const TypeColor = yield* TypeColorT;
         const Tuple = yield* TupleT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         // Create a type without any color configuration (raw node, no auto-assign)
         const { typeId } = yield* Given.A_TYPE_WITHOUT_COLOR();
@@ -140,8 +139,7 @@ describe("TypeColorT Service", () => {
         // Now add a TYPE_HAS_COLOR tuple with direct value
         const colorValueNodeId = Id.Node.make("test-color-value");
         // Create the node and set its text
-        const ytext = Yjs.getText(colorValueNodeId);
-        ytext.insert(0, "oklch(0.88 0.06 300)");
+        yield* Automerge.setText(colorValueNodeId, "oklch(0.88 0.06 300)");
 
         yield* Tuple.create(System.TYPE_HAS_COLOR, [typeId, colorValueNodeId]);
 

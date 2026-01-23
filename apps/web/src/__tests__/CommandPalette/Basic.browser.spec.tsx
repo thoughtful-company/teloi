@@ -4,7 +4,7 @@ import { events } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
@@ -95,7 +95,9 @@ describe("CommandPalette", () => {
     Effect.promise(() =>
       waitFor(
         () => {
-          const palette = document.querySelector('[data-testid="command-palette"]');
+          const palette = document.querySelector(
+            '[data-testid="command-palette"]',
+          );
           expect(palette, "Command palette should be visible").toBeTruthy();
           return palette as HTMLElement;
         },
@@ -153,7 +155,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -189,7 +193,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -208,8 +214,13 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const palette = document.querySelector('[data-testid="command-palette"]');
-              expect(palette, "Command palette should be hidden after Escape").toBeFalsy();
+              const palette = document.querySelector(
+                '[data-testid="command-palette"]',
+              );
+              expect(
+                palette,
+                "Command palette should be hidden after Escape",
+              ).toBeFalsy();
             },
             { timeout: 2000 },
           ),
@@ -233,7 +244,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -246,7 +259,10 @@ describe("CommandPalette", () => {
 
         // Get initial command count
         const initialCommands = yield* getVisibleCommands();
-        expect(initialCommands.length, "Should have at least one command").toBeGreaterThan(0);
+        expect(
+          initialCommands.length,
+          "Should have at least one command",
+        ).toBeGreaterThan(0);
 
         // When: User types "table" to filter
         yield* Effect.promise(() => userEvent.keyboard("table"));
@@ -255,9 +271,11 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const items = document.querySelectorAll('[data-testid="command-item"]');
-              const texts = Array.from(items).map((el) =>
-                el.textContent?.toLowerCase() ?? "",
+              const items = document.querySelectorAll(
+                '[data-testid="command-item"]',
+              );
+              const texts = Array.from(items).map(
+                (el) => el.textContent?.toLowerCase() ?? "",
               );
               // All visible commands should contain "table"
               for (const text of texts) {
@@ -286,7 +304,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -354,7 +374,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -422,7 +444,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -444,17 +468,25 @@ describe("CommandPalette", () => {
         expect(input.selectionEnd).toBe(5);
 
         // When: Press left arrow twice to move cursor
-        yield* Effect.promise(() => userEvent.keyboard("{ArrowLeft}{ArrowLeft}"));
+        yield* Effect.promise(() =>
+          userEvent.keyboard("{ArrowLeft}{ArrowLeft}"),
+        );
 
         // Then: Cursor should be at position 3 (between "hel" and "lo")
-        expect(input.selectionStart, "Cursor should move left with ArrowLeft").toBe(3);
+        expect(
+          input.selectionStart,
+          "Cursor should move left with ArrowLeft",
+        ).toBe(3);
         expect(input.selectionEnd).toBe(3);
 
         // When: Press right arrow once
         yield* Effect.promise(() => userEvent.keyboard("{ArrowRight}"));
 
         // Then: Cursor should be at position 4
-        expect(input.selectionStart, "Cursor should move right with ArrowRight").toBe(4);
+        expect(
+          input.selectionStart,
+          "Cursor should move right with ArrowRight",
+        ).toBe(4);
         expect(input.selectionEnd).toBe(4);
       }).pipe(runtime.runPromise);
     });
@@ -473,7 +505,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -494,7 +528,10 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() => userEvent.keyboard("{Backspace}"));
 
         // Then: Last character should be deleted
-        expect(input.value, "Backspace should delete character before cursor").toBe("hell");
+        expect(
+          input.value,
+          "Backspace should delete character before cursor",
+        ).toBe("hell");
       }).pipe(runtime.runPromise);
     });
 
@@ -512,7 +549,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -536,7 +575,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() => userEvent.keyboard("{Delete}"));
 
         // Then: First character should be deleted
-        expect(input.value, "Delete should remove character after cursor").toBe("ello");
+        expect(input.value, "Delete should remove character after cursor").toBe(
+          "ello",
+        );
       }).pipe(runtime.runPromise);
     });
   });
@@ -544,11 +585,10 @@ describe("CommandPalette", () => {
   describe("Executing commands", () => {
     it("selecting 'Add Table View' creates view and renders table", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Projects", [
-            { text: "Project Alpha" },
-            { text: "Project Beta" },
-          ]);
+        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Projects",
+          [{ text: "Project Alpha" }, { text: "Project Beta" }],
+        );
 
         yield* setupBufferInApp(bufferId, windowId);
         render(() => <App />);
@@ -557,7 +597,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBe(2);
             },
             { timeout: 2000 },
@@ -575,7 +617,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const items = document.querySelectorAll('[data-testid="command-item"]');
+              const items = document.querySelectorAll(
+                '[data-testid="command-item"]',
+              );
               expect(items.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -589,7 +633,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const palette = document.querySelector('[data-testid="command-palette"]');
+              const palette = document.querySelector(
+                '[data-testid="command-palette"]',
+              );
               expect(palette).toBeFalsy();
             },
             { timeout: 2000 },
@@ -601,7 +647,10 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Expected a <table> element to be rendered").toBeTruthy();
+              expect(
+                table,
+                "Expected a <table> element to be rendered",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),
@@ -625,7 +674,7 @@ describe("CommandPalette", () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
         const Tuple = yield* TupleT;
-        const Yjs = yield* YjsT;
+        const Automerge = yield* AutomergeT;
 
         const { bufferId, rootNodeId, windowId } =
           yield* Given.A_BUFFER_WITH_CHILDREN("Projects", [
@@ -641,7 +690,7 @@ describe("CommandPalette", () => {
             data: { nodeId: tableViewNodeId },
           }),
         );
-        Yjs.getText(tableViewNodeId).insert(0, "Table View");
+        yield* Automerge.setText(tableViewNodeId, "Table View");
         yield* Tuple.create(HAS_VIEW_TUPLE_TYPE, [rootNodeId, tableViewNodeId]);
 
         // Given: The buffer has the TableView as its active view
@@ -664,7 +713,10 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Expected table to be rendered initially").toBeTruthy();
+              expect(
+                table,
+                "Expected table to be rendered initially",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),
@@ -681,7 +733,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const items = document.querySelectorAll('[data-testid="command-item"]');
+              const items = document.querySelectorAll(
+                '[data-testid="command-item"]',
+              );
               expect(items.length).toBeGreaterThan(0);
             },
             { timeout: 2000 },
@@ -695,7 +749,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const palette = document.querySelector('[data-testid="command-palette"]');
+              const palette = document.querySelector(
+                '[data-testid="command-palette"]',
+              );
               expect(palette).toBeFalsy();
             },
             { timeout: 2000 },
@@ -717,8 +773,13 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
-              expect(blocks.length, "Expected block elements to be rendered").toBe(2);
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
+              expect(
+                blocks.length,
+                "Expected block elements to be rendered",
+              ).toBe(2);
               const pageText = document.body.textContent;
               expect(pageText).toContain("Project Alpha");
               expect(pageText).toContain("Project Beta");
@@ -731,11 +792,10 @@ describe("CommandPalette", () => {
 
     it("keyboard navigation: type, arrow down, enter executes command", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Projects", [
-            { text: "Project Alpha" },
-            { text: "Project Beta" },
-          ]);
+        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Projects",
+          [{ text: "Project Alpha" }, { text: "Project Beta" }],
+        );
 
         yield* setupBufferInApp(bufferId, windowId);
         render(() => <App />);
@@ -744,7 +804,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const blocks = document.querySelectorAll("[data-element-type='block']");
+              const blocks = document.querySelectorAll(
+                "[data-element-type='block']",
+              );
               expect(blocks.length).toBe(2);
             },
             { timeout: 2000 },
@@ -762,7 +824,9 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const items = document.querySelectorAll('[data-testid="command-item"]');
+              const items = document.querySelectorAll(
+                '[data-testid="command-item"]',
+              );
               expect(items.length).toBeGreaterThan(0);
               const firstItem = items[0];
               expect(firstItem, "First command item should exist").toBeTruthy();
@@ -782,14 +846,19 @@ describe("CommandPalette", () => {
 
         // Verify the command is still selected after ArrowDown
         yield* Effect.sync(() => {
-          const items = document.querySelectorAll('[data-testid="command-item"]');
+          const items = document.querySelectorAll(
+            '[data-testid="command-item"]',
+          );
           expect(items.length).toBeGreaterThan(0);
           // With one command, ArrowDown keeps it selected (clamped to max index)
           // Find the selected item
           const selectedItem = Array.from(items).find((item) =>
             item.className.includes("bg-sidebar-accent"),
           );
-          expect(selectedItem, "A command should be selected after ArrowDown").toBeTruthy();
+          expect(
+            selectedItem,
+            "A command should be selected after ArrowDown",
+          ).toBeTruthy();
           expect(selectedItem?.textContent).toContain("Table");
         });
 
@@ -800,8 +869,13 @@ describe("CommandPalette", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const palette = document.querySelector('[data-testid="command-palette"]');
-              expect(palette, "Command palette should close after Enter").toBeFalsy();
+              const palette = document.querySelector(
+                '[data-testid="command-palette"]',
+              );
+              expect(
+                palette,
+                "Command palette should close after Enter",
+              ).toBeFalsy();
             },
             { timeout: 2000 },
           ),
@@ -812,7 +886,10 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const table = document.querySelector("table");
-              expect(table, "Table should be rendered after command execution").toBeTruthy();
+              expect(
+                table,
+                "Table should be rendered after command execution",
+              ).toBeTruthy();
             },
             { timeout: 2000 },
           ),

@@ -2,13 +2,19 @@ import { Id } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT, TupleNotFoundError } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
+import { PickerT } from "@/services/ui/Picker";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
-import { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
+import {
+  BlockGoneError,
+  BlockNotFoundError,
+  VirtualBlockError,
+} from "./errors";
 import { expandOneLevel } from "./expand";
 import {
   findDeepestLastChild,
@@ -18,7 +24,11 @@ import {
 } from "./navigation";
 import { BlockView, subscribe } from "./subscribe";
 
-export { BlockGoneError, BlockNotFoundError, VirtualBlockError } from "./errors";
+export {
+  BlockGoneError,
+  BlockNotFoundError,
+  VirtualBlockError,
+} from "./errors";
 export type { BlockView } from "./subscribe";
 
 export class BlockT extends Context.Tag("BlockT")<
@@ -75,13 +85,17 @@ export const BlockLive = Layer.effect(
     const Node = yield* NodeT;
     const Tuple = yield* TupleT;
     const Window = yield* WindowT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
+    const Type = yield* TypeT;
+    const Picker = yield* PickerT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(TupleT, Tuple),
       Context.add(WindowT, Window),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
+      Context.add(TypeT, Type),
+      Context.add(PickerT, Picker),
     );
 
     return {
@@ -99,7 +113,9 @@ export const BlockLive = Layer.effect(
       // Tree navigation
       findDeepestLastChild: withContext(findDeepestLastChild)(context),
       findNextNode: withContext(findNextNode)(context),
-      findNextNodeInDocumentOrder: withContext(findNextNodeInDocumentOrder)(context),
+      findNextNodeInDocumentOrder: withContext(findNextNodeInDocumentOrder)(
+        context,
+      ),
       findPreviousNode: withContext(findPreviousNode)(context),
 
       // Expand/collapse

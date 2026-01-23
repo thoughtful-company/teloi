@@ -1,7 +1,7 @@
 import { events, tables } from "@/livestore/schema";
 import { Id, System } from "@/schema";
+import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { YjsT } from "@/services/external/Yjs";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
@@ -66,10 +66,10 @@ const createChildNode = (
 
 const setNodeText = (nodeId: Id.Node, text: string) =>
   Effect.gen(function* () {
-    const Yjs = yield* YjsT;
-    const yText = Yjs.getText(nodeId);
-    if (yText.length === 0) {
-      yText.insert(0, text);
+    const Automerge = yield* AutomergeT;
+    const existingText = yield* Automerge.getText(nodeId);
+    if (existingText.length === 0) {
+      yield* Automerge.setText(nodeId, text);
     }
   });
 
@@ -383,11 +383,11 @@ export const BootstrapLive = Layer.effect(
     const Store = yield* StoreT;
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
-    const Yjs = yield* YjsT;
+    const Automerge = yield* AutomergeT;
     const context = Context.make(StoreT, Store).pipe(
       Context.add(TypeT, Type),
       Context.add(TupleT, Tuple),
-      Context.add(YjsT, Yjs),
+      Context.add(AutomergeT, Automerge),
     );
 
     return {
