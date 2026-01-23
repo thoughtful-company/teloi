@@ -6,6 +6,7 @@ import { NodeNotFoundError } from "@/services/domain/errors";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
+import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { forceDelete } from "./forceDelete";
 import { get } from "./get";
@@ -94,10 +95,12 @@ export const BufferLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Automerge = yield* AutomergeT;
+    const Window = yield* WindowT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(AutomergeT, Automerge),
+      Context.add(WindowT, Window),
     );
 
     return {
