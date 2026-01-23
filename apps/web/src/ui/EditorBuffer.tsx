@@ -1,12 +1,10 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import type { Entity } from "@/schema";
-import { Id } from "@/schema";
+import { Entity, Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
-import type { PickerState } from "@/services/ui/Picker";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Fiber, Stream } from "effect";
+import { Effect, Fiber, Option, Stream } from "effect";
 import {
   createContext,
   createSignal,
@@ -21,16 +19,10 @@ import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
 import TypeList from "./TypeList";
-import { TypePicker } from "./TypePicker";
 import ViewTabs from "./ViewTabs";
 
 /** Context to expose activeElement to child components for scroll-on-mount behavior */
 export const ActiveElementContext = createContext<() => Entity.Element | null>(
-  () => null,
-);
-
-/** Context to expose picker state to Block/Title for query updates */
-export const PickerStateContext = createContext<() => PickerState | null>(
   () => null,
 );
 
@@ -122,39 +114,23 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
         Id.makeBufferBlockId(bufferId, Id.Node.make(childId)),
       ),
       activeViewId: v.activeViewId,
+      activeElement: Option.getOrNull(v.activeElement),
     }),
     initial: {
       nodeId: null as Id.Node | null,
       childBlockIds: [] as Id.Block[],
       activeViewId: null as Id.Node | null,
+      activeElement: null as Entity.Element | null,
     },
   });
+
+  const getActiveElement = () => store.activeElement;
 
   const getChildNodeIds = () =>
     store.childBlockIds.map((blockId) => {
       const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
       return nodeId;
     });
-
-  // TODO: These should be populated by ViewModel subscriptions passed as props
-  const [activeElement] = createSignal<Entity.Element | null>(null);
-  const [pickerState] = createSignal<PickerState | null>(null);
-
-  // Filter picker state to only show when it belongs to this buffer
-  const getPickerForBuffer = (): {
-    state: PickerState;
-    nodeId: Id.Node;
-  } | null => {
-    const state = pickerState();
-    if (!state) return null;
-
-    const blockContext = Id.parseBlockContextSync(state.elementId);
-    // Only show picker if it belongs to this buffer
-    if (blockContext.type === "buffer" && blockContext.bufferId === bufferId) {
-      return { state, nodeId: blockContext.nodeId };
-    }
-    return null;
-  };
 
   onMount(() => {
     const dispose = start(runtime);
@@ -165,70 +141,55 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   });
 
   return (
-    <PickerStateContext.Provider value={pickerState}>
-      <ActiveElementContext.Provider value={activeElement}>
-        <div data-testid="editor-buffer" class="h-full flex flex-col">
-          <Show when={store.nodeId} keyed>
-            {(nodeId) => (
-              <>
-                <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-                  <Title bufferId={bufferId} nodeId={nodeId} />
-                  <TypeList nodeId={nodeId} />
-                </header>
-                <ViewTabs
-                  bufferId={bufferId}
-                  nodeId={nodeId}
-                  activeViewId={store.activeViewId}
-                />
-                <PropertyList pageId={nodeId} bufferId={bufferId} />
-                <Show
-                  when={store.activeViewId}
-                  fallback={
-                    <div
-                      data-testid="editor-body"
-                      class="flex-1 flex flex-col pt-4"
-                    >
-                      <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
-                        <For each={store.childBlockIds}>
-                          {(childId) => <Block blockId={childId} />}
-                        </For>
-                      </div>
-                      <div
-                        data-testid="editor-click-zone"
-                        class="flex-1 min-h-[25vh] cursor-text"
-                        onClick={(e) => handleClickZone(e, nodeId)}
-                      />
-                    </div>
-                  }
-                >
+    <ActiveElementContext.Provider value={getActiveElement}>
+      <div data-testid="editor-buffer" class="h-full flex flex-col">
+        <Show when={store.nodeId} keyed>
+          {(nodeId) => (
+            <>
+              <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+                <Title bufferId={bufferId} nodeId={nodeId} />
+                <TypeList nodeId={nodeId} />
+              </header>
+              <ViewTabs
+                bufferId={bufferId}
+                nodeId={nodeId}
+                activeViewId={store.activeViewId}
+              />
+              <PropertyList pageId={nodeId} bufferId={bufferId} />
+              <Show
+                when={store.activeViewId}
+                fallback={
                   <div
                     data-testid="editor-body"
                     class="flex-1 flex flex-col pt-4"
                   >
-                    <TableView
-                      bufferId={bufferId}
-                      nodeId={nodeId}
-                      childNodeIds={getChildNodeIds()}
+                    <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
+                      <For each={store.childBlockIds}>
+                        {(childId) => <Block blockId={childId} />}
+                      </For>
+                    </div>
+                    <div
+                      data-testid="editor-click-zone"
+                      class="flex-1 min-h-[25vh] cursor-text"
                     />
                   </div>
-                </Show>
-              </>
-            )}
-          </Show>
-          <Show when={getPickerForBuffer()}>
-            {(picker) => (
-              <TypePicker
-                position={picker().state.position}
-                query={picker().state.query}
-                nodeId={picker().nodeId}
-                onSelect={handleTypePickerSelect}
-                onCreate={handleTypePickerCreate}
-                onClose={handleTypePickerClose}
-              />
-            )}
-          </Show>
-        </div>
-      </ActiveElementContext.Provider>
-    </PickerStateContext.Provider>
+                }
+              >
+                <div
+                  data-testid="editor-body"
+                  class="flex-1 flex flex-col pt-4"
+                >
+                  <TableView
+                    bufferId={bufferId}
+                    nodeId={nodeId}
+                    childNodeIds={getChildNodeIds()}
+                  />
+                </div>
+              </Show>
+            </>
+          )}
+        </Show>
+      </div>
+    </ActiveElementContext.Provider>
   );
 }
