@@ -97,26 +97,27 @@ This is a pnpm monorepo with:
         - Thin wrapper around CodeMirror 
       - Child blocks (also Block components)
 
-**Block Action Handling**:
-Block emits `EditorAction` events (Enter, Tab, Navigate, etc.) via `onAction` prop. EditorBuffer provides a handler (`EditorBuffer/blockActionHandler.ts`) that intercepts tree navigation; Block handles the rest.
+**Action Handling** (TEA-inspired):
+All keyboard/mouse actions route through `ActionT.handle()` — a single entry point that interprets primitive events based on model state.
 
-| Parent (EditorBuffer) | Block |
-|-----------------------|-------|
-| Tab/ShiftTab (indent) | Type triggers (`[]`, `-`, `#`) |
-| Arrow navigation | Type picker UI |
-| Backspace/Delete merge | SelectionChange, Blur |
-| Move, Zoom, BlockSelect | Enter (has picker logic) |
-| PropertyTrigger | ToggleTodo, Expand |
+- **Components emit primitives**: `KeyDown`, `SelectionChange`, `Blur`, `Focus`, `Click` (via `createDispatch(runtime)`)
+- **ActionT interprets meaning**: "Backspace at cursor 0 with removable type" → remove type; same key elsewhere → merge backward
+- **Synchronous execution**: Must use `runSync` because `preventDefault()` requires sync response
+- **Source-based routing**: `ActionSource` is `editor` (has cursor), `activation` (click before edit), or `document` (block selection mode)
 
-Without a parent handler, Block handles everything (standalone mode for PropertySection).
+Key services:
+- `ActionT` — Central handler (~1800 lines of keyboard logic)
+- `EditorModeT` — Global focus state: `none` | `block` | `blockSelection`
+- `PickerT` — Type picker state (open/close, query)
+- `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
-- **Yjs**: Text content per node (`YjsT` service, `y-indexeddb` persistence)
-- Split/merge update both; typing only touches Yjs
+- **Automerge**: Text content per node (`AutomergeT` service, synced via `automerge-repo`)
+- Split/merge update both; typing only touches Automerge
 
 **Ghost Block Pattern** (PropertySection):
-Y.Text is independent of LiveStore—we can bind TextEditor to a pre-generated nodeId's Y.Text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Y.Text.
+Automerge text is independent of LiveStore—we can bind TextEditor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
 - `ui/PropertySection.tsx` - GhostBlock component
 - `services/ui/Property/addLinkedBlock.ts` - accepts optional `nodeId` for materialization
 
