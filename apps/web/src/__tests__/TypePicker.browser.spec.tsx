@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
-import { YjsT } from "@/services/external/Yjs";
+import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
@@ -19,7 +19,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -29,7 +32,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
             },
             { timeout: 2000 },
@@ -45,7 +50,10 @@ describe("TypePicker", () => {
           [{ text: "" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -55,7 +63,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
             },
             { timeout: 2000 },
@@ -78,7 +88,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -88,7 +101,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
               // Should show "Page" but not "Project"
               const items = picker!.querySelectorAll("button");
@@ -108,7 +123,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -118,7 +136,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeTruthy();
               const createOption = picker!.querySelector("button");
               expect(createOption?.textContent).toContain("Create");
@@ -144,7 +164,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
         const childNodeId = childNodeIds[0];
 
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -157,7 +180,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
               const buttons = picker.querySelectorAll("button");
               if (buttons.length === 0) throw new Error("Types not loaded yet");
@@ -172,18 +197,26 @@ describe("TypePicker", () => {
         // Wait for the text to update AND picker to show filtered result
         yield* Effect.promise(() =>
           waitFor(
-            () => {
-              const Yjs = runtime.runSync(YjsT);
-              const text = Yjs.getText(childNodeId).toString();
-              if (!text.includes("#test")) throw new Error("Text not updated: " + text);
+            async () => {
+              const Automerge = await runtime.runPromise(AutomergeT);
+              const text = await runtime.runPromise(
+                Automerge.getText(childNodeId),
+              );
+              if (!text.includes("#test"))
+                throw new Error("Text not updated: " + text);
               // Verify the picker shows our unique type
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker closed unexpectedly");
               const buttons = picker.querySelectorAll("button");
               const hasType = Array.from(buttons).some((btn) =>
                 btn.textContent?.includes(uniqueTypeName),
               );
-              if (!hasType) throw new Error(`${uniqueTypeName} not showing in filtered list`);
+              if (!hasType)
+                throw new Error(
+                  `${uniqueTypeName} not showing in filtered list`,
+                );
             },
             { timeout: 2000 },
           ),
@@ -213,7 +246,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },
@@ -229,7 +264,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
         const childNodeId = childNodeIds[0];
 
         render(() => <EditorBuffer bufferId={bufferId} />);
@@ -241,7 +279,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -255,13 +295,15 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             async () => {
-              const Node = await NodeT.pipe(runtime.runPromise);
-              const Yjs = await YjsT.pipe(runtime.runPromise);
-              const typeChildren = await Node.getNodeChildren(System.SCHEMA).pipe(
-                runtime.runPromise,
+              const Node = await runtime.runPromise(NodeT);
+              const Automerge = await runtime.runPromise(AutomergeT);
+              const typeChildren = await runtime.runPromise(
+                Node.getNodeChildren(System.SCHEMA),
               );
-              const typeNames = typeChildren.map((id) =>
-                Yjs.getText(id).toString(),
+              const typeNames = await Promise.all(
+                typeChildren.map((id) =>
+                  runtime.runPromise(Automerge.getText(id)),
+                ),
               );
               expect(typeNames).toContain("mytag");
             },
@@ -283,7 +325,10 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
 
         render(() => <EditorBuffer bufferId={bufferId} />);
 
@@ -294,7 +339,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               if (!picker) throw new Error("Picker not found");
             },
             { timeout: 2000 },
@@ -308,7 +355,9 @@ describe("TypePicker", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const picker = document.querySelector("[data-testid='type-picker']");
+              const picker = document.querySelector(
+                "[data-testid='type-picker']",
+              );
               expect(picker).toBeFalsy();
             },
             { timeout: 2000 },
@@ -389,7 +438,7 @@ describe("TypePickerT Service", () => {
     await Effect.gen(function* () {
       const TypePicker = yield* TypePickerT;
       const Node = yield* NodeT;
-      const Yjs = yield* YjsT;
+      const Automerge = yield* AutomergeT;
 
       const typeId = yield* TypePicker.createType("NewType");
 
@@ -398,8 +447,8 @@ describe("TypePickerT Service", () => {
       expect(typeChildren).toContain(typeId);
 
       // Should have the correct text
-      const ytext = Yjs.getText(typeId);
-      expect(ytext.toString()).toBe("NewType");
+      const text = yield* Automerge.getText(typeId);
+      expect(text).toBe("NewType");
     }).pipe(runtime.runPromise);
   });
 

@@ -115,6 +115,7 @@ const createKeydownHandler = (
         });
         if (result.handled) {
           event.preventDefault();
+          event.stopPropagation(); // Prevent bubbling to EditorBuffer
           return true;
         }
         return false;

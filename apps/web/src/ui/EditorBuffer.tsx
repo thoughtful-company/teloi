@@ -142,7 +142,12 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
 
   return (
     <ActiveElementContext.Provider value={getActiveElement}>
-      <div data-testid="editor-buffer" class="h-full flex flex-col">
+      <div
+        data-testid="editor-buffer"
+        data-buffer-id={bufferId}
+        tabIndex={0}
+        class="h-full flex flex-col outline-none"
+      >
         <Show when={store.nodeId} keyed>
           {(nodeId) => (
             <>

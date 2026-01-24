@@ -10,6 +10,7 @@
  */
 
 import { Id } from "@/schema";
+import { KeyboardT } from "@/services/browser/Keyboard";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
@@ -17,15 +18,14 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
-import { BufferT } from "@/services/ui/Buffer";
-import { EditorModeT, type EditorMode } from "@/services/ui/EditorMode";
+import { BufferT, type EditorMode } from "@/services/ui/Buffer";
 import { NavigationT } from "@/services/ui/Navigation";
 import { PickerT, type PickerState } from "@/services/ui/Picker";
 import { TitleT } from "@/services/ui/Title";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
-import { Context, Effect, Layer, Match, Option } from "effect";
+import { Context, Effect, Layer, Match, Option, Stream } from "effect";
 import { ActionResult, type AppAction, type CursorContext } from "./types";
 
 // Re-export types for convenience
@@ -45,6 +45,15 @@ export const createDispatch =
       }),
     );
 
+/**
+ * Callbacks for app-level shortcuts.
+ * These are UI actions that ActionT shouldn't own directly.
+ */
+export interface AppShortcutCallbacks {
+  onToggleSidebar: () => void;
+  onOpenCommandPalette: () => void;
+}
+
 export class ActionT extends Context.Tag("ActionT")<
   ActionT,
   {
@@ -56,6 +65,18 @@ export class ActionT extends Context.Tag("ActionT")<
      * MUST be called with runSync for keyboard events to allow preventDefault.
      */
     handle: (action: AppAction) => Effect.Effect<ActionResult>;
+
+    /**
+     * Start the unified keyboard handler.
+     * Consumes window keyboard events and routes them appropriately:
+     * - App shortcuts (Cmd+K, Cmd+\) → callbacks
+     * - Block selection mode → handle()
+     *
+     * Returns a long-running Effect - run with runFork.
+     */
+    runKeyboardHandler: (
+      callbacks: AppShortcutCallbacks,
+    ) => Effect.Effect<void>;
   }
 >() {}
 
@@ -86,7 +107,7 @@ export const ActionLive = Layer.effect(
   ActionT,
   Effect.gen(function* () {
     // Capture all dependencies
-    const EditorMode = yield* EditorModeT;
+    const Keyboard = yield* KeyboardT;
     const Buffer = yield* BufferT;
     const Block = yield* BlockT;
     const Node = yield* NodeT;
@@ -128,7 +149,7 @@ export const ActionLive = Layer.effect(
         );
 
         // Get current mode
-        const mode = yield* EditorMode.get();
+        const mode = yield* Buffer.getMode();
 
         // Focus action has its own shape (no ActionSource)
         if (action._tag === "Focus") {
@@ -529,12 +550,17 @@ export const ActionLive = Layer.effect(
             }
 
             // Enter block selection mode
-            yield* EditorMode.enterBlockSelection(bufferId);
-            yield* Window.setActiveElement(
-              Option.some({ type: "buffer" as const, id: bufferId }),
-            );
+            yield* Buffer.enterBlockSelection(bufferId);
             yield* Buffer.setSelection(bufferId, Option.none());
             yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+
+            // Focus the EditorBuffer container to receive keyboard events
+            yield* Effect.sync(() => {
+              const container = document.querySelector(
+                `[data-buffer-id="${bufferId}"]`,
+              );
+              (container as HTMLElement | null)?.focus();
+            });
 
             return ActionResult.handled({ focus: { type: "none" } });
           }
@@ -926,10 +952,7 @@ export const ActionLive = Layer.effect(
         Effect.gen(function* () {
           const { bufferId, nodeId } = ctx;
 
-          yield* EditorMode.enterBlockSelection(bufferId);
-          yield* Window.setActiveElement(
-            Option.some({ type: "buffer" as const, id: bufferId }),
-          );
+          yield* Buffer.enterBlockSelection(bufferId);
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
 
@@ -1099,15 +1122,6 @@ export const ActionLive = Layer.effect(
         Effect.gen(function* () {
           const { bufferId, blockId } = ctx;
 
-          // Check if blur should be skipped (atomic transition)
-          const skip = yield* EditorMode.shouldSkipBlur();
-          if (skip) {
-            yield* Effect.logDebug(
-              "[Action.Blur] Skipped (atomic transition)",
-            ).pipe(Effect.annotateLogs({ blockId, bufferId }));
-            return ActionResult.handled({});
-          }
-
           // Only clear selection and activeElement if still pointing to this block
           const selectionOpt = yield* Buffer.getSelection(bufferId);
           const sel = Option.getOrNull(selectionOpt);
@@ -1151,24 +1165,14 @@ export const ActionLive = Layer.effect(
               ? blockContext.nodeId
               : blockContext.hostNodeId;
 
-          // Skip blur handling during focus transition to prevent race condition
-          // where blur fires before DOM focus is established
-          yield* EditorMode.withSkipBlur();
-
-          // Set selection if offset provided
-          if (offset !== undefined) {
-            yield* Buffer.setSelection(
-              bufferId,
-              makeCollapsedSelection(blockId, offset),
-            );
-          }
+          // Set selection (also activates the block)
+          yield* Buffer.setSelection(
+            bufferId,
+            makeCollapsedSelection(blockId, offset ?? 0),
+          );
 
           // Clear block selection when entering text editing mode
           yield* Buffer.setBlockSelection(bufferId, [], nodeId);
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: blockId }),
-          );
-          yield* EditorMode.set({ type: "block", blockId });
 
           yield* Effect.logDebug("[Action.Focus] Block activated").pipe(
             Effect.annotateLogs({
@@ -1219,8 +1223,12 @@ export const ActionLive = Layer.effect(
             return ActionResult.notHandled();
           }
 
-          const { selectedBlocks, blockSelectionAnchor, blockSelectionFocus } =
-            bufferDoc.value;
+          const {
+            selectedBlocks,
+            blockSelectionAnchor,
+            blockSelectionFocus,
+            lastFocusedBlockId,
+          } = bufferDoc.value;
 
           // --- Enter: Start editing selected block ---
           if (key === "Enter" && !modifiers.meta) {
@@ -1246,10 +1254,6 @@ export const ActionLive = Layer.effect(
               }),
             );
             yield* Buffer.setBlockSelection(bufferId, [], targetBlock);
-            yield* Window.setActiveElement(
-              Option.some({ type: "block" as const, id: blockId }),
-            );
-            yield* EditorMode.set({ type: "block", blockId });
 
             return ActionResult.handled({
               focus: {
@@ -1286,6 +1290,7 @@ export const ActionLive = Layer.effect(
               selectedBlocks,
               blockSelectionAnchor,
               blockSelectionFocus,
+              lastFocusedBlockId,
             );
           }
 
@@ -1551,20 +1556,62 @@ export const ActionLive = Layer.effect(
       bufferId: Id.Buffer,
       direction: "up" | "down",
       shift: boolean,
-      _selectedBlocks: readonly Id.Node[],
+      selectedBlocks: readonly Id.Node[],
       blockSelectionAnchor: Id.Node | null,
       blockSelectionFocus: Id.Node | null,
+      lastFocusedBlockId: Id.Node | null,
     ): Effect.Effect<ActionResult> =>
       safe(
         Effect.gen(function* () {
-          if (!blockSelectionAnchor) {
+          // When selection is empty, restore to lastFocusedBlockId or select first/last
+          if (selectedBlocks.length === 0) {
+            // If there's a lastFocusedBlockId, restore selection to it
+            if (lastFocusedBlockId) {
+              yield* Buffer.setBlockSelection(
+                bufferId,
+                [lastFocusedBlockId],
+                lastFocusedBlockId,
+                lastFocusedBlockId,
+              );
+              return ActionResult.handled({});
+            }
+
+            // Otherwise select first/last block of the buffer
+            const nodeId = yield* Buffer.getAssignedNodeId(bufferId);
+            if (!nodeId) {
+              return ActionResult.handled({});
+            }
+            const children = yield* Node.getNodeChildren(nodeId);
+            if (children.length === 0) {
+              return ActionResult.handled({});
+            }
+
+            const targetBlock =
+              direction === "down"
+                ? children[0]!
+                : children[children.length - 1]!;
+            yield* Buffer.setBlockSelection(
+              bufferId,
+              [targetBlock],
+              targetBlock,
+              targetBlock,
+            );
             return ActionResult.handled({});
           }
 
           const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
 
+          // Safety check - if we get here with selectedBlocks > 0, we should have an anchor
+          if (!currentFocus) {
+            return ActionResult.handled({});
+          }
+
           if (shift) {
-            // Extend selection
+            // Extend selection - need valid anchor for shift navigation
+            if (!blockSelectionAnchor) {
+              return ActionResult.handled({});
+            }
+
             const parentId = yield* Node.getParent(currentFocus);
             const siblings = yield* Node.getNodeChildren(parentId);
             const focusIndex = siblings.indexOf(currentFocus);
@@ -1602,12 +1649,12 @@ export const ActionLive = Layer.effect(
             // Plain arrow: collapse multi-block selection or navigate single block
 
             // Multi-block selection: collapse to topmost (ArrowUp) or bottommost (ArrowDown)
-            if (_selectedBlocks.length > 1) {
+            if (selectedBlocks.length > 1) {
               // Find topmost/bottommost in document order
               const targetNodeId =
                 direction === "up"
-                  ? _selectedBlocks[0] // First in array is topmost
-                  : _selectedBlocks[_selectedBlocks.length - 1]; // Last is bottommost
+                  ? selectedBlocks[0] // First in array is topmost
+                  : selectedBlocks[selectedBlocks.length - 1]; // Last is bottommost
 
               if (targetNodeId) {
                 yield* Buffer.setBlockSelection(
@@ -1654,10 +1701,24 @@ export const ActionLive = Layer.effect(
             }
 
             if (newFocus === null) {
-              // ArrowUp at first block: return notHandled so legacy can scroll to top
+              // ArrowUp at first block: scroll to title (buffer's assigned node)
               // ArrowDown at last block: do nothing
               if (direction === "up") {
-                return ActionResult.notHandled();
+                const bufferDoc = yield* Store.getDocument(
+                  "buffer",
+                  bufferId,
+                ).pipe(Effect.orDie);
+                const assignedNodeId = Option.match(bufferDoc, {
+                  onNone: () => null,
+                  onSome: (doc) => doc.assignedNodeId,
+                });
+                if (assignedNodeId) {
+                  const titleBlockId = Id.makeBufferBlockId(
+                    bufferId,
+                    Id.Node.make(assignedNodeId),
+                  );
+                  return ActionResult.handled({ scroll: titleBlockId });
+                }
               }
               return ActionResult.handled({});
             }
@@ -1798,6 +1859,72 @@ export const ActionLive = Layer.effect(
         return result;
       });
 
-    return { handle };
+    // ========================================================================
+    // Unified keyboard handler
+    // ========================================================================
+
+    const runKeyboardHandler = (
+      callbacks: AppShortcutCallbacks,
+    ): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const stream = yield* Keyboard.keydowns();
+
+        yield* Stream.runForEach(stream, (event) =>
+          Effect.gen(function* () {
+            const mode = yield* Buffer.getMode();
+
+            // --- App shortcuts (global, always active) ---
+            if (event.modifiers.meta && event.key === "k") {
+              event.preventDefault();
+              callbacks.onOpenCommandPalette();
+              return;
+            }
+            if (event.modifiers.meta && event.key === "\\") {
+              event.preventDefault();
+              callbacks.onToggleSidebar();
+              return;
+            }
+
+            // --- Block selection mode: route to handle() ---
+            if (mode.type === "blockSelection") {
+              const result = yield* handle({
+                _tag: "KeyDown",
+                key: event.key,
+                modifiers: event.modifiers,
+                source: { type: "document", bufferId: mode.bufferId },
+              });
+              if (result.handled) {
+                event.preventDefault();
+                // Execute scroll intent if present
+                if (result.intent.scroll) {
+                  // Try block first, then title element
+                  let blockEl = document.querySelector(
+                    `[data-element-id="${result.intent.scroll}"]`,
+                  ) as HTMLElement | null;
+                  // If not found and it's a buffer/node ID, the target might be a title
+                  if (!blockEl && result.intent.scroll.includes("/node:")) {
+                    // Extract raw buffer ID from block ID format (buffer:xxx/node:yyy -> xxx)
+                    const match = result.intent.scroll.match(/^buffer:([^/]+)/);
+                    if (match) {
+                      // Title uses raw ID as data-element-id (without buffer: prefix)
+                      blockEl = document.querySelector(
+                        `[data-element-type="title"][data-element-id="${match[1]}"]`,
+                      ) as HTMLElement | null;
+                    }
+                  }
+                  if (blockEl) {
+                    const { scrollElementIntoView } = yield* Effect.promise(
+                      () => import("@/utils/scroll"),
+                    );
+                    scrollElementIntoView(blockEl);
+                  }
+                }
+              }
+            }
+          }),
+        );
+      });
+
+    return { handle, runKeyboardHandler };
   }),
 );
