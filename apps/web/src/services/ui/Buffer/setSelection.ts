@@ -3,6 +3,7 @@ import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
+import { WindowT } from "../Window";
 import { BufferNotFoundError } from "../errors";
 import { expandAncestors } from "./expandAncestors";
 
@@ -22,7 +23,7 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
 export const setSelection = (
   bufferId: Id.Buffer,
   selection: Option.Option<Model.BufferSelection>,
-): Effect.Effect<void, BufferNotFoundError, StoreT | NodeT> =>
+): Effect.Effect<void, BufferNotFoundError, StoreT | NodeT | WindowT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -66,6 +67,24 @@ export const setSelection = (
       },
       bufferId,
     ).pipe(Effect.orDie);
+
+    // Activate the focus block after selection stream has time to propagate
+    if (Option.isSome(selection)) {
+      const Window = yield* WindowT;
+      const blockId = selection.value.focus.elementId;
+      // Daemon fiber: survives parent scope, waits for next frame then sets activeElement
+      yield* Effect.forkDaemon(
+        Effect.async<void>((resume) => {
+          requestAnimationFrame(() => resume(Effect.void));
+        }).pipe(
+          Effect.andThen(
+            Window.setActiveElement(
+              Option.some({ type: "block" as const, id: blockId }),
+            ),
+          ),
+        ),
+      );
+    }
 
     yield* Effect.logDebug("[Buffer.setSelection] Selection updated").pipe(
       Effect.annotateLogs({

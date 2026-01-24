@@ -1,11 +1,18 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
-import { KeyboardB } from "@/services/browser/KeyboardService";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { StoreT } from "@/services/external/Store";
+import { ActionT } from "@/services/ui/Action";
 import { NavigationT } from "@/services/ui/Navigation";
-import { Effect, Fiber, Option, Stream } from "effect";
-import { Component, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Effect, Fiber, Option } from "effect";
+import {
+  Component,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import CommandPalette from "./ui/CommandPalette";
 import EditorBuffer from "./ui/EditorBuffer";
 import PaneWrapper from "./ui/PaneWrapper";
@@ -18,34 +25,26 @@ const App: Component = () => {
   const runtime = useBrowserRuntime();
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false);
-  const [commandContext, setCommandContext] = createSignal<CommandContext | null>(null);
+  const [commandContext, setCommandContext] =
+    createSignal<CommandContext | null>(null);
 
   onMount(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "true") setSidebarCollapsed(true);
 
-    // Subscribe to app-level keyboard shortcuts
-    const fiber = runtime.runFork(
+    // Start unified keyboard handler
+    const keyboardFiber = runtime.runFork(
       Effect.gen(function* () {
-        const Keyboard = yield* KeyboardB;
-        const stream = yield* Keyboard.shortcuts();
-        yield* Stream.runForEach(stream, (shortcut) =>
-          Effect.sync(() => {
-            switch (shortcut._tag) {
-              case "ToggleSidebar":
-                toggleSidebar();
-                break;
-              case "OpenCommandPalette":
-                openCommandPalette();
-                break;
-            }
-          }),
-        );
+        const Action = yield* ActionT;
+        yield* Action.runKeyboardHandler({
+          onToggleSidebar: toggleSidebar,
+          onOpenCommandPalette: openCommandPalette,
+        });
       }),
     );
 
     onCleanup(() => {
-      runtime.runFork(Fiber.interrupt(fiber));
+      runtime.runFork(Fiber.interrupt(keyboardFiber));
     });
   });
 

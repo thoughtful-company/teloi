@@ -1,7 +1,7 @@
 import { BrowserRuntimeContext } from "@/context/browserRuntime";
 import { schema } from "@/livestore/schema";
 import { runtime, type BrowserRuntime } from "@/runtime";
-import { makeKeyboardLive } from "@/services/browser/KeyboardService";
+import { makeKeyboardLive } from "@/services/browser/Keyboard";
 import { makeURLServiceLive } from "@/services/browser/URLService";
 import { BootstrapLive } from "@/services/domain/Bootstrap";
 import { DataPortLive } from "@/services/domain/DataPort";
@@ -11,10 +11,9 @@ import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
-import { ActionLive } from "@/services/ui/Action";
+import { ActionLive, ActionT } from "@/services/ui/Action";
 import { BlockLive } from "@/services/ui/Block";
 import { BufferLive } from "@/services/ui/Buffer";
-import { EditorModeLive } from "@/services/ui/EditorMode";
 import { TitleLive } from "@/services/ui/Title";
 import { TypeColorLive } from "@/services/ui/TypeColor";
 import { PickerLive } from "@/services/ui/Picker";
@@ -25,7 +24,15 @@ import { WindowLive } from "@/services/ui/Window";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { Store } from "@livestore/livestore";
 import { getStore } from "@livestore/solid";
-import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
+import {
+  Effect,
+  Fiber,
+  Layer,
+  Logger,
+  LogLevel,
+  ManagedRuntime,
+  pipe,
+} from "effect";
 import { JSX } from "solid-js";
 import { render as solidRender, waitFor } from "solid-testing-library";
 
@@ -94,8 +101,6 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   // Group layers to avoid pipe's argument limit (max 20)
   const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
   const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
-  // EditorModeLive is independent - merge it with TypePickerGroup
-  const EditorModePickerGroup = Layer.merge(EditorModeLive, TypePickerGroup);
   // Group DataPort and Bootstrap (both independent domain services)
   const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
   // Group Keyboard and URL browser services
@@ -111,7 +116,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(TitleLive),
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),
-    Layer.provideMerge(EditorModePickerGroup),
+    Layer.provideMerge(TypePickerGroup),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(ViewPropertyLive),
@@ -132,6 +137,18 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
 
   const testRuntime = ManagedRuntime.make(TestLayer);
 
+  // Start unified keyboard handler (same as App.tsx does)
+  // Use no-op callbacks since tests don't need app-level shortcuts
+  const keyboardFiber = testRuntime.runFork(
+    Effect.gen(function* () {
+      const Action = yield* ActionT;
+      yield* Action.runKeyboardHandler({
+        onToggleSidebar: () => {},
+        onOpenCommandPalette: () => {},
+      });
+    }),
+  );
+
   const testRender = (ui: () => JSX.Element) => {
     return solidRender(() => (
       <BrowserRuntimeContext.Provider value={testRuntime}>
@@ -141,6 +158,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   };
 
   const cleanup = async () => {
+    // Interrupt keyboard handler before disposing runtime
+    await testRuntime.runPromise(Fiber.interrupt(keyboardFiber));
     await testRuntime.dispose();
   };
 

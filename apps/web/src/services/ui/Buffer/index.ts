@@ -23,6 +23,18 @@ import { moveToFirst, moveToLast, swap } from "./swap";
 
 export type { MergeResult, SplitParams, SplitResult };
 
+/**
+ * Editor interaction mode - derived from Window.activeElement.
+ *
+ * - "none": No element focused
+ * - "block": A block is focused for text editing
+ * - "blockSelection": A buffer has block selection mode active
+ */
+export type EditorMode =
+  | { type: "none" }
+  | { type: "block"; blockId: Id.Block }
+  | { type: "blockSelection"; bufferId: Id.Buffer };
+
 export class BufferT extends Context.Tag("BufferT")<
   BufferT,
   {
@@ -58,6 +70,24 @@ export class BufferT extends Context.Tag("BufferT")<
       blockSelectionAnchor: Id.Node | null,
       blockSelectionFocus?: Id.Node | null,
     ) => Effect.Effect<void, BufferNotFoundError>;
+
+    // Mode operations (derived from Window.activeElement)
+    /**
+     * Get current editor mode - derived from Window.activeElement.
+     */
+    getMode: () => Effect.Effect<EditorMode>;
+    /**
+     * Enter block selection mode for a buffer.
+     */
+    enterBlockSelection: (bufferId: Id.Buffer) => Effect.Effect<void>;
+    /**
+     * Enter block editing mode for a specific block.
+     */
+    enterBlockEditing: (blockId: Id.Block) => Effect.Effect<void>;
+    /**
+     * Clear focus (mode becomes "none").
+     */
+    clearFocus: () => Effect.Effect<void>;
 
     // Structural operations
     indent: (
@@ -132,6 +162,36 @@ export const BufferLive = Layer.effect(
           blockSelectionAnchor,
           blockSelectionFocus,
         ).pipe(Effect.provide(context)),
+
+      // Mode operations
+      getMode: (): Effect.Effect<EditorMode> =>
+        Effect.gen(function* () {
+          const activeElement = yield* Window.getActiveElement();
+          return Option.match(activeElement, {
+            onNone: () => ({ type: "none" as const }),
+            onSome: (el) => {
+              switch (el.type) {
+                case "block":
+                  return { type: "block" as const, blockId: el.id };
+                case "buffer":
+                  return { type: "blockSelection" as const, bufferId: el.id };
+                default:
+                  // Other element types (title, property, etc.) don't map to EditorMode
+                  return { type: "none" as const };
+              }
+            },
+          });
+        }),
+      enterBlockSelection: (bufferId: Id.Buffer): Effect.Effect<void> =>
+        Window.setActiveElement(
+          Option.some({ type: "buffer" as const, id: bufferId }),
+        ),
+      enterBlockEditing: (blockId: Id.Block): Effect.Effect<void> =>
+        Window.setActiveElement(
+          Option.some({ type: "block" as const, id: blockId }),
+        ),
+      clearFocus: (): Effect.Effect<void> =>
+        Window.setActiveElement(Option.none()),
 
       // Structural operations
       indent: (nodeIds: readonly Id.Node[]) =>

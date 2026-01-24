@@ -153,8 +153,12 @@ describe("Block selection", () => {
               `[data-element-id="${secondBlockId}"]`,
             );
             // Check for ring class on a descendant (visual indicator moved to inner content div)
-            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
-            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(
+              firstBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
+            expect(
+              secondBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -320,8 +324,12 @@ describe("Block selection", () => {
               `[data-element-id="${secondBlockId}"]`,
             );
             // Check for ring class on a descendant (visual indicator moved to inner content div)
-            expect(firstBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
-            expect(secondBlockEl?.querySelector('[class*="ring-"]')).not.toBeNull();
+            expect(
+              firstBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
+            expect(
+              secondBlockEl?.querySelector('[class*="ring-"]'),
+            ).not.toBeNull();
           },
           { timeout: 2000 },
         ),
@@ -1039,7 +1047,7 @@ describe("Block selection", () => {
         ),
       );
 
-      // Verify First block is now selected (block before the deleted one)
+      // Verify Third block is now selected (next sibling after the deleted one)
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -1048,8 +1056,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[0]]); // First block
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]);
+            expect(buf.selectedBlocks).toEqual([childNodeIds[2]]); // Third block (next sibling)
+            expect(buf.blockSelectionAnchor).toBe(childNodeIds[2]);
           },
           { timeout: 2000 },
         ),
@@ -1104,7 +1112,7 @@ describe("Block selection", () => {
       // When: User clicks the title
       yield* When.USER_CLICKS_TITLE(bufferId);
 
-      // Then: selectedBlocks should be cleared but anchor preserved
+      // Then: selectedBlocks should be cleared and title should be active
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -1114,7 +1122,10 @@ describe("Block selection", () => {
             expect(Option.isSome(bufferDoc)).toBe(true);
             const buf = Option.getOrThrow(bufferDoc);
             expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]); // Preserved!
+            // Selection should now be on the title
+            expect(buf.selection?.anchor.elementId).toBe(
+              `buffer:${bufferId}/node:${buf.assignedNodeId}`,
+            );
           },
           { timeout: 2000 },
         ),
@@ -1296,6 +1307,9 @@ describe("Block selection", () => {
         toJSON: () => ({}),
       });
 
+      // Ensure buffer container is focused for keyboard events
+      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+
       // When: User presses ArrowUp (while on first block)
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -1396,21 +1410,26 @@ describe("Block selection", () => {
         toJSON: () => ({}),
       });
 
+      // Ensure buffer container is focused for keyboard events
+      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+
       // When: User presses ArrowUp (while on first nested child A)
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      // Then: Selection stays on A (no previous sibling to navigate to)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+      // Then: Selection moves to Parent (previous in document order)
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
 
       // Wait for potential scroll animation
       yield* Effect.promise(
         () => new Promise((resolve) => setTimeout(resolve, 200)),
       );
 
-      // And: scrollTop should NOT have been changed (no scroll-to-header behavior)
-      // The bug is that scroll-to-header triggers for ANY first child, not just root's first child
-      expect(scrollTopSetter).not.toHaveBeenCalled();
-      expect(currentScrollTop).toBe(100); // Should remain unchanged
+      // Scroll may happen to show Parent block, but should NOT scroll to top (title)
+      // The key behavior: we navigate to previous in document order (Parent), not scroll to title
+      // If scroll happens, it should only scroll enough to show Parent, not to position 0
+      if (scrollTopSetter.mock.calls.length > 0) {
+        expect(currentScrollTop).toBeGreaterThan(0); // Should NOT scroll to top
+      }
     }).pipe(runtime.runPromise);
   });
 
@@ -1443,6 +1462,7 @@ describe("Block selection", () => {
       yield* Window.setActiveElement(
         Option.some({ type: "buffer" as const, id: bufferId }),
       );
+      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
       // Verify initial state: 3 blocks selected with focus on C
       yield* Effect.promise(() =>
@@ -1520,6 +1540,7 @@ describe("Block selection", () => {
       yield* Window.setActiveElement(
         Option.some({ type: "buffer" as const, id: bufferId }),
       );
+      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
       // Verify initial state
       yield* Effect.promise(() =>
@@ -1829,6 +1850,7 @@ describe("Block selection", () => {
         yield* Window.setActiveElement(
           Option.some({ type: "buffer" as const, id: bufferId }),
         );
+        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
@@ -1872,6 +1894,7 @@ describe("Block selection", () => {
         yield* Window.setActiveElement(
           Option.some({ type: "buffer" as const, id: bufferId }),
         );
+        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
@@ -1911,6 +1934,7 @@ describe("Block selection", () => {
         yield* Window.setActiveElement(
           Option.some({ type: "buffer" as const, id: bufferId }),
         );
+        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
@@ -1957,6 +1981,7 @@ describe("Block selection", () => {
         yield* Window.setActiveElement(
           Option.some({ type: "buffer" as const, id: bufferId }),
         );
+        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>

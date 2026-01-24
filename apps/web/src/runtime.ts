@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from "@/error";
 import { store } from "@/livestore/store";
 import { Effect, Layer, Logger, LogLevel, ManagedRuntime, pipe } from "effect";
-import { makeKeyboardLive } from "./services/browser/KeyboardService";
+import { makeKeyboardLive } from "./services/browser/Keyboard";
 import { makeURLServiceLive } from "./services/browser/URLService";
 import { BootstrapLive } from "./services/domain/Bootstrap";
 import {
@@ -18,7 +18,6 @@ import { ActionLive } from "./services/ui/Action";
 import { BlockLive } from "./services/ui/Block";
 import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
-import { EditorModeLive } from "./services/ui/EditorMode";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
 import { PickerLive } from "./services/ui/Picker";
@@ -63,8 +62,6 @@ const automergePersist = true;
 // Group layers to avoid pipe's argument limit (max 20)
 const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
 const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
-// EditorModeLive is independent - merge it with TypePickerGroup
-const EditorModePickerGroup = Layer.merge(EditorModeLive, TypePickerGroup);
 // Group DataPort and Bootstrap (both independent domain services)
 const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
 // Group Keyboard and URL browser services
@@ -80,7 +77,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(TitleLive),
   // BlockLive needs TypeT, PickerT from layers below
   Layer.provideMerge(BlockLive),
-  Layer.provideMerge(EditorModePickerGroup),
+  Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(ViewPropertyLive),

@@ -113,3 +113,17 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
 
     yield* USER_PRESSES("{Escape}");
   }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));
+
+/**
+ * Focuses the EditorBuffer container for a buffer.
+ * Use this after programmatically setting up block selection mode
+ * so that keyboard events can be received.
+ */
+export const FOCUS_BUFFER_CONTAINER = (bufferId: Id.Buffer) =>
+  Effect.sync(() => {
+    const container = document.querySelector(
+      `[data-buffer-id="${bufferId}"]`,
+    ) as HTMLElement | null;
+    if (!container) throw new Error(`Buffer container ${bufferId} not found`);
+    container.focus();
+  }).pipe(Effect.withSpan("When.FOCUS_BUFFER_CONTAINER"));
