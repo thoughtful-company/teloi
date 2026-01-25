@@ -1,4 +1,4 @@
-import { Context, Effect } from "effect";
+import { Context, Effect, Stream } from "effect";
 
 /**
  * A higher-order function that binds a `Context` to an effectful function.
@@ -26,3 +26,55 @@ export const withContext =
    */
   (...args: A): Effect.Effect<R, E, Exclude<S, S2>> =>
     f(...args).pipe(Effect.provide(context));
+
+/**
+ * Delays each stream emission by N animation frames.
+ *
+ * Useful for timing coordination when one stream needs to "settle"
+ * before another stream's emissions are acted upon.
+ */
+export const delayByFrames =
+  (n: number) =>
+  <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
+    stream.pipe(
+      Stream.mapEffect((value) =>
+        Effect.async<A>((resume) => {
+          let remaining = n;
+          const tick = () => {
+            if (--remaining <= 0) resume(Effect.succeed(value));
+            else requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+      ),
+    );
+
+/**
+ * Delays each stream emission by a microtask (queueMicrotask).
+ * Smallest possible delay - runs after current sync code completes.
+ */
+export const delayByMicrotask = <A, E, R>(
+  stream: Stream.Stream<A, E, R>,
+): Stream.Stream<A, E, R> =>
+  stream.pipe(
+    Stream.mapEffect((value) =>
+      Effect.async<A>((resume) => {
+        queueMicrotask(() => resume(Effect.succeed(value)));
+      }),
+    ),
+  );
+
+/**
+ * Delays each stream emission by setTimeout(0).
+ * Runs at end of macrotask queue (~4ms minimum in browsers).
+ */
+export const delayByTimeout = <A, E, R>(
+  stream: Stream.Stream<A, E, R>,
+): Stream.Stream<A, E, R> =>
+  stream.pipe(
+    Stream.mapEffect((value) =>
+      Effect.async<A>((resume) => {
+        setTimeout(() => resume(Effect.succeed(value)), 0);
+      }),
+    ),
+  );

@@ -110,7 +110,7 @@ export type AppAction =
       source: ActionSource;
     }
   | { _tag: "Blur"; source: ActionSource }
-  | { _tag: "Focus"; blockId: Id.Block; offset?: number };
+  | { _tag: "Focus"; blockId: Id.Block; offset?: number; assoc?: -1 | 1 };
 
 // ============================================================================
 // Action Result
@@ -195,9 +195,11 @@ export const AppAction = {
     source,
   }),
 
-  Focus: (blockId: Id.Block, offset?: number): AppAction =>
+  Focus: (blockId: Id.Block, offset?: number, assoc?: -1 | 1): AppAction =>
     offset !== undefined
-      ? { _tag: "Focus", blockId, offset }
+      ? assoc !== undefined
+        ? { _tag: "Focus", blockId, offset, assoc }
+        : { _tag: "Focus", blockId, offset }
       : { _tag: "Focus", blockId },
 } as const;
 
@@ -211,3 +213,71 @@ export const ActionResult = {
     handled: false,
   }),
 } as const;
+
+// ============================================================================
+// Shared Types for Handler Modules
+// ============================================================================
+
+import type { KeyboardT } from "@/services/browser/Keyboard";
+import type { NodeT } from "@/services/domain/Node";
+import type { TypeT } from "@/services/domain/Type";
+import type { AutomergeT } from "@/services/external/Automerge";
+import type { StoreT } from "@/services/external/Store";
+import type { BlockT } from "@/services/ui/Block";
+import type { BlockTypeDefinition } from "@/services/ui/BlockType";
+import type { BufferT, EditorMode } from "@/services/ui/Buffer";
+import type { NavigationT } from "@/services/ui/Navigation";
+import type { PickerT, PickerState } from "@/services/ui/Picker";
+import type { TitleT } from "@/services/ui/Title";
+import type { TypePickerT } from "@/services/ui/TypePicker";
+import type { WindowT } from "@/services/ui/Window";
+import type { Effect } from "effect";
+
+/**
+ * Dependencies injected into handler modules.
+ * Captured at layer composition time.
+ */
+export interface ActionDeps {
+  Keyboard: typeof KeyboardT.Service;
+  Buffer: typeof BufferT.Service;
+  Block: typeof BlockT.Service;
+  Node: typeof NodeT.Service;
+  Type: typeof TypeT.Service;
+  Picker: typeof PickerT.Service;
+  Title: typeof TitleT.Service;
+  TypePicker: typeof TypePickerT.Service;
+  Window: typeof WindowT.Service;
+  Automerge: typeof AutomergeT.Service;
+  Store: typeof StoreT.Service;
+  Navigation: typeof NavigationT.Service;
+}
+
+/**
+ * Context for action interpretation.
+ * Built from source + model state lookups.
+ */
+export interface InterpretContext {
+  /** Parsed source information */
+  bufferId: Id.Buffer;
+  nodeId: Id.Node;
+  blockId: Id.Block;
+  /** Whether this is the title (nodeId == buffer's assignedNodeId) */
+  isTitle: boolean;
+  /** Active type definitions for this block */
+  activeDefinitions: readonly BlockTypeDefinition[];
+  /** Whether picker is open for this block */
+  pickerOpen: boolean;
+  /** Picker state if open */
+  pickerState: PickerState | null;
+  /** Whether block is expanded */
+  isExpanded: boolean;
+  /** Current editor mode */
+  mode: EditorMode;
+}
+
+/**
+ * Wrapper function type for error handling.
+ */
+export type SafeWrapper = <A>(
+  effect: Effect.Effect<A, unknown, unknown>,
+) => Effect.Effect<A>;

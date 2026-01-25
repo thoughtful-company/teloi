@@ -9,7 +9,7 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { PickerState, PickerT } from "@/services/ui/Picker";
 import { isSystemType } from "@/services/ui/TypePicker";
-import { WindowT } from "@/services/ui/Window";
+import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
 import { BlockGoneError, VirtualBlockError } from "./errors";
@@ -96,7 +96,9 @@ export const subscribe = (blockId: Id.Block) =>
     const selection$ = yield* makeSelectionStream(bufferId, nodeId, blockId);
     const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
 
-    const activeElementStream = yield* Window.subscribeActiveElement();
+    const unsettledActiveElement = yield* Window.subscribeActiveElement();
+    // Settle the stream: delay by 2 frames so selection state propagates first
+    const activeElementStream = settleActiveElement(unsettledActiveElement);
     const isActiveStream = activeElementStream.pipe(
       Stream.map((maybeActiveElement) =>
         Option.match(maybeActiveElement, {

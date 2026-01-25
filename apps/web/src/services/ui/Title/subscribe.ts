@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { WindowT } from "@/services/ui/Window";
+import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Option, Stream } from "effect";
 
@@ -30,7 +30,9 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
     // Title is just the root block of a buffer
     const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
 
-    const activeElementStream = yield* Window.subscribeActiveElement();
+    const unsettledActiveElement = yield* Window.subscribeActiveElement();
+    // Settle the stream: delay by 2 frames so selection state propagates first
+    const activeElementStream = settleActiveElement(unsettledActiveElement);
 
     const isActiveStream = activeElementStream.pipe(
       Stream.map((maybeActive) =>
