@@ -68,21 +68,12 @@ export const setSelection = (
       bufferId,
     ).pipe(Effect.orDie);
 
-    // Activate the focus block after selection stream has time to propagate
+    // Activate the focus block (read-side settling handles timing)
     if (Option.isSome(selection)) {
       const Window = yield* WindowT;
       const blockId = selection.value.focus.elementId;
-      // Daemon fiber: survives parent scope, waits for next frame then sets activeElement
-      yield* Effect.forkDaemon(
-        Effect.async<void>((resume) => {
-          requestAnimationFrame(() => resume(Effect.void));
-        }).pipe(
-          Effect.andThen(
-            Window.setActiveElement(
-              Option.some({ type: "block" as const, id: blockId }),
-            ),
-          ),
-        ),
+      yield* Window.setActiveElement(
+        Option.some({ type: "block" as const, id: blockId }),
       );
     }
 

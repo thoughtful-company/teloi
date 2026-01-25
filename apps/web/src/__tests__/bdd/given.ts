@@ -2,13 +2,13 @@ import { events } from "@/livestore/schema";
 import { Entity, Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
-import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
+import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
+import { screen } from "@testing-library/dom";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
-import { screen } from "@testing-library/dom";
 
 export interface BufferWithNodeResult {
   bufferId: Id.Buffer;
@@ -177,6 +177,20 @@ export const BUFFER_HAS_WIDTH = (width: number) =>
   Effect.promise(async () => {
     const buffer = await screen.findByTestId("editor-buffer");
     buffer.style.width = `${width}px`;
+    buffer.style.maxWidth = `${width}px`; // Also set max-width to prevent overflow
+    // Force reflow so text wrapping takes effect before we continue
+    void buffer.offsetHeight;
+    // Wait for two animation frames to ensure layout is fully complete
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    // Debug: log computed width
+    const computed = window.getComputedStyle(buffer);
+    console.log(
+      "[BUFFER_HAS_WIDTH] Set width:",
+      width,
+      "Computed:",
+      computed.width,
+    );
   }).pipe(Effect.withSpan("Given.BUFFER_HAS_WIDTH"));
 
 /**
@@ -449,6 +463,52 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
     const Window = yield* WindowT;
     yield* Window.setActiveElement(Option.some(element));
   }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));
+
+/**
+ * Sets up a block as focused with cursor at a specific position.
+ * Combines buffer selection + active element setting in one helper.
+ * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
+ */
+export const BLOCK_IS_FOCUSED_AT = (
+  blockId: Id.Block,
+  offset: number,
+  assoc: -1 | 0 | 1 = 0,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    const Window = yield* WindowT;
+
+    const [bufferId] = yield* Id.parseBlockId(blockId);
+
+    // Set cursor in buffer selection
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { elementId: blockId },
+        anchorOffset: offset,
+        focus: { elementId: blockId },
+        focusOffset: offset,
+        goalX: null,
+        goalLine: null,
+        assoc,
+      }),
+    );
+
+    // Set active element
+    yield* Effect.async<void>((resume) => {
+      const timeout = requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          resume(
+            Window.setActiveElement(
+              Option.some({ type: "block", id: blockId }),
+            ),
+          );
+        }),
+      );
+
+      return Effect.sync(() => clearTimeout(timeout));
+    });
+  }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT"));
 
 /** Mark types for text formatting */
 export type MarkType = "bold" | "italic" | "code";

@@ -107,9 +107,11 @@ All keyboard/mouse actions route through `ActionT.handle()` — a single entry p
 
 Key services:
 - `ActionT` — Central handler (~1800 lines of keyboard logic)
-- `EditorModeT` — Global focus state: `none` | `block` | `blockSelection`
 - `PickerT` — Type picker state (open/close, query)
 - `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
+
+**Future: Daemon Stream Architecture** (not yet implemented):
+Consider separating `shouldPrevent(action)` (sync, pure) from `handleAction(action)` (async, effectful). Actions dispatch to a daemon stream that processes model updates with proper timing (RAF coordination). This would centralize timing logic and enable batching. Currently blocked by tight coupling between `dispatch()` returning `ActionResult` for `preventDefault()` decisions.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

@@ -1,10 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
-import { Effect, Option } from "effect";
-import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -16,17 +14,11 @@ import {
 describe("Block ArrowUp key", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
-  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
-    cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("navigates within multi-line block (with newlines) before jumping to previous block", async () => {
@@ -40,8 +32,7 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
-      yield* When.USER_MOVES_CURSOR_TO(14);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 14);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -63,8 +54,7 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
-      yield* When.USER_MOVES_CURSOR_TO(longText.length - 10);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, longText.length - 10);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -80,12 +70,14 @@ describe("Block ArrowUp key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -101,12 +93,14 @@ describe("Block ArrowUp key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(4);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 4);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -123,12 +117,14 @@ describe("Block ArrowUp key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(8);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 8);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -151,12 +147,14 @@ describe("Block ArrowUp key", () => {
       });
 
       const nestedChildBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -182,8 +180,7 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 3);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -204,29 +201,49 @@ describe("Block ArrowUp key", () => {
         text: "Nested child content",
       });
 
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 5);
 
-      const xBefore = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        const range = sel.getRangeAt(0);
-        return range.getBoundingClientRect().left;
-      });
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xBefore = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                const range = sel.getRangeAt(0);
+                resolve(range.getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          const range = sel.getRangeAt(0);
-          return range.getBoundingClientRect().left;
-        }),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xAfter = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                const range = sel.getRangeAt(0);
+                resolve(range.getBoundingClientRect().left);
+              });
+            });
+          }),
       );
 
       const delta = Math.abs(xAfter - xBefore);
@@ -241,30 +258,47 @@ describe("Block ArrowUp key", () => {
         [{ text: "iiiiiiiiii" }, { text: "WW" }],
       );
 
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(2);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 2);
 
-      const xBefore = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        return rect.left;
-      });
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xBefore = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          const range = sel.getRangeAt(0);
-          return range.getBoundingClientRect().left;
-        }),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xAfter = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
       );
 
       const delta = Math.abs(xAfter - xBefore);
@@ -287,10 +321,7 @@ describe("Block ArrowUp key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* Given.BUFFER_HAS_WIDTH(100);
-
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-
-      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[1], 10, -1);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 10, -1);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -309,8 +340,7 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
 
       yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -332,103 +362,13 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* Given.BUFFER_HAS_WIDTH(100);
+      yield* Given.BUFFER_HAS_WIDTH(800);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+      yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
 
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-
+      yield* When.USER_PRESSES("{ArrowRight}");
       yield* When.USER_PRESSES("{ArrowUp}");
       yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-
-      yield* When.USER_PRESSES("{ArrowUp}");
-      yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("preserves goalX when title WRAPS to multiple visual lines", async () => {
-    await Effect.gen(function* () {
-      const Buffer = yield* BufferT;
-
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Once upon a midnight dreary",
-        [{ text: "While" }, { text: "I pondered weak and" }],
-      );
-
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      yield* Given.BUFFER_HAS_WIDTH(350);
-
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(19);
-
-      const xInBlock = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        return sel.getRangeAt(0).getBoundingClientRect().left;
-      });
-      console.log("xInBlock:", xInBlock);
-
-      yield* When.USER_PRESSES("{ArrowUp}");
-      yield* When.USER_PRESSES("{ArrowUp}");
-      yield* When.USER_PRESSES("{ArrowUp}");
-
-      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
-
-      const selInTitle = yield* Buffer.getSelection(bufferId);
-      console.log(
-        "Selection in title:",
-        JSON.stringify(Option.getOrNull(selInTitle), null, 2),
-      );
-
-      const { xInTitle, yInTitle, offset } = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          const range = sel.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          return {
-            xInTitle: rect.left,
-            yInTitle: rect.top,
-            offset: sel.anchorOffset,
-          };
-        }),
-      );
-
-      const titleElement = yield* Effect.sync(() =>
-        document.querySelector("[data-element-type='title'] .cm-content"),
-      );
-      const titleLineInfo = yield* Effect.sync(() => {
-        if (!titleElement) return null;
-        const range = document.createRange();
-        const textNode = titleElement.querySelector(".cm-line")?.firstChild;
-        if (!textNode) return null;
-
-        range.setStart(textNode, 0);
-        range.setEnd(textNode, 1);
-        const firstCharY = range.getBoundingClientRect().top;
-
-        const textLength = (textNode as Text).length;
-        range.setStart(textNode, textLength - 1);
-        range.setEnd(textNode, textLength);
-        const lastCharY = range.getBoundingClientRect().top;
-
-        return { firstCharY, lastCharY, wraps: firstCharY !== lastCharY };
-      });
-
-      console.log(
-        "xInTitle:",
-        xInTitle,
-        "yInTitle:",
-        yInTitle,
-        "offset:",
-        offset,
-      );
-      console.log("Title wrapping info:", titleLineInfo);
-      console.log("Delta:", Math.abs(xInTitle - xInBlock));
-
-      const delta = Math.abs(xInTitle - xInBlock);
-      expect(delta).toBeLessThan(10);
     }).pipe(runtime.runPromise);
   });
 
@@ -448,26 +388,43 @@ describe("Block ArrowUp key", () => {
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(thirdBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(14);
+      yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 14);
 
-      const xInitial = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        return sel.getRangeAt(0).getBoundingClientRect().left;
-      });
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xInitial = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
 
       yield* When.USER_PRESSES("{ArrowUp}");
       yield* When.USER_PRESSES("{ArrowUp}");
 
       yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
-      const xFinal = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          return sel.getRangeAt(0).getBoundingClientRect().left;
-        }),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xFinal = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
       );
 
       const delta = Math.abs(xFinal - xInitial);

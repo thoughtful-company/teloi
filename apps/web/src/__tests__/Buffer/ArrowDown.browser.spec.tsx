@@ -1,10 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
 import EditorBuffer from "@/ui/EditorBuffer";
-import { Effect, Option } from "effect";
-import { waitFor } from "solid-testing-library";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -16,17 +14,11 @@ import {
 describe("Block ArrowDown key", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
-  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
-    cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("moves to next sibling when ArrowDown pressed on last line", async () => {
@@ -37,12 +29,15 @@ describe("Block ArrowDown key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 3);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -58,12 +53,15 @@ describe("Block ArrowDown key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(4);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 4);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -80,12 +78,15 @@ describe("Block ArrowDown key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(8);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 8);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -113,7 +114,7 @@ describe("Block ArrowDown key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 3);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -135,12 +136,15 @@ describe("Block ArrowDown key", () => {
       });
 
       const nestedChildBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(nestedChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(3);
+      yield* When.SELECTION_IS_SET_TO(bufferId, nestedChildId, 3);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -166,24 +170,40 @@ describe("Block ArrowDown key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(nestedBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* When.SELECTION_IS_SET_TO(bufferId, nestedId, 5);
 
-      const xBefore = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        const range = sel.getRangeAt(0);
-        return range.getBoundingClientRect().left;
-      });
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xBefore = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          const range = sel.getRangeAt(0);
-          return range.getBoundingClientRect().left;
-        }),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xAfter = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
       );
 
       const delta = Math.abs(xAfter - xBefore);
@@ -203,25 +223,40 @@ describe("Block ArrowDown key", () => {
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(2);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 2);
 
-      const xBefore = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        return rect.left;
-      });
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xBefore = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          const range = sel.getRangeAt(0);
-          return range.getBoundingClientRect().left;
-        }),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xAfter = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
       );
 
       const delta = Math.abs(xAfter - xBefore);
@@ -329,17 +364,17 @@ describe("Block ArrowDown key", () => {
 
   it("moves from title to first block when ArrowDown pressed", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Document Title",
-        [{ text: "First block" }],
-      );
+      const { bufferId, rootNodeId, childNodeIds } =
+        yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          { text: "First block" },
+        ]);
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       render(() => <EditorBuffer bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_TITLE(bufferId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* When.SELECTION_IS_SET_TO(bufferId, rootNodeId, 5);
 
       yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -349,8 +384,6 @@ describe("Block ArrowDown key", () => {
 
   it("preserves goalX when navigating DOWN from wrapped title to block", async () => {
     await Effect.gen(function* () {
-      const Buffer = yield* BufferT;
-
       const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Once upon a midnight dreary",
         [
@@ -366,46 +399,48 @@ describe("Block ArrowDown key", () => {
       yield* Given.BUFFER_HAS_WIDTH(350);
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(29);
+      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 29);
 
-      const xInBlock = yield* Effect.sync(() => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return 0;
-        return sel.getRangeAt(0).getBoundingClientRect().left;
-      });
-      console.log("xInBlock:", xInBlock);
-
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xInBlock = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
+      );
       yield* When.USER_PRESSES("{ArrowUp}");
       yield* When.USER_PRESSES("{ArrowUp}");
 
       yield* Then.SELECTION_IS_ON_TITLE(bufferId);
-
-      const selInTitle = yield* Buffer.getSelection(bufferId);
-      console.log(
-        "Selection in title (should have goalX):",
-        JSON.stringify(Option.getOrNull(selInTitle), null, 2),
-      );
 
       yield* When.USER_PRESSES("{ArrowDown}");
       yield* When.USER_PRESSES("{ArrowDown}");
 
       yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
-      const selInBlock = yield* Buffer.getSelection(bufferId);
-      console.log(
-        "Selection after navigating back:",
-        JSON.stringify(Option.getOrNull(selInBlock), null, 2),
+      // Double-RAF to ensure CodeMirror has synced selection to browser and layout is complete
+      const xAfter = yield* Effect.promise(
+        () =>
+          new Promise<number>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) {
+                  throw new Error("No selection after double-RAF");
+                }
+                resolve(sel.getRangeAt(0).getBoundingClientRect().left);
+              });
+            });
+          }),
       );
-
-      const xAfter = yield* Effect.promise(() =>
-        waitFor(() => {
-          const sel = window.getSelection();
-          if (!sel || sel.rangeCount === 0) throw new Error("No selection");
-          return sel.getRangeAt(0).getBoundingClientRect().left;
-        }),
-      );
-      console.log("xAfter:", xAfter);
-
       const delta = Math.abs(xAfter - xInBlock);
       expect(delta).toBeLessThan(10);
     }).pipe(runtime.runPromise);

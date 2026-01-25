@@ -139,6 +139,10 @@ interface TextEditorProps {
     anchor: number;
     head: number;
     assoc?: -1 | 0 | 1;
+    /** Pixel X coordinate for vertical navigation positioning */
+    goalX?: number | null;
+    /** Target line for goalX positioning: "first" or "last" */
+    goalLine?: "first" | "last" | null;
   };
   /** Visual variant */
   variant?: TextEditorVariant;
@@ -161,12 +165,6 @@ export default function TextEditor(props: TextEditorProps) {
   const dispatch = createDispatch(runtime);
 
   onMount(() => {
-    console.debug("[TextEditor] Mounting", {
-      blockId: props.blockId,
-      path: props.path[1],
-      initialSelection: props.initialSelection ?? null,
-    });
-
     const doc = props.handle.doc();
     const initialText = doc?.texts?.[props.path[1]] ?? "";
 
@@ -192,24 +190,43 @@ export default function TextEditor(props: TextEditorProps) {
     });
 
     if (props.initialSelection) {
-      const { anchor, head } = props.initialSelection;
-      console.debug("[TextEditor] Applying initial selection", {
-        anchor,
-        head,
-      });
-      view.dispatch({
-        selection: EditorSelection.create([
-          EditorSelection.range(anchor, head),
-        ]),
-      });
+      const { anchor, head, goalX, goalLine } = props.initialSelection;
+
+      // If goalLine is set, compute position using goalX + posAtCoords
+      if (goalLine != null && goalX != null) {
+        const docLen = view.state.doc.length;
+        if (docLen > 0) {
+          // Get Y coordinate of target line (first or last)
+          const linePos = goalLine === "first" ? 0 : docLen;
+          const lineCoords = view.coordsAtPos(linePos);
+          if (lineCoords) {
+            const targetY = lineCoords.top + 1; // +1 to be inside the line
+            const pos = view.posAtCoords({ x: goalX, y: targetY });
+            if (pos != null) {
+              view.dispatch({
+                selection: EditorSelection.cursor(pos),
+              });
+            } else {
+              // Fallback to anchor/head if posAtCoords fails
+              view.dispatch({
+                selection: EditorSelection.create([
+                  EditorSelection.range(anchor, head),
+                ]),
+              });
+            }
+          }
+        }
+      } else {
+        // No goalLine - use anchor/head directly
+        view.dispatch({
+          selection: EditorSelection.create([
+            EditorSelection.range(anchor, head),
+          ]),
+        });
+      }
     }
 
-    requestAnimationFrame(() => {
-      if (!view) return;
-      console.debug("[TextEditor] Focusing");
-      view.focus();
-      console.debug("[TextEditor] hasFocus after focus():", view.hasFocus);
-    });
+    view.focus();
 
     onCleanup(() => view?.destroy());
   });

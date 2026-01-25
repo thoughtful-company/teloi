@@ -31,7 +31,11 @@ export const subscribe = (bufferId: Id.Buffer) =>
     );
 
     // Subscribe to window's active element (for scroll-to-element on navigation)
-    const activeElementStream = yield* Window.subscribeActiveElement();
+    // No settling needed here - we're not mounting UI based on this timing
+    const activeElementStream =
+      (yield* Window.subscribeActiveElement()) as Stream.Stream<
+        Option.Option<Entity.Element>
+      >;
 
     // Create a stream that emits {nodeId, activeViewId} pairs
     // Filter out cases where nodeId is null
