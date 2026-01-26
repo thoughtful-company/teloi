@@ -310,6 +310,24 @@ export const createEditorModeHandlers = (
           return yield* nav.handleArrowRightAtEnd(ctx);
         }
 
+        // --- Clear goalX on horizontal navigation ---
+        // Any horizontal movement (ArrowLeft/Right, with or without modifiers)
+        // should reset goalX so subsequent vertical navigation starts fresh.
+        if (key === "ArrowLeft" || key === "ArrowRight") {
+          const existingSel = yield* Buffer.getSelection(bufferId);
+          if (Option.isSome(existingSel) && existingSel.value.goalX != null) {
+            yield* Buffer.setSelection(
+              bufferId,
+              Option.some({
+                ...existingSel.value,
+                goalX: null,
+                goalLine: null,
+              }),
+            );
+          }
+          return ActionResult.notHandled();
+        }
+
         if (
           key === "ArrowUp" &&
           cursor.lineInfo.atFirstLine &&

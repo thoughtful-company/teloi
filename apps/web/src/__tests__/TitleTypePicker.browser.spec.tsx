@@ -7,10 +7,25 @@ import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
 
 describe("TypePicker in Title", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("Opening the picker", () => {
     it("shows picker popup when # is typed in title", async () => {
       await Effect.gen(function* () {

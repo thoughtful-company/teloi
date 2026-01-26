@@ -5,6 +5,7 @@ import { getVisualLines } from "./getVisualLines";
 import type { Line } from "./types";
 
 export { YOutOfBoundError } from "./getLineAtY";
+export { posAtCoordsInElement } from "./posAtCoordsInElement";
 export type { Line, TextRect } from "./types";
 
 export class TextBlockB extends Context.Tag("TextBlockB")<

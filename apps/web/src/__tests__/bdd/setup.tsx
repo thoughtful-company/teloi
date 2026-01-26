@@ -1,6 +1,6 @@
 import { BrowserRuntimeContext } from "@/context/browserRuntime";
 import { schema } from "@/livestore/schema";
-import { runtime, type BrowserRuntime } from "@/runtime";
+import type { BrowserRuntime } from "@/runtime";
 import { makeKeyboardLive } from "@/services/browser/Keyboard";
 import { makeURLServiceLive } from "@/services/browser/URLService";
 import { BootstrapLive } from "@/services/domain/Bootstrap";
@@ -33,37 +33,10 @@ import {
   ManagedRuntime,
   pipe,
 } from "effect";
-import { JSX } from "solid-js";
-import { render as solidRender, waitFor } from "solid-testing-library";
+import { createRoot, JSX } from "solid-js";
+import { render as solidRender } from "solid-testing-library";
 
-export { runtime };
 export type { BrowserRuntime };
-
-export function withRuntime(component: () => JSX.Element) {
-  return () => (
-    <BrowserRuntimeContext.Provider value={runtime}>
-      {component()}
-    </BrowserRuntimeContext.Provider>
-  );
-}
-
-export function render(component: () => JSX.Element) {
-  solidRender(withRuntime(component));
-
-  return {
-    waitForElement: (selector: string) =>
-      Effect.promise(() =>
-        waitFor(
-          () => {
-            const el = document.querySelector(selector);
-            if (!el) throw new Error(`Element ${selector} not found`);
-            return el as HTMLElement;
-          },
-          { timeout: 2000 },
-        ),
-      ),
-  };
-}
 
 export interface SetupClientTestOptions {
   logLevel?: LogLevel.LogLevel;
@@ -77,24 +50,32 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   const adapterFactory = makeInMemoryAdapter();
   const storeId = `test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  // Use getStore from @livestore/solid - same as production code
-  const storeAccessor = await getStore<typeof schema>({
-    schema,
-    storeId,
-    adapter: adapterFactory,
-  });
+  // Wrap store initialization in createRoot to prevent SolidJS warnings
+  // about computations created outside reactive context
+  let disposeRoot: (() => void) | undefined;
 
-  // getStore returns an Accessor - poll until store is ready
   const store = await new Promise<Store<typeof schema>>((resolve) => {
-    const check = () => {
-      const s = storeAccessor();
-      if (s) {
-        resolve(s);
-      } else {
-        setTimeout(check, 10);
-      }
-    };
-    check();
+    disposeRoot = createRoot((dispose) => {
+      // Use getStore from @livestore/solid - same as production code
+      getStore<typeof schema>({
+        schema,
+        storeId,
+        adapter: adapterFactory,
+      }).then((storeAccessor) => {
+        // Poll until store is ready
+        const check = () => {
+          const s = storeAccessor();
+          if (s) {
+            resolve(s);
+          } else {
+            setTimeout(check, 10);
+          }
+        };
+        check();
+      });
+
+      return dispose;
+    });
   });
 
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
@@ -161,6 +142,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     // Interrupt keyboard handler before disposing runtime
     await testRuntime.runPromise(Fiber.interrupt(keyboardFiber));
     await testRuntime.dispose();
+    // Dispose SolidJS reactive root
+    disposeRoot?.();
   };
 
   return { runtime: testRuntime, render: testRender, cleanup };

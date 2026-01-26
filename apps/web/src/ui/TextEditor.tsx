@@ -124,6 +124,45 @@ const createKeydownHandler = (
   );
 
 // ============================================================================
+// Selection Helpers
+// ============================================================================
+
+/**
+ * Compute initial EditorSelection from stored selection state.
+ * Handles goalX/goalLine for cross-block vertical navigation.
+ */
+function computeInitialSelection(
+  view: EditorView,
+  anchor: number,
+  head: number,
+  assoc: -1 | 0 | 1,
+  goalX: number | null | undefined,
+  goalLine: "first" | "last" | null | undefined,
+): EditorSelection | null {
+  // goalLine mode: compute position using goalX + posAtCoords
+  if (goalLine != null && goalX != null && view.state.doc.length > 0) {
+    const linePos = goalLine === "first" ? 0 : view.state.doc.length;
+    const lineCoords = view.coordsAtPos(linePos);
+    if (lineCoords) {
+      const targetY = lineCoords.top + 1; // +1 to be inside the line
+      const pos = view.posAtCoords({ x: goalX, y: targetY });
+      if (pos != null) {
+        return EditorSelection.create([EditorSelection.cursor(pos, assoc)]);
+      }
+    }
+    // Fallback to anchor/head if posAtCoords fails
+  }
+
+  // Standard selection: cursor for collapsed, range for extended
+  const isCollapsed = anchor === head;
+  return EditorSelection.create([
+    isCollapsed
+      ? EditorSelection.cursor(anchor, assoc)
+      : EditorSelection.range(anchor, head),
+  ]);
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -190,39 +229,17 @@ export default function TextEditor(props: TextEditorProps) {
     });
 
     if (props.initialSelection) {
-      const { anchor, head, goalX, goalLine } = props.initialSelection;
-
-      // If goalLine is set, compute position using goalX + posAtCoords
-      if (goalLine != null && goalX != null) {
-        const docLen = view.state.doc.length;
-        if (docLen > 0) {
-          // Get Y coordinate of target line (first or last)
-          const linePos = goalLine === "first" ? 0 : docLen;
-          const lineCoords = view.coordsAtPos(linePos);
-          if (lineCoords) {
-            const targetY = lineCoords.top + 1; // +1 to be inside the line
-            const pos = view.posAtCoords({ x: goalX, y: targetY });
-            if (pos != null) {
-              view.dispatch({
-                selection: EditorSelection.cursor(pos),
-              });
-            } else {
-              // Fallback to anchor/head if posAtCoords fails
-              view.dispatch({
-                selection: EditorSelection.create([
-                  EditorSelection.range(anchor, head),
-                ]),
-              });
-            }
-          }
-        }
-      } else {
-        // No goalLine - use anchor/head directly
-        view.dispatch({
-          selection: EditorSelection.create([
-            EditorSelection.range(anchor, head),
-          ]),
-        });
+      const { anchor, head, assoc, goalX, goalLine } = props.initialSelection;
+      const selection = computeInitialSelection(
+        view,
+        anchor,
+        head,
+        assoc ?? 0,
+        goalX,
+        goalLine,
+      );
+      if (selection) {
+        view.dispatch({ selection });
       }
     }
 

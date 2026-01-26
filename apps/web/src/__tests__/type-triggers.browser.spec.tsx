@@ -5,11 +5,26 @@ import { TypeT } from "@/services/domain/Type";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
 import { waitFor } from "solid-testing-library";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
 
 describe("Type Trigger Replacement", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("List to checkbox conversion", () => {
     it("replaces list type with checkbox when user types [ ] at start", async () => {
       await Effect.gen(function* () {

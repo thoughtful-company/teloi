@@ -183,14 +183,6 @@ export const BUFFER_HAS_WIDTH = (width: number) =>
     // Wait for two animation frames to ensure layout is fully complete
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
-    // Debug: log computed width
-    const computed = window.getComputedStyle(buffer);
-    console.log(
-      "[BUFFER_HAS_WIDTH] Set width:",
-      width,
-      "Computed:",
-      computed.width,
-    );
   }).pipe(Effect.withSpan("Given.BUFFER_HAS_WIDTH"));
 
 /**

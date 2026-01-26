@@ -1,4 +1,5 @@
 import { Array as A, Option, pipe } from "effect";
+import { getCaretRangeAtPoint } from "./caretUtils";
 import type { Line, TextRect } from "./types";
 
 type LeftOrRight = "right" | "left";
@@ -162,7 +163,7 @@ const getRangeForXAtRect = (
       : relativePos === "left"
         ? rect.left
         : rect.right;
-  return getCaretRangeAt(xPos, y);
+  return getCaretRangeAtPoint(xPos, y);
 };
 
 const determineBias = (pointX: number, targetX: number): CaretDrift =>
@@ -178,31 +179,6 @@ const createResult = (range: Range, textOffset: number, x: number) => {
     textOffset,
   };
 };
-
-function getCaretRangeAt(x: number, y: number): Range | null {
-  const doc = document as Document & {
-    caretPositionFromPoint?: (
-      x: number,
-      y: number,
-    ) => { offsetNode: Node; offset: number } | null;
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-  };
-
-  if (doc.caretPositionFromPoint) {
-    const pos = doc.caretPositionFromPoint(x, y);
-    if (!pos) return null;
-    const r = document.createRange();
-    r.setStart(pos.offsetNode, pos.offset);
-    r.collapse(true);
-    return r;
-  }
-
-  if (doc.caretRangeFromPoint) {
-    return doc.caretRangeFromPoint(x, y) ?? null;
-  }
-
-  return null;
-}
 
 function getRangeXY(range: Range) {
   const rects = A.fromIterable(range.getClientRects());

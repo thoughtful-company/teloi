@@ -53,15 +53,23 @@ gh api repos/:owner/:repo/issues/17  # Look up issue details
 
 Use the AskUserQuestion tool to ask as many follow-ups as you need to reach clarity.
 
+**Look before you theorize**: Don't make assertions or claims about how the code works until you've actually explored the relevant files. Speculation without investigation is bullshit—read the code first, then form opinions.
+
 When working on keyboard shortcuts, always check `docs/shortcuts.md` first to understand which level (app, context, or editor) the shortcut belongs to.
 
 **TDD-first (MANDATORY)**: You MUST write tests **before** implementing ANY feature code. Do NOT write implementation until tests exist. This is non-negotiable—no exceptions.
 
-**ALWAYS** use the `test-architect` sub-agent (Task tool with `subagent_type: "test-architect"`) for ANY test-related work—writing new tests, modifying existing tests, fixing failing tests. Never write test code directly. If you catch yourself about to write implementation before tests exist, STOP and write tests first.
+**Use `test-architect` for writing new tests** (Task tool with `subagent_type: "test-architect"`). For debugging flaky/failing tests, work directly—debugging is interactive and benefits from direct investigation. **Always read `docs/testing.md`** before writing or modifying test code manually.
 
 **Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 
 **Always** strictly follow logging standards in `docs/logging.md`. Use "Wide Events" and `Effect.annotateLogs`.
+
+**No event suppression hacks**: Never use boolean flags to conditionally suppress/gate events or callbacks (e.g., `if (ready) dispatch(...)`). If the architecture requires such a hack, the approach is wrong—find a cleaner solution where the correct state exists from the start.
+
+## Known System Resiliency Issues
+
+**Flaky coordinate/selection measurements in browser tests**: When working on test files, proactively fix any `waitFor` + `getBoundingClientRect` patterns. The `waitFor` function succeeds too early—before CodeMirror syncs its internal selection to the browser's native selection. Use double-RAF instead. See `docs/testing.md` for correct patterns.
 
 ## Project Structure
 This is a pnpm monorepo with:
@@ -107,11 +115,9 @@ All keyboard/mouse actions route through `ActionT.handle()` — a single entry p
 
 Key services:
 - `ActionT` — Central handler (~1800 lines of keyboard logic)
+- `EditorModeT` — Global focus state: `none` | `block` | `blockSelection`
 - `PickerT` — Type picker state (open/close, query)
 - `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
-
-**Future: Daemon Stream Architecture** (not yet implemented):
-Consider separating `shouldPrevent(action)` (sync, pure) from `handleAction(action)` (async, effectful). Actions dispatch to a daemon stream that processes model updates with proper timing (RAF coordination). This would centralize timing logic and enable batching. Currently blocked by tight coupling between `dispatch()` returning `ActionResult` for `preventDefault()` decisions.
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

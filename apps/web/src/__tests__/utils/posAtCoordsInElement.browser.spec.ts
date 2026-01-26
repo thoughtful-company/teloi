@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { posAtCoordsInElement } from "@/utils/posAtCoordsInElement";
+import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 
 describe("posAtCoordsInElement", () => {
   let container: HTMLDivElement;

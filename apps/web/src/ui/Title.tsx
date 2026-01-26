@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
 import { AppAction, createDispatch } from "@/services/ui/Action";
 import {
@@ -8,7 +9,6 @@ import {
   type TitleView,
 } from "@/services/ui/Title";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { posAtCoordsInElement } from "@/utils/posAtCoordsInElement";
 import { Effect, Stream } from "effect";
 import { onCleanup, onMount, Show } from "solid-js";
 import TextEditor from "./TextEditor";
