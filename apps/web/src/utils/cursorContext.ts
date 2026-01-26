@@ -34,12 +34,8 @@ export function getCursorContext(view: EditorView): CursorContext {
   // Cursor coordinates for picker positioning
   const coords = view.coordsAtPos(position);
 
-  // Determine assoc at wrap boundaries
-  const coordsBefore = view.coordsAtPos(position, -1);
-  const coordsAfter = view.coordsAtPos(position, 1);
-  const isAtWrapBoundary =
-    coordsBefore && coordsAfter && coordsBefore.top !== coordsAfter.top;
-  const assoc: -1 | 0 | 1 = isAtWrapBoundary ? (sel.assoc as -1 | 1) : 0;
+  // Trust CodeMirror's assoc value - it knows whether we're at a wrap boundary
+  const assoc = sel.assoc as -1 | 0 | 1;
 
   return {
     position,
@@ -78,21 +74,25 @@ function getLineInfo(
   // This accounts for line wrapping
   const sel = state.selection.main;
 
-  // Use assoc for coordsAtPos - -1 = end of prev line, 1 = start of next line
-  const side = assoc === 1 ? 1 : -1;
-  const currentCoords = view.coordsAtPos(head, side);
-  const currentY = currentCoords?.top;
+  // Convert assoc to coordsAtPos side: -1 = end of prev line, 1 = start of next line
+  const assocToSide = (a: number): -1 | 1 => (a === 1 ? 1 : -1);
+
+  const currentY = view.coordsAtPos(head, assocToSide(assoc))?.top;
 
   // Try moving up - if Y doesn't change, we're on first visual line
   const movedUp = view.moveVertically(sel, false);
-  const movedUpSide = movedUp.assoc === 1 ? 1 : -1;
-  const movedUpY = view.coordsAtPos(movedUp.head, movedUpSide)?.top;
+  const movedUpY = view.coordsAtPos(
+    movedUp.head,
+    assocToSide(movedUp.assoc),
+  )?.top;
   const atFirstLine = currentY === movedUpY;
 
   // Try moving down - if Y doesn't change, we're on last visual line
   const movedDown = view.moveVertically(sel, true);
-  const movedDownSide = movedDown.assoc === 1 ? 1 : -1;
-  const movedDownY = view.coordsAtPos(movedDown.head, movedDownSide)?.top;
+  const movedDownY = view.coordsAtPos(
+    movedDown.head,
+    assocToSide(movedDown.assoc),
+  )?.top;
   const atLastLine = currentY === movedDownY;
 
   return {

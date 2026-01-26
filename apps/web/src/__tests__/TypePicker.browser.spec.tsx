@@ -6,11 +6,26 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import EditorBuffer from "@/ui/EditorBuffer";
 import { Effect } from "effect";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, Then, When } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
 import { waitFor } from "solid-testing-library";
 
 describe("TypePicker", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("Opening the picker", () => {
     it("shows picker popup when # is typed", async () => {
       await Effect.gen(function* () {
@@ -400,6 +415,19 @@ describe("TypePicker", () => {
 });
 
 describe("TypePickerT Service", () => {
+  let runtime: BrowserRuntime;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   it("getAvailableTypes returns children of Types node", async () => {
     await Effect.gen(function* () {
       const TypePicker = yield* TypePickerT;

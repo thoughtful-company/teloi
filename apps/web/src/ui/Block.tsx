@@ -1,11 +1,11 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
 import { AppAction, createDispatch } from "@/services/ui/Action";
 import { BlockT, type BlockView } from "@/services/ui/Block";
 import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { posAtCoordsInElement } from "@/utils/posAtCoordsInElement";
 import { Effect, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
@@ -96,12 +96,14 @@ export default function Block({ blockId }: BlockProps) {
 
     // Resolve click position for buffer-type blocks
     let offset: number | undefined;
+    let assoc: 1 | -1 | undefined;
     if (pRef && blockContext.type === "buffer") {
       const resolved = posAtCoordsInElement(pRef, e.clientX, e.clientY);
       offset = resolved?.offset;
+      assoc = resolved?.assoc;
     }
 
-    dispatch(AppAction.Focus(blockId, offset));
+    dispatch(AppAction.Focus(blockId, offset, assoc));
   };
 
   return (

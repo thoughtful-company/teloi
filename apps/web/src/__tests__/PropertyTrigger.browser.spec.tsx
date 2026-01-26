@@ -9,8 +9,8 @@ import EditorBuffer from "@/ui/EditorBuffer";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
-import { describe, expect, it } from "vitest";
-import { Given, render, runtime, When } from "./bdd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Given, setupClientTest, type BrowserRuntime, When } from "./bdd";
 
 /**
  * Property Trigger Tests
@@ -23,6 +23,21 @@ import { Given, render, runtime, When } from "./bdd";
  */
 
 describe("Property Creation Trigger", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
   describe("typing '> ' at block start creates a property", () => {
     it("creates a property linked to the page's view", async () => {
       await Effect.gen(function* () {
