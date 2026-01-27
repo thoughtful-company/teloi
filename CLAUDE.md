@@ -106,16 +106,23 @@ This is a pnpm monorepo with:
       - Child blocks (also Block components)
 
 **Action Handling** (TEA-inspired):
-All keyboard/mouse actions route through `ActionT.handle()` — a single entry point that interprets primitive events based on model state.
+All keyboard/mouse actions route through `ActionT` (`services/ui/Action/`) — interprets primitive events based on model state and executes state changes.
 
 - **Components emit primitives**: `KeyDown`, `SelectionChange`, `Blur`, `Focus`, `Click` (via `createDispatch(runtime)`)
 - **ActionT interprets meaning**: "Backspace at cursor 0 with removable type" → remove type; same key elsewhere → merge backward
-- **Synchronous execution**: Must use `runSync` because `preventDefault()` requires sync response
-- **Source-based routing**: `ActionSource` is `editor` (has cursor), `activation` (click before edit), or `document` (block selection mode)
+- **Synchronous execution**: Must use `runSync` because `preventDefault()` requires immediate sync decision
+
+**Focus Architecture** (reactive, not imperative):
+Focus is driven by state propagation, never by direct DOM `.focus()` calls:
+1. Handler calls `Window.setActiveElement(blockId)`
+2. `BlockT.subscribe` emits updated view with `isActive: true`
+3. Block component renders `<TextEditor>` when active
+4. TextEditor calls `view.focus()` on mount
+
+This means: to focus a block, set `activeElement` state. The UI reacts and focus happens as a consequence.
 
 Key services:
-- `ActionT` — Central handler (~1800 lines of keyboard logic)
-- `EditorModeT` — Global focus state: `none` | `block` | `blockSelection`
+- `ActionT` — Keyboard/mouse action interpretation and execution
 - `PickerT` — Type picker state (open/close, query)
 - `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
 
