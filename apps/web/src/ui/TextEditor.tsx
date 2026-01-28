@@ -2,6 +2,8 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import type { WorkspaceTexts } from "@/services/external/Automerge";
 import { createDispatch, type Dispatch } from "@/services/ui/Action";
+import { KeyEventBusT } from "@/services/ui/KeyEventBus";
+import { TextEditorT } from "@/services/ui/TextEditor";
 import { getCursorContext } from "@/utils/cursorContext";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
@@ -13,6 +15,7 @@ import {
   Prec,
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { Effect } from "effect";
 import { onCleanup, onMount } from "solid-js";
 
 export type TextEditorVariant = "block" | "title";
@@ -65,42 +68,80 @@ const variantThemes: Record<TextEditorVariant, Extension> = {
 };
 
 // ============================================================================
-// Extension Creators
+// Routable Keys
 // ============================================================================
 
-const createUpdateListener = (
-  blockId: Id.Block,
-  dispatch: Dispatch,
-): Extension =>
-  EditorView.updateListener.of((update) => {
-    if (update.selectionSet) {
-      const cursor = getCursorContext(update.view);
-      dispatch({
-        _tag: "SelectionChange",
-        selection: {
-          anchor: cursor.anchor,
-          head: cursor.head,
-          assoc: cursor.assoc,
-        },
-        source: { type: "editor", blockId, cursor },
-      });
-    }
-    if (update.focusChanged && !update.view.hasFocus) {
-      const cursor = getCursorContext(update.view);
-      dispatch({
-        _tag: "Blur",
-        source: { type: "editor", blockId, cursor },
-      });
-    }
-  });
+/**
+ * Keys that should be routed through KeyEventBus instead of CodeMirror.
+ * These are navigation, structural edits, and potential shortcut triggers.
+ */
+const ROUTABLE_KEYS = new Set([
+  // Navigation
+  "ArrowRight",
+  "ArrowLeft",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  // Structural
+  "Enter",
+  "Backspace",
+  "Delete",
+  "Tab",
+  // Control
+  "Escape",
+]);
+
+/**
+ * Check if a key event should be routed through KeyEventBus.
+ * Routes if key is in ROUTABLE_KEYS or any modifier (except lone shift) is held.
+ */
+const isRoutableKey = (key: string, event: KeyboardEvent): boolean => {
+  if (ROUTABLE_KEYS.has(key)) return true;
+  // Route modifier combos (meta/ctrl/alt, but not shift alone)
+  if (event.metaKey || event.ctrlKey || event.altKey) return true;
+  return false;
+};
+
+// ============================================================================
+// Extension Creators
+// ============================================================================
 
 const createKeydownHandler = (
   blockId: Id.Block,
   dispatch: Dispatch,
+  runtime: ReturnType<typeof useBrowserRuntime>,
 ): Extension =>
   Prec.high(
     EditorView.domEventHandlers({
       keydown(event, editorView) {
+        // Routable keys go through KeyEventBus, blocking CodeMirror
+        if (isRoutableKey(event.key, event)) {
+          runtime.runSync(
+            Effect.gen(function* () {
+              const KeyEventBus = yield* KeyEventBusT;
+              return yield* KeyEventBus.emit({
+                key: event.key,
+                modifiers: {
+                  meta: event.metaKey,
+                  ctrl: event.ctrlKey,
+                  alt: event.altKey,
+                  shift: event.shiftKey,
+                },
+                source: { type: "editor", blockId },
+              });
+            }),
+          );
+          // Block CodeMirror regardless of whether bus handled it
+          // (handlers will be implemented, CM should not interfere)
+          event.preventDefault();
+          event.stopPropagation();
+          return true;
+        }
+
+        // Non-routable keys: existing ActionT dispatch (e.g., "#" for type picker)
         const cursor = getCursorContext(editorView);
         const result = dispatch({
           _tag: "KeyDown",
@@ -115,7 +156,7 @@ const createKeydownHandler = (
         });
         if (result.handled) {
           event.preventDefault();
-          event.stopPropagation(); // Prevent bubbling to EditorBuffer
+          event.stopPropagation();
           return true;
         }
         return false;
@@ -193,8 +234,9 @@ interface TextEditorProps {
  * CodeMirror editor with Automerge CRDT sync.
  *
  * Uses automergeSyncPlugin for real-time collaborative editing.
- * All interactions are handled via ActionT for selection sync with LiveStore
- * and buffer navigation.
+ * - Selection/blur state synced via TextEditorT
+ * - Routable keys (navigation, structural) handled via KeyEventBus
+ * - Non-routable keys (typing, "#" for picker) handled via ActionT
  */
 export default function TextEditor(props: TextEditorProps) {
   const runtime = useBrowserRuntime();
@@ -204,6 +246,7 @@ export default function TextEditor(props: TextEditorProps) {
   const dispatch = createDispatch(runtime);
 
   onMount(() => {
+    const textEditor = runtime.runSync(TextEditorT);
     const doc = props.handle.doc();
     const initialText = doc?.texts?.[props.path[1]] ?? "";
 
@@ -212,8 +255,8 @@ export default function TextEditor(props: TextEditorProps) {
       variantThemes[props.variant ?? "block"],
       keymap.of(defaultKeymap),
       automergeSyncPlugin({ handle: props.handle, path: props.path }),
-      createUpdateListener(props.blockId, dispatch),
-      createKeydownHandler(props.blockId, dispatch),
+      textEditor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
+      createKeydownHandler(props.blockId, dispatch, runtime),
     ];
 
     if (props.readonly) {
@@ -244,8 +287,12 @@ export default function TextEditor(props: TextEditorProps) {
     }
 
     view.focus();
+    runtime.runSync(textEditor.registerView(view));
 
-    onCleanup(() => view?.destroy());
+    onCleanup(() => {
+      // Don't call runSync here - runtime may be disposed during test cleanup
+      view?.destroy();
+    });
   });
 
   return <div ref={containerRef} />;
