@@ -20,6 +20,8 @@ import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { PropertyLive } from "@/services/ui/Property";
 import { ViewLive } from "@/services/ui/View";
+import { KeyEventBusLive } from "@/services/ui/KeyEventBus";
+import { TextEditorLive } from "@/services/ui/TextEditor";
 import { WindowLive } from "@/services/ui/Window";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { Store } from "@livestore/livestore";
@@ -95,6 +97,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(NavigationLive),
     Layer.provideMerge(DataPortBootstrapGroup),
     Layer.provideMerge(TitleLive),
+    Layer.provideMerge(KeyEventBusLive),
+    Layer.provideMerge(TextEditorLive), // needs BufferT, WindowT from below
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(TypePickerGroup),
