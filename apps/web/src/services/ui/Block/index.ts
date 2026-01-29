@@ -21,7 +21,7 @@ import {
   findNextNode,
   findNextNodeInDocumentOrder,
   findPreviousNode,
-} from "./navigation";
+} from "@/services/ui/Buffer/navigation";
 import { BlockView, subscribe } from "./subscribe";
 
 export {

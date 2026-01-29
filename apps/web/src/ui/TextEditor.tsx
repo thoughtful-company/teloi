@@ -122,7 +122,7 @@ const createKeydownHandler = (
           runtime.runSync(
             Effect.gen(function* () {
               const KeyEventBus = yield* KeyEventBusT;
-              return yield* KeyEventBus.emit({
+              yield* KeyEventBus.emit({
                 key: event.key,
                 modifiers: {
                   meta: event.metaKey,

@@ -20,6 +20,7 @@ import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { PropertyLive } from "@/services/ui/Property";
 import { ViewLive } from "@/services/ui/View";
+import { CommandBusLive } from "@/services/ui/CommandBus";
 import { KeyEventBusLive } from "@/services/ui/KeyEventBus";
 import { TextEditorLive } from "@/services/ui/TextEditor";
 import { WindowLive } from "@/services/ui/Window";
@@ -91,13 +92,18 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     makeKeyboardLive(window),
     makeURLServiceLive(window),
   );
+  // Group KeyEventBus and CommandBus (CommandBus provides to KeyEventBus)
+  const EventCommandBusGroup = Layer.provideMerge(
+    KeyEventBusLive,
+    CommandBusLive,
+  );
 
   const TestLayer = pipe(
     ActionLive, // needs BlockT from below
     Layer.provideMerge(NavigationLive),
     Layer.provideMerge(DataPortBootstrapGroup),
     Layer.provideMerge(TitleLive),
-    Layer.provideMerge(KeyEventBusLive),
+    Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
     Layer.provideMerge(TextEditorLive), // needs BufferT, WindowT from below
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),

@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { findDeepestLastChild } from "@/services/ui/Block/navigation";
+import { findDeepestLastChild } from "./navigation";
 import { Effect, Option } from "effect";
 
 export interface MergeResult {

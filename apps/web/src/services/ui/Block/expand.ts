@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
-import { isBlockExpanded } from "./navigation";
+import { isBlockExpanded } from "@/services/ui/Buffer/navigation";
 
 /**
  * Recursively expand nodes level-by-level using DFS order.
@@ -23,7 +23,9 @@ export const expandOneLevel = (
     const Store = yield* StoreT;
     const Node = yield* NodeT;
 
-    const expand = (nId: Id.Node): Effect.Effect<boolean, never, StoreT | NodeT> =>
+    const expand = (
+      nId: Id.Node,
+    ): Effect.Effect<boolean, never, StoreT | NodeT> =>
       Effect.gen(function* () {
         const isExpanded = yield* isBlockExpanded(bufferId, nId);
 
