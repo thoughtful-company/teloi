@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { isBlockExpanded } from "@/services/ui/Block/navigation";
+import { isBlockExpanded } from "./navigation";
 import { Effect, Option } from "effect";
 
 /**

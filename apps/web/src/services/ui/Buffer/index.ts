@@ -8,6 +8,7 @@ import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
+import { findPreviousVisibleNode } from "./findPreviousVisibleNode";
 import { forceDelete } from "./forceDelete";
 import { get } from "./get";
 import { indent } from "./indent";
@@ -116,6 +117,16 @@ export class BufferT extends Context.Tag("BufferT")<
     ) => Effect.Effect<boolean, never>;
     moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
     moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
+
+    // Navigation
+    /**
+     * Find previous visible node in document order.
+     * Respects collapsed state - won't descend into collapsed nodes.
+     */
+    findPreviousVisibleNode: (
+      currentId: Id.Node,
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<Option.Option<Id.Node>>;
   }
 >() {}
 
@@ -212,6 +223,12 @@ export const BufferLive = Layer.effect(
         moveToFirst(nodeId).pipe(Effect.provideService(NodeT, Node)),
       moveToLast: (nodeId: Id.Node) =>
         moveToLast(nodeId).pipe(Effect.provideService(NodeT, Node)),
+
+      // Navigation
+      findPreviousVisibleNode: (currentId: Id.Node, bufferId: Id.Buffer) =>
+        findPreviousVisibleNode(currentId, bufferId).pipe(
+          Effect.provide(context),
+        ),
     };
   }),
 );

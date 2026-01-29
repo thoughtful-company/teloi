@@ -12,6 +12,7 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
+import { cursorCharLeft } from "@codemirror/commands";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Context, Data, Effect, Layer, Option, Ref } from "effect";
@@ -55,6 +56,16 @@ export class TextEditorT extends Context.Tag("TextEditorT")<
      * Fails with NoActiveTextEditorError if no view is registered.
      */
     getView: () => Effect.Effect<EditorView, NoActiveTextEditorError>;
+
+    /**
+     * Check if the cursor is at the start of the text (position 0, no selection).
+     */
+    isCursorAtStart: () => Effect.Effect<boolean, NoActiveTextEditorError>;
+
+    /**
+     * Move cursor one character to the left.
+     */
+    moveLeft: () => Effect.Effect<void, NoActiveTextEditorError>;
   }
 >() {}
 
@@ -69,6 +80,19 @@ export const TextEditorLive = Layer.effect(
     const context = Context.make(BufferT, Buffer).pipe(
       Context.add(WindowT, Window),
     );
+
+    // Helper to access view or fail with NoActiveTextEditorError
+    const withView = <A>(
+      fn: (view: EditorView) => A,
+    ): Effect.Effect<A, NoActiveTextEditorError> =>
+      Ref.get(viewRef).pipe(
+        Effect.andThen(
+          Option.match({
+            onNone: () => Effect.fail(new NoActiveTextEditorError()),
+            onSome: (view) => Effect.succeed(fn(view)),
+          }),
+        ),
+      );
 
     // Internal effect factories for extension callbacks
     const makeSyncSelectionEffect = (
@@ -153,14 +177,16 @@ export const TextEditorLive = Layer.effect(
 
       clearView: (): Effect.Effect<void> => Ref.set(viewRef, Option.none()),
 
-      getView: (): Effect.Effect<EditorView, NoActiveTextEditorError> =>
-        Effect.gen(function* () {
-          const maybeView = yield* Ref.get(viewRef);
-          return yield* Option.match(maybeView, {
-            onNone: () => Effect.fail(new NoActiveTextEditorError()),
-            onSome: (view) => Effect.succeed(view),
-          });
+      getView: () => withView((view) => view),
+
+      isCursorAtStart: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          return sel.empty && sel.head === 0;
         }),
+
+      moveLeft: () =>
+        withView((view) => cursorCharLeft(view)).pipe(Effect.asVoid),
     };
   }),
 );

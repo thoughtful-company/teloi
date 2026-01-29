@@ -67,6 +67,8 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **No event suppression hacks**: Never use boolean flags to conditionally suppress/gate events or callbacks (e.g., `if (ready) dispatch(...)`). If the architecture requires such a hack, the approach is wrong—find a cleaner solution where the correct state exists from the start.
 
+**No mocks in tests**: Never use mocks, stubs, or fakes. Tests should use real service implementations with test fixtures/data. If something is hard to test without mocks, that's a design smell—fix the design.
+
 ## Known System Resiliency Issues
 
 **Flaky coordinate/selection measurements in browser tests**: When working on test files, proactively fix any `waitFor` + `getBoundingClientRect` patterns. The `waitFor` function succeeds too early—before CodeMirror syncs its internal selection to the browser's native selection. Use double-RAF instead. See `docs/testing.md` for correct patterns.
@@ -172,3 +174,15 @@ URL format: `/workspace/<nodeId>` (workspace name hardcoded for now)
   - **ui/** - UI-specific services (e.g., `BufferT` for editor buffer state)
 - **Layers** (`Layer.effect`) compose services with dependency injection. Currently there is one layer: `BrowserLayer` in `runtime.ts`.
 - **Errors** are typed with `Data.TaggedError` for discriminated unions
+- **Tracing**: Use `Effect.fn` for traceable functions instead of plain `Effect.gen`:
+  ```ts
+  // Good - traceable
+  const myFunction = Effect.fn("myFunction")(function* (arg: string) {
+    // ...
+  });
+
+  // Avoid - not traceable
+  const myFunction = (arg: string) => Effect.gen(function* () {
+    // ...
+  });
+  ```

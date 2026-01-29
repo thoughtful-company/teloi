@@ -2,13 +2,20 @@
  * KeyEventBus - Central keyboard event routing service.
  *
  * Receives raw keyboard events from TextEditor (and potentially other sources).
- * Will eventually: compute context from TextEditorT, match against keymap, execute handlers.
+ * Maps key events to commands via hardcoded keymap, dispatches to CommandBus.
  *
- * For now: just accepts events and does nothing. Plumbing first.
+ * The preventDefault decision is made BEFORE events reach this bus (in isRoutableKey).
+ * This bus just figures out what command to run and executes it.
  */
 
+import { Left } from "@/commands/text-editor/left";
 import { Id } from "@/schema";
-import { Context, Effect, Layer, Logger, LogLevel } from "effect";
+import { CommandBusT, type Command } from "@/services/ui/CommandBus";
+import { Context, Effect, Layer, Option } from "effect";
+
+// ============================================================================
+// Event Types
+// ============================================================================
 
 export interface Modifiers {
   meta: boolean;
@@ -26,24 +33,59 @@ export interface KeyEvent {
   };
 }
 
+// ============================================================================
+// Keymap
+// ============================================================================
+
+/**
+ * Look up command for a key event.
+ * Returns Option.some(command) if matched, Option.none() if not.
+ *
+ * Context-dependent behavior (e.g., "at cursor start") is handled
+ * INSIDE command handlers, not here. The keymap is just key → command.
+ */
+const lookupKeymap = (event: KeyEvent): Option.Option<Command> => {
+  const { key, modifiers } = event;
+  const { meta, ctrl, alt, shift } = modifiers;
+
+  // Plain keys (no modifiers except shift in some cases)
+  if (!meta && !ctrl && !alt) {
+    if (key === "ArrowLeft" && !shift) {
+      return Option.some(new Left());
+    }
+    // TODO: ArrowRight, ArrowUp, ArrowDown, Enter, Backspace, Tab, etc.
+  }
+
+  // Modifier combos
+  // TODO: Cmd+., Cmd+,, Alt+Cmd+Arrow, etc.
+
+  return Option.none();
+};
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
 export class KeyEventBusT extends Context.Tag("KeyEventBusT")<
   KeyEventBusT,
   {
     /**
      * Emit a keyboard event to the bus.
-     * Returns whether the event was handled (for preventDefault decisions).
+     * Looks up keymap and dispatches command if matched.
      */
-    emit: (event: KeyEvent) => Effect.Effect<boolean>;
+    emit: (event: KeyEvent) => Effect.Effect<void>;
   }
 >() {}
 
 export const KeyEventBusLive = Layer.effect(
   KeyEventBusT,
   Effect.gen(function* () {
+    const CommandBus = yield* CommandBusT;
+
     return {
-      emit: (event: KeyEvent): Effect.Effect<boolean> =>
+      emit: (event: KeyEvent): Effect.Effect<void> =>
         Effect.gen(function* () {
-          yield* Effect.log("KeyEventBus received").pipe(
+          yield* Effect.logDebug("KeyEventBus received").pipe(
             Effect.annotateLogs({
               key: event.key,
               meta: event.modifiers.meta,
@@ -54,9 +96,17 @@ export const KeyEventBusLive = Layer.effect(
               blockId: event.source.blockId,
             }),
           );
-          // TODO: compute context, match keymap, execute handler
-          return false;
-        }).pipe(Logger.withMinimumLogLevel(LogLevel.Debug)),
+
+          const commandOpt = lookupKeymap(event);
+
+          if (Option.isSome(commandOpt)) {
+            yield* CommandBus.dispatch(commandOpt.value);
+          } else {
+            yield* Effect.logDebug("KeyEventBus: no command for key").pipe(
+              Effect.annotateLogs({ key: event.key }),
+            );
+          }
+        }),
     };
   }),
 );
