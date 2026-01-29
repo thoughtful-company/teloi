@@ -8,6 +8,7 @@ import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
+import { findNextVisibleNode } from "./findNextVisibleNode";
 import { findPreviousVisibleNode } from "./findPreviousVisibleNode";
 import { forceDelete } from "./forceDelete";
 import { get } from "./get";
@@ -127,6 +128,15 @@ export class BufferT extends Context.Tag("BufferT")<
       currentId: Id.Node,
       bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>>;
+
+    /**
+     * Find next visible node in document order.
+     * Descends into children if expanded, otherwise moves to next sibling.
+     */
+    findNextVisibleNode: (
+      currentId: Id.Node,
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<Option.Option<Id.Node>>;
   }
 >() {}
 
@@ -229,6 +239,8 @@ export const BufferLive = Layer.effect(
         findPreviousVisibleNode(currentId, bufferId).pipe(
           Effect.provide(context),
         ),
+      findNextVisibleNode: (currentId: Id.Node, bufferId: Id.Buffer) =>
+        findNextVisibleNode(currentId, bufferId).pipe(Effect.provide(context)),
     };
   }),
 );

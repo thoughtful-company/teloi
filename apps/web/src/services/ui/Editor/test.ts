@@ -6,25 +6,18 @@
 import { Effect, Layer, Ref } from "effect";
 import { NoActiveEditorError, EditorT } from "./index";
 
-/**
- * Creates a test-controllable EditorT service.
- *
- * Returns an Effect that yields:
- * - layer: The service layer to provide to the test runtime
- * - setCursorAtStart: Effect to control what `isCursorAtStart()` returns
- * - setMoveLeftCalled: Ref to check if `moveLeft()` was called
- */
 export const makeEditorTest = () =>
   Effect.gen(function* () {
     const cursorAtStartRef = yield* Ref.make(true);
+    const cursorAtEndRef = yield* Ref.make(false);
     const moveLeftCalledRef = yield* Ref.make(false);
+    const moveRightCalledRef = yield* Ref.make(false);
 
     const layer = Layer.succeed(EditorT, {
       isCursorAtStart: () => Ref.get(cursorAtStartRef),
-      moveLeft: () =>
-        Effect.gen(function* () {
-          yield* Ref.set(moveLeftCalledRef, true);
-        }),
+      isCursorAtEnd: () => Ref.get(cursorAtEndRef),
+      moveLeft: () => Ref.set(moveLeftCalledRef, true),
+      moveRight: () => Ref.set(moveRightCalledRef, true),
       createExtension: () => [],
       registerView: () => Effect.void,
       clearView: () => Effect.void,
@@ -34,8 +27,11 @@ export const makeEditorTest = () =>
     return {
       layer,
       setCursorAtStart: (value: boolean) => Ref.set(cursorAtStartRef, value),
+      setCursorAtEnd: (value: boolean) => Ref.set(cursorAtEndRef, value),
       getMoveLeftCalled: () => Ref.get(moveLeftCalledRef),
       resetMoveLeftCalled: () => Ref.set(moveLeftCalledRef, false),
+      getMoveRightCalled: () => Ref.get(moveRightCalledRef),
+      resetMoveRightCalled: () => Ref.set(moveRightCalledRef, false),
     };
   });
 
