@@ -5,13 +5,13 @@ import { BufferNotFoundError } from "../errors";
 
 export function get(
   bufferId: Id.Buffer,
-): Effect.Effect<Model.EditorBuffer, BufferNotFoundError, StoreT>;
-export function get<K extends keyof Model.EditorBuffer>(
+): Effect.Effect<Model.Buffer, BufferNotFoundError, StoreT>;
+export function get<K extends keyof Model.Buffer>(
   bufferId: Id.Buffer,
   property: K,
-): Effect.Effect<Model.EditorBuffer[K], BufferNotFoundError, StoreT>;
+): Effect.Effect<Model.Buffer[K], BufferNotFoundError, StoreT>;
 
-export function get(bufferId: Id.Buffer, property?: keyof Model.EditorBuffer) {
+export function get(bufferId: Id.Buffer, property?: keyof Model.Buffer) {
   return StoreT.pipe(
     Effect.flatMap((Store) => Store.getDocument("buffer", bufferId)),
     Effect.filterOrFail(

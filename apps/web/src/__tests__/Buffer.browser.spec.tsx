@@ -1,10 +1,15 @@
 import "@/index.css";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { Given, Then, setupClientTest, type BrowserRuntime } from "./bdd";
+import {
+  Given,
+  Then,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
-describe("EditorBuffer", () => {
+describe("Buffer", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -25,7 +30,7 @@ describe("EditorBuffer", () => {
       const textContent = "Hello, this is a test block";
       const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(textContent);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Then.TEXT_IS_VISIBLE(textContent);
     }).pipe(runtime.runPromise);
@@ -38,7 +43,7 @@ describe("EditorBuffer", () => {
       const uniqueMarker = "ISOLATION_MARKER_XYZ_12345";
       const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(uniqueMarker);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Then.TEXT_IS_VISIBLE(uniqueMarker);
     }).pipe(runtime.runPromise);
@@ -51,7 +56,7 @@ describe("EditorBuffer", () => {
       const differentContent = "This is a completely different buffer";
       const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(differentContent);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // This should be visible (our own data)
       yield* Then.TEXT_IS_VISIBLE(differentContent);

@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "@/__tests__/bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * Tests for BlockT.expandOneLevel function.

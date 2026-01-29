@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -10,7 +10,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 /**
  * Tests for document-order block selection navigation.
@@ -72,7 +72,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
 
       const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on child A (first child)
       yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
@@ -116,7 +116,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
         text: "A1a",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Verify A and A1 are expanded (default state)
       yield* Then.BLOCK_IS_EXPANDED(Id.makeBufferBlockId(bufferId, nodeA));
@@ -148,7 +148,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       const firstNodeId = childNodeIds[0];
       const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on first block
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -210,7 +210,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "B",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on parent
       yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
@@ -255,7 +255,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "B",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the parent
       const Block = yield* BlockT;
@@ -305,7 +305,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
 
       const blockA2 = Id.makeBufferBlockId(bufferId, nodeA2);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on A2 (last child of A)
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA2);
@@ -333,7 +333,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       const lastNodeId = childNodeIds[1];
       const lastBlockId = Id.makeBufferBlockId(bufferId, lastNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on last block
       yield* When.USER_ENTERS_BLOCK_SELECTION(lastBlockId);
@@ -390,7 +390,7 @@ describe("Block selection document-order navigation - Edge cases", () => {
         text: "A1",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse A
       const Block = yield* BlockT;
@@ -440,7 +440,7 @@ describe("Block selection document-order navigation - Edge cases", () => {
 
       const blockA1a = Id.makeBufferBlockId(bufferId, nodeA1a);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on A1a (deeply nested)
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA1a);

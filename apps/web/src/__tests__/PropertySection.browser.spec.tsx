@@ -6,13 +6,13 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import PropertySection from "@/ui/PropertySection";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * PropertySection Component Tests
@@ -322,7 +322,7 @@ describe("PropertySection", () => {
     });
   });
 
-  describe("EditorBuffer integration", () => {
+  describe("Buffer integration", () => {
     it("shows nothing when view has no properties", async () => {
       await Effect.gen(function* () {
         const View = yield* ViewT;
@@ -336,10 +336,10 @@ describe("PropertySection", () => {
         // Create view but don't add any properties
         yield* View.getOrCreateView(rootNodeId);
 
-        // Render EditorBuffer
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // Render Buffer
+        render(() => <BufferView bufferId={bufferId} />);
 
-        // Assert: EditorBuffer renders without property sections
+        // Assert: Buffer renders without property sections
         yield* Effect.promise(() =>
           waitFor(
             () => {

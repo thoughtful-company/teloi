@@ -6,7 +6,7 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Stream } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupClientTest, type BrowserRuntime } from "../bdd";
+import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("Sidebar Workspace Pages", () => {
   let runtime: BrowserRuntime;

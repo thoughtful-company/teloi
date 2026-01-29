@@ -4,11 +4,17 @@ import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
+import {
+  type BrowserRuntime,
+  Given,
+  setupClientTest,
+  Then,
+  When,
+} from "@/test-utils/bdd";
 
 describe("TypePicker in Title", () => {
   let runtime: BrowserRuntime;
@@ -33,7 +39,7 @@ describe("TypePicker in Title", () => {
           { text: "Child" },
         ]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_TITLE(bufferId);
         yield* When.USER_PRESSES("#");
@@ -65,7 +71,7 @@ describe("TypePicker in Title", () => {
           [{ text: "Child" }],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_TITLE(bufferId);
 
@@ -157,7 +163,7 @@ describe("TypePicker in Title", () => {
           [{ text: "Child" }],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_TITLE(bufferId);
         yield* When.USER_PRESSES("#newtitletag");
@@ -210,7 +216,7 @@ describe("TypePicker in Title", () => {
           { text: "Child" },
         ]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_TITLE(bufferId);
         yield* When.USER_PRESSES("#test");
@@ -260,7 +266,7 @@ describe("TypePicker in Title", () => {
         // Apply the type to the root node (title)
         yield* TypePicker.applyType(rootNodeId, typeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Type badge should be visible below title
         yield* Effect.promise(() =>

@@ -11,7 +11,7 @@ import {
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
 import { onCleanup, onMount, Show } from "solid-js";
-import TextEditor from "./TextEditor";
+import Editor from "./Editor";
 
 interface TitleProps {
   bufferId: Id.Buffer;
@@ -22,7 +22,7 @@ interface TitleProps {
  * Render and manage an editable title for a buffer node.
  *
  * Synchronizes the displayed text with Automerge, switches between a read-only heading
- * and an interactive TextEditor when the title becomes active, and handles focus and keyboard
+ * and an interactive Editor when the title becomes active, and handles focus and keyboard
  * navigation (ArrowRight at end, ArrowDown on last line, Enter to split/create a child node).
  */
 export default function Title({ bufferId, nodeId }: TitleProps) {
@@ -93,7 +93,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
           </h1>
         }
       >
-        <TextEditor
+        <Editor
           handle={Automerge.handle}
           path={Automerge.getTextPath(nodeId)}
           blockId={Id.makeBufferBlockId(bufferId, nodeId)}

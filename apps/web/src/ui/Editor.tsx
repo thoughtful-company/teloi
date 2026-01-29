@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import type { WorkspaceTexts } from "@/services/external/Automerge";
 import { createDispatch, type Dispatch } from "@/services/ui/Action";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
-import { TextEditorT } from "@/services/ui/TextEditor";
+import { EditorT } from "@/services/ui/Editor";
 import { getCursorContext } from "@/utils/cursorContext";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
@@ -18,7 +18,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { Effect } from "effect";
 import { onCleanup, onMount } from "solid-js";
 
-export type TextEditorVariant = "block" | "title";
+export type EditorVariant = "block" | "title";
 
 interface VariantStyles {
   fontSize: string;
@@ -26,7 +26,7 @@ interface VariantStyles {
   fontWeight?: string;
 }
 
-const variantStyles: Record<TextEditorVariant, VariantStyles> = {
+const variantStyles: Record<EditorVariant, VariantStyles> = {
   block: {
     fontSize: "var(--text-block)",
     lineHeight: "var(--text-block--line-height)",
@@ -62,7 +62,7 @@ const createTheme = (styles: VariantStyles): Extension =>
     },
   });
 
-const variantThemes: Record<TextEditorVariant, Extension> = {
+const variantThemes: Record<EditorVariant, Extension> = {
   block: createTheme(variantStyles.block),
   title: createTheme(variantStyles.title),
 };
@@ -207,7 +207,7 @@ function computeInitialSelection(
 // Component
 // ============================================================================
 
-interface TextEditorProps {
+interface EditorProps {
   /** DocHandle for Automerge sync */
   handle: DocHandle<WorkspaceTexts>;
   /** Path to the text in the Automerge doc (e.g., ["texts", nodeId]) */
@@ -225,7 +225,7 @@ interface TextEditorProps {
     goalLine?: "first" | "last" | null;
   };
   /** Visual variant */
-  variant?: TextEditorVariant;
+  variant?: EditorVariant;
   /** Whether the editor is readonly */
   readonly?: boolean;
 }
@@ -234,11 +234,11 @@ interface TextEditorProps {
  * CodeMirror editor with Automerge CRDT sync.
  *
  * Uses automergeSyncPlugin for real-time collaborative editing.
- * - Selection/blur state synced via TextEditorT
+ * - Selection/blur state synced via EditorT
  * - Routable keys (navigation, structural) handled via KeyEventBus
  * - Non-routable keys (typing, "#" for picker) handled via ActionT
  */
-export default function TextEditor(props: TextEditorProps) {
+export default function Editor(props: EditorProps) {
   const runtime = useBrowserRuntime();
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
@@ -246,7 +246,7 @@ export default function TextEditor(props: TextEditorProps) {
   const dispatch = createDispatch(runtime);
 
   onMount(() => {
-    const textEditor = runtime.runSync(TextEditorT);
+    const editor = runtime.runSync(EditorT);
     const doc = props.handle.doc();
     const initialText = doc?.texts?.[props.path[1]] ?? "";
 
@@ -255,7 +255,7 @@ export default function TextEditor(props: TextEditorProps) {
       variantThemes[props.variant ?? "block"],
       keymap.of(defaultKeymap),
       automergeSyncPlugin({ handle: props.handle, path: props.path }),
-      textEditor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
+      editor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
       createKeydownHandler(props.blockId, dispatch, runtime),
     ];
 
@@ -287,7 +287,7 @@ export default function TextEditor(props: TextEditorProps) {
     }
 
     view.focus();
-    runtime.runSync(textEditor.registerView(view));
+    runtime.runSync(editor.registerView(view));
 
     onCleanup(() => {
       // Don't call runSync here - runtime may be disposed during test cleanup

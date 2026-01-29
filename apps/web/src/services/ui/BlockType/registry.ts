@@ -38,7 +38,7 @@ export const getAll = (): readonly BlockTypeDefinition[] => {
 /**
  * Get all triggers paired with their parent definitions.
  * Flattens definitions with multiple triggers into separate entries.
- * Used by TextEditor.tsx input handler.
+ * Used by Editor.tsx input handler.
  */
 export const getTriggersWithDefinitions =
   (): readonly TriggerWithDefinition[] => {

@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -11,7 +11,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
   let runtime: BrowserRuntime;
@@ -61,7 +61,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Focus the parent block (text editing mode)
         yield* When.USER_CLICKS_BLOCK(parentBlockId);
@@ -96,7 +96,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         const [firstNodeId, secondNodeId] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -133,7 +133,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         const onlyChildBlockId = Id.makeBufferBlockId(bufferId, onlyChild);
         const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(onlyChildBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -167,7 +167,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(parentBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -213,7 +213,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode on Parent
         yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
@@ -261,7 +261,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Select First, extend selection to include Second
         yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -294,7 +294,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         const [firstNodeId, secondNodeId] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -326,7 +326,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -369,7 +369,7 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
       const [firstNodeId] = childNodeIds;
       const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on First
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -395,7 +395,7 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
       const [, secondNodeId] = childNodeIds;
       const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on Second
       yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
@@ -425,7 +425,7 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
       const [firstNodeId, secondNodeId, thirdNodeId] = childNodeIds;
       const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select first two blocks
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);

@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -10,7 +10,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Enter key", () => {
   let runtime: BrowserRuntime;
@@ -37,7 +37,7 @@ describe("Block Enter key", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_MOVES_CURSOR_TO(5);
@@ -65,7 +65,7 @@ describe("Block Enter key", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_PRESSES("{Enter}");
@@ -86,7 +86,7 @@ describe("Block Enter key", () => {
 
       const originalBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(originalBlockId);
       yield* When.USER_MOVES_CURSOR_TO(0);
@@ -114,7 +114,7 @@ describe("Block Enter key", () => {
 
       const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(emptyBlockId);
       yield* When.USER_PRESSES("{Enter}");
@@ -164,7 +164,7 @@ describe("Title Enter key", () => {
       const { bufferId, nodeId: rootNodeId } =
         yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // When: User clicks title and presses Enter (cursor at end by default)
       yield* When.USER_CLICKS_TITLE(bufferId);
@@ -201,7 +201,7 @@ describe("Title Enter key", () => {
       const { bufferId, nodeId: rootNodeId } =
         yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // When: User clicks title, moves to start, and presses Enter
       yield* When.USER_CLICKS_TITLE(bufferId);
@@ -238,7 +238,7 @@ describe("Title Enter key", () => {
       const { bufferId, nodeId: rootNodeId } =
         yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // When: User clicks title, moves to position 8, and presses Enter
       yield* When.USER_CLICKS_TITLE(bufferId);

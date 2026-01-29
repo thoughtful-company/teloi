@@ -8,7 +8,7 @@ import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import { Effect, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("TypeColorT Service", () => {
   let runtime: BrowserRuntime;

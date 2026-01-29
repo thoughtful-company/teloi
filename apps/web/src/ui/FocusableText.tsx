@@ -20,9 +20,9 @@ interface FocusableTextProps {
 }
 
 /**
- * Wrapper that switches between unfocused text display and TextEditor.
+ * Wrapper that switches between unfocused text display and Editor.
  *
- * When goalX/goalLine is set, passes them through to TextEditor which uses
+ * When goalX/goalLine is set, passes them through to Editor which uses
  * CodeMirror's posAtCoords for position resolution and goalColumn for
  * preserving horizontal position during vertical navigation.
  */

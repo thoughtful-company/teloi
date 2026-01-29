@@ -140,7 +140,7 @@ export const NavigationLive = Layer.effect(
                   yield* Window.setActiveElement(
                     Option.some({ type: "block" as const, id: titleBlockId }),
                   );
-                  // Title scrolls itself or EditorBuffer handles it
+                  // Title scrolls itself or Buffer handles it
                 } else {
                   // Selection is on a block (buffer or section block)
                   // Use the original blockId from selection

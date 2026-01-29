@@ -4,10 +4,16 @@ import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
+import {
+  type BrowserRuntime,
+  Given,
+  setupClientTest,
+  Then,
+  When,
+} from "@/test-utils/bdd";
 import { waitFor } from "solid-testing-library";
 
 describe("TypePicker", () => {
@@ -39,7 +45,7 @@ describe("TypePicker", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#");
@@ -70,7 +76,7 @@ describe("TypePicker", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#");
@@ -108,7 +114,7 @@ describe("TypePicker", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#pa");
@@ -143,7 +149,7 @@ describe("TypePicker", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#newtype");
@@ -185,7 +191,7 @@ describe("TypePicker", () => {
         );
         const childNodeId = childNodeIds[0];
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
 
@@ -285,7 +291,7 @@ describe("TypePicker", () => {
         );
         const childNodeId = childNodeIds[0];
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#mytag");
@@ -345,7 +351,7 @@ describe("TypePicker", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.USER_PRESSES("#test");
@@ -397,7 +403,7 @@ describe("TypePicker", () => {
         // Apply the type to the root node
         yield* TypePicker.applyType(rootNodeId, typeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Type badge should be visible
         yield* Effect.promise(() =>

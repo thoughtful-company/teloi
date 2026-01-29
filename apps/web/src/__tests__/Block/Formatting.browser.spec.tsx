@@ -8,7 +8,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -17,7 +17,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Text Formatting", () => {
   let runtime: BrowserRuntime;
@@ -51,7 +51,7 @@ describe("Text Formatting", () => {
             ]);
 
           const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_CLICKS_BLOCK(blockId);
           yield* When.USER_MOVES_CURSOR_TO(6);
@@ -74,7 +74,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
         yield* When.USER_MOVES_CURSOR_TO(6);
@@ -94,7 +94,7 @@ describe("Text Formatting", () => {
         );
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
         yield* When.USER_PRESSES("{End}");
@@ -119,7 +119,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
         yield* When.USER_MOVES_CURSOR_TO(12);
@@ -144,7 +144,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(blockId);
         yield* When.USER_MOVES_CURSOR_TO(8); // "hello BO|LD"
@@ -175,7 +175,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[1], 0, 6);
 
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_MOVES_CURSOR_TO(0);
@@ -205,7 +205,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_BOLD_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);
@@ -221,7 +221,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_ITALIC(childNodeIds[0], 6, 5);
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_ITALIC_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);
@@ -237,7 +237,7 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_CODE(childNodeIds[0], 6, 5);
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_CODE_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);

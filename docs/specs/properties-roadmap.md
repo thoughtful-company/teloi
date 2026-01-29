@@ -33,10 +33,10 @@ This document outlines the implementation phases for the Properties feature. See
 
 ### Phase 3: Property Section UI ✅
 - Created `apps/web/src/ui/PropertySection.tsx`
-- PropertySection renders property name (editable via TextEditor) on left
+- PropertySection renders property name (editable via Editor) on left
 - Linked blocks display on right as full Block components
 - Ghost block shown when property bound but no linked blocks
-- Integrated into EditorBuffer via PropertyList component
+- Integrated into Buffer via PropertyList component
 - Tests: `apps/web/src/__tests__/PropertySection.browser.spec.tsx` (8 tests)
 
 ### Phase 4: Property Creation Flow ✅

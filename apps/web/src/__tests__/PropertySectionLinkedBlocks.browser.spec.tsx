@@ -12,7 +12,7 @@ import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * PropertySection Linked Blocks Tests

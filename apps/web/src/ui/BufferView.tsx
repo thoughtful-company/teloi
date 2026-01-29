@@ -83,7 +83,7 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
   );
 }
 
-interface EditorBufferProps {
+interface BufferViewProps {
   bufferId: Id.Buffer;
 }
 
@@ -96,7 +96,7 @@ interface EditorBufferProps {
  * @param bufferId - Identifier of the buffer to subscribe to and render
  * @returns The component's JSX element; an outer container that conditionally renders a header with a Title and a column of Block components for the buffer's child blocks when the buffer's root node is available
  */
-export default function EditorBuffer({ bufferId }: EditorBufferProps) {
+export default function BufferView({ bufferId }: BufferViewProps) {
   const runtime = useBrowserRuntime();
 
   const bufferStream = Stream.unwrap(
@@ -143,7 +143,7 @@ export default function EditorBuffer({ bufferId }: EditorBufferProps) {
   return (
     <ActiveElementContext.Provider value={getActiveElement}>
       <div
-        data-testid="editor-buffer"
+        data-testid="buffer"
         data-buffer-id={bufferId}
         tabIndex={0}
         class="h-full flex flex-col outline-none"

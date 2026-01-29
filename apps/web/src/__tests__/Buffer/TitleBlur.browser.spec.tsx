@@ -1,13 +1,17 @@
 import "@/index.css";
-import { Id } from "@/schema";
 import { WindowT } from "@/services/ui/Window";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
-describe("Block blur clears activeElement", () => {
+describe("Title blur clears activeElement", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -23,32 +27,30 @@ describe("Block blur clears activeElement", () => {
     await cleanup();
   });
 
-  it("clears activeElement when clicking outside focused block", async () => {
+  it("clears activeElement when clicking outside focused title", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
         "Document Title",
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      render(() => <BufferView bufferId={bufferId} />);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
-
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* When.USER_CLICKS_TITLE(bufferId);
 
       yield* Effect.promise(() =>
         waitFor(
           () => {
-            const blockEl = document.querySelector(
-              `[data-element-id="${blockId}"]`,
+            const titleEl = document.querySelector(
+              `[data-element-type="title"]`,
             );
-            const cm = blockEl?.querySelector(".cm-content");
-            if (!cm) throw new Error("Block CodeMirror not found");
+            const cm = titleEl?.querySelector(".cm-content");
+            if (!cm) throw new Error("Title CodeMirror not found");
             if (
               document.activeElement !== cm &&
               !cm.contains(document.activeElement)
             ) {
-              throw new Error("Block CodeMirror not focused");
+              throw new Error("Title CodeMirror not focused");
             }
           },
           { timeout: 2000 },
@@ -62,21 +64,13 @@ describe("Block blur clears activeElement", () => {
       const element1 = Option.getOrNull(activeElement1)!;
       expect(Option.isSome(element1)).toBe(true);
       const elementValue1 = Option.getOrNull(element1)!;
-      expect(elementValue1.type).toBe("block");
-      expect((elementValue1 as { id: string }).id).toBe(blockId);
+      expect(elementValue1.type).toBe("title");
+      expect((elementValue1 as { bufferId: string }).bufferId).toBe(bufferId);
 
       yield* Effect.promise(async () => {
-        const blockEl = document.querySelector(
-          `[data-element-id="${blockId}"]`,
-        );
-        const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
-        if (!cm) throw new Error("Block CodeMirror not found");
-        cm.dispatchEvent(
-          new FocusEvent("focusout", {
-            bubbles: true,
-            relatedTarget: document.body,
-          }),
-        );
+        const titleEl = document.querySelector(`[data-element-type="title"]`);
+        const cm = titleEl?.querySelector(".cm-content") as HTMLElement;
+        if (!cm) throw new Error("Title CodeMirror not found");
         cm.blur();
       });
 

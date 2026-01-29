@@ -115,7 +115,7 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
   }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));
 
 /**
- * Focuses the EditorBuffer container for a buffer.
+ * Focuses the Buffer container for a buffer.
  * Use this after programmatically setting up block selection mode
  * so that keyboard events can be received.
  */

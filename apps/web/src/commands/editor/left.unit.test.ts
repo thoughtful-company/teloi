@@ -3,27 +3,27 @@
  * Tests navigation logic without CodeMirror/browser dependencies.
  */
 
-import { handle, Left } from "@/commands/text-editor/left";
+import { handle, Left } from "@/commands/editor/left";
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import * as Given from "../Given";
+import * as Given from "@/test-utils/unit/given";
 import {
   setupCommandTest,
   type CommandRuntime,
-  type TextEditorTestHandle,
-} from "../setup";
+  type EditorTestHandle,
+} from "@/test-utils/unit/setup";
 
 describe("editor:left command", () => {
   let runtime: CommandRuntime;
-  let textEditor: TextEditorTestHandle;
+  let editor: EditorTestHandle;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
     const setup = await setupCommandTest();
     runtime = setup.runtime;
-    textEditor = setup.textEditor;
+    editor = setup.editor;
     cleanup = setup.cleanup;
   });
 
@@ -100,7 +100,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondChildBlockId });
 
       // Given: Cursor is at start (position 0)
-      yield* textEditor.setCursorAtStart(true);
+      yield* editor.setCursorAtStart(true);
 
       // When: User presses Left (handled by editor:left command)
       yield* handle(new Left());
@@ -135,7 +135,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondChildBlockId });
 
       // Given: Cursor is at start
-      yield* textEditor.setCursorAtStart(true);
+      yield* editor.setCursorAtStart(true);
 
       // When: User presses Left
       yield* handle(new Left());
@@ -167,7 +167,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: childBlockId });
 
       // Given: Cursor is at start
-      yield* textEditor.setCursorAtStart(true);
+      yield* editor.setCursorAtStart(true);
 
       // When: User presses Left
       yield* handle(new Left());
@@ -191,7 +191,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: firstBlockId });
 
       // Given: Cursor is at start
-      yield* textEditor.setCursorAtStart(true);
+      yield* editor.setCursorAtStart(true);
 
       // When: User presses Left
       yield* handle(new Left());
@@ -236,7 +236,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondBlockId });
 
       // Given: Cursor is at start
-      yield* textEditor.setCursorAtStart(true);
+      yield* editor.setCursorAtStart(true);
 
       // When: User presses Left
       yield* handle(new Left());
@@ -279,14 +279,14 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: blockId });
 
       // Given: Cursor is NOT at start (somewhere in the middle)
-      yield* textEditor.setCursorAtStart(false);
-      yield* textEditor.resetMoveLeftCalled();
+      yield* editor.setCursorAtStart(false);
+      yield* editor.resetMoveLeftCalled();
 
       // When: User presses Left
       yield* handle(new Left());
 
       // Then: moveLeft should have been called (no navigation)
-      const moveLeftWasCalled = yield* textEditor.getMoveLeftCalled();
+      const moveLeftWasCalled = yield* editor.getMoveLeftCalled();
       expect(moveLeftWasCalled, "moveLeft() should be called").toBe(true);
 
       // And: Selection should not have changed (no navigation occurred)

@@ -6,10 +6,10 @@
  * those services and provides them during execution.
  */
 
-import { Left, handle as leftHandle } from "@/commands/text-editor/left";
+import { Left, handle as leftHandle } from "@/commands/editor/left";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
-import { TextEditorT } from "@/services/ui/TextEditor";
+import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer } from "effect";
 
@@ -58,14 +58,14 @@ export const CommandBusLive = Layer.effect(
   CommandBusT,
   Effect.gen(function* () {
     // Capture services that commands need
-    const TextEditor = yield* TextEditorT;
+    const Editor = yield* EditorT;
     const Window = yield* WindowT;
     const Buffer = yield* BufferT;
     const Automerge = yield* AutomergeT;
 
     // Build context to provide to command handlers
     const commandContext = Context.empty().pipe(
-      Context.add(TextEditorT, TextEditor),
+      Context.add(EditorT, Editor),
       Context.add(WindowT, Window),
       Context.add(BufferT, Buffer),
       Context.add(AutomergeT, Automerge),

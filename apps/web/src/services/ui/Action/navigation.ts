@@ -184,7 +184,7 @@ export const createNavigationHandlers = (
           }),
         );
         // NOTE: setSelection forks a daemon to set activeElement after next
-        // frame, giving the selection time to propagate before TextEditor mounts.
+        // frame, giving the selection time to propagate before Editor mounts.
 
         if (targetNodeId === rootNodeId) {
           return ActionResult.handled({
@@ -227,7 +227,7 @@ export const createNavigationHandlers = (
             }),
           );
           // NOTE: setSelection forks a daemon to set activeElement after next
-          // frame, giving the selection time to propagate before TextEditor mounts.
+          // frame, giving the selection time to propagate before Editor mounts.
           return ActionResult.handled({
             focus: { type: "block", blockId: targetBlockId },
           });
@@ -255,7 +255,7 @@ export const createNavigationHandlers = (
           }),
         );
         // NOTE: setSelection forks a daemon to set activeElement after next
-        // frame, giving the selection time to propagate before TextEditor mounts.
+        // frame, giving the selection time to propagate before Editor mounts.
         return ActionResult.handled({
           focus: { type: "block", blockId: targetBlockId },
         });

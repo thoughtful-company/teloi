@@ -5,12 +5,17 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime, When } from "./bdd";
+import {
+  Given,
+  setupClientTest,
+  type BrowserRuntime,
+  When,
+} from "@/test-utils/bdd";
 
 /**
  * Property Trigger Tests
@@ -50,7 +55,7 @@ describe("Property Creation Trigger", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -107,7 +112,7 @@ describe("Property Creation Trigger", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -167,7 +172,7 @@ describe("Property Creation Trigger", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -218,7 +223,7 @@ describe("Property Creation Trigger", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -250,13 +255,13 @@ describe("Property Creation Trigger", () => {
               );
               expect(propertySection).toBeTruthy();
 
-              // Property name's TextEditor should have focus
+              // Property name's Editor should have focus
               const focusedEditor = propertySection!.querySelector(
                 ".property-name .cm-editor.cm-focused",
               );
               expect(
                 focusedEditor,
-                "Property name TextEditor should be focused",
+                "Property name Editor should be focused",
               ).toBeTruthy();
             },
             { timeout: 2000 },
@@ -281,7 +286,7 @@ describe("Property Creation Trigger", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -329,7 +334,7 @@ describe("Property Creation Trigger", () => {
           [{ text: "child" }],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for title to appear
         yield* Effect.promise(() =>

@@ -1,5 +1,5 @@
 /**
- * TextEditorT - Editor state management service.
+ * EditorT — Editor state management service.
  *
  * Responsibilities:
  * - Hold reference to the currently active CodeMirror EditorView
@@ -17,8 +17,8 @@ import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Context, Data, Effect, Layer, Option, Ref } from "effect";
 
-export class NoActiveTextEditorError extends Data.TaggedError(
-  "NoActiveTextEditorError",
+export class NoActiveEditorError extends Data.TaggedError(
+  "NoActiveEditorError",
 ) {}
 
 export interface Selection {
@@ -27,8 +27,8 @@ export interface Selection {
   assoc: -1 | 0 | 1;
 }
 
-export class TextEditorT extends Context.Tag("TextEditorT")<
-  TextEditorT,
+export class EditorT extends Context.Tag("EditorT")<
+  EditorT,
   {
     /**
      * Create CodeMirror extension for state sync (selection changes, blur).
@@ -47,30 +47,30 @@ export class TextEditorT extends Context.Tag("TextEditorT")<
     registerView: (view: EditorView) => Effect.Effect<void>;
 
     /**
-     * Clear the EditorView when TextEditor unmounts.
+     * Clear the EditorView when Editor unmounts.
      */
     clearView: () => Effect.Effect<void>;
 
     /**
      * Get the current EditorView.
-     * Fails with NoActiveTextEditorError if no view is registered.
+     * Fails with NoActiveEditorError if no view is registered.
      */
-    getView: () => Effect.Effect<EditorView, NoActiveTextEditorError>;
+    getView: () => Effect.Effect<EditorView, NoActiveEditorError>;
 
     /**
      * Check if the cursor is at the start of the text (position 0, no selection).
      */
-    isCursorAtStart: () => Effect.Effect<boolean, NoActiveTextEditorError>;
+    isCursorAtStart: () => Effect.Effect<boolean, NoActiveEditorError>;
 
     /**
      * Move cursor one character to the left.
      */
-    moveLeft: () => Effect.Effect<void, NoActiveTextEditorError>;
+    moveLeft: () => Effect.Effect<void, NoActiveEditorError>;
   }
 >() {}
 
-export const TextEditorLive = Layer.effect(
-  TextEditorT,
+export const EditorLive = Layer.effect(
+  EditorT,
   Effect.gen(function* () {
     const viewRef = yield* Ref.make<Option.Option<EditorView>>(Option.none());
 
@@ -81,14 +81,14 @@ export const TextEditorLive = Layer.effect(
       Context.add(WindowT, Window),
     );
 
-    // Helper to access view or fail with NoActiveTextEditorError
+    // Helper to access view or fail with NoActiveEditorError
     const withView = <A>(
       fn: (view: EditorView) => A,
-    ): Effect.Effect<A, NoActiveTextEditorError> =>
+    ): Effect.Effect<A, NoActiveEditorError> =>
       Ref.get(viewRef).pipe(
         Effect.andThen(
           Option.match({
-            onNone: () => Effect.fail(new NoActiveTextEditorError()),
+            onNone: () => Effect.fail(new NoActiveEditorError()),
             onSome: (view) => Effect.succeed(fn(view)),
           }),
         ),

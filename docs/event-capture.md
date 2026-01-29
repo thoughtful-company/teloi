@@ -52,7 +52,7 @@ Events that require model context for interpretation. These are captured, wrappe
 
 ### 2. Input Pattern Events → Direct Callbacks
 
-Events that are self-contained and don't need model context. TextEditor interprets these directly and calls semantic callbacks.
+Events that are self-contained and don't need model context. Editor interprets these directly and calls semantic callbacks.
 
 | Event | Pattern | Callback |
 |-------|---------|----------|
@@ -152,9 +152,9 @@ Components execute DOMIntent imperatively after `ActionT.handle()` returns.
 
 Events are captured at three layers, each with different responsibilities:
 
-### Layer 1: Editor (CodeMirror/TextEditor)
+### Layer 1: Editor (CodeMirror/Editor)
 
-**Location:** `ui/TextEditor.tsx`
+**Location:** `ui/Editor.tsx`
 
 Captures events from within a text editor:
 - Structural keys via `Prec.high(EditorView.domEventHandlers)`
@@ -167,15 +167,15 @@ Passes raw events to callbacks. Does NOT interpret them.
 
 **Location:** `ui/Block.tsx`, `ui/Title.tsx`
 
-Receives callbacks from TextEditor:
+Receives callbacks from Editor:
 - Builds `CursorContext` from EditorView
 - Creates `AppAction` with source context
 - Calls `ActionT.handle()` synchronously
 - Executes returned `DOMIntent`
 
-### Layer 3: Document (EditorBuffer/App)
+### Layer 3: Document (BufferView/App)
 
-**Location:** `ui/EditorBuffer.tsx`
+**Location:** `ui/BufferView.tsx`
 
 Handles document-level events:
 - Global keyboard shortcuts
@@ -189,7 +189,7 @@ Uses `source: { type: "document", bufferId }` - no cursor context.
 CodeMirror captures its own events internally. To intercept before CodeMirror handles them:
 
 ```typescript
-// TextEditor.tsx
+// Editor.tsx
 extensions.push(
   Prec.high(  // High priority - runs before CodeMirror keymaps
     EditorView.domEventHandlers({
@@ -228,7 +228,7 @@ All dependencies are synchronous:
 ## Adding New Events
 
 1. **Needs model context?** → Add to `AppAction` union, handle in `ActionT`
-2. **CodeMirror-specific?** → Add callback prop to `TextEditor`
+2. **CodeMirror-specific?** → Add callback prop to `Editor`
 3. **Self-contained pattern?** → Use direct callback, skip `ActionT`
 
 ## Future: User Customization

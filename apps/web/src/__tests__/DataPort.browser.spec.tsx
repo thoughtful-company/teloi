@@ -7,7 +7,7 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "./bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("DataPort", () => {
   let runtime: BrowserRuntime;

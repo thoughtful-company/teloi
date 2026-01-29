@@ -97,13 +97,13 @@ This is a pnpm monorepo with:
 **Component Hierarchy**:
 - **App**
   - **Sidebar** (navigation, page list)
-  - **EditorBuffer**: is akin to page view of a node.
+  - **BufferView**: is akin to page view of a node.
     Subscribes to buffer, renders title and children as tree.
     - **Title**
       Unfocused/focused same as Block
     - **Block**
       - `Unfocused`: plain text render
-      - `Focused`: **TextEditor**
+      - `Focused`: **Editor**
         - Thin wrapper around CodeMirror 
       - Child blocks (also Block components)
 
@@ -118,8 +118,8 @@ All keyboard/mouse actions route through `ActionT` (`services/ui/Action/`) — i
 Focus is driven by state propagation, never by direct DOM `.focus()` calls:
 1. Handler calls `Window.setActiveElement(blockId)`
 2. `BlockT.subscribe` emits updated view with `isActive: true`
-3. Block component renders `<TextEditor>` when active
-4. TextEditor calls `view.focus()` on mount
+3. Block component renders `<Editor>` when active
+4. Editor calls `view.focus()` on mount
 
 This means: to focus a block, set `activeElement` state. The UI reacts and focus happens as a consequence.
 
@@ -134,7 +134,7 @@ Key services:
 - Split/merge update both; typing only touches Automerge
 
 **Ghost Block Pattern** (PropertySection):
-Automerge text is independent of LiveStore—we can bind TextEditor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
+Automerge text is independent of LiveStore—we can bind Editor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
 - `ui/PropertySection.tsx` - GhostBlock component
 - `services/ui/Property/addLinkedBlock.ts` - accepts optional `nodeId` for materialization
 

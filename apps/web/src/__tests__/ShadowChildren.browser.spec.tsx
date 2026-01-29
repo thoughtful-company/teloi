@@ -7,7 +7,7 @@ import { queryDb } from "@livestore/livestore";
 import { Effect, Stream } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupClientTest, type BrowserRuntime } from "./bdd";
+import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * Shadow Children Tests
@@ -67,7 +67,12 @@ describe("Shadow Children", () => {
       yield* Store.commit(
         events.nodeMoved({
           timestamp: Date.now(),
-          data: { nodeId: childB, newParentId: parentId, position: "", inShadow: true },
+          data: {
+            nodeId: childB,
+            newParentId: parentId,
+            position: "",
+            inShadow: true,
+          },
         }),
       );
 
@@ -134,7 +139,10 @@ describe("Shadow Children", () => {
         const childC = Id.Node.make(nanoid());
 
         yield* Store.commit(
-          events.nodeCreated({ timestamp: Date.now(), data: { nodeId: parentId } }),
+          events.nodeCreated({
+            timestamp: Date.now(),
+            data: { nodeId: parentId },
+          }),
         );
         yield* Store.commit(
           events.nodeCreated({
@@ -151,7 +159,12 @@ describe("Shadow Children", () => {
         yield* Store.commit(
           events.nodeMoved({
             timestamp: Date.now(),
-            data: { nodeId: shadowChild, newParentId: parentId, position: "", inShadow: true },
+            data: {
+              nodeId: shadowChild,
+              newParentId: parentId,
+              position: "",
+              inShadow: true,
+            },
           }),
         );
         yield* Store.commit(
@@ -175,7 +188,9 @@ describe("Shadow Children", () => {
         expect(visibleChildren[2]).toBe(childC);
 
         const newLink = yield* Store.query(
-          queryDb(tables.parentLinks.select().where({ childId: newNodeId }).first()),
+          queryDb(
+            tables.parentLinks.select().where({ childId: newNodeId }).first(),
+          ),
         );
         expect(newLink.position > "a0").toBe(true);
         expect(newLink.position < "a2").toBe(true);
@@ -204,7 +219,9 @@ describe("Shadow Children", () => {
         expect(nodesAfter.map((n) => n.id)).not.toContain(childB);
         expect(nodesAfter.map((n) => n.id)).not.toContain(childC);
 
-        const linksAfter = yield* Store.query(queryDb(tables.parentLinks.select()));
+        const linksAfter = yield* Store.query(
+          queryDb(tables.parentLinks.select()),
+        );
         expect(linksAfter.map((l) => l.childId)).not.toContain(childA);
         expect(linksAfter.map((l) => l.childId)).not.toContain(childB);
         expect(linksAfter.map((l) => l.childId)).not.toContain(childC);
@@ -221,7 +238,10 @@ describe("Shadow Children", () => {
         const grandchild = Id.Node.make(nanoid());
 
         yield* Store.commit(
-          events.nodeCreated({ timestamp: Date.now(), data: { nodeId: parentId } }),
+          events.nodeCreated({
+            timestamp: Date.now(),
+            data: { nodeId: parentId },
+          }),
         );
         yield* Store.commit(
           events.nodeCreated({
@@ -232,7 +252,12 @@ describe("Shadow Children", () => {
         yield* Store.commit(
           events.nodeMoved({
             timestamp: Date.now(),
-            data: { nodeId: shadowChild, newParentId: parentId, position: "", inShadow: true },
+            data: {
+              nodeId: shadowChild,
+              newParentId: parentId,
+              position: "",
+              inShadow: true,
+            },
           }),
         );
         // Grandchild under shadow child

@@ -1,7 +1,7 @@
 /**
  * Editor Mode Handlers for ActionT.
  *
- * All keyboard/event handling when cursor is in a TextEditor:
+ * All keyboard/event handling when cursor is in a Editor:
  * - interpretKeyDown (main keyboard dispatcher)
  * - handleSelectionChange, handleBlur, handleFocusAction, handleClick
  */
@@ -290,7 +290,7 @@ export const createEditorModeHandlers = (
           yield* Buffer.setSelection(bufferId, Option.none());
           yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
 
-          // Focus the EditorBuffer container to receive keyboard events
+          // Focus the Buffer container to receive keyboard events
           yield* Effect.sync(() => {
             const container = document.querySelector(
               `[data-buffer-id="${bufferId}"]`,
@@ -353,7 +353,7 @@ export const createEditorModeHandlers = (
         }
 
         // --- Block select (Shift+Arrow at boundary) ---
-        // Match legacy TextEditor keymaps: headAtStart / headAtEnd conditions
+        // Match legacy Editor keymaps: headAtStart / headAtEnd conditions
         // Exclude alt+meta to not interfere with Move shortcuts
         const docLen = cursor.docText.length;
 

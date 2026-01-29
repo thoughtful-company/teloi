@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { beforeEach, describe, it } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Down+Up navigation", () => {
   let runtime: BrowserRuntime;
@@ -43,7 +43,7 @@ describe("Block Down+Up navigation", () => {
 
       const longTextBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Given.BUFFER_HAS_WIDTH(800);
 

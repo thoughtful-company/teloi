@@ -9,7 +9,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -18,7 +18,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Text Input - Typing then Enter", () => {
   let runtime: BrowserRuntime;
@@ -57,7 +57,7 @@ describe("Text Input - Typing then Enter", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click the empty block
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
@@ -101,7 +101,7 @@ describe("Text Input - Typing then Enter", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click the first block (cursor goes to end)
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
@@ -144,7 +144,7 @@ describe("Text Input - Typing then Enter", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click the empty block
       yield* When.USER_CLICKS_BLOCK(blockId);
