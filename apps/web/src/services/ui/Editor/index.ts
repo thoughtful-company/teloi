@@ -12,7 +12,7 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
-import { cursorCharLeft } from "@codemirror/commands";
+import { cursorCharLeft, cursorCharRight } from "@codemirror/commands";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Context, Data, Effect, Layer, Option, Ref } from "effect";
@@ -66,6 +66,16 @@ export class EditorT extends Context.Tag("EditorT")<
      * Move cursor one character to the left.
      */
     moveLeft: () => Effect.Effect<void, NoActiveEditorError>;
+
+    /**
+     * Check if the cursor is at the end of the text (position === doc.length, no selection).
+     */
+    isCursorAtEnd: () => Effect.Effect<boolean, NoActiveEditorError>;
+
+    /**
+     * Move cursor one character to the right.
+     */
+    moveRight: () => Effect.Effect<void, NoActiveEditorError>;
   }
 >() {}
 
@@ -187,6 +197,15 @@ export const EditorLive = Layer.effect(
 
       moveLeft: () =>
         withView((view) => cursorCharLeft(view)).pipe(Effect.asVoid),
+
+      isCursorAtEnd: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          return sel.empty && sel.head === view.state.doc.length;
+        }),
+
+      moveRight: () =>
+        withView((view) => cursorCharRight(view)).pipe(Effect.asVoid),
     };
   }),
 );
