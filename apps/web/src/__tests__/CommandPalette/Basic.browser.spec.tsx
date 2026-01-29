@@ -10,7 +10,7 @@ import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /** Well-known tuple type for linking nodes to views */
 const HAS_VIEW_TUPLE_TYPE = "sys:tuple-type:has-view" as Id.Node;
@@ -23,7 +23,7 @@ const HAS_VIEW_TUPLE_TYPE = "sys:tuple-type:has-view" as Id.Node;
  *
  * Architecture:
  * - CommandPalette lives in App.tsx
- * - App tracks "active buffer" via focus events from EditorBuffer
+ * - App tracks "active buffer" via focus events from Buffer
  * - Commands execute Effect-based actions with buffer/node context
  */
 describe("CommandPalette", () => {

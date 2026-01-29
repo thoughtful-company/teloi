@@ -2,7 +2,7 @@ import "@/index.css";
 import { NodeT } from "@/services/domain/Node";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * Tests for NodeT.getAllDescendants helper.

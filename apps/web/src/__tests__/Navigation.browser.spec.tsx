@@ -2,11 +2,16 @@ import "@/index.css";
 import { Id, System } from "@/schema";
 import { NavigationT } from "@/services/ui/Navigation";
 import { StoreT } from "@/services/external/Store";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, When, setupClientTest, type BrowserRuntime } from "./bdd";
+import {
+  Given,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 describe("Navigation", () => {
   let runtime: BrowserRuntime;
@@ -216,7 +221,7 @@ describe("Navigation with UI", () => {
         // Wrap in scroll container (simulates PaneWrapper) with limited height to force scrolling
         render(() => (
           <div class="overflow-y-auto" style={{ height: "300px" }}>
-            <EditorBuffer bufferId={bufferId} />
+            <BufferView bufferId={bufferId} />
           </div>
         ));
 
@@ -227,7 +232,8 @@ describe("Navigation with UI", () => {
               const blocks = document.querySelectorAll(
                 "[data-element-type='block']",
               );
-              if (blocks.length < 20) throw new Error("Not all blocks rendered");
+              if (blocks.length < 20)
+                throw new Error("Not all blocks rendered");
             },
             { timeout: 3000 },
           ),
@@ -250,7 +256,9 @@ describe("Navigation with UI", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const title = document.querySelector("[data-element-type='title']");
+              const title = document.querySelector(
+                "[data-element-type='title']",
+              );
               expect(title?.textContent).toBe(`Block 20 content`);
             },
             { timeout: 2000 },
@@ -264,7 +272,9 @@ describe("Navigation with UI", () => {
         yield* Effect.promise(() =>
           waitFor(
             () => {
-              const title = document.querySelector("[data-element-type='title']");
+              const title = document.querySelector(
+                "[data-element-type='title']",
+              );
               expect(title?.textContent).toBe("Root page");
             },
             { timeout: 2000 },

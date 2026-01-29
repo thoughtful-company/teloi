@@ -175,7 +175,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
  */
 export const BUFFER_HAS_WIDTH = (width: number) =>
   Effect.promise(async () => {
-    const buffer = await screen.findByTestId("editor-buffer");
+    const buffer = await screen.findByTestId("buffer");
     buffer.style.width = `${width}px`;
     buffer.style.maxWidth = `${width}px`; // Also set max-width to prevent overflow
     // Force reflow so text wrapping takes effect before we continue

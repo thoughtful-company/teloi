@@ -16,9 +16,9 @@ import {
   useContext,
 } from "solid-js";
 import Block from "./Block";
-import { ActiveElementContext } from "./EditorBuffer";
-// TODO: Re-enable TextEditor import once blockId support is added
-// import TextEditor from "./TextEditor";
+import { ActiveElementContext } from "./BufferView";
+// TODO: Re-enable Editor import once blockId support is added
+// import Editor from "./Editor";
 
 interface PropertySectionProps {
   propertyId: Id.Node;
@@ -38,11 +38,11 @@ interface GhostBlockProps {
 }
 
 /**
- * GhostBlock: A phantom block that shows a TextEditor but doesn't create a
+ * GhostBlock: A phantom block that shows a Editor but doesn't create a
  * LiveStore node until the user actually types something.
  *
  * The key insight is that text content is independent of LiveStore - we can bind
- * TextEditor to text with a pre-generated nodeId, then only materialize
+ * Editor to text with a pre-generated nodeId, then only materialize
  * the actual node when the user types. The typed content is preserved because
  * the real Block will use the same nodeId (same Automerge text!).
  */
@@ -144,9 +144,9 @@ function GhostBlock(props: GhostBlockProps) {
           </span>
         }
       >
-        {/* TODO: Pre-generate blockId for ghost block and pass to TextEditor.
+        {/* TODO: Pre-generate blockId for ghost block and pass to Editor.
             The ghost block pattern needs a blockId before materialization.
-            See: TextEditor now requires blockId for ActionT integration. */}
+            See: Editor now requires blockId for ActionT integration. */}
         <div class="text-neutral-400">[Ghost editor placeholder]</div>
       </Show>
     </div>
@@ -157,7 +157,7 @@ function GhostBlock(props: GhostBlockProps) {
  * PropertySection displays an editable property with its name and linked blocks.
  *
  * Features:
- * - Property name is editable (using TextEditor when focused)
+ * - Property name is editable (using Editor when focused)
  * - ArrowRight at end of unbound property triggers quick-create flow:
  *   - Creates tuple type, position nodes, and initial linked block
  *   - Focuses the new linked block
@@ -308,8 +308,8 @@ export default function PropertySection(props: PropertySectionProps) {
               </span>
             }
           >
-            {/* TODO: Pre-generate blockId for property header and pass to TextEditor.
-                TextEditor now requires blockId for ActionT integration. */}
+            {/* TODO: Pre-generate blockId for property header and pass to Editor.
+                Editor now requires blockId for ActionT integration. */}
             <div class="text-neutral-400">[Property editor placeholder]</div>
           </Show>
         </div>

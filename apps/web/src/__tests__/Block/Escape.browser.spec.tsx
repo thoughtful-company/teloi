@@ -2,11 +2,16 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
-import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 describe("Block Escape key", () => {
   let runtime: BrowserRuntime;
@@ -32,7 +37,7 @@ describe("Block Escape key", () => {
         ]);
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
 
@@ -106,7 +111,7 @@ describe("Block Escape key", () => {
         ]);
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -196,7 +201,7 @@ describe("Block Escape key", () => {
 
       const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -275,7 +280,7 @@ describe("Block Escape key", () => {
 
       const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -340,7 +345,7 @@ describe("Block Escape key", () => {
 
       const blockAId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -398,7 +403,7 @@ describe("Block Escape key", () => {
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
 
@@ -521,7 +526,7 @@ describe("Block deletion in block selection mode", () => {
 
       const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -577,7 +582,7 @@ describe("Block deletion in block selection mode", () => {
 
       const onlyChildBlockId = Id.makeBufferBlockId(bufferId, onlyChild);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -643,7 +648,7 @@ describe("Block deletion in block selection mode", () => {
 
       const childABlockId = Id.makeBufferBlockId(bufferId, childA);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 

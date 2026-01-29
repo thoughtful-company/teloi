@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
-import { TextEditorT } from "@/services/ui/TextEditor";
+import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
@@ -9,11 +9,11 @@ import { Data, Effect, Option } from "effect";
 export class Left extends Data.TaggedClass("editor:left")<{}> {}
 
 export const handle = Effect.fn("editor:left")(function* (_cmd: Left) {
-  const TextEditor = yield* TextEditorT;
+  const Editor = yield* EditorT;
 
-  const isAtStart = yield* TextEditor.isCursorAtStart();
+  const isAtStart = yield* Editor.isCursorAtStart();
   if (!isAtStart) {
-    yield* TextEditor.moveLeft();
+    yield* Editor.moveLeft();
     return;
   }
 

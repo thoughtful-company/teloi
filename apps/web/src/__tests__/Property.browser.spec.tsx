@@ -11,7 +11,7 @@ import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupClientTest, type BrowserRuntime } from "./bdd";
+import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * Property Service Tests

@@ -1,9 +1,9 @@
 import "@/index.css";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("Block whitespace rendering", () => {
   let runtime: BrowserRuntime;
@@ -32,7 +32,7 @@ describe("Block whitespace rendering", () => {
         { text: textContent },
       ]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -56,7 +56,7 @@ describe("Block whitespace rendering", () => {
         { text: textContent },
       ]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(() =>
         waitFor(

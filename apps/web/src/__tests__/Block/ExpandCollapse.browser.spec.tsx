@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { screen, waitFor } from "solid-testing-library";
@@ -13,7 +13,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 /**
  * =============================================================================
@@ -65,7 +65,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the parent block (text editing mode)
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
@@ -101,7 +101,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the child (it has no children, so it's like being collapsed)
       // Actually, the child has no children so it can't be expanded/collapsed
@@ -136,7 +136,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the leaf block
       yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -168,7 +168,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the block
       const Block = yield* BlockT;
@@ -197,7 +197,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       const rootBlockNodeId = childNodeIds[0];
       const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the root-level block (no children)
       yield* When.USER_CLICKS_BLOCK(rootBlockId);
@@ -228,7 +228,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on child (text editing mode - CodeMirror focused)
       yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -279,7 +279,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on child block (text editing mode)
       yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -377,7 +377,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on parent
       yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
@@ -418,7 +418,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         text: "Grandchild",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the child block
       const Block = yield* BlockT;
@@ -456,7 +456,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on child (leaf)
       yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -490,7 +490,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the block
       const Block = yield* BlockT;
@@ -520,7 +520,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       const rootBlockNodeId = childNodeIds[0];
       const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode
       yield* When.USER_ENTERS_BLOCK_SELECTION(rootBlockId);
@@ -551,7 +551,7 @@ describe("Progressive Mod+Up - Block selection mode", () => {
       });
       const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on child
       yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -619,7 +619,7 @@ describe("Block expand/collapse - Text editing mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the parent block (text editing mode)
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
@@ -653,7 +653,7 @@ describe("Block expand/collapse - Text editing mode", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the block first
       const Block = yield* BlockT;
@@ -706,7 +706,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on parent
       yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
@@ -739,7 +739,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         text: "Child",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse the block first
       const Block = yield* BlockT;
@@ -786,7 +786,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         text: "C",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for hierarchy to render (A expanded by default, so B and C mount)
       yield* Then.TEXT_IS_VISIBLE("B");
@@ -864,7 +864,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         text: "C",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for hierarchy to render (A expanded by default, so B and C mount)
       yield* Then.TEXT_IS_VISIBLE("B");
@@ -940,7 +940,7 @@ describe("Block expand/collapse - Block selection mode (single block)", () => {
         text: "C",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for hierarchy to render (A and B expanded by default)
       yield* Then.TEXT_IS_VISIBLE("B");
@@ -1031,7 +1031,7 @@ describe("Block expand/collapse - Block selection mode (multiple blocks)", () =>
         text: "Child of B",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse A and B first
       const Block = yield* BlockT;
@@ -1100,7 +1100,7 @@ describe("Title expand/collapse", () => {
 
       // C has no children (leaf node)
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for hierarchy to render
       yield* Then.TEXT_IS_VISIBLE("A");
@@ -1155,7 +1155,7 @@ describe("Title expand/collapse", () => {
         text: "A1a",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for hierarchy to render
       yield* Then.TEXT_IS_VISIBLE("A");
@@ -1227,7 +1227,7 @@ describe("Auto-expand ancestors on selection", () => {
           text: "Child content",
         });
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Verify Parent initially expanded (default state)
         yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
@@ -1284,7 +1284,7 @@ describe("Auto-expand ancestors on selection", () => {
           text: "C",
         });
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Collapse both A and B
         const Block = yield* BlockT;
@@ -1335,7 +1335,7 @@ describe("Auto-expand ancestors on selection", () => {
           text: "Child content",
         });
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Collapse the Parent
         const Block = yield* BlockT;
@@ -1391,7 +1391,7 @@ describe("Auto-expand ancestors on selection", () => {
           text: "B1a",
         });
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Collapse A, B, and B1
         const Block = yield* BlockT;
@@ -1432,7 +1432,7 @@ describe("Auto-expand ancestors on selection", () => {
 
         const childNodeId = childNodeIds[0];
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // When: Set text selection to direct child
         const Buffer = yield* BufferT;
@@ -1478,7 +1478,7 @@ describe("Auto-expand ancestors on selection", () => {
           text: "Child content",
         });
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Collapse the Parent
         const Block = yield* BlockT;

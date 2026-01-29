@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Undo (Cmd+Z)", () => {
   let runtime: BrowserRuntime;
@@ -43,7 +43,7 @@ describe("Block Undo (Cmd+Z)", () => {
       const [nodeId] = childNodeIds;
       const blockId = Id.makeBufferBlockId(bufferId, nodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus block
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -85,7 +85,7 @@ describe("Block Undo (Cmd+Z)", () => {
       const [firstNodeId] = childNodeIds;
       const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus first block at end
       yield* When.USER_CLICKS_BLOCK(firstBlockId);

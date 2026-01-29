@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { StoreT } from "@/services/external/Store";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -11,7 +11,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block ArrowRight key", () => {
   let runtime: BrowserRuntime;
@@ -37,9 +37,12 @@ describe("Block ArrowRight key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_PRESSES("{End}");
@@ -66,7 +69,7 @@ describe("Block ArrowRight key", () => {
       const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
       yield* When.USER_PRESSES("{End}");
@@ -95,7 +98,7 @@ describe("Block ArrowRight key", () => {
       const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedId);
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // At end of Nested (last child of First), ArrowRight should go to Second
       yield* When.USER_CLICKS_BLOCK(nestedBlockId);
@@ -116,7 +119,7 @@ describe("Block ArrowRight key", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_TITLE(bufferId);
       yield* When.USER_PRESSES("{End}");
@@ -153,7 +156,7 @@ describe("Block ArrowRight key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
       yield* When.USER_PRESSES("{End}");
@@ -199,7 +202,7 @@ describe("Block ArrowRight key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
       yield* When.USER_PRESSES("{ArrowDown}");

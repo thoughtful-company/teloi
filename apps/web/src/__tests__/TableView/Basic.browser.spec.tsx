@@ -3,12 +3,12 @@ import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 import { events } from "@/livestore/schema";
 
 /**
@@ -57,8 +57,8 @@ describe("TableView", () => {
         // Given: The buffer has the TableView as its active view
         yield* setBufferActiveView(bufferId, tableViewNodeId);
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Then: A table element should be visible
         yield* Effect.promise(() =>
@@ -111,8 +111,8 @@ describe("TableView", () => {
           [{ text: "Task One" }, { text: "Task Two" }],
         );
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Then: No table element should be rendered
         yield* Effect.promise(() =>
@@ -220,8 +220,8 @@ describe("TableView", () => {
         // Given: The buffer has the TableView as its active view
         yield* setBufferActiveView(bufferId, tableViewNodeId);
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Then: A table element should be visible
         yield* Effect.promise(() =>
@@ -293,8 +293,8 @@ describe("TableView", () => {
         // Given: The buffer has the first view as its active view
         yield* setBufferActiveView(bufferId, viewA);
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Then: A tab bar element should exist
         yield* Effect.promise(() =>
@@ -338,8 +338,8 @@ describe("TableView", () => {
         // Given: The buffer has that view as its active view
         yield* setBufferActiveView(bufferId, singleView);
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Then: The table should be rendered (view is active)
         yield* Effect.promise(() =>
@@ -381,8 +381,8 @@ describe("TableView", () => {
         // Given: The buffer has the first view as its active view
         yield* setBufferActiveView(bufferId, viewA);
 
-        // When: The EditorBuffer is rendered
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        // When: The Buffer is rendered
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for tabs to render
         yield* Effect.promise(() =>

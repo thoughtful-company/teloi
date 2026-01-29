@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { StoreT } from "@/services/external/Store";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -11,7 +11,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block ArrowLeft key", () => {
   let runtime: BrowserRuntime;
@@ -37,9 +37,12 @@ describe("Block ArrowLeft key", () => {
       );
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child at start
       yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
@@ -72,9 +75,12 @@ describe("Block ArrowLeft key", () => {
       });
 
       const nestedChildBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child at start
       yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
@@ -109,7 +115,7 @@ describe("Block ArrowLeft key", () => {
       const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus the child (first sibling of Parent's children)
       yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -135,7 +141,7 @@ describe("Block ArrowLeft key", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus first block at start
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
@@ -182,7 +188,7 @@ describe("Block ArrowLeft key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second block at start
       yield* When.USER_CLICKS_BLOCK(secondBlockId);

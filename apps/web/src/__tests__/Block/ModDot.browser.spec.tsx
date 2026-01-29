@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { NavigationT } from "@/services/ui/Navigation";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -12,7 +12,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Mod+. key", () => {
   let runtime: BrowserRuntime;
@@ -41,7 +41,7 @@ describe("Block Mod+. key", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
@@ -72,7 +72,7 @@ describe("Block Mod+. key", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
@@ -90,7 +90,7 @@ describe("Block Mod+. key", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
       yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 5);
@@ -130,7 +130,7 @@ describe("Block Mod+. key", () => {
       const popstateStream = yield* Navigation.startPopstateListener();
       runtime.runFork(Stream.runDrain(popstateStream));
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
       yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 5);

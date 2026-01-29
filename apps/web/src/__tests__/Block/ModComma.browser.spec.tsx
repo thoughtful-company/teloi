@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { NavigationT } from "@/services/ui/Navigation";
 import { SCROLL_MARGIN } from "@/utils/scroll";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -13,7 +13,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Mod+, key (ZoomOut)", () => {
   let runtime: BrowserRuntime;
@@ -44,7 +44,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Zoom into the first child using Mod+.
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -86,7 +86,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // First zoom into the child
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -123,7 +123,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Set initial URL
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click on the child block to have focus somewhere
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -144,14 +144,16 @@ describe("Block Mod+, key (ZoomOut)", () => {
     await Effect.gen(function* () {
       // Create hierarchy with parent so we can zoom out
       const { bufferId, parentNodeId, rootNodeId } =
-        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN("Parent node", "Root node", [
-          { text: "First child" },
-        ]);
+        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+          "Parent node",
+          "Root node",
+          [{ text: "First child" }],
+        );
 
       // Set URL to root node (which has a parent)
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click on title to focus it
       yield* When.USER_CLICKS_TITLE(bufferId);
@@ -193,7 +195,10 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ]);
 
       const firstChildNodeId = childNodeIds[0];
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, firstChildNodeId);
+      const firstChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        firstChildNodeId,
+      );
 
       // Add grandchild under "First child"
       const grandchildNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -201,9 +206,12 @@ describe("Block Mod+, key (ZoomOut)", () => {
         insert: "after",
         text: "Grandchild",
       });
-      const grandchildBlockId = Id.makeBufferBlockId(bufferId, grandchildNodeId);
+      const grandchildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        grandchildNodeId,
+      );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Collapse "First child" block (hides grandchild in Root view)
       const Block = yield* BlockT;
@@ -263,7 +271,11 @@ describe("Block Mod+, key (ZoomOut)", () => {
         text: `Block ${i + 1}`,
       }));
       const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN("Grandparent", "Root", children);
+        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+          "Grandparent",
+          "Root",
+          children,
+        );
 
       const block20Id = childNodeIds[19]!;
 
@@ -291,7 +303,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Wrap in scroll container with limited height
       render(() => (
         <div class="overflow-y-auto" style={{ height: "300px" }}>
-          <EditorBuffer bufferId={bufferId} />
+          <BufferView bufferId={bufferId} />
         </div>
       ));
 
@@ -311,7 +323,9 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
       // Helper to check if element is visible in scroll container
       const isBlockVisibleInContainer = (blockId: Id.Block): boolean => {
-        const blockEl = document.querySelector(`[data-element-id="${blockId}"]`);
+        const blockEl = document.querySelector(
+          `[data-element-id="${blockId}"]`,
+        );
         if (!blockEl) return false;
 
         const scrollContainer = blockEl.closest(".overflow-y-auto");
@@ -346,7 +360,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           () => {
             expect(
               isBlockVisibleInContainer(block22BlockId),
-              "Block 22 should be visible after 1st Mod+,"
+              "Block 22 should be visible after 1st Mod+,",
             ).toBe(true);
           },
           { timeout: 2000 },
@@ -372,7 +386,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           () => {
             expect(
               isBlockVisibleInContainer(block21BlockId),
-              "Block 21 should be visible after 2nd Mod+,"
+              "Block 21 should be visible after 2nd Mod+,",
             ).toBe(true);
           },
           { timeout: 2000 },
@@ -398,7 +412,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           () => {
             expect(
               isBlockVisibleInContainer(block20BlockId),
-              "Block 20 should be visible after 3rd Mod+,"
+              "Block 20 should be visible after 3rd Mod+,",
             ).toBe(true);
           },
           { timeout: 2000 },
@@ -426,7 +440,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
           () => {
             expect(
               isBlockVisibleInContainer(block22BlockId),
-              "Block 22 should be visible after 4th Mod+,"
+              "Block 22 should be visible after 4th Mod+,",
             ).toBe(true);
           },
           { timeout: 2000 },

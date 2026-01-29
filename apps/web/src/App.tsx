@@ -14,7 +14,7 @@ import {
   Show,
 } from "solid-js";
 import CommandPalette from "./ui/CommandPalette";
-import EditorBuffer from "./ui/EditorBuffer";
+import BufferView from "./ui/BufferView";
 import PaneWrapper from "./ui/PaneWrapper";
 import { Sidebar } from "./ui/Sidebar";
 import type { CommandContext } from "./commands";
@@ -195,7 +195,7 @@ const App: Component = () => {
                 <Show when={buffersByPane.get(paneId)}>
                   {(buffers) => (
                     <For each={[...buffers()]}>
-                      {(bufferId) => <EditorBuffer bufferId={bufferId} />}
+                      {(bufferId) => <BufferView bufferId={bufferId} />}
                     </For>
                   )}
                 </Show>

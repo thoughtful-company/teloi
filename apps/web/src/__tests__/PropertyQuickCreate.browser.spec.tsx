@@ -5,13 +5,18 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import PropertySection from "@/ui/PropertySection";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, When, type BrowserRuntime } from "./bdd";
+import {
+  Given,
+  setupClientTest,
+  When,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 /**
  * Property Quick-Create Tests
@@ -25,7 +30,7 @@ import { Given, setupClientTest, When, type BrowserRuntime } from "./bdd";
  *
  * The first linked block is created when user types in the ghost block (ghost materialization).
  *
- * Tests render PropertySection directly since EditorBuffer integration is a separate concern.
+ * Tests render PropertySection directly since Buffer integration is a separate concern.
  */
 
 describe("Property Quick-Create", () => {
@@ -607,7 +612,7 @@ describe("Property Quick-Create", () => {
     });
   });
 
-  describe("End-to-end flow via EditorBuffer", () => {
+  describe("End-to-end flow via Buffer", () => {
     it("typing '> ' then property name then ArrowRight shows focused ghost block", async () => {
       await Effect.gen(function* () {
         // Setup: buffer with a child node (the trigger target)
@@ -618,7 +623,7 @@ describe("Property Quick-Create", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>

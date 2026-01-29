@@ -3,11 +3,17 @@ import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type BrowserRuntime, Given, setupClientTest, Then, When } from "./bdd";
+import {
+  type BrowserRuntime,
+  Given,
+  setupClientTest,
+  Then,
+  When,
+} from "@/test-utils/bdd";
 
 describe("Type Trigger Replacement", () => {
   let runtime: BrowserRuntime;
@@ -41,7 +47,7 @@ describe("Type Trigger Replacement", () => {
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for list decoration to appear
         yield* Effect.promise(() =>
@@ -107,7 +113,7 @@ describe("Type Trigger Replacement", () => {
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for checkbox decoration to appear
         yield* Effect.promise(() =>
@@ -178,7 +184,7 @@ describe("Type Trigger Replacement", () => {
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -225,7 +231,7 @@ describe("Type Trigger Replacement", () => {
         // Add checkbox type to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -280,7 +286,7 @@ describe("Type Trigger Replacement", () => {
         const projectTypeId = yield* TypePicker.createType("project");
         yield* TypePicker.applyType(childNodeId, projectTypeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -349,7 +355,7 @@ describe("Type Trigger Replacement", () => {
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>

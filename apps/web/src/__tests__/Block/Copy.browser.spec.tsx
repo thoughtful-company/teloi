@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Copy selected blocks (Mod+C)", () => {
   let runtime: BrowserRuntime;
@@ -48,7 +48,7 @@ describe("Copy selected blocks (Mod+C)", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
@@ -74,7 +74,7 @@ describe("Copy selected blocks (Mod+C)", () => {
       );
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
@@ -103,7 +103,7 @@ describe("Copy selected blocks (Mod+C)", () => {
       );
 
       const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
@@ -148,7 +148,7 @@ describe("Copy selected blocks (Mod+C)", () => {
         text: "Nested Child B",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select nested child A
       const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildA);
@@ -189,7 +189,7 @@ describe("Copy selected blocks (Mod+C)", () => {
         text: "Gamma",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select first nested child and extend to second
       const nestedBlockA = Id.makeBufferBlockId(bufferId, nestedChildA);

@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupClientTest, type BrowserRuntime } from "../bdd";
+import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("Sidebar New Page", () => {
   let runtime: BrowserRuntime;

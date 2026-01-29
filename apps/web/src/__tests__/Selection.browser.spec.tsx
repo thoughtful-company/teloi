@@ -2,13 +2,19 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { makeBufferBlockId } from "@/schema/id/id";
 import { BufferT } from "@/services/ui/Buffer";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { EditorView } from "@codemirror/view";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { cleanup, waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { Given, Then, When, setupClientTest, type BrowserRuntime } from "./bdd";
+import {
+  Given,
+  Then,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 /**
  * Find the first wrap boundary in the editor and return coordinates
@@ -67,7 +73,7 @@ describe("Selection sync", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus the block to mount CodeMirror
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -100,9 +106,12 @@ describe("Selection sync", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeBufferBlockId(
+        bufferId,
+        childNodeIds[1],
+      );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child, move cursor to position 7
       yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
@@ -143,14 +152,14 @@ describe("Selection sync", () => {
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
       // First render: focus and set position at 6
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
       yield* When.USER_CLICKS_BLOCK(blockId);
       yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 6);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
 
       // Simulate page reload: unmount and remount
       cleanup();
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Set selection via model (simulates saved selection from before reload)
       yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 6);
@@ -198,7 +207,7 @@ describe("Selection sync", () => {
         [{ text: longText }],
       );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Given.BUFFER_HAS_WIDTH(200);
 
@@ -240,7 +249,7 @@ describe("Selection sync", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // First click to mount CodeMirror
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -301,7 +310,7 @@ describe("Selection sync", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Click on the empty block to focus it
       yield* When.USER_CLICKS_BLOCK(blockId);

@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -11,7 +11,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Delete key", () => {
   let runtime: BrowserRuntime;
@@ -46,7 +46,7 @@ describe("Block Delete key", () => {
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Focus first child, cursor at end, press Delete
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
@@ -95,7 +95,7 @@ describe("Block Delete key", () => {
 
       const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Expand parent so its children are visible for merge target
       const Block = yield* BlockT;
@@ -145,7 +145,7 @@ describe("Block Delete key", () => {
       const blockA = Id.makeBufferBlockId(bufferId, nodeA);
       const blockB = Id.makeBufferBlockId(bufferId, nodeB);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Expand A so B is visible
       const Block = yield* BlockT;
@@ -167,7 +167,7 @@ describe("Block Delete key", () => {
     }).pipe(runtime.runPromise);
   });
 
-it("merges with next sibling when Cmd+Delete pressed at end", async () => {
+  it("merges with next sibling when Cmd+Delete pressed at end", async () => {
     await Effect.gen(function* () {
       const { bufferId, rootNodeId, childNodeIds } =
         yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -176,7 +176,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
         ]);
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_MOVES_CURSOR_TO(5);
@@ -200,7 +200,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
         ]);
 
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
       yield* When.USER_MOVES_CURSOR_TO(5);
@@ -246,7 +246,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(firstBlockId, false);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
       yield* When.USER_PRESSES("{End}");
@@ -291,7 +291,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
 
       const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(parentBlockId);
       yield* When.USER_PRESSES("{End}");
@@ -335,7 +335,7 @@ it("merges with next sibling when Cmd+Delete pressed at end", async () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(firstBlockId);
       yield* When.USER_PRESSES("{End}");

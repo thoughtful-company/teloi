@@ -64,7 +64,7 @@ When multiple blocks are selected, they move together as a unit:
 ### Key Files to Modify
 
 1. **`apps/web/src/services/ui/Block/swap.ts`** - Add cross-parent logic when at boundary
-2. **`apps/web/src/ui/EditorBuffer.tsx:357-390`** - Update block selection mode handler
+2. **`apps/web/src/ui/BufferView.tsx:357-390`** - Update block selection mode handler
 3. **`apps/web/src/ui/Block.tsx:450-467`** - May need updates for text mode
 
 ### Reusable Code
@@ -131,7 +131,7 @@ pnpm -F @teloi/web typecheck
 ## References
 
 - Current swap logic: `apps/web/src/services/ui/Block/swap.ts:31-42`
-- Block selection handler: `apps/web/src/ui/EditorBuffer.tsx:357-390`
+- Block selection handler: `apps/web/src/ui/BufferView.tsx:357-390`
 - Indent (reparent example): `apps/web/src/services/ui/Buffer/indent.ts`
 - Shortcut architecture: `docs/shortcuts.md`
 - Movement tests: `apps/web/src/__tests__/Block/Movement.browser.spec.tsx`

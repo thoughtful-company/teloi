@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +13,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block selection", () => {
   let runtime: BrowserRuntime;
@@ -41,7 +41,7 @@ describe("Block selection", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter text editing, then press Escape to select
       yield* When.USER_CLICKS_BLOCK(blockId);
@@ -87,7 +87,7 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -175,7 +175,7 @@ describe("Block selection", () => {
       );
 
       const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -258,7 +258,7 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -346,7 +346,7 @@ describe("Block selection", () => {
       );
 
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -411,7 +411,7 @@ describe("Block selection", () => {
       );
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -476,7 +476,7 @@ describe("Block selection", () => {
       );
 
       const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -548,7 +548,7 @@ describe("Block selection", () => {
       );
 
       const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -616,7 +616,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -688,7 +688,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -757,7 +757,7 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -837,7 +837,7 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -960,7 +960,7 @@ describe("Block selection", () => {
         ]);
 
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -1074,7 +1074,7 @@ describe("Block selection", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -1145,7 +1145,7 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -1251,7 +1251,7 @@ describe("Block selection", () => {
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
-          <EditorBuffer bufferId={bufferId} />
+          <BufferView bufferId={bufferId} />
         </div>
       ));
 
@@ -1358,7 +1358,7 @@ describe("Block selection", () => {
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
-          <EditorBuffer bufferId={bufferId} />
+          <BufferView bufferId={bufferId} />
         </div>
       ));
 
@@ -1446,7 +1446,7 @@ describe("Block selection", () => {
       );
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
       const Buffer = yield* BufferT;
@@ -1524,7 +1524,7 @@ describe("Block selection", () => {
       );
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
       const Buffer = yield* BufferT;
@@ -1605,7 +1605,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
@@ -1638,7 +1638,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
@@ -1671,7 +1671,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
@@ -1711,7 +1711,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
@@ -1770,7 +1770,7 @@ describe("Block selection", () => {
         text: "C",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select A (first child of Parent, which is at 2nd indentation level)
       const blockA = Id.makeBufferBlockId(bufferId, nodeA);
@@ -1804,7 +1804,7 @@ describe("Block selection", () => {
       );
 
       const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
@@ -1840,7 +1840,7 @@ describe("Block selection", () => {
           [{ text: "First" }, { text: "Second" }, { text: "Third" }],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
@@ -1884,7 +1884,7 @@ describe("Block selection", () => {
           [{ text: "First" }, { text: "Second" }, { text: "Third" }],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
@@ -1925,7 +1925,7 @@ describe("Block selection", () => {
         // Given: A buffer with no child blocks (only root)
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
@@ -1972,7 +1972,7 @@ describe("Block selection", () => {
         // Given: A buffer with no child blocks (only root)
         const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;

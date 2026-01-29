@@ -1,9 +1,9 @@
 import "@/index.css";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, setupClientTest, type BrowserRuntime } from "../bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("Title whitespace rendering", () => {
   let runtime: BrowserRuntime;
@@ -30,7 +30,7 @@ describe("Title whitespace rendering", () => {
       const titleText = "first line\nsecond line";
       const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(titleText, []);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -52,7 +52,7 @@ describe("Title whitespace rendering", () => {
       const titleText = "word  word"; // double space
       const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(titleText, []);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(() =>
         waitFor(

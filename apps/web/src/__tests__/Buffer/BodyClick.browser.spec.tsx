@@ -2,12 +2,17 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BufferT } from "@/services/ui/Buffer";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, Then, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  Then,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 describe("Body click creates block", () => {
   let runtime: BrowserRuntime;
@@ -30,7 +35,7 @@ describe("Body click creates block", () => {
       const { bufferId, nodeId: rootNodeId } =
         yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -86,7 +91,7 @@ describe("Body click creates block", () => {
           { text: "Existing block" },
         ]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -147,7 +152,7 @@ describe("Body click creates block", () => {
 
       const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -201,7 +206,7 @@ describe("Body click creates block", () => {
 
       const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(async () => {
         const blockContent = await waitFor(
@@ -259,7 +264,7 @@ describe("Body click creates block", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* Effect.promise(async () => {
         const blockContent = await waitFor(
@@ -329,7 +334,7 @@ describe("Body click creates block", () => {
         [{ text: "some text" }],
       );
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const blockElement = yield* Effect.promise(() =>
         waitFor(

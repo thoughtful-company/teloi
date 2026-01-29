@@ -184,7 +184,7 @@ const selection = State.SQLite.clientDocument({
 type ClientDocumentModels = {
   window: Model.Window | null;
   pane: Model.Pane | null;
-  buffer: Model.EditorBuffer | null;
+  buffer: Model.Buffer | null;
   block: Model.Block | null;
   selection: Model.Selection | null;
 };

@@ -11,15 +11,15 @@ import { makeAutomergeLive } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
 import {
-  makeTextEditorTest,
-  type TextEditorTestHandle,
-} from "@/services/ui/TextEditor/test";
+  makeEditorTest,
+  type EditorTestHandle,
+} from "@/services/ui/Editor/test";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer, ManagedRuntime, Option, Ref } from "effect";
 import { nanoid } from "nanoid";
 
 // Re-export for convenience
-export type { TextEditorTestHandle };
+export type { EditorTestHandle };
 
 type ParentLink = {
   parentId: Id.Node;
@@ -202,7 +202,7 @@ export const setupCommandTest = async () => {
   const { store, nodes, parentLinks } =
     await Effect.runPromise(makeInMemoryStore());
 
-  const textEditorHandle = await Effect.runPromise(makeTextEditorTest());
+  const editorHandle = await Effect.runPromise(makeEditorTest());
 
   await Effect.runPromise(Ref.set(nodesRef, nodes));
   await Effect.runPromise(Ref.set(parentLinksRef, parentLinks));
@@ -344,7 +344,7 @@ export const setupCommandTest = async () => {
   // Compose layers
   const TestLayer = BufferLayer.pipe(
     Layer.provideMerge(WindowLayer),
-    Layer.provideMerge(textEditorHandle.layer),
+    Layer.provideMerge(editorHandle.layer),
     Layer.provideMerge(NodeLayer),
     Layer.provideMerge(AutomergeLayer),
     Layer.provideMerge(StoreLayer),
@@ -354,7 +354,7 @@ export const setupCommandTest = async () => {
 
   return {
     runtime: testRuntime,
-    textEditor: textEditorHandle,
+    editor: editorHandle,
     cleanup: async () => {
       await testRuntime.dispose();
     },

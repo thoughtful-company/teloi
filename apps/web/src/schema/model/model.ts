@@ -42,7 +42,7 @@ export const BufferSelection = Schema.Struct({
 });
 export type BufferSelection = typeof BufferSelection.Type;
 
-export const EditorBuffer = Schema.mutable(
+export const Buffer = Schema.mutable(
   Schema.Struct({
     windowId: Id.Window,
     parent: Entity.Pane,
@@ -60,7 +60,7 @@ export const EditorBuffer = Schema.mutable(
     activeViewId: Schema.NullOr(Id.Node),
   }),
 );
-export type EditorBuffer = typeof EditorBuffer.Type;
+export type Buffer = typeof Buffer.Type;
 
 export const Block = Schema.Struct({
   isExpanded: Schema.Boolean,
@@ -83,7 +83,7 @@ export const DocumentSchemas = {
     schema: Schema.NullOr(Pane),
   },
   [DocumentName.Buffer]: {
-    schema: Schema.NullOr(EditorBuffer),
+    schema: Schema.NullOr(Buffer),
   },
   [DocumentName.Block]: {
     schema: Schema.NullOr(Block),

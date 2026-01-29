@@ -1,10 +1,15 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
-import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 function waitForEditorFocus() {
   return Effect.promise(() =>
@@ -65,7 +70,7 @@ describe("Scroll behavior", () => {
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "300px" }}>
-          <EditorBuffer bufferId={bufferId} />
+          <BufferView bufferId={bufferId} />
         </div>
       ));
 
@@ -161,7 +166,7 @@ describe("Scroll behavior", () => {
         });
       }
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Wait for children to render
       yield* Effect.promise(() =>

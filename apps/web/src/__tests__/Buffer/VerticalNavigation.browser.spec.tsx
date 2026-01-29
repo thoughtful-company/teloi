@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
   let runtime: BrowserRuntime;
@@ -44,7 +44,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
@@ -70,7 +70,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 3);
@@ -92,7 +92,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
 
@@ -111,7 +111,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_TITLE(bufferId);
         yield* When.SELECTION_IS_SET_TO(bufferId, rootNodeId, 5);
@@ -134,7 +134,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(350);
 
@@ -203,7 +203,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 4);
 
@@ -230,7 +230,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 4);
@@ -258,7 +258,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 8);
 
@@ -285,7 +285,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 8);
@@ -315,7 +315,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 5);
 
@@ -375,7 +375,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(nestedBlockId, 5);
 
@@ -430,7 +430,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 2);
 
@@ -485,7 +485,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[0],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
 
@@ -542,7 +542,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 14);
 
@@ -600,7 +600,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Step 1: Focus second block, cursor at end (offset 9)
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
@@ -633,7 +633,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 14);
 
@@ -655,7 +655,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, longText.length - 10);
 
@@ -676,7 +676,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(100);
 
@@ -703,7 +703,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(100);
 
@@ -728,7 +728,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(100);
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 10, -1);
@@ -751,7 +751,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(100);
 
@@ -775,7 +775,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BUFFER_HAS_WIDTH(800);
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
@@ -811,7 +811,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
@@ -837,7 +837,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 3);
 
@@ -863,7 +863,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
         const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         const childBlockId = Id.makeBufferBlockId(bufferId, childId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(parentBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 3);
@@ -896,7 +896,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
           childNodeIds[1],
         );
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(nestedChildBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, nestedChildId, 3);
@@ -918,7 +918,7 @@ describe("Vertical Navigation (ArrowUp/ArrowDown)", () => {
 
         const lastBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(lastBlockId);
         yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[1], 5);

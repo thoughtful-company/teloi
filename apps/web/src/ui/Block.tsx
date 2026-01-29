@@ -10,7 +10,7 @@ import { Effect, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
 import { FormattedText } from "./FormattedText";
-import TextEditor from "./TextEditor";
+import Editor from "./Editor";
 import TypeBadge from "./TypeBadge";
 
 interface BlockProps {
@@ -171,7 +171,7 @@ export default function Block({ blockId }: BlockProps) {
               </p>
             }
           >
-            <TextEditor
+            <Editor
               handle={Automerge.handle}
               path={Automerge.getTextPath(nodeId)}
               blockId={blockId}

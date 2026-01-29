@@ -5,7 +5,7 @@ import type { WorkspaceTexts } from "./types";
 /**
  * Context value providing access to the workspace Automerge document.
  *
- * Components use this to get the handle for TextEditor's automergeSyncPlugin,
+ * Components use this to get the handle for Editor's automergeSyncPlugin,
  * and for reading text content reactively.
  */
 export interface WorkspaceContextValue {

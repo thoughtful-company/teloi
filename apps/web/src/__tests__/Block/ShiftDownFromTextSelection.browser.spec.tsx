@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Shift+Down from in-block text selection", () => {
   let runtime: BrowserRuntime;
@@ -37,7 +37,7 @@ describe("Shift+Down from in-block text selection", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -91,7 +91,7 @@ describe("Shift+Down from in-block text selection", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 
@@ -154,7 +154,7 @@ describe("Shift+Down from in-block text selection", () => {
       );
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       const Store = yield* StoreT;
 

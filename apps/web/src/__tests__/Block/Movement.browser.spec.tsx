@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -10,7 +10,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Block Movement", () => {
   let runtime: BrowserRuntime;
@@ -41,7 +41,7 @@ describe("Block Movement", () => {
         const [first, second, third] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -62,7 +62,7 @@ describe("Block Movement", () => {
         const [first, second] = childNodeIds;
         const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstBlockId);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -85,7 +85,7 @@ describe("Block Movement", () => {
         const [first, second, third] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -106,7 +106,7 @@ describe("Block Movement", () => {
         const [first, second] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -129,7 +129,7 @@ describe("Block Movement", () => {
         const [first, second, third] = childNodeIds;
         const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(thirdBlockId);
         yield* When.USER_PRESSES(
@@ -152,7 +152,7 @@ describe("Block Movement", () => {
         const [first, second] = childNodeIds;
         const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstBlockId);
         yield* When.USER_PRESSES(
@@ -177,7 +177,7 @@ describe("Block Movement", () => {
         const [first, second, third] = childNodeIds;
         const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(firstBlockId);
         yield* When.USER_PRESSES(
@@ -200,7 +200,7 @@ describe("Block Movement", () => {
         const [first, second] = childNodeIds;
         const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         yield* When.USER_CLICKS_BLOCK(secondBlockId);
         yield* When.USER_PRESSES(
@@ -226,7 +226,7 @@ describe("Block Movement", () => {
           const [first, second, third] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -249,7 +249,7 @@ describe("Block Movement", () => {
           const [first, second, third, fourth] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Enter block selection on second, extend to third
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
@@ -278,7 +278,7 @@ describe("Block Movement", () => {
           const [first, second] = childNodeIds;
           const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -302,7 +302,7 @@ describe("Block Movement", () => {
           const [first, second, third] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -325,7 +325,7 @@ describe("Block Movement", () => {
           const [first, second, third, fourth] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Enter block selection on second, extend to third
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
@@ -354,7 +354,7 @@ describe("Block Movement", () => {
           const [first, second] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -378,7 +378,7 @@ describe("Block Movement", () => {
           const [first, second, third] = childNodeIds;
           const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
           yield* When.USER_PRESSES(
@@ -403,7 +403,7 @@ describe("Block Movement", () => {
           const [first, second, third, fourth] = childNodeIds;
           const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Enter block selection on third, extend to fourth
           yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
@@ -437,7 +437,7 @@ describe("Block Movement", () => {
           const [first, second, third] = childNodeIds;
           const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
           yield* When.USER_PRESSES(
@@ -462,7 +462,7 @@ describe("Block Movement", () => {
           const [first, second, third, fourth] = childNodeIds;
           const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Enter block selection on first, extend to second
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -526,7 +526,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on Child C (last child of Parent A)
           // Parent A has next sibling (Parent D), so cross-parent move
@@ -564,7 +564,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on Child C (last child of Parent A)
           // Parent A has no next sibling, so outdent
@@ -599,7 +599,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on Child E (first child of Parent D)
           // Parent D has prev sibling (Parent A), so cross-parent move
@@ -631,7 +631,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on Child E (first child of Parent D)
           // Parent D has no prev sibling, so outdent
@@ -671,7 +671,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -701,7 +701,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -743,7 +743,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Select C and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
@@ -787,7 +787,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Select E and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
@@ -824,7 +824,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -851,7 +851,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -890,7 +890,7 @@ describe("Block Movement", () => {
 
           const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Select C and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
@@ -931,7 +931,7 @@ describe("Block Movement", () => {
 
           const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Select E and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
@@ -977,7 +977,7 @@ describe("Block Movement", () => {
             text: "Child D",
           });
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Wait for blocks to render
           yield* Then.TEXT_IS_VISIBLE("Child C");
@@ -1016,7 +1016,7 @@ describe("Block Movement", () => {
           const [first, second] = childNodeIds;
           const secondBlockId = Id.makeBufferBlockId(bufferId, second);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on Second (last child of root) and try to move down
           // This should do nothing because root's children cannot cross-parent or outdent
@@ -1039,7 +1039,7 @@ describe("Block Movement", () => {
           const [first, second] = childNodeIds;
           const firstBlockId = Id.makeBufferBlockId(bufferId, first);
 
-          render(() => <EditorBuffer bufferId={bufferId} />);
+          render(() => <BufferView bufferId={bufferId} />);
 
           // Focus on First (first child of root) and try to move up
           // This should do nothing because root's children cannot cross-parent or outdent

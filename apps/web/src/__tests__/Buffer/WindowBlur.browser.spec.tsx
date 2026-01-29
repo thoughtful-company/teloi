@@ -2,11 +2,16 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, When, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  When,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 describe("Window blur preserves selection", () => {
   let runtime: BrowserRuntime;
@@ -33,7 +38,7 @@ describe("Window blur preserves selection", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
 
@@ -111,7 +116,7 @@ describe("Window blur preserves selection", () => {
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_CLICKS_BLOCK(blockId);
 

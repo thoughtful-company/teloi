@@ -1,14 +1,14 @@
 /**
  * KeyEventBus - Central keyboard event routing service.
  *
- * Receives raw keyboard events from TextEditor (and potentially other sources).
+ * Receives raw keyboard events from Editor (and potentially other sources).
  * Maps key events to commands via hardcoded keymap, dispatches to CommandBus.
  *
  * The preventDefault decision is made BEFORE events reach this bus (in isRoutableKey).
  * This bus just figures out what command to run and executes it.
  */
 
-import { Left } from "@/commands/text-editor/left";
+import { Left } from "@/commands/editor/left";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
 import { Context, Effect, Layer, Option } from "effect";

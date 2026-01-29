@@ -9,7 +9,7 @@ import { queryDb } from "@livestore/livestore";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupClientTest, type BrowserRuntime } from "./bdd";
+import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
  * View Service Tests
@@ -123,7 +123,12 @@ describe("ViewT", () => {
         yield* Store.commit(
           events.nodeMoved({
             timestamp: Date.now(),
-            data: { nodeId: viewId1, newParentId: pageId, position: "", inShadow: true },
+            data: {
+              nodeId: viewId1,
+              newParentId: pageId,
+              position: "",
+              inShadow: true,
+            },
           }),
         );
 
@@ -136,7 +141,12 @@ describe("ViewT", () => {
         yield* Store.commit(
           events.nodeMoved({
             timestamp: Date.now(),
-            data: { nodeId: viewId2, newParentId: pageId, position: "", inShadow: true },
+            data: {
+              nodeId: viewId2,
+              newParentId: pageId,
+              position: "",
+              inShadow: true,
+            },
           }),
         );
 
@@ -170,7 +180,9 @@ describe("ViewT", () => {
 
         // Verify parent link has inShadow: true and position: ""
         const link = yield* Store.query(
-          queryDb(tables.parentLinks.select().where({ childId: viewId }).first()),
+          queryDb(
+            tables.parentLinks.select().where({ childId: viewId }).first(),
+          ),
         );
         expect(link).toBeDefined();
         expect(link!.parentId).toBe(pageId);

@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -12,7 +12,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Space in block selection mode", () => {
   let runtime: BrowserRuntime;
@@ -36,7 +36,7 @@ describe("Space in block selection mode", () => {
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "First block" }]);
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
 
@@ -113,7 +113,7 @@ describe("Space in block selection mode", () => {
       });
 
       const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChild);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
 

@@ -2,10 +2,15 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Given, Then, setupClientTest, type BrowserRuntime } from "../bdd";
+import {
+  Given,
+  Then,
+  setupClientTest,
+  type BrowserRuntime,
+} from "@/test-utils/bdd";
 
 /**
  * Arrow key buffer activation tests.
@@ -15,7 +20,7 @@ import { Given, Then, setupClientTest, type BrowserRuntime } from "../bdd";
  * - ArrowUp: activate the buffer and select the last block
  * - If no blocks exist: just activate the buffer without selection
  *
- * The logic is implemented in EditorBuffer.tsx - these tests verify the
+ * The logic is implemented in Buffer.tsx - these tests verify the
  * integration works correctly when rendered.
  */
 describe("Arrow key buffer activation", () => {
@@ -108,7 +113,7 @@ describe("Arrow key buffer activation", () => {
         ]);
 
       yield* registerBufferInWindow(bufferId, windowId);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
       yield* Then.BLOCK_COUNT_IS(3);
       yield* ensureNothingFocused();
 
@@ -145,7 +150,7 @@ describe("Arrow key buffer activation", () => {
         ]);
 
       yield* registerBufferInWindow(bufferId, windowId);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
       yield* Then.BLOCK_COUNT_IS(3);
       yield* ensureNothingFocused();
 
@@ -174,11 +179,14 @@ describe("Arrow key buffer activation", () => {
 
   it("ArrowDown activates buffer without selection when buffer has no blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, nodeId: rootNodeId, windowId } =
-        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+      const {
+        bufferId,
+        nodeId: rootNodeId,
+        windowId,
+      } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
       yield* registerBufferInWindow(bufferId, windowId);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
       yield* Then.BLOCK_COUNT_IS(0);
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
       yield* ensureNothingFocused();
@@ -202,11 +210,14 @@ describe("Arrow key buffer activation", () => {
 
   it("ArrowUp activates buffer without selection when buffer has no blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, nodeId: rootNodeId, windowId } =
-        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+      const {
+        bufferId,
+        nodeId: rootNodeId,
+        windowId,
+      } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
       yield* registerBufferInWindow(bufferId, windowId);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
       yield* Then.BLOCK_COUNT_IS(0);
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
       yield* ensureNothingFocused();

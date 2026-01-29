@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { WindowT } from "@/services/ui/Window";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -14,7 +14,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 /**
  * Enter/Space buffer activation tests.
@@ -157,7 +157,7 @@ describe("Enter/Space buffer activation", () => {
         } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(0);
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
         yield* activateBufferWithoutSelection(bufferId);
@@ -190,7 +190,7 @@ describe("Enter/Space buffer activation", () => {
         } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(0);
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
         yield* activateBufferWithoutSelection(bufferId);
@@ -225,7 +225,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(2);
         yield* activateBufferWithoutSelection(bufferId);
 
@@ -267,7 +267,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(2);
         yield* activateBufferWithoutSelection(bufferId);
 
@@ -311,7 +311,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(2);
         yield* activateBufferWithoutSelection(bufferId);
 
@@ -343,7 +343,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(2);
         yield* activateBufferWithoutSelection(bufferId);
 
@@ -376,7 +376,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
@@ -409,7 +409,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
@@ -441,7 +441,7 @@ describe("Enter/Space buffer activation", () => {
           ]);
 
         yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);

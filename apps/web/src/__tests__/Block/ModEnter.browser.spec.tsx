@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 /**
  * Tests for Mod+Enter (Cmd+Enter on Mac) todo toggle feature.
@@ -57,7 +57,7 @@ describe("Block Mod+Enter todo toggle", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
         yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -121,7 +121,7 @@ describe("Block Mod+Enter todo toggle", () => {
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.FALSE]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
         yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -185,7 +185,7 @@ describe("Block Mod+Enter todo toggle", () => {
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
         yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -247,7 +247,7 @@ describe("Block Mod+Enter todo toggle", () => {
         // Add LIST_ELEMENT type (bullet)
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
         yield* When.USER_CLICKS_BLOCK(childBlockId);
@@ -313,7 +313,7 @@ describe("Block Mod+Enter todo toggle", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode (click then Escape)
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -375,7 +375,7 @@ describe("Block Mod+Enter todo toggle", () => {
         yield* Type.addType(checkedId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [checkedId, System.TRUE]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode on first block
         yield* When.USER_ENTERS_BLOCK_SELECTION(normalBlockId);
@@ -453,7 +453,7 @@ describe("Block Mod+Enter todo toggle", () => {
         const childNodeId = childNodeIds[0];
         const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -511,11 +511,7 @@ describe("Block Mod+Enter todo toggle", () => {
             { timeout: 2000 },
           ),
         );
-        tuples = yield* Tuple.findByPosition(
-          System.IS_CHECKED,
-          0,
-          childNodeId,
-        );
+        tuples = yield* Tuple.findByPosition(System.IS_CHECKED, 0, childNodeId);
         expect(tuples.length).toBe(0);
       }).pipe(runtime.runPromise);
     });
@@ -538,7 +534,7 @@ describe("Block Mod+Enter todo toggle", () => {
         const userTypeResult = yield* Given.A_TYPE_WITHOUT_COLOR();
         yield* Type.addType(childNodeId, userTypeResult.typeId);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -609,7 +605,7 @@ describe("Block Mod+Enter todo toggle", () => {
         // Create orphaned IS_CHECKED tuple without CHECKBOX type
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <EditorBuffer bufferId={bufferId} />);
+        render(() => <BufferView bufferId={bufferId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);

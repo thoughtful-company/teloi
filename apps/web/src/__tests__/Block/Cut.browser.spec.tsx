@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import EditorBuffer from "@/ui/EditorBuffer";
+import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   When,
   setupClientTest,
   type BrowserRuntime,
-} from "../bdd";
+} from "@/test-utils/bdd";
 
 describe("Cut selected blocks (Mod+X)", () => {
   let runtime: BrowserRuntime;
@@ -46,7 +46,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
@@ -74,7 +74,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         ]);
 
       const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
@@ -110,7 +110,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         ]);
 
       const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
@@ -150,7 +150,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         ]);
 
       const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
       yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[1]]);
@@ -198,7 +198,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         text: "Nested Child B",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select nested child A
       const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildA);
@@ -246,7 +246,7 @@ describe("Cut selected blocks (Mod+X)", () => {
         text: "Gamma",
       });
 
-      render(() => <EditorBuffer bufferId={bufferId} />);
+      render(() => <BufferView bufferId={bufferId} />);
 
       // Select first two nested children
       const nestedBlockA = Id.makeBufferBlockId(bufferId, nestedChildA);
