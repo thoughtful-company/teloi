@@ -1,13 +1,9 @@
-/**
- * Unit test fixtures (Given helpers).
- * Pure Effect code - no browser dependencies.
- */
-
 import { events } from "@/livestore/schema";
 import { Entity, Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
+import type { EditorTestHandle } from "@/services/ui/Editor/test";
 import { WindowT } from "@/services/ui/Window";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
@@ -28,10 +24,6 @@ export interface BufferWithChildrenResult<
   windowId: Id.Window;
 }
 
-/**
- * Creates a buffer with a root node and child nodes.
- * Uses NodeT.insertNode to create children with proper positioning.
- */
 export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
   rootText: string,
   children: T,
@@ -45,7 +37,6 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     const bufferId = Id.Buffer.make(nanoid());
     const rootNodeId = Id.Node.make(nanoid());
 
-    // Create root node in LiveStore
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
@@ -53,10 +44,8 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       }),
     );
 
-    // Set root text in Automerge
     yield* Automerge.setText(rootNodeId, rootText);
 
-    // Create window document
     yield* Store.setDocument(
       "window",
       {
@@ -66,7 +55,6 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       windowId,
     );
 
-    // Create buffer document
     yield* Store.setDocument(
       "buffer",
       {
@@ -84,14 +72,12 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       bufferId,
     );
 
-    // Create child nodes using NodeT.insertNode
     const childNodeIds: Id.Node[] = [];
     for (const child of children) {
       const childId = yield* Node.insertNode({
         parentId: rootNodeId,
-        insert: "after", // Append at end
+        insert: "after",
       });
-      // Set child text in Automerge
       yield* Automerge.setText(childId, child.text);
       childNodeIds.push(childId);
     }
@@ -104,10 +90,6 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     };
   }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_CHILDREN"));
 
-/**
- * Inserts a node with text content.
- * Wrapper around NodeT.insertNode that also populates Automerge.
- */
 export const INSERT_NODE_WITH_TEXT = (args: {
   parentId: Id.Node;
   insert: "before" | "after";
@@ -129,21 +111,12 @@ export const INSERT_NODE_WITH_TEXT = (args: {
     return nodeId;
   }).pipe(Effect.withSpan("Given.INSERT_NODE_WITH_TEXT"));
 
-/**
- * Sets the window's active element.
- * Use Entity helpers to construct the element:
- * - Block: { id: blockId, type: "block" }
- * - Title: Use Block with title's blockId (Id.makeBufferBlockId(bufferId, titleNodeId))
- */
 export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
   Effect.gen(function* () {
     const Window = yield* WindowT;
     yield* Window.setActiveElement(Option.some(element));
   }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));
 
-/**
- * Sets a block's expanded state.
- */
 const SET_BLOCK_EXPANDED = (blockId: Id.Block, isExpanded: boolean) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
@@ -163,3 +136,21 @@ export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
 /** Expand block - children visible in navigation. */
 export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
   SET_BLOCK_EXPANDED(blockId, true);
+
+export const CURSOR_AT_START = (editor: EditorTestHandle) =>
+  editor.setCursorAtStart(true);
+
+export const CURSOR_NOT_AT_START = (editor: EditorTestHandle) =>
+  editor.setCursorAtStart(false);
+
+export const CURSOR_AT_END = (editor: EditorTestHandle) =>
+  editor.setCursorAtEnd(true);
+
+export const CURSOR_NOT_AT_END = (editor: EditorTestHandle) =>
+  editor.setCursorAtEnd(false);
+
+export const MOVE_TRACKING_RESET = (editor: EditorTestHandle) =>
+  Effect.all([
+    editor.resetMoveLeftCalled(),
+    editor.resetMoveRightCalled(),
+  ]).pipe(Effect.asVoid);
