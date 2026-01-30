@@ -12,12 +12,22 @@ export const makeEditorTest = () =>
     const cursorAtEndRef = yield* Ref.make(false);
     const moveLeftCalledRef = yield* Ref.make(false);
     const moveRightCalledRef = yield* Ref.make(false);
+    const cursorOnFirstLineRef = yield* Ref.make(true);
+    const cursorOnLastLineRef = yield* Ref.make(false);
+    const goalXRef = yield* Ref.make(50);
+    const moveUpCalledRef = yield* Ref.make(false);
+    const moveDownCalledRef = yield* Ref.make(false);
 
     const layer = Layer.succeed(EditorT, {
       isCursorAtStart: () => Ref.get(cursorAtStartRef),
       isCursorAtEnd: () => Ref.get(cursorAtEndRef),
       moveLeft: () => Ref.set(moveLeftCalledRef, true),
       moveRight: () => Ref.set(moveRightCalledRef, true),
+      isCursorOnFirstLine: () => Ref.get(cursorOnFirstLineRef),
+      isCursorOnLastLine: () => Ref.get(cursorOnLastLineRef),
+      getGoalX: () => Ref.get(goalXRef),
+      moveUp: () => Ref.set(moveUpCalledRef, true),
+      moveDown: () => Ref.set(moveDownCalledRef, true),
       createExtension: () => [],
       registerView: () => Effect.void,
       clearView: () => Effect.void,
@@ -32,6 +42,15 @@ export const makeEditorTest = () =>
       resetMoveLeftCalled: () => Ref.set(moveLeftCalledRef, false),
       getMoveRightCalled: () => Ref.get(moveRightCalledRef),
       resetMoveRightCalled: () => Ref.set(moveRightCalledRef, false),
+      setCursorOnFirstLine: (value: boolean) =>
+        Ref.set(cursorOnFirstLineRef, value),
+      setCursorOnLastLine: (value: boolean) =>
+        Ref.set(cursorOnLastLineRef, value),
+      setGoalX: (value: number) => Ref.set(goalXRef, value),
+      getMoveUpCalled: () => Ref.get(moveUpCalledRef),
+      resetMoveUpCalled: () => Ref.set(moveUpCalledRef, false),
+      getMoveDownCalled: () => Ref.get(moveDownCalledRef),
+      resetMoveDownCalled: () => Ref.set(moveDownCalledRef, false),
     };
   });
 

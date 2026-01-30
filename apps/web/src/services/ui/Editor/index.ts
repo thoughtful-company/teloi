@@ -12,7 +12,12 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
-import { cursorCharLeft, cursorCharRight } from "@codemirror/commands";
+import {
+  cursorCharLeft,
+  cursorCharRight,
+  cursorLineUp,
+  cursorLineDown,
+} from "@codemirror/commands";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Context, Data, Effect, Layer, Option, Ref } from "effect";
@@ -41,43 +46,32 @@ export class EditorT extends Context.Tag("EditorT")<
       runSync: <A>(effect: Effect.Effect<A>) => A,
     ) => Extension;
 
-    /**
-     * Register the EditorView after creation.
-     */
     registerView: (view: EditorView) => Effect.Effect<void>;
-
-    /**
-     * Clear the EditorView when Editor unmounts.
-     */
     clearView: () => Effect.Effect<void>;
-
-    /**
-     * Get the current EditorView.
-     * Fails with NoActiveEditorError if no view is registered.
-     */
     getView: () => Effect.Effect<EditorView, NoActiveEditorError>;
 
-    /**
-     * Check if the cursor is at the start of the text (position 0, no selection).
-     */
     isCursorAtStart: () => Effect.Effect<boolean, NoActiveEditorError>;
-
-    /**
-     * Move cursor one character to the left.
-     */
     moveLeft: () => Effect.Effect<void, NoActiveEditorError>;
-
-    /**
-     * Check if the cursor is at the end of the text (position === doc.length, no selection).
-     */
     isCursorAtEnd: () => Effect.Effect<boolean, NoActiveEditorError>;
-
-    /**
-     * Move cursor one character to the right.
-     */
     moveRight: () => Effect.Effect<void, NoActiveEditorError>;
+
+    isCursorOnFirstLine: () => Effect.Effect<boolean, NoActiveEditorError>;
+    isCursorOnLastLine: () => Effect.Effect<boolean, NoActiveEditorError>;
+    getGoalX: () => Effect.Effect<number, NoActiveEditorError>;
+    moveUp: () => Effect.Effect<void, NoActiveEditorError>;
+    moveDown: () => Effect.Effect<void, NoActiveEditorError>;
   }
 >() {}
+
+const assocToSide = (a: number): -1 | 1 => (a === 1 ? 1 : -1);
+
+const isOnEdgeLine = (view: EditorView, forward: boolean): boolean => {
+  const sel = view.state.selection.main;
+  const currentY = view.coordsAtPos(sel.head, assocToSide(sel.assoc))?.top;
+  const moved = view.moveVertically(sel, forward);
+  const movedY = view.coordsAtPos(moved.head, assocToSide(moved.assoc))?.top;
+  return currentY === movedY;
+};
 
 export const EditorLive = Layer.effect(
   EditorT,
@@ -206,6 +200,21 @@ export const EditorLive = Layer.effect(
 
       moveRight: () =>
         withView((view) => cursorCharRight(view)).pipe(Effect.asVoid),
+
+      isCursorOnFirstLine: () => withView((view) => isOnEdgeLine(view, false)),
+
+      isCursorOnLastLine: () => withView((view) => isOnEdgeLine(view, true)),
+
+      getGoalX: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          return view.coordsAtPos(sel.head)?.left ?? 0;
+        }),
+
+      moveUp: () => withView((view) => cursorLineUp(view)).pipe(Effect.asVoid),
+
+      moveDown: () =>
+        withView((view) => cursorLineDown(view)).pipe(Effect.asVoid),
     };
   }),
 );

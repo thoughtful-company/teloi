@@ -84,3 +84,41 @@ export const MOVE_RIGHT_WAS_CALLED = (editor: EditorTestHandle) =>
     const called = yield* editor.getMoveRightCalled();
     expect(called, "moveRight() should have been called").toBe(true);
   }).pipe(Effect.withSpan("Then.MOVE_RIGHT_WAS_CALLED"));
+
+export const MOVE_UP_WAS_CALLED = (editor: EditorTestHandle) =>
+  Effect.gen(function* () {
+    const called = yield* editor.getMoveUpCalled();
+    expect(called, "moveUp() should have been called").toBe(true);
+  }).pipe(Effect.withSpan("Then.MOVE_UP_WAS_CALLED"));
+
+export const MOVE_DOWN_WAS_CALLED = (editor: EditorTestHandle) =>
+  Effect.gen(function* () {
+    const called = yield* editor.getMoveDownCalled();
+    expect(called, "moveDown() should have been called").toBe(true);
+  }).pipe(Effect.withSpan("Then.MOVE_DOWN_WAS_CALLED"));
+
+export const SELECTION_HAS_GOAL = (
+  blockId: Id.Block,
+  expected: { goalX?: number; goalLine?: "first" | "last" },
+) =>
+  Effect.gen(function* () {
+    const [bufferId] = yield* Id.parseBlockId(blockId);
+    const Buffer = yield* BufferT;
+    const selection = yield* Buffer.getSelection(bufferId);
+
+    expect(Option.isSome(selection), "Selection should exist").toBe(true);
+
+    if (Option.isSome(selection)) {
+      if (expected.goalX !== undefined) {
+        expect(selection.value.goalX, `goalX should be ${expected.goalX}`).toBe(
+          expected.goalX,
+        );
+      }
+      if (expected.goalLine !== undefined) {
+        expect(
+          selection.value.goalLine,
+          `goalLine should be "${expected.goalLine}"`,
+        ).toBe(expected.goalLine);
+      }
+    }
+  }).pipe(Effect.withSpan("Then.SELECTION_HAS_GOAL"));
