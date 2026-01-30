@@ -3,8 +3,10 @@ import { Entity, Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
+import { BufferT } from "@/services/ui/Buffer";
 import type { EditorTestHandle } from "@/services/ui/Editor/test";
 import { WindowT } from "@/services/ui/Window";
+import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 
@@ -149,8 +151,38 @@ export const CURSOR_AT_END = (editor: EditorTestHandle) =>
 export const CURSOR_NOT_AT_END = (editor: EditorTestHandle) =>
   editor.setCursorAtEnd(false);
 
+export const CURSOR_ON_FIRST_LINE = (editor: EditorTestHandle) =>
+  editor.setCursorOnFirstLine(true);
+
+export const CURSOR_NOT_ON_FIRST_LINE = (editor: EditorTestHandle) =>
+  editor.setCursorOnFirstLine(false);
+
+export const CURSOR_ON_LAST_LINE = (editor: EditorTestHandle) =>
+  editor.setCursorOnLastLine(true);
+
+export const CURSOR_NOT_ON_LAST_LINE = (editor: EditorTestHandle) =>
+  editor.setCursorOnLastLine(false);
+
+export const GOAL_X = (editor: EditorTestHandle, value: number) =>
+  editor.setGoalX(value);
+
+export const SELECTION_WITH_GOAL_X = (
+  bufferId: Id.Buffer,
+  blockId: Id.Block,
+  goalX: number,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    yield* Buffer.setSelection(
+      bufferId,
+      makeCollapsedSelection(blockId, 0, { goalX }),
+    );
+  }).pipe(Effect.withSpan("Given.SELECTION_WITH_GOAL_X"));
+
 export const MOVE_TRACKING_RESET = (editor: EditorTestHandle) =>
   Effect.all([
     editor.resetMoveLeftCalled(),
     editor.resetMoveRightCalled(),
+    editor.resetMoveUpCalled(),
+    editor.resetMoveDownCalled(),
   ]).pipe(Effect.asVoid);
