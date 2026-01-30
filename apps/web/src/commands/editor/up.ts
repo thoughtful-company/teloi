@@ -4,44 +4,24 @@ import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
-import { resolveGoalX } from "./resolveGoalX";
+import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveGoalX } from "./utils/resolveGoalX";
 
-export class Up extends Data.TaggedClass("editor:up")<{}> {}
-
-export const handle = Effect.fn("editor:up")(function* (_cmd: Up) {
-  const Editor = yield* EditorT;
-
-  const isOnFirstLine = yield* Editor.isCursorOnFirstLine();
-  if (!isOnFirstLine) {
-    yield* Editor.moveUp();
-    return;
-  }
-
-  yield* navigateToPreviousBlock();
-});
+const scope = "editor";
+const commandName = "up";
+const tag = `${scope}:${commandName}` as const;
 
 const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
   function* () {
     const Window = yield* WindowT;
     const Buffer = yield* BufferT;
 
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement) || activeElement.value.type !== "block") {
-      return;
-    }
-
-    const blockId = activeElement.value.id;
-    const blockContext = Id.parseBlockContextSync(blockId);
-    if (blockContext.type !== "buffer") {
-      return;
-    }
-
-    const { bufferId, nodeId } = blockContext;
+    const ctx = yield* resolveActiveBlockContext();
+    if (Option.isNone(ctx)) return;
+    const { bufferId, nodeId } = ctx.value;
 
     const targetOpt = yield* Buffer.findPreviousVisibleNode(nodeId, bufferId);
-    if (Option.isNone(targetOpt)) {
-      return;
-    }
+    if (Option.isNone(targetOpt)) return;
 
     const goalX = yield* resolveGoalX(bufferId);
     const targetNodeId = targetOpt.value;
@@ -56,3 +36,20 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
     );
   },
 );
+
+export class Up extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Up) {
+    const Editor = yield* EditorT;
+
+    const isOnFirstLine = yield* Editor.isCursorOnFirstLine();
+    if (!isOnFirstLine) {
+      yield* Editor.moveUp();
+      return;
+    }
+
+    yield* navigateToPreviousBlock();
+  });
+}

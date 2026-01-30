@@ -17,6 +17,8 @@ export const makeEditorTest = () =>
     const goalXRef = yield* Ref.make(50);
     const moveUpCalledRef = yield* Ref.make(false);
     const moveDownCalledRef = yield* Ref.make(false);
+    const moveHomeCalledRef = yield* Ref.make(false);
+    const moveEndCalledRef = yield* Ref.make(false);
 
     const layer = Layer.succeed(EditorT, {
       isCursorAtStart: () => Ref.get(cursorAtStartRef),
@@ -28,6 +30,8 @@ export const makeEditorTest = () =>
       getGoalX: () => Ref.get(goalXRef),
       moveUp: () => Ref.set(moveUpCalledRef, true),
       moveDown: () => Ref.set(moveDownCalledRef, true),
+      moveHome: () => Ref.set(moveHomeCalledRef, true),
+      moveEnd: () => Ref.set(moveEndCalledRef, true),
       createExtension: () => [],
       registerView: () => Effect.void,
       clearView: () => Effect.void,
@@ -51,6 +55,10 @@ export const makeEditorTest = () =>
       resetMoveUpCalled: () => Ref.set(moveUpCalledRef, false),
       getMoveDownCalled: () => Ref.get(moveDownCalledRef),
       resetMoveDownCalled: () => Ref.set(moveDownCalledRef, false),
+      getMoveHomeCalled: () => Ref.get(moveHomeCalledRef),
+      resetMoveHomeCalled: () => Ref.set(moveHomeCalledRef, false),
+      getMoveEndCalled: () => Ref.get(moveEndCalledRef),
+      resetMoveEndCalled: () => Ref.set(moveEndCalledRef, false),
     };
   });
 

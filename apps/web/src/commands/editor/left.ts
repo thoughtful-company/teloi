@@ -5,20 +5,11 @@ import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
+import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 
-export class Left extends Data.TaggedClass("editor:left")<{}> {}
-
-export const handle = Effect.fn("editor:left")(function* (_cmd: Left) {
-  const Editor = yield* EditorT;
-
-  const isAtStart = yield* Editor.isCursorAtStart();
-  if (!isAtStart) {
-    yield* Editor.moveLeft();
-    return;
-  }
-
-  yield* navigateToPreviousBlock();
-});
+const scope = "editor";
+const commandName = "left";
+const tag = `${scope}:${commandName}` as const;
 
 const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:left")(
   function* () {
@@ -26,23 +17,12 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:left")(
     const Buffer = yield* BufferT;
     const Automerge = yield* AutomergeT;
 
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement) || activeElement.value.type !== "block") {
-      return;
-    }
-
-    const blockId = activeElement.value.id;
-    const blockContext = Id.parseBlockContextSync(blockId);
-    if (blockContext.type !== "buffer") {
-      return;
-    }
-
-    const { bufferId, nodeId } = blockContext;
+    const ctx = yield* resolveActiveBlockContext();
+    if (Option.isNone(ctx)) return;
+    const { bufferId, nodeId } = ctx.value;
 
     const targetOpt = yield* Buffer.findPreviousVisibleNode(nodeId, bufferId);
-    if (Option.isNone(targetOpt)) {
-      return;
-    }
+    if (Option.isNone(targetOpt)) return;
 
     const targetNodeId = targetOpt.value;
     const targetText = yield* Automerge.getText(targetNodeId);
@@ -58,3 +38,20 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:left")(
     );
   },
 );
+
+export class Left extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Left) {
+    const Editor = yield* EditorT;
+
+    const isAtStart = yield* Editor.isCursorAtStart();
+    if (!isAtStart) {
+      yield* Editor.moveLeft();
+      return;
+    }
+
+    yield* navigateToPreviousBlock();
+  });
+}

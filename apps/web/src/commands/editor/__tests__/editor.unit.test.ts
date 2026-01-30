@@ -1,7 +1,9 @@
-import { handle as handleLeft, Left } from "@/commands/editor/left";
-import { handle as handleRight, Right } from "@/commands/editor/right";
-import { handle as handleUp, Up } from "@/commands/editor/up";
-import { handle as handleDown, Down } from "@/commands/editor/down";
+import { Left } from "@/commands/editor/left";
+import { Right } from "@/commands/editor/right";
+import { Up } from "@/commands/editor/up";
+import { Down } from "@/commands/editor/down";
+import { Home } from "@/commands/editor/home";
+import { End } from "@/commands/editor/end";
 import { Id } from "@/schema";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -46,7 +48,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondChildBlockId });
       yield* Given.CURSOR_AT_START(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.SELECTION_ON_BLOCK(firstChildBlockId, 5);
     }).pipe(runtime.runPromise);
@@ -74,7 +76,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondChildBlockId });
       yield* Given.CURSOR_AT_START(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.SELECTION_ON_BLOCK(nestedChildBlockId, 6);
     }).pipe(runtime.runPromise);
@@ -99,7 +101,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: childBlockId });
       yield* Given.CURSOR_AT_START(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.SELECTION_ON_BLOCK(parentBlockId, 6);
     }).pipe(runtime.runPromise);
@@ -117,7 +119,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: firstBlockId });
       yield* Given.CURSOR_AT_START(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.SELECTION_ON_TITLE(bufferId, rootNodeId, 14);
     }).pipe(runtime.runPromise);
@@ -144,7 +146,7 @@ describe("editor:left command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: secondBlockId });
       yield* Given.CURSOR_AT_START(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.SELECTION_NOT_ON_BLOCK(nestedBlockId);
       yield* Then.SELECTION_ON_BLOCK(firstBlockId, 5);
@@ -164,7 +166,7 @@ describe("editor:left command", () => {
       yield* Given.CURSOR_NOT_AT_START(editor);
       yield* Given.MOVE_TRACKING_RESET(editor);
 
-      yield* When.EVENT_OCCURS(handleLeft(new Left()));
+      yield* When.EVENT_OCCURS(Left.handle(new Left()));
 
       yield* Then.MOVE_LEFT_WAS_CALLED(editor);
     }).pipe(runtime.runPromise);
@@ -188,7 +190,7 @@ describe("editor:right command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: firstChildBlockId });
       yield* Given.CURSOR_AT_END(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.SELECTION_ON_BLOCK(secondChildBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -213,7 +215,7 @@ describe("editor:right command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: parentBlockId });
       yield* Given.CURSOR_AT_END(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.SELECTION_ON_BLOCK(childBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -238,7 +240,7 @@ describe("editor:right command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: nestedBlockId });
       yield* Given.CURSOR_AT_END(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.SELECTION_ON_BLOCK(secondBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -257,7 +259,7 @@ describe("editor:right command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: titleBlockId });
       yield* Given.CURSOR_AT_END(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.SELECTION_ON_BLOCK(firstBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -284,7 +286,7 @@ describe("editor:right command", () => {
       yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: firstBlockId });
       yield* Given.CURSOR_AT_END(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.SELECTION_NOT_ON_BLOCK(nestedBlockId);
       yield* Then.SELECTION_ON_BLOCK(secondBlockId, 0);
@@ -304,7 +306,7 @@ describe("editor:right command", () => {
       yield* Given.CURSOR_NOT_AT_END(editor);
       yield* Given.MOVE_TRACKING_RESET(editor);
 
-      yield* When.EVENT_OCCURS(handleRight(new Right()));
+      yield* When.EVENT_OCCURS(Right.handle(new Right()));
 
       yield* Then.MOVE_RIGHT_WAS_CALLED(editor);
     }).pipe(runtime.runPromise);
@@ -329,7 +331,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_ON_FIRST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(firstChildBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(firstChildBlockId, {
@@ -362,7 +364,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_ON_FIRST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(nestedChildBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(nestedChildBlockId, {
@@ -391,7 +393,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_ON_FIRST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(parentBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(parentBlockId, {
@@ -414,7 +416,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_ON_FIRST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(titleBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(titleBlockId, {
@@ -444,7 +446,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_ON_FIRST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(firstBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -463,7 +465,7 @@ describe("editor:up command", () => {
       yield* Given.CURSOR_NOT_ON_FIRST_LINE(editor);
       yield* Given.MOVE_TRACKING_RESET(editor);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.MOVE_UP_WAS_CALLED(editor);
     }).pipe(runtime.runPromise);
@@ -488,7 +490,7 @@ describe("editor:up command", () => {
       // Set an existing selection with a preserved goalX (simulates mid-navigation)
       yield* Given.SELECTION_WITH_GOAL_X(bufferId, secondChildBlockId, 200);
 
-      yield* When.EVENT_OCCURS(handleUp(new Up()));
+      yield* When.EVENT_OCCURS(Up.handle(new Up()));
 
       yield* Then.SELECTION_ON_BLOCK(firstChildBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(firstChildBlockId, { goalX: 200 });
@@ -514,7 +516,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(secondChildBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(secondChildBlockId, {
@@ -544,7 +546,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(childBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(childBlockId, {
@@ -573,7 +575,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(secondBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(secondBlockId, {
@@ -595,7 +597,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       // "Only block" = 10 chars
       yield* Then.SELECTION_ON_BLOCK(blockId, 10);
@@ -623,7 +625,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(secondBlockId, 0);
     }).pipe(runtime.runPromise);
@@ -642,7 +644,7 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_NOT_ON_LAST_LINE(editor);
       yield* Given.MOVE_TRACKING_RESET(editor);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.MOVE_DOWN_WAS_CALLED(editor);
     }).pipe(runtime.runPromise);
@@ -666,7 +668,7 @@ describe("editor:down command", () => {
       yield* Given.GOAL_X(editor, 99);
       yield* Given.SELECTION_WITH_GOAL_X(bufferId, firstChildBlockId, 200);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(secondChildBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(secondChildBlockId, { goalX: 200 });
@@ -687,12 +689,52 @@ describe("editor:down command", () => {
       yield* Given.CURSOR_ON_LAST_LINE(editor);
       yield* Given.GOAL_X(editor, 42);
 
-      yield* When.EVENT_OCCURS(handleDown(new Down()));
+      yield* When.EVENT_OCCURS(Down.handle(new Down()));
 
       yield* Then.SELECTION_ON_BLOCK(firstBlockId, 0);
       yield* Then.SELECTION_HAS_GOAL(firstBlockId, {
         goalLine: "first",
       });
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("editor:home command", () => {
+  it("calls moveHome on the editor", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "Hello" }],
+      );
+
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+      yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: blockId });
+      yield* Given.MOVE_TRACKING_RESET(editor);
+
+      yield* When.EVENT_OCCURS(Home.handle(new Home()));
+
+      yield* Then.MOVE_HOME_WAS_CALLED(editor);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("editor:end command", () => {
+  it("calls moveEnd on the editor", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root node",
+        [{ text: "Hello" }],
+      );
+
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+      yield* Given.ACTIVE_ELEMENT_IS({ type: "block", id: blockId });
+      yield* Given.MOVE_TRACKING_RESET(editor);
+
+      yield* When.EVENT_OCCURS(End.handle(new End()));
+
+      yield* Then.MOVE_END_WAS_CALLED(editor);
     }).pipe(runtime.runPromise);
   });
 });

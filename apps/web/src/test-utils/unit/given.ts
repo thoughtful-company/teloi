@@ -185,4 +185,6 @@ export const MOVE_TRACKING_RESET = (editor: EditorTestHandle) =>
     editor.resetMoveRightCalled(),
     editor.resetMoveUpCalled(),
     editor.resetMoveDownCalled(),
+    editor.resetMoveHomeCalled(),
+    editor.resetMoveEndCalled(),
   ]).pipe(Effect.asVoid);

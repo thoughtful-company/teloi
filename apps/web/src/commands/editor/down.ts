@@ -5,39 +5,21 @@ import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
-import { resolveGoalX } from "./resolveGoalX";
+import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveGoalX } from "./utils/resolveGoalX";
 
-export class Down extends Data.TaggedClass("editor:down")<{}> {}
-
-export const handle = Effect.fn("editor:down")(function* (_cmd: Down) {
-  const Editor = yield* EditorT;
-
-  const isOnLastLine = yield* Editor.isCursorOnLastLine();
-  if (!isOnLastLine) {
-    yield* Editor.moveDown();
-    return;
-  }
-
-  yield* navigateToNextBlock();
-});
+const scope = "editor";
+const commandName = "down";
+const tag = `${scope}:${commandName}` as const;
 
 const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
   const Window = yield* WindowT;
   const Buffer = yield* BufferT;
   const Automerge = yield* AutomergeT;
 
-  const activeElement = yield* Window.getActiveElement();
-  if (Option.isNone(activeElement) || activeElement.value.type !== "block") {
-    return;
-  }
-
-  const blockId = activeElement.value.id;
-  const blockContext = Id.parseBlockContextSync(blockId);
-  if (blockContext.type !== "buffer") {
-    return;
-  }
-
-  const { bufferId, nodeId } = blockContext;
+  const ctx = yield* resolveActiveBlockContext();
+  if (Option.isNone(ctx)) return;
+  const { bufferId, nodeId, blockId } = ctx.value;
 
   const targetOpt = yield* Buffer.findNextVisibleNode(nodeId, bufferId);
   if (Option.isNone(targetOpt)) {
@@ -61,3 +43,20 @@ const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
     Option.some({ type: "block" as const, id: targetBlockId }),
   );
 });
+
+export class Down extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Down) {
+    const Editor = yield* EditorT;
+
+    const isOnLastLine = yield* Editor.isCursorOnLastLine();
+    if (!isOnLastLine) {
+      yield* Editor.moveDown();
+      return;
+    }
+
+    yield* navigateToNextBlock();
+  });
+}
