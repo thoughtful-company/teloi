@@ -8,7 +8,7 @@
  * This bus just figures out what command to run and executes it.
  */
 
-import { Left } from "@/commands/editor/left";
+import { Left, Right, Up, Down, Home, End } from "@/commands/editor";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
 import { Context, Effect, Layer, Option } from "effect";
@@ -37,6 +37,15 @@ export interface KeyEvent {
 // Keymap
 // ============================================================================
 
+const plainKeymap: Record<string, () => Command> = {
+  ArrowLeft: () => new Left(),
+  ArrowRight: () => new Right(),
+  ArrowUp: () => new Up(),
+  ArrowDown: () => new Down(),
+  Home: () => new Home(),
+  End: () => new End(),
+};
+
 /**
  * Look up command for a key event.
  * Returns Option.some(command) if matched, Option.none() if not.
@@ -48,16 +57,10 @@ const lookupKeymap = (event: KeyEvent): Option.Option<Command> => {
   const { key, modifiers } = event;
   const { meta, ctrl, alt, shift } = modifiers;
 
-  // Plain keys (no modifiers except shift in some cases)
-  if (!meta && !ctrl && !alt) {
-    if (key === "ArrowLeft" && !shift) {
-      return Option.some(new Left());
-    }
-    // TODO: ArrowRight, ArrowUp, ArrowDown, Enter, Backspace, Tab, etc.
+  if (!meta && !ctrl && !alt && !shift) {
+    const factory = plainKeymap[key];
+    if (factory) return Option.some(factory());
   }
-
-  // Modifier combos
-  // TODO: Cmd+., Cmd+,, Alt+Cmd+Arrow, etc.
 
   return Option.none();
 };

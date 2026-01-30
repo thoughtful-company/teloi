@@ -97,6 +97,18 @@ export const MOVE_DOWN_WAS_CALLED = (editor: EditorTestHandle) =>
     expect(called, "moveDown() should have been called").toBe(true);
   }).pipe(Effect.withSpan("Then.MOVE_DOWN_WAS_CALLED"));
 
+export const MOVE_HOME_WAS_CALLED = (editor: EditorTestHandle) =>
+  Effect.gen(function* () {
+    const called = yield* editor.getMoveHomeCalled();
+    expect(called, "moveHome() should have been called").toBe(true);
+  }).pipe(Effect.withSpan("Then.MOVE_HOME_WAS_CALLED"));
+
+export const MOVE_END_WAS_CALLED = (editor: EditorTestHandle) =>
+  Effect.gen(function* () {
+    const called = yield* editor.getMoveEndCalled();
+    expect(called, "moveEnd() should have been called").toBe(true);
+  }).pipe(Effect.withSpan("Then.MOVE_END_WAS_CALLED"));
+
 export const SELECTION_HAS_GOAL = (
   blockId: Id.Block,
   expected: { goalX?: number; goalLine?: "first" | "last" },

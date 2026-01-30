@@ -4,43 +4,23 @@ import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
+import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 
-export class Right extends Data.TaggedClass("editor:right")<{}> {}
-
-export const handle = Effect.fn("editor:right")(function* (_cmd: Right) {
-  const Editor = yield* EditorT;
-
-  const isAtEnd = yield* Editor.isCursorAtEnd();
-  if (!isAtEnd) {
-    yield* Editor.moveRight();
-    return;
-  }
-
-  yield* navigateToNextBlock();
-});
+const scope = "editor";
+const commandName = "right";
+const tag = `${scope}:${commandName}` as const;
 
 const navigateToNextBlock = Effect.fn("navigateToNextBlock:right")(
   function* () {
     const Window = yield* WindowT;
     const Buffer = yield* BufferT;
 
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement) || activeElement.value.type !== "block") {
-      return;
-    }
-
-    const blockId = activeElement.value.id;
-    const blockContext = Id.parseBlockContextSync(blockId);
-    if (blockContext.type !== "buffer") {
-      return;
-    }
-
-    const { bufferId, nodeId } = blockContext;
+    const ctx = yield* resolveActiveBlockContext();
+    if (Option.isNone(ctx)) return;
+    const { bufferId, nodeId } = ctx.value;
 
     const targetOpt = yield* Buffer.findNextVisibleNode(nodeId, bufferId);
-    if (Option.isNone(targetOpt)) {
-      return;
-    }
+    if (Option.isNone(targetOpt)) return;
 
     const targetNodeId = targetOpt.value;
     const targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
@@ -54,3 +34,20 @@ const navigateToNextBlock = Effect.fn("navigateToNextBlock:right")(
     );
   },
 );
+
+export class Right extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Right) {
+    const Editor = yield* EditorT;
+
+    const isAtEnd = yield* Editor.isCursorAtEnd();
+    if (!isAtEnd) {
+      yield* Editor.moveRight();
+      return;
+    }
+
+    yield* navigateToNextBlock();
+  });
+}

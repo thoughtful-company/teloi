@@ -17,6 +17,8 @@ import {
   cursorCharRight,
   cursorLineUp,
   cursorLineDown,
+  cursorLineStart,
+  cursorLineEnd,
 } from "@codemirror/commands";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
@@ -60,6 +62,9 @@ export class EditorT extends Context.Tag("EditorT")<
     getGoalX: () => Effect.Effect<number, NoActiveEditorError>;
     moveUp: () => Effect.Effect<void, NoActiveEditorError>;
     moveDown: () => Effect.Effect<void, NoActiveEditorError>;
+
+    moveHome: () => Effect.Effect<void, NoActiveEditorError>;
+    moveEnd: () => Effect.Effect<void, NoActiveEditorError>;
   }
 >() {}
 
@@ -215,6 +220,12 @@ export const EditorLive = Layer.effect(
 
       moveDown: () =>
         withView((view) => cursorLineDown(view)).pipe(Effect.asVoid),
+
+      moveHome: () =>
+        withView((view) => cursorLineStart(view)).pipe(Effect.asVoid),
+
+      moveEnd: () =>
+        withView((view) => cursorLineEnd(view)).pipe(Effect.asVoid),
     };
   }),
 );

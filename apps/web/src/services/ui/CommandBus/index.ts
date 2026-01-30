@@ -6,7 +6,7 @@
  * those services and provides them during execution.
  */
 
-import { Left, handle as leftHandle } from "@/commands/editor/left";
+import { editorCommands, type EditorCommand } from "@/commands/editor";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
@@ -17,11 +17,7 @@ import { Context, Effect, Layer } from "effect";
 // Command Type
 // ============================================================================
 
-/**
- * Base type for all commands.
- * Commands are Data.TaggedClass instances with a _tag property.
- */
-export type Command = Left; // Union will grow as commands are added
+export type Command = EditorCommand;
 
 // ============================================================================
 // Handler Registry
@@ -31,13 +27,9 @@ type Handler<C extends Command> = (
   command: C,
 ) => Effect.Effect<void, unknown, unknown>;
 
-/**
- * Registry mapping command tags to their handlers.
- * Handlers are imported directly — explicit wiring, no magic.
- */
-const handlers: Record<string, Handler<Command>> = {
-  "editor:left": leftHandle as Handler<Command>,
-};
+const handlers: Record<string, Handler<Command>> = Object.fromEntries(
+  editorCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
+);
 
 // ============================================================================
 // Service Definition
