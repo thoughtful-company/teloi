@@ -1,5 +1,4 @@
 import { Id } from "@/schema";
-import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
@@ -34,19 +33,14 @@ export class Down extends Data.TaggedClass(tag)<{}> {
 const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
   const Window = yield* WindowT;
   const Buffer = yield* BufferT;
-  const Automerge = yield* AutomergeT;
-
   const ctx = yield* resolveActiveBlockContext();
   if (Option.isNone(ctx)) return;
-  const { bufferId, nodeId, blockId } = ctx.value;
+  const { bufferId, nodeId } = ctx.value;
 
   const targetOpt = yield* Buffer.findNextVisibleNode(nodeId, bufferId);
   if (Option.isNone(targetOpt)) {
-    const text = yield* Automerge.getText(nodeId);
-    yield* Buffer.setSelection(
-      bufferId,
-      makeCollapsedSelection(blockId, text.length),
-    );
+    const Editor = yield* EditorT;
+    yield* Editor.moveDown();
     return;
   }
 
