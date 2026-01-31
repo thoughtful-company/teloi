@@ -4,6 +4,7 @@ import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
+import { clearGoalX } from "./utils/clearGoalX";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 
 const scope = "editor";
@@ -20,6 +21,8 @@ export class Right extends Data.TaggedClass(tag)<{}> {
     const isAtEnd = yield* Editor.isCursorAtEnd();
     if (!isAtEnd) {
       yield* Editor.moveRight();
+      const ctx = yield* resolveActiveBlockContext();
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
       return;
     }
 
