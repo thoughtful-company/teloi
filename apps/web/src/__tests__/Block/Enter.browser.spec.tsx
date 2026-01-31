@@ -39,8 +39,7 @@ describe("Block Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
       yield* When.USER_PRESSES("{Enter}");
 
       yield* Then.BLOCK_COUNT_IS(2);
@@ -67,7 +66,7 @@ describe("Block Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 11);
       yield* When.USER_PRESSES("{Enter}");
 
       yield* Then.BLOCK_COUNT_IS(2);
@@ -88,8 +87,7 @@ describe("Block Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(originalBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
       yield* When.USER_PRESSES("{Enter}");
 
       yield* Then.BLOCK_COUNT_IS(2);
@@ -116,7 +114,7 @@ describe("Block Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(emptyBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(emptyBlockId, 0);
       yield* When.USER_PRESSES("{Enter}");
 
       yield* Then.BLOCK_COUNT_IS(2);
@@ -203,9 +201,8 @@ describe("Title Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      // When: User clicks title, moves to start, and presses Enter
-      yield* When.USER_CLICKS_TITLE(bufferId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      // When: User focuses title at start and presses Enter
+      yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 0);
       yield* When.USER_PRESSES("{Enter}");
 
       // Then: A new child block should be created
@@ -240,9 +237,8 @@ describe("Title Enter key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      // When: User clicks title, moves to position 8, and presses Enter
-      yield* When.USER_CLICKS_TITLE(bufferId);
-      yield* When.USER_MOVES_CURSOR_TO(8); // "Document|" Title"
+      // When: User focuses title at position 8 and presses Enter
+      yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 8);
       yield* When.USER_PRESSES("{Enter}");
 
       // Then: A new child block should be created

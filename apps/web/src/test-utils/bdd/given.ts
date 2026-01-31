@@ -502,6 +502,49 @@ export const BLOCK_IS_FOCUSED_AT = (
     });
   }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT"));
 
+/**
+ * Sets up a title as focused with cursor at a specific position.
+ * Combines buffer selection + active element setting for titles.
+ */
+export const TITLE_IS_FOCUSED_AT = (
+  bufferId: Id.Buffer,
+  rootNodeId: Id.Node,
+  offset: number,
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+    const Window = yield* WindowT;
+
+    const elementId = Id.makeBufferBlockId(bufferId, rootNodeId);
+
+    // Set cursor in buffer selection
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { elementId },
+        anchorOffset: offset,
+        focus: { elementId },
+        focusOffset: offset,
+        goalX: null,
+        goalLine: null,
+        assoc: 0,
+      }),
+    );
+
+    // Set active element as title
+    yield* Effect.async<void>((resume) => {
+      const timeout = requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          resume(
+            Window.setActiveElement(Option.some({ type: "title", bufferId })),
+          );
+        }),
+      );
+
+      return Effect.sync(() => clearTimeout(timeout));
+    });
+  }).pipe(Effect.withSpan("Given.TITLE_IS_FOCUSED_AT"));
+
 /** Mark types for text formatting */
 export type MarkType = "bold" | "italic" | "code";
 

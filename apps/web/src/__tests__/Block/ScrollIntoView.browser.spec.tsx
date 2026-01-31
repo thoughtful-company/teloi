@@ -74,15 +74,8 @@ describe("Scroll behavior", () => {
         </div>
       ));
 
-      // Set selection directly
-      yield* When.SELECTION_IS_SET_TO(
-        bufferId,
-        childNodeIds[0]!,
-        CURSOR_POSITION,
-      );
-
-      // Set active element directly (don't click - that resets selection)
-      yield* Given.ACTIVE_ELEMENT_IS({ id: firstBlockId, type: "block" });
+      // Focus block with cursor at position
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, CURSOR_POSITION);
 
       yield* waitForEditorFocus();
       yield* Effect.promise(

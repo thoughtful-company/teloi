@@ -1,5 +1,6 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
+import { WindowT } from "@/services/ui/Window";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -52,53 +53,42 @@ export const USER_PRESSES = (keys: string) =>
   );
 
 /**
- * TODO: Fix, it's not working
- * Moves cursor to a specific offset from the start of the text.
- * Uses Home to go to start, then ArrowRight to reach position.
- */
-export const USER_MOVES_CURSOR_TO = (offset: number) =>
-  Effect.gen(function* () {
-    yield* Effect.promise(() => userEvent.keyboard("{Home}"));
-    for (let i = 0; i < offset; i++) {
-      yield* Effect.promise(() => userEvent.keyboard("{ArrowRight}"));
-    }
-  }).pipe(Effect.withSpan("When.USER_MOVES_CURSOR_TO"));
-
-/**
- * Sets selection to a specific position in a node via the model.
- * This is more reliable than keyboard navigation for positioning.
- * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
- */
-export const SELECTION_IS_SET_TO = (
-  bufferId: Id.Buffer,
-  nodeId: Id.Node,
-  offset: number,
-  assoc: -1 | 0 | 1 = 0,
-) =>
-  Effect.gen(function* () {
-    const Buffer = yield* BufferT;
-    const elementId = Id.makeBufferBlockId(bufferId, nodeId);
-    yield* Buffer.setSelection(
-      bufferId,
-      Option.some({
-        anchor: { elementId },
-        anchorOffset: offset,
-        focus: { elementId },
-        focusOffset: offset,
-        goalX: null,
-        goalLine: null,
-        assoc,
-      }),
-    );
-  }).pipe(Effect.withSpan("When.SELECTION_IS_SET_TO"));
-
-/**
- * Clicks a block, waits for CodeMirror to be focused, then presses Escape
+ * Focuses a block via model state, then presses Escape
  * to enter block selection mode with that block selected.
  */
 export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
   Effect.gen(function* () {
-    yield* USER_CLICKS_BLOCK(blockId);
+    const Buffer = yield* BufferT;
+    const Window = yield* WindowT;
+
+    const [bufferId] = yield* Id.parseBlockId(blockId);
+
+    // Set selection first, then activate — so CodeMirror mounts with cursor in place
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { elementId: blockId },
+        anchorOffset: 0,
+        focus: { elementId: blockId },
+        focusOffset: 0,
+        goalX: null,
+        goalLine: null,
+        assoc: 0,
+      }),
+    );
+
+    yield* Effect.async<void>((resume) => {
+      const timeout = requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          resume(
+            Window.setActiveElement(
+              Option.some({ type: "block", id: blockId }),
+            ),
+          );
+        }),
+      );
+      return Effect.sync(() => clearTimeout(timeout));
+    });
 
     // Wait for CodeMirror to be mounted and focused
     yield* Effect.promise(() =>

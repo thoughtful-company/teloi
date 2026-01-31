@@ -76,7 +76,7 @@ describe("Selection sync", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus the block to mount CodeMirror
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Set selection via model (position 5 = "Hello| world")
       const Buffer = yield* BufferT;
@@ -114,8 +114,7 @@ describe("Selection sync", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child, move cursor to position 7
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(7);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 7);
 
       // Indent (causes remount under new parent)
       yield* When.USER_PRESSES("{Tab}");
@@ -153,8 +152,8 @@ describe("Selection sync", () => {
 
       // First render: focus and set position at 6
       render(() => <BufferView bufferId={bufferId} />);
-      yield* When.USER_CLICKS_BLOCK(blockId);
-      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 6);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 6);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
 
       // Simulate page reload: unmount and remount
@@ -162,7 +161,7 @@ describe("Selection sync", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Set selection via model (simulates saved selection from before reload)
-      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 6);
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 6);
 
       // Wait for CodeMirror to mount
       const cmContainer = yield* Effect.promise(() =>
@@ -211,12 +210,11 @@ describe("Selection sync", () => {
 
       yield* Given.BUFFER_HAS_WIDTH(200);
 
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 20, 1);
-
-      yield* Given.ACTIVE_ELEMENT_IS({
-        type: "block",
-        id: makeBufferBlockId(bufferId, childNodeIds[0]),
-      });
+      yield* Given.BLOCK_IS_FOCUSED_AT(
+        makeBufferBlockId(bufferId, childNodeIds[0]),
+        20,
+        1,
+      );
 
       // // Press ArrowDown
       yield* When.USER_PRESSES("{ArrowDown}");
@@ -252,7 +250,7 @@ describe("Selection sync", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // First click to mount CodeMirror
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Wait for layout
       yield* Effect.promise(() => new Promise((r) => setTimeout(r, 100)));
@@ -313,7 +311,7 @@ describe("Selection sync", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Click on the empty block to focus it
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Wait for CodeMirror to be focused
       yield* Effect.promise(() =>
