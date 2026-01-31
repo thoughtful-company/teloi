@@ -244,10 +244,10 @@ describe("Navigation with UI", () => {
         const lastBlockId = Id.makeBufferBlockId(bufferId, lastChildId);
 
         // Click on the last block (this should scroll it into view initially)
-        yield* When.USER_CLICKS_BLOCK(lastBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(lastBlockId, 0);
 
         // Set cursor position in this block
-        yield* When.SELECTION_IS_SET_TO(bufferId, lastChildId, 3);
+        yield* Given.BUFFER_HAS_CURSOR(bufferId, lastChildId, 3);
 
         // Zoom into this block (navigate to it)
         yield* When.USER_PRESSES("{Meta>}.{/Meta}");

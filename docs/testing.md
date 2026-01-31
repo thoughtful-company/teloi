@@ -1,19 +1,29 @@
 # Testing Guidelines
 
+## Cleanup
+
+**Never use `afterEach`** for cleanup. All cleanup/reset logic must go in `beforeEach` instead. This ensures each test starts from a known state regardless of whether the previous test passed, failed, or was skipped.
+
 ## Setting Up Selection and Focus
 
 ### DON'T: Click to set selection
 ```typescript
 // BAD - clicking resets selection
-yield* When.SELECTION_IS_SET_TO(bufferId, nodeId, offset);
+yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset);
 yield* When.USER_CLICKS_BLOCK(blockId); // This RESETS the selection!
 ```
 
 ### DO: Set selection and active element separately
 ```typescript
 // GOOD - set selection via model, then set active element directly
-yield* When.SELECTION_IS_SET_TO(bufferId, nodeId, offset);
+yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset);
 yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
+```
+
+### Better: Use the combined helper
+```typescript
+// BEST - sets both selection and active element in one call
+yield* Given.BLOCK_IS_FOCUSED_AT(blockId, offset);
 ```
 
 ### Setting Active Element
@@ -30,11 +40,11 @@ yield* Given.ACTIVE_ELEMENT_IS({ bufferId, type: "title" });
 
 ### Setting Selection
 
-Use `When.SELECTION_IS_SET_TO(bufferId, nodeId, offset)` to set cursor position directly:
+Use `Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset)` to set cursor position directly:
 
 ```typescript
 const cursorPosition = 42;
-yield* When.SELECTION_IS_SET_TO(bufferId, nodeId, cursorPosition);
+yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, cursorPosition);
 ```
 
 **NEVER** navigate character-by-character to set cursor position:

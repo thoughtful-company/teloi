@@ -43,7 +43,7 @@ describe("Block Mod+. key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       const Store = yield* StoreT;
@@ -74,7 +74,7 @@ describe("Block Mod+. key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       expect(window.location.pathname).toBe(`/workspace/${childNodeIds[0]}`);
@@ -92,8 +92,8 @@ describe("Block Mod+. key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
-      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 5);
 
       yield* Effect.sleep("50 millis");
 
@@ -132,8 +132,8 @@ describe("Block Mod+. key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
-      yield* When.SELECTION_IS_SET_TO(bufferId, childNodeIds[0], 5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 5);
 
       yield* Effect.sleep("50 millis");
 
