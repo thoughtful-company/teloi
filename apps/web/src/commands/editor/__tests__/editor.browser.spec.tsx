@@ -379,7 +379,7 @@ describe("editor navigation", () => {
     });
   });
 
-  describe.only("vertical (ArrowUp / ArrowDown)", () => {
+  describe("vertical (ArrowUp / ArrowDown)", () => {
     describe("basic sibling traversal", () => {
       it("ArrowUp moves to previous sibling when on first line", async () => {
         await Effect.gen(function* () {

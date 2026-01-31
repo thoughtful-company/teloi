@@ -1,4 +1,5 @@
 import { Id } from "@/schema";
+import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
 import { Effect, Option } from "effect";
 
@@ -11,13 +12,31 @@ interface ActiveBlockContext {
 export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
   function* () {
     const Window = yield* WindowT;
+    const Buffer = yield* BufferT;
 
     const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement) || activeElement.value.type !== "block") {
+    if (Option.isNone(activeElement)) {
       return Option.none<ActiveBlockContext>();
     }
 
-    const blockId = activeElement.value.id;
+    const el = activeElement.value;
+
+    if (el.type === "title") {
+      const rootNodeId = yield* Buffer.getAssignedNodeId(el.bufferId);
+      if (rootNodeId == null) return Option.none<ActiveBlockContext>();
+      const blockId = Id.makeBufferBlockId(el.bufferId, rootNodeId);
+      return Option.some({
+        bufferId: el.bufferId,
+        nodeId: rootNodeId,
+        blockId,
+      });
+    }
+
+    if (el.type !== "block") {
+      return Option.none<ActiveBlockContext>();
+    }
+
+    const blockId = el.id;
     const blockContext = Id.parseBlockContextSync(blockId);
     if (blockContext.type !== "buffer") {
       return Option.none<ActiveBlockContext>();

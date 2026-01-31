@@ -531,12 +531,15 @@ export const TITLE_IS_FOCUSED_AT = (
       }),
     );
 
-    // Set active element as title
+    // Set active element as block (titles use type: "block" with the title's blockId,
+    // matching how the real UI activates via AppAction.Focus)
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           resume(
-            Window.setActiveElement(Option.some({ type: "title", bufferId })),
+            Window.setActiveElement(
+              Option.some({ type: "block" as const, id: elementId }),
+            ),
           );
         }),
       );
