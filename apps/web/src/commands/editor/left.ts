@@ -11,6 +11,25 @@ const scope = "editor";
 const commandName = "left";
 const tag = `${scope}:${commandName}` as const;
 
+export class Left extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Left) {
+    const Editor = yield* EditorT;
+
+    const isAtStart = yield* Editor.isCursorAtStart();
+    if (!isAtStart) {
+      yield* Editor.moveLeft();
+      return;
+    }
+
+    yield* navigateToPreviousBlock();
+  });
+}
+
+/* ─── Private ─── */
+
 const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:left")(
   function* () {
     const Window = yield* WindowT;
@@ -38,20 +57,3 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:left")(
     );
   },
 );
-
-export class Left extends Data.TaggedClass(tag)<{}> {
-  static readonly scope = scope;
-  static readonly commandName = commandName;
-  static readonly tag = tag;
-  static handle = Effect.fn(tag)(function* (_cmd: Left) {
-    const Editor = yield* EditorT;
-
-    const isAtStart = yield* Editor.isCursorAtStart();
-    if (!isAtStart) {
-      yield* Editor.moveLeft();
-      return;
-    }
-
-    yield* navigateToPreviousBlock();
-  });
-}

@@ -1,6 +1,7 @@
 import { Id, Model } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
+import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
 import { WindowT } from "../Window";
@@ -23,7 +24,11 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
 export const setSelection = (
   bufferId: Id.Buffer,
   selection: Option.Option<Model.BufferSelection>,
-): Effect.Effect<void, BufferNotFoundError, StoreT | NodeT | WindowT> =>
+): Effect.Effect<
+  void,
+  BufferNotFoundError,
+  StoreT | NodeT | WindowT | AutomergeT
+> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -68,23 +73,39 @@ export const setSelection = (
       bufferId,
     ).pipe(Effect.orDie);
 
-    // Activate the focus block (read-side settling handles timing)
-    if (Option.isSome(selection)) {
-      const Window = yield* WindowT;
-      const blockId = selection.value.focus.elementId;
-      yield* Window.setActiveElement(
-        Option.some({ type: "block" as const, id: blockId }),
-      );
-    }
+    const logAnnotations = yield* Option.match(selection, {
+      onNone: () =>
+        Effect.succeed({ selection: null } as Record<string, unknown>),
+      onSome: (s) =>
+        Effect.gen(function* () {
+          const focusContext = yield* IdT.parseBlockContext(
+            s.focus.elementId,
+          ).pipe(Effect.orDie);
+          const Automerge = yield* AutomergeT;
+          const focusNodeId =
+            focusContext.type === "buffer"
+              ? focusContext.nodeId
+              : focusContext.hostNodeId;
+          const focusText = yield* Automerge.getText(focusNodeId);
 
-    yield* Effect.logDebug("[Buffer.setSelection] Selection updated").pipe(
+          return {
+            "selection.anchor": s.anchor.elementId,
+            "selection.anchorOffset": s.anchorOffset,
+            "selection.focus": s.focus.elementId,
+            "selection.focusOffset": s.focusOffset,
+            "selection.focusText": focusText,
+            "selection.assoc": s.assoc,
+            "selection.goalX": s.goalX,
+            "selection.goalLine": s.goalLine,
+          } as Record<string, unknown>;
+        }),
+    });
+
+    yield* Effect.logDebug("[Buffer.setSelection]").pipe(
       Effect.annotateLogs({
         bufferId,
-        selection: Option.match(selection, {
-          onNone: () => null,
-          onSome: (s) =>
-            `${s.anchor.elementId}:${s.anchorOffset}-${s.focus.elementId}:${s.focusOffset}|assoc:${s.assoc}`,
-        }),
+        assignedNodeId,
+        ...logAnnotations,
       }),
     );
   });

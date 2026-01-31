@@ -11,6 +11,25 @@ const scope = "editor";
 const commandName = "up";
 const tag = `${scope}:${commandName}` as const;
 
+export class Up extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Up) {
+    const Editor = yield* EditorT;
+
+    const isOnFirstLine = yield* Editor.isCursorOnFirstLine();
+    if (!isOnFirstLine) {
+      yield* Editor.moveUp();
+      return;
+    }
+
+    yield* navigateToPreviousBlock();
+  });
+}
+
+/* ─── Private ─── */
+
 const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
   function* () {
     const Window = yield* WindowT;
@@ -36,20 +55,3 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
     );
   },
 );
-
-export class Up extends Data.TaggedClass(tag)<{}> {
-  static readonly scope = scope;
-  static readonly commandName = commandName;
-  static readonly tag = tag;
-  static handle = Effect.fn(tag)(function* (_cmd: Up) {
-    const Editor = yield* EditorT;
-
-    const isOnFirstLine = yield* Editor.isCursorOnFirstLine();
-    if (!isOnFirstLine) {
-      yield* Editor.moveUp();
-      return;
-    }
-
-    yield* navigateToPreviousBlock();
-  });
-}
