@@ -639,7 +639,7 @@ describe("Property Quick-Create", () => {
         );
 
         // Click the block to focus it
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " to trigger property creation (this creates an unbound property)
         yield* When.USER_PRESSES(">");

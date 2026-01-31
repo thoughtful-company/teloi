@@ -68,7 +68,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the parent block (text editing mode)
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
 
       // Verify initially expanded (default state)
       yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
@@ -106,7 +106,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       // Collapse the child (it has no children, so it's like being collapsed)
       // Actually, the child has no children so it can't be expanded/collapsed
       // Focus on the child block
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
       // When: Mod+Up pressed (child is childless, so navigate to parent)
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
@@ -139,7 +139,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the leaf block
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
       // When: Mod+Up pressed
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
@@ -176,7 +176,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       yield* Then.BLOCK_IS_COLLAPSED(rootBlockId);
 
       // Focus on the root-level block
-      yield* When.USER_CLICKS_BLOCK(rootBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(rootBlockId, 0);
 
       // When: Mod+Up pressed (block is collapsed, at root level)
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
@@ -200,7 +200,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the root-level block (no children)
-      yield* When.USER_CLICKS_BLOCK(rootBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(rootBlockId, 0);
 
       // When: Mod+Up pressed
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
@@ -231,7 +231,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on child (text editing mode - CodeMirror focused)
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
       // Verify we're in text editing mode (CodeMirror is focused)
       yield* Effect.promise(() =>
@@ -282,7 +282,7 @@ describe("Progressive Mod+Up - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on child block (text editing mode)
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
       // Wait for CodeMirror to be focused
       yield* Effect.promise(() =>
@@ -622,7 +622,7 @@ describe("Block expand/collapse - Text editing mode", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus on the parent block (text editing mode)
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
 
       // Verify initially expanded (default state)
       yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
@@ -661,7 +661,7 @@ describe("Block expand/collapse - Text editing mode", () => {
       yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
 
       // Focus on the parent block
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
 
       // When: Cmd+Down pressed
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");

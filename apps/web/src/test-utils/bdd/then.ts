@@ -2,6 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
+import { doubleRaf } from "@/utils/effect";
 import { EditorView } from "@codemirror/view";
 import { Data, Effect, Option, Schedule } from "effect";
 import { screen, waitFor } from "solid-testing-library";
@@ -98,53 +99,40 @@ export const BLOCK_COUNT_IS = (count: number) =>
  * Asserts that the DOM selection is collapsed and at the expected offset.
  */
 export const SELECTION_IS_COLLAPSED_AT_OFFSET = (offset: number) =>
-  Effect.promise(() =>
-    waitFor(
-      () => {
-        const sel = window.getSelection();
-        expect(sel).not.toBeNull();
-        expect(sel!.isCollapsed).toBe(true);
-        expect(sel!.anchorOffset).toBe(offset);
-      },
-      { timeout: 2000 },
-    ),
-  ).pipe(Effect.withSpan("Then.SELECTION_IS_COLLAPSED_AT_OFFSET"));
+  doubleRaf.pipe(
+    Effect.andThen(() => {
+      const sel = window.getSelection();
+      expect(sel).not.toBeNull();
+      expect(sel!.isCollapsed).toBe(true);
+      expect(sel!.anchorOffset).toBe(offset);
+    }),
+    Effect.withSpan("Then.SELECTION_IS_COLLAPSED_AT_OFFSET"),
+  );
 
 /**
  * Asserts that the DOM selection is NOT in the specified block.
  */
 export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
-  Effect.promise(() =>
-    waitFor(
-      () => {
-        const currentBlockId = getSelectionBlockId();
-        expect(currentBlockId).not.toBeNull();
-        expect(currentBlockId).not.toBe(blockId);
-      },
-      { timeout: 1000 },
-    ),
-  ).pipe(Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"));
+  doubleRaf.pipe(
+    Effect.andThen(() => {
+      const currentBlockId = getSelectionBlockId();
+      expect(currentBlockId).not.toBeNull();
+      expect(currentBlockId).not.toBe(blockId);
+    }),
+    Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"),
+  );
 
 /**
  * Asserts that the DOM selection IS in the specified block.
  */
 export const SELECTION_IS_ON_BLOCK = (blockId: Id.Block) =>
-  Effect.promise(
-    () =>
-      new Promise<void>((resolve, reject) => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            try {
-              const currentBlockId = getSelectionBlockId();
-              expect(currentBlockId).toBe(blockId);
-              resolve();
-            } catch (e) {
-              reject(e);
-            }
-          });
-        });
-      }),
-  ).pipe(Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"));
+  doubleRaf.pipe(
+    Effect.andThen(() => {
+      const currentBlockId = getSelectionBlockId();
+      expect(currentBlockId).toBe(blockId);
+    }),
+    Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"),
+  );
 
 /**
  * Gets the element ID of the title containing the current DOM selection.
@@ -192,22 +180,20 @@ export const CM_CURSOR_IS_AT = (
   expectedHead: number,
   expectedAssoc?: -1 | 0 | 1,
 ) =>
-  Effect.promise(() =>
-    waitFor(
-      () => {
-        const view = getCodeMirrorView();
-        expect(view, "CodeMirror view not found").not.toBeNull();
+  doubleRaf.pipe(
+    Effect.andThen(() => {
+      const view = getCodeMirrorView();
+      expect(view, "CodeMirror view not found").not.toBeNull();
 
-        const sel = view!.state.selection.main;
-        expect(sel.head, "cursor head position").toBe(expectedHead);
+      const sel = view!.state.selection.main;
+      expect(sel.head, "cursor head position").toBe(expectedHead);
 
-        if (expectedAssoc !== undefined) {
-          expect(sel.assoc, "cursor assoc").toBe(expectedAssoc);
-        }
-      },
-      { timeout: 2000 },
-    ),
-  ).pipe(Effect.withSpan("Then.CM_CURSOR_IS_AT"));
+      if (expectedAssoc !== undefined) {
+        expect(sel.assoc, "cursor assoc").toBe(expectedAssoc);
+      }
+    }),
+    Effect.withSpan("Then.CM_CURSOR_IS_AT"),
+  );
 
 /** Typed error for assertion failures that can be retried */
 class AssertionError extends Data.TaggedError("AssertionError")<{

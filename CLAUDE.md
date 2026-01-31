@@ -59,7 +59,7 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **TDD-first (MANDATORY)**: You MUST write tests **before** implementing ANY feature code. Do NOT write implementation until tests exist. This is non-negotiable—no exceptions.
 
-**Use `test-architect` for writing new tests** (Task tool with `subagent_type: "test-architect"`). For debugging flaky/failing tests, work directly—debugging is interactive and benefits from direct investigation. **Always read `docs/testing.md`** before writing or modifying test code manually.
+**Use `test-architect` for writing new tests** (Task tool with `subagent_type: "test-architect"`). For debugging flaky/failing tests, work directly—debugging is interactive and benefits from direct investigation. **Always read `docs/testing.md`** before writing, modifying, or debugging any test code—whether directly or via an agent.
 
 **Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 
@@ -69,9 +69,11 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **No mocks in tests**: Never use mocks, stubs, or fakes. Tests should use real service implementations with test fixtures/data. If something is hard to test without mocks, that's a design smell—fix the design.
 
+**No click-to-focus in tests**: Never use `USER_CLICKS_BLOCK` just to focus/activate a block. Use `SELECTION_IS_SET_TO` first, then `ACTIVE_ELEMENT_IS` — selection before activation, so the editor mounts with the cursor already in place.
+
 ## Known System Resiliency Issues
 
-**Flaky coordinate/selection measurements in browser tests**: When working on test files, proactively fix any `waitFor` + `getBoundingClientRect` patterns. The `waitFor` function succeeds too early—before CodeMirror syncs its internal selection to the browser's native selection. Use double-RAF instead. See `docs/testing.md` for correct patterns.
+**Flaky coordinate/selection measurements in browser tests**: `waitFor` polling succeeds too early—before CodeMirror syncs its internal state to the DOM. Use `doubleRaf` from `@/utils/effect` instead of `waitFor` for any selection or coordinate assertions. For BDD helpers in `test-utils/bdd/then.ts`, prefer `doubleRaf.pipe(Effect.andThen(() => { /* assert */ }))` over `Effect.promise(() => waitFor(...))`.
 
 ## Project Structure
 This is a pnpm monorepo with:

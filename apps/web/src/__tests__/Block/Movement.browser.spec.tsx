@@ -43,7 +43,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
         yield* Then.CHILDREN_ORDER_IS(rootNodeId, [second, first, third]);
@@ -64,7 +64,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
         yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, second]);
@@ -87,7 +87,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
         yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, third, second]);
@@ -108,7 +108,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
         yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, second]);
@@ -131,7 +131,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(thirdBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 0);
         yield* When.USER_PRESSES(
           "{Shift>}{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}{/Shift}",
         );
@@ -154,7 +154,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES(
           "{Shift>}{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}{/Shift}",
         );
@@ -179,7 +179,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES(
           "{Shift>}{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}{/Shift}",
         );
@@ -202,7 +202,7 @@ describe("Block Movement", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES(
           "{Shift>}{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}{/Shift}",
         );
@@ -530,7 +530,7 @@ describe("Block Movement", () => {
 
           // Focus on Child C (last child of Parent A)
           // Parent A has next sibling (Parent D), so cross-parent move
-          yield* When.USER_CLICKS_BLOCK(childCBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(childCBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           // Child C should become first child of Parent D (cross-parent)
@@ -568,7 +568,7 @@ describe("Block Movement", () => {
 
           // Focus on Child C (last child of Parent A)
           // Parent A has no next sibling, so outdent
-          yield* When.USER_CLICKS_BLOCK(childCBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(childCBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           // Child C should outdent to become sibling after Parent A
@@ -603,7 +603,7 @@ describe("Block Movement", () => {
 
           // Focus on Child E (first child of Parent D)
           // Parent D has prev sibling (Parent A), so cross-parent move
-          yield* When.USER_CLICKS_BLOCK(childEBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(childEBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           // Child E should become last child of Parent A (cross-parent)
@@ -635,7 +635,7 @@ describe("Block Movement", () => {
 
           // Focus on Child E (first child of Parent D)
           // Parent D has no prev sibling, so outdent
-          yield* When.USER_CLICKS_BLOCK(childEBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(childEBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           // Child E should outdent to become sibling before Parent D
@@ -989,7 +989,7 @@ describe("Block Movement", () => {
           yield* Then.BLOCK_IS_COLLAPSED(blockB);
 
           // Focus on Child C (last child of Parent A)
-          yield* When.USER_CLICKS_BLOCK(blockC);
+          yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
 
           // When: Move C down (Cmd+Opt+Down)
           // C is last child of A, A's next sibling is B, so C crosses into B
@@ -1020,7 +1020,7 @@ describe("Block Movement", () => {
 
           // Focus on Second (last child of root) and try to move down
           // This should do nothing because root's children cannot cross-parent or outdent
-          yield* When.USER_CLICKS_BLOCK(secondBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           // Order should be unchanged
@@ -1043,7 +1043,7 @@ describe("Block Movement", () => {
 
           // Focus on First (first child of root) and try to move up
           // This should do nothing because root's children cannot cross-parent or outdent
-          yield* When.USER_CLICKS_BLOCK(firstBlockId);
+          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           // Order should be unchanged

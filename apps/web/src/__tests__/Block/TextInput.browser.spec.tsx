@@ -60,7 +60,7 @@ describe("Text Input - Typing then Enter", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Click the empty block
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       // Type text
       yield* When.USER_PRESSES("hello world");
@@ -103,8 +103,8 @@ describe("Text Input - Typing then Enter", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      // Click the first block (cursor goes to end)
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
+      // Focus the first block with cursor at end
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 11);
 
       // Press Enter to create a new block below
       yield* When.USER_PRESSES("{Enter}");
@@ -147,7 +147,7 @@ describe("Text Input - Typing then Enter", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Click the empty block
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Type text rapidly
       yield* When.USER_PRESSES("abcdefghijklmnopqrstuvwxyz");

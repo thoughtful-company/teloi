@@ -60,18 +60,7 @@ describe("Block Mod+Enter todo toggle", () => {
         render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-
-        // Wait for CodeMirror to be focused
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const cmEditor = document.querySelector(".cm-editor.cm-focused");
-              if (!cmEditor) throw new Error("CodeMirror not focused");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Press Mod+Enter
         yield* When.USER_PRESSES("{Meta>}{Enter}{/Meta}");
@@ -124,18 +113,7 @@ describe("Block Mod+Enter todo toggle", () => {
         render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-
-        // Wait for CodeMirror to be focused
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const cmEditor = document.querySelector(".cm-editor.cm-focused");
-              if (!cmEditor) throw new Error("CodeMirror not focused");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Press Mod+Enter
         yield* When.USER_PRESSES("{Meta>}{Enter}{/Meta}");
@@ -188,18 +166,7 @@ describe("Block Mod+Enter todo toggle", () => {
         render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-
-        // Wait for CodeMirror to be focused
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const cmEditor = document.querySelector(".cm-editor.cm-focused");
-              if (!cmEditor) throw new Error("CodeMirror not focused");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Press Mod+Enter
         yield* When.USER_PRESSES("{Meta>}{Enter}{/Meta}");
@@ -250,18 +217,7 @@ describe("Block Mod+Enter todo toggle", () => {
         render(() => <BufferView bufferId={bufferId} />);
 
         // Click the block to focus CodeMirror
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-
-        // Wait for CodeMirror to be focused
-        yield* Effect.promise(() =>
-          waitFor(
-            () => {
-              const cmEditor = document.querySelector(".cm-editor.cm-focused");
-              if (!cmEditor) throw new Error("CodeMirror not focused");
-            },
-            { timeout: 2000 },
-          ),
-        );
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Press Mod+Enter
         yield* When.USER_PRESSES("{Meta>}{Enter}{/Meta}");

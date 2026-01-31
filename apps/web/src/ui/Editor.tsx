@@ -119,10 +119,10 @@ const createKeydownHandler = (
       keydown(event, editorView) {
         // Routable keys go through KeyEventBus, blocking CodeMirror
         if (isRoutableKey(event.key, event)) {
-          runtime.runSync(
+          const handled = runtime.runSync(
             Effect.gen(function* () {
               const KeyEventBus = yield* KeyEventBusT;
-              yield* KeyEventBus.emit({
+              return yield* KeyEventBus.emit({
                 key: event.key,
                 modifiers: {
                   meta: event.metaKey,
@@ -134,11 +134,11 @@ const createKeydownHandler = (
               });
             }),
           );
-          // Block CodeMirror regardless of whether bus handled it
-          // (handlers will be implemented, CM should not interfere)
-          event.preventDefault();
-          event.stopPropagation();
-          return true;
+          if (handled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
         }
 
         // Non-routable keys: existing ActionT dispatch (e.g., "#" for type picker)

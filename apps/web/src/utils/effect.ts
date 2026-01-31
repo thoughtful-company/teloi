@@ -28,6 +28,24 @@ export const withContext =
     f(...args).pipe(Effect.provide(context));
 
 /**
+ * Returns an Effect that resolves after N animation frames.
+ * Commonly used with n=2 ("double RAF") to wait for CodeMirror
+ * to sync its internal selection to the browser's native selection.
+ */
+export const waitFrames = (n: number): Effect.Effect<void> =>
+  Effect.async<void>((resume) => {
+    let remaining = n;
+    const tick = () => {
+      if (--remaining <= 0) resume(Effect.void);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+/** Double RAF — waits two animation frames before resolving. */
+export const doubleRaf = waitFrames(2);
+
+/**
  * Delays each stream emission by N animation frames.
  *
  * Useful for timing coordination when one stream needs to "settle"
@@ -37,16 +55,7 @@ export const delayByFrames =
   (n: number) =>
   <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
     stream.pipe(
-      Stream.mapEffect((value) =>
-        Effect.async<A>((resume) => {
-          let remaining = n;
-          const tick = () => {
-            if (--remaining <= 0) resume(Effect.succeed(value));
-            else requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }),
-      ),
+      Stream.mapEffect((value) => waitFrames(n).pipe(Effect.as(value))),
     );
 
 /**

@@ -44,18 +44,7 @@ describe("Block selection", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Enter text editing, then press Escape to select
-      yield* When.USER_CLICKS_BLOCK(blockId);
-
-      // Wait for CodeMirror to be focused before pressing Escape
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -92,17 +81,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -180,17 +159,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockB);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -263,17 +232,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -351,17 +310,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -416,17 +365,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -481,17 +420,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockB);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -553,17 +482,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockB);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -621,17 +540,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block C and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockC);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -693,17 +602,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block C and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockC);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -762,17 +661,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -842,17 +731,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click first block and press Escape to enter block selection mode
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -965,17 +844,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -1079,17 +948,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(blockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -1150,17 +1009,7 @@ describe("Block selection", () => {
       const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const cmEditor = document.querySelector(".cm-editor.cm-focused");
-            expect(cmEditor).not.toBeNull();
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
