@@ -70,6 +70,8 @@ The above is a handoff, not a spec. Read the mentioned files, form your own unde
 
 ## After generating
 
+Save the generated prompt to `handoff.md` in the project root.
+
 Provide a brief summary so the human can quickly verify without reading everything:
 
 **TL;DR:** One sentence — what is this prompt about?

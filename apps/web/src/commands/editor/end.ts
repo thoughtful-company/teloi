@@ -1,5 +1,7 @@
 import { EditorT } from "@/services/ui/Editor";
-import { Data, Effect } from "effect";
+import { Data, Effect, Option } from "effect";
+import { clearGoalX } from "./utils/clearGoalX";
+import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 
 const scope = "editor";
 const commandName = "end";
@@ -12,5 +14,7 @@ export class End extends Data.TaggedClass(tag)<{}> {
   static handle = Effect.fn(tag)(function* (_cmd: End) {
     const Editor = yield* EditorT;
     yield* Editor.moveEnd();
+    const ctx = yield* resolveActiveBlockContext();
+    if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
   });
 }

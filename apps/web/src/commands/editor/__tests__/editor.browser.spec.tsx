@@ -933,7 +933,7 @@ describe("editor navigation", () => {
         }).pipe(runtime.runPromise);
       });
 
-      it("horizontal navigation clears goalX", async () => {
+      it("Cmd+ArrowLeft clears goalX", async () => {
         await Effect.gen(function* () {
           const { bufferId, childNodeIds } =
             yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
@@ -959,6 +959,137 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{ArrowDown}");
           yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("plain ArrowLeft clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "Text" },
+              { text: "Long text" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
+
+          // Establish goalX via vertical nav
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+
+          yield* When.USER_PRESSES("{ArrowLeft}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+
+          // ArrowDown should start fresh from offset 3, not use stale goalX
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("plain ArrowRight clears goalX", async () => {
+        await Effect.gen(function* () {
+          // Matching prefix ensures pixel mapping is exact for shared offsets
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "Some text here" },
+              { text: "Some text here plus more" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          // Start deep in secondBlock (offset 20) — stale goalX would land here
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 20);
+
+          // Establish goalX via vertical nav
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+          // ArrowLeft twice to move away from end-of-line, then ArrowRight
+          yield* When.USER_PRESSES("{ArrowLeft}");
+          yield* When.USER_PRESSES("{ArrowLeft}");
+          yield* When.USER_PRESSES("{ArrowRight}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(13);
+
+          // ArrowDown should use fresh goalX from offset 13, not stale from 20
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(13);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("Home clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "Text" },
+              { text: "Long text" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 4);
+
+          // Establish goalX via vertical nav
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+
+          yield* When.USER_PRESSES("{Home}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+
+          // ArrowDown should start fresh from offset 0
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("End clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "Text" },
+              { text: "Long second block text" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          // Start deep into secondBlock so stale goalX would be far right
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 20);
+
+          // Establish goalX via vertical nav
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+
+          yield* When.USER_PRESSES("{Home}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+
+          yield* When.USER_PRESSES("{End}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+
+          // ArrowDown from end of "Text" — should NOT use stale goalX (offset 20)
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          // If stale goalX were used, we'd get offset 20.
+          // End-of-line pixel mapping may give 3 or 4 — either proves goalX was cleared.
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
         }).pipe(runtime.runPromise);
       });
     });
