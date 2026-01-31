@@ -4,8 +4,8 @@
  * Receives raw keyboard events from Editor (and potentially other sources).
  * Maps key events to commands via hardcoded keymap, dispatches to CommandBus.
  *
- * The preventDefault decision is made BEFORE events reach this bus (in isRoutableKey).
- * This bus just figures out what command to run and executes it.
+ * Returns whether a command was dispatched, so callers can decide
+ * whether to preventDefault on the original DOM event.
  */
 
 import { Left, Right, Up, Down, Home, End } from "@/commands/editor";
@@ -74,9 +74,9 @@ export class KeyEventBusT extends Context.Tag("KeyEventBusT")<
   {
     /**
      * Emit a keyboard event to the bus.
-     * Looks up keymap and dispatches command if matched.
+     * Returns true if a command was dispatched, false otherwise.
      */
-    emit: (event: KeyEvent) => Effect.Effect<void>;
+    emit: (event: KeyEvent) => Effect.Effect<boolean>;
   }
 >() {}
 
@@ -86,7 +86,7 @@ export const KeyEventBusLive = Layer.effect(
     const CommandBus = yield* CommandBusT;
 
     return {
-      emit: (event: KeyEvent): Effect.Effect<void> =>
+      emit: (event: KeyEvent): Effect.Effect<boolean> =>
         Effect.gen(function* () {
           yield* Effect.logDebug("KeyEventBus received").pipe(
             Effect.annotateLogs({
@@ -104,11 +104,13 @@ export const KeyEventBusLive = Layer.effect(
 
           if (Option.isSome(commandOpt)) {
             yield* CommandBus.dispatch(commandOpt.value);
-          } else {
-            yield* Effect.logDebug("KeyEventBus: no command for key").pipe(
-              Effect.annotateLogs({ key: event.key }),
-            );
+            return true;
           }
+
+          yield* Effect.logDebug("KeyEventBus: no command for key").pipe(
+            Effect.annotateLogs({ key: event.key }),
+          );
+          return false;
         }),
     };
   }),

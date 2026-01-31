@@ -63,8 +63,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space separately (space is the trigger)
         // Note: [[ escapes to [, but ] is typed literally
@@ -129,8 +128,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "-" then space separately (space is the trigger)
         yield* When.USER_PRESSES("-");
@@ -200,8 +198,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "-" then space - should insert literally since node already has list type
         yield* When.USER_PRESSES("-");
@@ -247,8 +244,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space - should insert literally since node already has checkbox type
         // Note: [[ escapes to [, but ] is typed literally
@@ -302,8 +298,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space to trigger checkbox replacement
         // Note: [[ escapes to [, but ] is typed literally
@@ -371,8 +366,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
-        yield* When.USER_PRESSES("{Home}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[x]" then space separately (space is the trigger)
         // Note: [[ escapes to [, but ] is typed literally

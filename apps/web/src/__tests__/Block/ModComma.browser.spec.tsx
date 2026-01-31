@@ -47,7 +47,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Zoom into the first child using Mod+.
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       // Verify we zoomed in - buffer should now show "First child" as title
@@ -89,7 +89,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // First zoom into the child
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       // Verify URL changed to child
@@ -126,7 +126,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Click on the child block to have focus somewhere
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
 
       // Try to zoom out - should be a no-op since rootNode has no parent
       yield* When.USER_PRESSES("{Meta>},{/Meta}");
@@ -219,7 +219,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       yield* Then.BLOCK_IS_COLLAPSED(firstChildBlockId);
 
       // Zoom into "First child" via Cmd+.
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       // Verify we zoomed in - buffer should now show "First child" as title
@@ -235,7 +235,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
       // Now in "First child" view, the grandchild is visible (block is expanded in its own view)
       // Click on the grandchild block
-      yield* When.USER_CLICKS_BLOCK(grandchildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(grandchildBlockId, 0);
 
       // Zoom out using Cmd+,
       yield* When.USER_PRESSES("{Meta>},{/Meta}");

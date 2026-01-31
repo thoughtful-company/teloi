@@ -39,7 +39,7 @@ describe("Block Escape key", () => {
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       const Store = yield* StoreT;
 
@@ -115,7 +115,7 @@ describe("Block Escape key", () => {
 
       const Store = yield* StoreT;
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -405,7 +405,7 @@ describe("Block Escape key", () => {
       const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       const Store = yield* StoreT;
       const Buffer = yield* BufferT;

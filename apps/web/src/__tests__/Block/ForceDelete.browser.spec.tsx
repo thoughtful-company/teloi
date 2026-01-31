@@ -64,7 +64,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         render(() => <BufferView bufferId={bufferId} />);
 
         // Focus the parent block (text editing mode)
-        yield* When.USER_CLICKS_BLOCK(parentBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
 
         // Press Cmd+Shift+Backspace to force-delete
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -98,7 +98,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
         // Second should be deleted
@@ -135,7 +135,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(onlyChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(onlyChildBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
         // OnlyChild should be deleted, Parent should have no children
@@ -169,7 +169,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(parentBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
         // Verify Automerge text is cleaned up for both parent and child

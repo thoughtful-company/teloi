@@ -71,7 +71,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -134,7 +134,7 @@ describe("Property Creation Trigger", () => {
         expect(nodeBefore).toBeDefined();
 
         // Click the block to focus it
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -188,7 +188,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -239,7 +239,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -302,7 +302,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it (cursor at end by default)
-        yield* When.USER_CLICKS_BLOCK(childBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " at end of line (mid-line, not at start)
         yield* When.USER_PRESSES(">");

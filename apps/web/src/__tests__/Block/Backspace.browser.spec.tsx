@@ -45,8 +45,7 @@ describe("Block Backspace key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child, cursor at start, press Backspace
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Backspace}");
 
       // Should now have only one child
@@ -79,12 +78,10 @@ describe("Block Backspace key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Click first block, move cursor to position 2 ("12|3")
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(2);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
 
       // Click second block at start ("|12")
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
 
       // Press Backspace to merge
       yield* When.USER_PRESSES("{Backspace}");
@@ -138,8 +135,7 @@ describe("Block Backspace key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, true);
 
-      yield* When.USER_CLICKS_BLOCK(blockC);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
       yield* When.USER_PRESSES("{Backspace}");
 
       // Should have 1 top-level child now (A only, C merged into B)
@@ -174,8 +170,7 @@ describe("Block Backspace key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Backspace}");
 
       // Parent should now have no children (first child merged into it)
@@ -203,8 +198,7 @@ describe("Block Backspace key", () => {
       );
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -230,8 +224,7 @@ describe("Block Backspace key", () => {
       );
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(0);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -276,8 +269,7 @@ describe("Block Backspace key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
-      yield* When.USER_PRESSES("{Home}");
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
       yield* When.USER_PRESSES("{Backspace}");
 
       // Structure should be unchanged

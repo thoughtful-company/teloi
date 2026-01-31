@@ -47,7 +47,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
 
         yield* Effect.promise(() =>
@@ -78,7 +78,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
 
         yield* Effect.promise(() =>
@@ -116,7 +116,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#pa");
 
         yield* Effect.promise(() =>
@@ -151,7 +151,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#newtype");
 
         yield* Effect.promise(() =>
@@ -193,7 +193,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
 
         // Type # to open picker
         yield* When.USER_PRESSES("#");
@@ -293,7 +293,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#mytag");
 
         // Wait for picker
@@ -353,7 +353,7 @@ describe("TypePicker", () => {
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#test");
 
         // Wait for picker to show

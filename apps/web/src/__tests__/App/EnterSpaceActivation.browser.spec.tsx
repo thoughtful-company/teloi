@@ -382,7 +382,7 @@ describe("Enter/Space buffer activation", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         // Click the block to enter editing mode
-        yield* When.USER_CLICKS_BLOCK(blockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
         yield* waitForCodeMirrorFocused();
 
         // Get initial block count
@@ -415,7 +415,7 @@ describe("Enter/Space buffer activation", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
 
         // Click the block to enter editing mode
-        yield* When.USER_CLICKS_BLOCK(blockId);
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
         yield* waitForCodeMirrorFocused();
 
         // Press Space (should type a space in CodeMirror)

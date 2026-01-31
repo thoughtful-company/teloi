@@ -46,7 +46,7 @@ describe("Block Undo (Cmd+Z)", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus block
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Select all (Cmd+A) and delete
       yield* When.USER_PRESSES("{Meta>}a{/Meta}");
@@ -88,8 +88,7 @@ describe("Block Undo (Cmd+Z)", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus first block at end
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5); // "First" = 5 chars
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5); // "First" = 5 chars
 
       // Delete to merge Second into First
       yield* When.USER_PRESSES("{Delete}");

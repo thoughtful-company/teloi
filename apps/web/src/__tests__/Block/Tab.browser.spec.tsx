@@ -46,7 +46,7 @@ describe("Block Tab key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child and press Tab
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Tab}");
 
       // Root should now have only one child (the first one)
@@ -78,7 +78,7 @@ describe("Block Tab key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child, select some text, then press Tab
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Shift>}{End}{/Shift}"); // Select all text
       yield* When.USER_PRESSES("{Tab}");
 
@@ -107,8 +107,7 @@ describe("Block Tab key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus second child, move cursor to position 7 ("Second |child")
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(7);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 7);
       yield* When.USER_PRESSES("{Tab}");
 
       // Should indent
@@ -134,7 +133,7 @@ describe("Block Tab key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(secondChildBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Tab}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -170,7 +169,7 @@ describe("Block Tab key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus child and press Shift+Tab
-      yield* When.USER_CLICKS_BLOCK(childBlockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
       yield* When.USER_PRESSES("{Shift>}{Tab}{/Shift}");
 
       // Child should STILL be under buffer root (no-op, not moved to grandparent)
@@ -355,7 +354,7 @@ describe("Block selection Tab key", () => {
       yield* Block.setExpanded(blockA, false);
       yield* Then.BLOCK_IS_COLLAPSED(blockA);
 
-      yield* When.USER_CLICKS_BLOCK(blockC);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
       yield* When.USER_PRESSES("{Tab}");
 
       yield* Then.NODE_HAS_CHILDREN(nodeA, 2);

@@ -41,7 +41,7 @@ describe("Shift+Up from in-block text selection", () => {
 
       const Store = yield* StoreT;
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -95,7 +95,7 @@ describe("Shift+Up from in-block text selection", () => {
 
       const Store = yield* StoreT;
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -158,7 +158,7 @@ describe("Shift+Up from in-block text selection", () => {
 
       const Store = yield* StoreT;
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* Effect.promise(() =>
         waitFor(

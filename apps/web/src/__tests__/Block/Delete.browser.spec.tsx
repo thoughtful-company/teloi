@@ -49,8 +49,7 @@ describe("Block Delete key", () => {
       render(() => <BufferView bufferId={bufferId} />);
 
       // Focus first child, cursor at end, press Delete
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5); // "First" has 5 characters
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5); // "First" has 5 characters
       yield* When.USER_PRESSES("{Delete}");
 
       // Should now have only one child
@@ -101,8 +100,7 @@ describe("Block Delete key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(parentBlockId, true);
 
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(6); // "Parent" has 6 characters
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6); // "Parent" has 6 characters
       yield* When.USER_PRESSES("{Delete}");
 
       // Parent should now have no children (first child merged into it)
@@ -151,8 +149,7 @@ describe("Block Delete key", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, true);
 
-      yield* When.USER_CLICKS_BLOCK(blockB);
-      yield* When.USER_MOVES_CURSOR_TO(1); // "B" has 1 character
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 1); // "B" has 1 character
       yield* When.USER_PRESSES("{Delete}");
 
       // Structure should be UNCHANGED - no hierarchy crossing
@@ -178,8 +175,7 @@ describe("Block Delete key", () => {
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
       yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -202,8 +198,7 @@ describe("Block Delete key", () => {
       const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstChildBlockId);
-      yield* When.USER_MOVES_CURSOR_TO(5);
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
       yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -248,8 +243,7 @@ describe("Block Delete key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-      yield* When.USER_PRESSES("{End}");
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
       yield* When.USER_PRESSES("{Delete}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -293,8 +287,7 @@ describe("Block Delete key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(parentBlockId);
-      yield* When.USER_PRESSES("{End}");
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
       yield* When.USER_PRESSES("{Delete}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -337,8 +330,7 @@ describe("Block Delete key", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(firstBlockId);
-      yield* When.USER_PRESSES("{End}");
+      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
       yield* When.USER_PRESSES("{Delete}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);

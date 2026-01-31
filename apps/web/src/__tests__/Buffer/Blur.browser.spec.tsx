@@ -3,14 +3,8 @@ import { Id } from "@/schema";
 import { WindowT } from "@/services/ui/Window";
 import BufferView from "@/ui/BufferView";
 import { Effect, Option, Stream } from "effect";
-import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  Given,
-  When,
-  setupClientTest,
-  type BrowserRuntime,
-} from "@/test-utils/bdd";
+import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("Block blur clears activeElement", () => {
   let runtime: BrowserRuntime;
@@ -39,26 +33,7 @@ describe("Block blur clears activeElement", () => {
 
       render(() => <BufferView bufferId={bufferId} />);
 
-      yield* When.USER_CLICKS_BLOCK(blockId);
-
-      yield* Effect.promise(() =>
-        waitFor(
-          () => {
-            const blockEl = document.querySelector(
-              `[data-element-id="${blockId}"]`,
-            );
-            const cm = blockEl?.querySelector(".cm-content");
-            if (!cm) throw new Error("Block CodeMirror not found");
-            if (
-              document.activeElement !== cm &&
-              !cm.contains(document.activeElement)
-            ) {
-              throw new Error("Block CodeMirror not focused");
-            }
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       const Window = yield* WindowT;
       const stream1 = yield* Window.subscribeActiveElement();

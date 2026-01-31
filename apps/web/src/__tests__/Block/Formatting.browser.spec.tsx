@@ -53,8 +53,7 @@ describe("Text Formatting", () => {
           const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
           render(() => <BufferView bufferId={bufferId} />);
 
-          yield* When.USER_CLICKS_BLOCK(blockId);
-          yield* When.USER_MOVES_CURSOR_TO(6);
+          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 6);
           yield* When.USER_PRESSES("{Shift>}{End}{/Shift}");
           yield* When.USER_PRESSES(key);
 
@@ -76,8 +75,7 @@ describe("Text Formatting", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(blockId);
-        yield* When.USER_MOVES_CURSOR_TO(6);
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 6);
         yield* When.USER_PRESSES("{Shift>}{End}{/Shift}");
         yield* When.USER_PRESSES("{Meta>}b{/Meta}");
 
@@ -96,8 +94,7 @@ describe("Text Formatting", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(blockId);
-        yield* When.USER_PRESSES("{End}");
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
         yield* When.USER_PRESSES("{Meta>}b{/Meta}");
         yield* When.USER_PRESSES(" world");
 
@@ -121,8 +118,7 @@ describe("Text Formatting", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(blockId);
-        yield* When.USER_MOVES_CURSOR_TO(12);
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 12);
         yield* When.USER_PRESSES("{Enter}");
 
         const Node = yield* NodeT;
@@ -146,8 +142,7 @@ describe("Text Formatting", () => {
         const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(blockId);
-        yield* When.USER_MOVES_CURSOR_TO(8); // "hello BO|LD"
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 8); // "hello BO|LD"
         yield* When.USER_PRESSES("{Enter}");
 
         const Node = yield* NodeT;
@@ -177,8 +172,7 @@ describe("Text Formatting", () => {
         const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* When.USER_CLICKS_BLOCK(secondBlockId);
-        yield* When.USER_MOVES_CURSOR_TO(0);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
