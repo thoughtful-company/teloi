@@ -129,14 +129,21 @@ export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
  * Asserts that the DOM selection IS in the specified block.
  */
 export const SELECTION_IS_ON_BLOCK = (blockId: Id.Block) =>
-  Effect.promise(() =>
-    waitFor(
-      () => {
-        const currentBlockId = getSelectionBlockId();
-        expect(currentBlockId).toBe(blockId);
-      },
-      { timeout: 1000 },
-    ),
+  Effect.promise(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            try {
+              const currentBlockId = getSelectionBlockId();
+              expect(currentBlockId).toBe(blockId);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+      }),
   ).pipe(Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"));
 
 /**

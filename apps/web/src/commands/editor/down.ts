@@ -12,6 +12,25 @@ const scope = "editor";
 const commandName = "down";
 const tag = `${scope}:${commandName}` as const;
 
+export class Down extends Data.TaggedClass(tag)<{}> {
+  static readonly scope = scope;
+  static readonly commandName = commandName;
+  static readonly tag = tag;
+  static handle = Effect.fn(tag)(function* (_cmd: Down) {
+    const Editor = yield* EditorT;
+
+    const isOnLastLine = yield* Editor.isCursorOnLastLine();
+    if (!isOnLastLine) {
+      yield* Editor.moveDown();
+      return;
+    }
+
+    yield* navigateToNextBlock();
+  });
+}
+
+/* ─── Private ─── */
+
 const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
   const Window = yield* WindowT;
   const Buffer = yield* BufferT;
@@ -43,20 +62,3 @@ const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
     Option.some({ type: "block" as const, id: targetBlockId }),
   );
 });
-
-export class Down extends Data.TaggedClass(tag)<{}> {
-  static readonly scope = scope;
-  static readonly commandName = commandName;
-  static readonly tag = tag;
-  static handle = Effect.fn(tag)(function* (_cmd: Down) {
-    const Editor = yield* EditorT;
-
-    const isOnLastLine = yield* Editor.isCursorOnLastLine();
-    if (!isOnLastLine) {
-      yield* Editor.moveDown();
-      return;
-    }
-
-    yield* navigateToNextBlock();
-  });
-}

@@ -186,9 +186,11 @@ function computeInitialSelection(
     const lineCoords = view.coordsAtPos(linePos);
     if (lineCoords) {
       const targetY = lineCoords.top + 1; // +1 to be inside the line
-      const pos = view.posAtCoords({ x: goalX, y: targetY });
-      if (pos != null) {
-        return EditorSelection.create([EditorSelection.cursor(pos, assoc)]);
+      const result = view.posAndSideAtCoords({ x: goalX, y: targetY });
+      if (result != null) {
+        return EditorSelection.create([
+          EditorSelection.cursor(result.pos, result.assoc),
+        ]);
       }
     }
     // Fallback to anchor/head if posAtCoords fails
