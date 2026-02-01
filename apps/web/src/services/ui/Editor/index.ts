@@ -17,10 +17,14 @@ import {
   cursorCharRight,
   cursorLineUp,
   cursorLineDown,
-  cursorLineStart,
-  cursorLineEnd,
+  cursorGroupLeft,
+  cursorGroupRight,
+  deleteCharBackward,
+  deleteCharForward,
+  deleteGroupBackward,
+  deleteGroupForward,
 } from "@codemirror/commands";
-import type { Extension } from "@codemirror/state";
+import { EditorSelection, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Context, Data, Effect, Layer, Option, Ref } from "effect";
 
@@ -63,8 +67,18 @@ export class EditorT extends Context.Tag("EditorT")<
     moveUp: () => Effect.Effect<void, NoActiveEditorError>;
     moveDown: () => Effect.Effect<void, NoActiveEditorError>;
 
-    moveHome: () => Effect.Effect<void, NoActiveEditorError>;
-    moveEnd: () => Effect.Effect<void, NoActiveEditorError>;
+    moveLineBoundaryLeft: () => Effect.Effect<void, NoActiveEditorError>;
+    moveLineBoundaryRight: () => Effect.Effect<void, NoActiveEditorError>;
+    moveWordLeft: () => Effect.Effect<void, NoActiveEditorError>;
+    moveWordRight: () => Effect.Effect<void, NoActiveEditorError>;
+
+    deleteBackward: () => Effect.Effect<void, NoActiveEditorError>;
+    deleteForward: () => Effect.Effect<void, NoActiveEditorError>;
+    deleteToLineStart: () => Effect.Effect<void, NoActiveEditorError>;
+    deleteToLineEnd: () => Effect.Effect<void, NoActiveEditorError>;
+    deleteWordBackward: () => Effect.Effect<void, NoActiveEditorError>;
+    deleteWordForward: () => Effect.Effect<void, NoActiveEditorError>;
+    setCursor: (offset: number) => Effect.Effect<void, NoActiveEditorError>;
   }
 >() {}
 
@@ -221,11 +235,113 @@ export const EditorLive = Layer.effect(
       moveDown: () =>
         withView((view) => cursorLineDown(view)).pipe(Effect.asVoid),
 
-      moveHome: () =>
-        withView((view) => cursorLineStart(view)).pipe(Effect.asVoid),
+      moveLineBoundaryLeft: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          let moved = view.moveToLineBoundary(sel, false);
+          // Already at wrap point — step one char back, then find previous wrap point
+          if (moved.head === sel.head && sel.head > 0) {
+            const stepped = EditorSelection.cursor(sel.head - 1);
+            moved = view.moveToLineBoundary(stepped, false);
+          }
+          if (moved.head !== sel.head) {
+            view.dispatch({
+              selection: EditorSelection.create([
+                EditorSelection.cursor(moved.head, 1),
+              ]),
+            });
+          }
+        }).pipe(Effect.asVoid),
 
-      moveEnd: () =>
-        withView((view) => cursorLineEnd(view)).pipe(Effect.asVoid),
+      moveLineBoundaryRight: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          let moved = view.moveToLineBoundary(sel, true);
+          // Already at wrap point — step one char forward, then find next wrap point
+          if (moved.head === sel.head && sel.head < view.state.doc.length) {
+            const stepped = EditorSelection.cursor(sel.head + 1);
+            moved = view.moveToLineBoundary(stepped, true);
+          }
+          if (moved.head !== sel.head) {
+            view.dispatch({
+              selection: EditorSelection.create([
+                EditorSelection.cursor(moved.head, -1),
+              ]),
+            });
+          }
+        }).pipe(Effect.asVoid),
+
+      moveWordLeft: () =>
+        withView((view) => cursorGroupLeft(view)).pipe(Effect.asVoid),
+
+      moveWordRight: () =>
+        withView((view) => cursorGroupRight(view)).pipe(Effect.asVoid),
+
+      deleteBackward: () =>
+        withView((view) => deleteCharBackward(view)).pipe(Effect.asVoid),
+
+      deleteForward: () =>
+        withView((view) => deleteCharForward(view)).pipe(Effect.asVoid),
+
+      deleteToLineStart: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          const lineStart = view.lineBlockAt(sel.head).from;
+          if (sel.head > lineStart) {
+            view.dispatch({
+              changes: { from: lineStart, to: sel.head },
+              selection: EditorSelection.create([
+                EditorSelection.cursor(lineStart, -1),
+              ]),
+            });
+          } else if (sel.head > 0) {
+            // At visual line start — delete entire previous visual line
+            const prevLineStart = view.lineBlockAt(sel.head - 1).from;
+            view.dispatch({
+              changes: { from: prevLineStart, to: sel.head },
+              selection: EditorSelection.create([
+                EditorSelection.cursor(prevLineStart, -1),
+              ]),
+            });
+          }
+        }).pipe(Effect.asVoid),
+
+      deleteToLineEnd: () =>
+        withView((view) => {
+          const sel = view.state.selection.main;
+          const lineEnd = view.lineBlockAt(sel.head).to;
+          if (sel.head < lineEnd) {
+            view.dispatch({
+              changes: { from: sel.head, to: lineEnd },
+              selection: EditorSelection.create([
+                EditorSelection.cursor(sel.head, 1),
+              ]),
+            });
+          } else if (sel.head < view.state.doc.length) {
+            // At visual line end — delete entire next visual line
+            const nextLineEnd = view.lineBlockAt(sel.head + 1).to;
+            view.dispatch({
+              changes: { from: sel.head, to: nextLineEnd },
+              selection: EditorSelection.create([
+                EditorSelection.cursor(sel.head, 1),
+              ]),
+            });
+          }
+        }).pipe(Effect.asVoid),
+
+      deleteWordBackward: () =>
+        withView((view) => deleteGroupBackward(view)).pipe(Effect.asVoid),
+
+      deleteWordForward: () =>
+        withView((view) => deleteGroupForward(view)).pipe(Effect.asVoid),
+
+      setCursor: (offset: number) =>
+        withView((view) => {
+          const pos = Math.min(offset, view.state.doc.length);
+          view.dispatch({
+            selection: EditorSelection.create([EditorSelection.cursor(pos)]),
+          });
+        }).pipe(Effect.asVoid),
     };
   }),
 );

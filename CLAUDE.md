@@ -73,6 +73,15 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 ## Known System Resiliency Issues
 
+**CodeMirror `EditorSelection.cursor()` returns a `SelectionRange`, not an `EditorSelection`**. Passing it directly as `selection:` in `view.dispatch()` silently drops `assoc` because `resolveTransactionInner` falls through to `EditorSelection.single(anchor, head)` which discards flags. Always wrap in `EditorSelection.create([...])`:
+```ts
+// WRONG — assoc is silently dropped
+view.dispatch({ selection: EditorSelection.cursor(pos, -1) });
+
+// CORRECT — assoc is preserved
+view.dispatch({ selection: EditorSelection.create([EditorSelection.cursor(pos, -1)]) });
+```
+
 **Flaky coordinate/selection measurements in browser tests**: `waitFor` polling succeeds too early—before CodeMirror syncs its internal state to the DOM. Use `doubleRaf` from `@/utils/effect` instead of `waitFor` for any selection or coordinate assertions. For BDD helpers in `test-utils/bdd/then.ts`, prefer `doubleRaf.pipe(Effect.andThen(() => { /* assert */ }))` over `Effect.promise(() => waitFor(...))`.
 
 ## Project Structure
@@ -166,6 +175,8 @@ URL format: `/workspace/<nodeId>` (workspace name hardcoded for now)
 - `NavigationT` (`services/ui/Navigation/`) - Orchestrates URL ↔ buffer sync
 
 ## Coding Pattern
+
+**Command naming**: Commands that directly mirror a keyboard key are named after the key (`Left`, `Right`, `Backspace`, `Delete`). Commands that represent an action not tied to a single key use action verbs (`MoveToLineStart`, `MoveWordLeft`, `DeleteToLineEnd`, `DeleteWordForward`).
 
 **Effect-TS** use it extensively for types programming, also use utils from there.
 - **Services** are used to abstract functionality like modules. They are defined as `Context.Tag` with explicit interfaces.

@@ -1,5 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import {
@@ -10,6 +11,7 @@ import {
   type BrowserRuntime,
 } from "@/test-utils/bdd";
 import BufferView from "@/ui/BufferView";
+import { doubleRaf } from "@/utils/effect";
 import { Effect, Option } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -962,6 +964,156 @@ describe("editor navigation", () => {
         }).pipe(runtime.runPromise);
       });
 
+      it("Cmd+ArrowRight clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "Text here" },
+              { text: "Long text here too" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 18);
+
+          // Establish goalX via vertical nav
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
+
+          // Cmd+Left to go to start, then Cmd+Right to line end — clears goalX
+          yield* When.USER_PRESSES("{Meta>}{ArrowLeft}{/Meta}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+
+          yield* When.USER_PRESSES("{Meta>}{ArrowRight}{/Meta}");
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
+
+          // ArrowDown should start fresh from offset 9, not use stale goalX (18)
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("Cmd+ArrowRight moves to end of visual line (not next line) when text wraps", async () => {
+        await Effect.gen(function* () {
+          // Text long enough to wrap at ~200px width
+          const longText =
+            "The quick brown fox jumps over the lazy dog and keeps on running";
+
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: longText },
+            ]);
+
+          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          // Constrain width to force wrapping
+          yield* Given.BUFFER_HAS_WIDTH(200);
+
+          // Place cursor near the start of the first visual line (offset 5)
+          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
+
+          // Read CodeMirror state before the move
+          yield* doubleRaf;
+          const viewBefore = Then.getCodeMirrorView()!;
+          const selBefore = viewBefore.state.selection.main;
+          const coordsBefore = viewBefore.coordsAtPos(selBefore.head);
+
+          // Press Cmd+Right
+          yield* When.USER_PRESSES("{Meta>}{ArrowRight}{/Meta}");
+
+          // Read CodeMirror state after the move
+          yield* doubleRaf;
+          const viewAfter = Then.getCodeMirrorView()!;
+          const selAfter = viewAfter.state.selection.main;
+          const coordsAfter = viewAfter.coordsAtPos(
+            selAfter.head,
+            selAfter.assoc === 1 ? 1 : -1,
+          );
+
+          // The cursor should NOT have moved to a different visual line
+          expect(coordsBefore).not.toBeNull();
+          expect(coordsAfter).not.toBeNull();
+          expect(
+            Math.abs(coordsAfter!.top - coordsBefore!.top),
+            `Cmd+Right should stay on the same visual line (Y before: ${coordsBefore!.top}, Y after: ${coordsAfter!.top})`,
+          ).toBeLessThan(2);
+
+          // The cursor should have moved forward (not stayed in place)
+          expect(
+            selAfter.head,
+            "cursor should have moved forward",
+          ).toBeGreaterThan(selBefore.head);
+
+          // The cursor should NOT be at doc end (that would mean it jumped to the logical end)
+          expect(
+            selAfter.head,
+            "cursor should not jump to logical line end",
+          ).toBeLessThan(viewAfter.state.doc.length);
+
+          // assoc should be -1 (end of visual line, not start of next)
+          expect(selAfter.assoc, "assoc should be -1 at visual line end").toBe(
+            -1,
+          );
+        }).pipe(runtime.runPromise);
+      });
+
+      it("Alt+ArrowLeft clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "some text" },
+              { text: "longer text here" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
+
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+          yield* When.USER_PRESSES("{Alt>}{ArrowLeft}{/Alt}");
+
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("Alt+ArrowRight clears goalX", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "some text" },
+              { text: "longer text here" },
+            ]);
+
+          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
+
+          yield* When.USER_PRESSES("{ArrowUp}");
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+          yield* When.USER_PRESSES("{Alt>}{ArrowRight}{/Alt}");
+
+          yield* When.USER_PRESSES("{ArrowDown}");
+          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+        }).pipe(runtime.runPromise);
+      });
+
       it("plain ArrowLeft clears goalX", async () => {
         await Effect.gen(function* () {
           const { bufferId, childNodeIds } =
@@ -1027,70 +1179,196 @@ describe("editor navigation", () => {
         }).pipe(runtime.runPromise);
       });
 
-      it("Home clears goalX", async () => {
-        await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
-              { text: "Text" },
-              { text: "Long text" },
-            ]);
+      describe("delete commands clear goalX", () => {
+        it("Cmd+Backspace (deleteToLineStart) clears goalX", async () => {
+          await Effect.gen(function* () {
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: "some text" },
+                { text: "longer text here" },
+              ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+            const firstBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[0],
+            );
+            const secondBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[1],
+            );
 
-          render(() => <BufferView bufferId={bufferId} />);
+            render(() => <BufferView bufferId={bufferId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 4);
+            // Start at end of second (longer) block
+            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
 
-          // Establish goalX via vertical nav
-          yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+            // ArrowUp establishes goalX at pixel of offset 16 in second block;
+            // cursor clamps to end of first block (offset 9)
+            yield* When.USER_PRESSES("{ArrowUp}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
 
-          yield* When.USER_PRESSES("{Home}");
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+            // Cmd+Backspace deletes to line start: "some text" -> "", cursor at 0
+            yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
 
-          // ArrowDown should start fresh from offset 0
-          yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
-        }).pipe(runtime.runPromise);
-      });
+            // ArrowDown should use fresh goalX from offset 0, not stale from offset 16
+            yield* When.USER_PRESSES("{ArrowDown}");
+            yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          }).pipe(runtime.runPromise);
+        });
 
-      it("End clears goalX", async () => {
-        await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
-              { text: "Text" },
-              { text: "Long second block text" },
-            ]);
+        it("Cmd+Delete (deleteToLineEnd) clears goalX", async () => {
+          await Effect.gen(function* () {
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: "hello world test" },
+                { text: "ab" },
+              ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+            const firstBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[0],
+            );
+            const secondBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[1],
+            );
 
-          render(() => <BufferView bufferId={bufferId} />);
+            render(() => <BufferView bufferId={bufferId} />);
 
-          // Start deep into secondBlock so stale goalX would be far right
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 20);
+            // Start at end of second (shorter) block
+            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
 
-          // Establish goalX via vertical nav
-          yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+            // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
+            yield* When.USER_PRESSES("{ArrowUp}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
-          yield* When.USER_PRESSES("{Home}");
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+            // Verify goalX is set (non-null) after vertical nav
+            const Store = yield* StoreT;
+            const bufBefore = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufBefore.selection!.goalX,
+              "goalX should be set after ArrowUp",
+            ).not.toBeNull();
 
-          yield* When.USER_PRESSES("{End}");
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
+            // Cmd+Delete deletes from cursor to end: removes most text, cursor stays
+            yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
-          // ArrowDown from end of "Text" — should NOT use stale goalX (offset 20)
-          yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
-          // If stale goalX were used, we'd get offset 20.
-          // End-of-line pixel mapping may give 3 or 4 — either proves goalX was cleared.
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
-        }).pipe(runtime.runPromise);
+            // goalX should now be cleared
+            const bufAfter = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufAfter.selection!.goalX,
+              "goalX should be null after Cmd+Delete",
+            ).toBeNull();
+          }).pipe(runtime.runPromise);
+        });
+
+        it("Alt+Backspace (deleteWordBackward) clears goalX", async () => {
+          await Effect.gen(function* () {
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: "hello world test" },
+                { text: "ab" },
+              ]);
+
+            const firstBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[0],
+            );
+            const secondBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[1],
+            );
+
+            render(() => <BufferView bufferId={bufferId} />);
+
+            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+
+            yield* When.USER_PRESSES("{ArrowUp}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+            // Verify goalX is set after vertical nav
+            const Store = yield* StoreT;
+            const bufBefore = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufBefore.selection!.goalX,
+              "goalX should be set after ArrowUp",
+            ).not.toBeNull();
+
+            // Alt+Backspace deletes word backward
+            yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
+
+            // goalX should be cleared
+            const bufAfter = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufAfter.selection!.goalX,
+              "goalX should be null after Alt+Backspace",
+            ).toBeNull();
+          }).pipe(runtime.runPromise);
+        });
+
+        it("Alt+Delete (deleteWordForward) clears goalX", async () => {
+          await Effect.gen(function* () {
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: "hello world test" },
+                { text: "ab" },
+              ]);
+
+            const firstBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[0],
+            );
+            const secondBlockId = Id.makeBufferBlockId(
+              bufferId,
+              childNodeIds[1],
+            );
+
+            render(() => <BufferView bufferId={bufferId} />);
+
+            // Start at end of second (shorter) block
+            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+
+            // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
+            yield* When.USER_PRESSES("{ArrowUp}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+            // Verify goalX is set (non-null) after vertical nav
+            const Store = yield* StoreT;
+            const bufBefore = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufBefore.selection!.goalX,
+              "goalX should be set after ArrowUp",
+            ).not.toBeNull();
+
+            // Alt+Delete deletes next word forward, cursor stays at same offset
+            yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
+            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+            // goalX should now be cleared
+            const bufAfter = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufAfter.selection!.goalX,
+              "goalX should be null after Alt+Delete",
+            ).toBeNull();
+          }).pipe(runtime.runPromise);
+        });
       });
     });
 
@@ -1478,44 +1756,548 @@ describe("editor navigation", () => {
     });
   });
 
-  describe("Home / End", () => {
-    it("Home moves cursor to start of visual line", async () => {
+  describe("Backspace", () => {
+    it("merges with previous sibling when Backspace pressed at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root node",
-          [{ text: "Hello world" }],
-        );
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const secondChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[1],
+        );
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* When.USER_PRESSES("{Backspace}");
 
-        yield* When.USER_PRESSES("{Home}");
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
 
-        yield* Then.SELECTION_IS_ON_BLOCK(blockId);
-        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
       }).pipe(runtime.runPromise);
     });
 
-    it("End moves cursor to end of visual line", async () => {
+    it("places cursor at merge point after clicking different positions before merge", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root node",
-          [{ text: "Hello world" }],
-        );
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "123" },
+            { text: "12" },
+          ]);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
+        const secondChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[1],
+        );
 
         render(() => <BufferView bufferId={bufferId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
 
-        yield* When.USER_PRESSES("{End}");
+        yield* When.USER_PRESSES("{Backspace}");
 
-        yield* Then.SELECTION_IS_ON_BLOCK(blockId);
-        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(11);
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "12312");
+
+        // Cursor should be at merge point (after "123" = position 3)
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * - A
+     *   - B
+     * - |C     <- cursor at start
+     *
+     * After Backspace, should merge with visually previous block (B):
+     * - A
+     *   - BC   <- cursor after "B"
+     */
+    it("merges with last descendant of previous sibling when it has children", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "A" },
+            { text: "C" },
+          ]);
+
+        const [nodeA, nodeC] = childNodeIds;
+
+        const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeA,
+          insert: "after",
+          text: "B",
+        });
+
+        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+        const blockC = Id.makeBufferBlockId(bufferId, nodeC);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(blockA, true);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
+        yield* When.USER_PRESSES("{Backspace}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+        yield* Then.NODE_HAS_CHILDREN(nodeA, 1);
+        yield* Then.NODE_HAS_TEXT(nodeA, "A");
+        yield* Then.NODE_HAS_TEXT(nodeB, "BC");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(1);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * - Parent
+     *   - |FirstChild   <- cursor at start, first sibling
+     *
+     * After Backspace, should merge into parent:
+     * - ParentFirstChild   <- cursor after "Parent"
+     */
+    it("merges first child into parent when Backspace pressed at start", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [
+            { text: "FirstChild" },
+          ]);
+
+        const [firstChildId] = childNodeIds;
+        const firstChildBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* When.USER_PRESSES("{Backspace}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
+        yield* Then.NODE_HAS_TEXT(rootNodeId, "ParentFirstChild");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const secondChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[1],
+        );
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("merges with previous sibling when Alt+Backspace pressed at start", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const secondChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[1],
+        );
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * Structure:
+     * Root
+     * ├── First
+     * ├── Second (cursor at start, HAS children)
+     * │   └── Child
+     * └── Third
+     *
+     * Cursor at start of Second, press Backspace.
+     * Should be no-op because Second has children - deleting would orphan Child.
+     */
+    it("no-op when block has children (would orphan them)", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+            { text: "Third" },
+          ]);
+
+        const [firstNodeId, secondNodeId, thirdNodeId] = childNodeIds;
+
+        const childId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: secondNodeId,
+          insert: "after",
+          text: "Child",
+        });
+
+        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+        yield* When.USER_PRESSES("{Backspace}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 3);
+        yield* Then.NODE_HAS_TEXT(firstNodeId, "First");
+        yield* Then.NODE_HAS_TEXT(secondNodeId, "Second");
+        yield* Then.NODE_HAS_TEXT(thirdNodeId, "Third");
+
+        yield* Then.NODE_HAS_CHILDREN(secondNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(childId, "Child");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Delete", () => {
+    /**
+     * - First|   <- cursor at end
+     * - Second
+     *
+     * After Delete, should merge with next sibling:
+     * - First|Second   <- cursor after "First"
+     */
+    it("merges with next sibling when Delete pressed at end", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+
+        yield* Then.TEXT_IS_VISIBLE("FirstSecond");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * - Parent|     <- cursor at end (expanded)
+     *   - FirstChild
+     *
+     * After Delete, should merge with first child:
+     * - ParentFirstChild   <- cursor after "Parent"
+     */
+    it("merges with first child when Delete pressed at end of parent", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "Parent" }],
+        );
+
+        const [parentNodeId] = childNodeIds;
+
+        yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: "FirstChild",
+        });
+
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(parentBlockId, true);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(parentNodeId, 0);
+        yield* Then.NODE_HAS_TEXT(parentNodeId, "ParentFirstChild");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * - A
+     *   - B|   <- cursor at end, last child of A
+     * - C
+     *
+     * Delete at last child should NOT cross hierarchy - it's a no-op.
+     */
+    it("does nothing when Delete pressed at end of last child (no hierarchy crossing)", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "A" },
+            { text: "C" },
+          ]);
+
+        const [nodeA, nodeC] = childNodeIds;
+
+        const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: nodeA,
+          insert: "after",
+          text: "B",
+        });
+
+        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+        const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(blockA, true);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 1);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+        yield* Then.NODE_HAS_CHILDREN(nodeA, 1);
+        yield* Then.NODE_HAS_TEXT(nodeA, "A");
+        yield* Then.NODE_HAS_TEXT(nodeB, "B");
+        yield* Then.NODE_HAS_TEXT(nodeC, "C");
+
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(1);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("merges with next sibling when Cmd+Delete pressed at end", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("merges with next sibling when Alt+Delete pressed at end", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const firstChildBlockId = Id.makeBufferBlockId(
+          bufferId,
+          childNodeIds[0],
+        );
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+        yield* Then.NODE_HAS_TEXT(children[0]!, "FirstSecond");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * Structure:
+     * Root
+     * ├── First (collapsed, with child Hidden)
+     * │   └── Hidden (NOT visible)
+     * └── Second
+     *
+     * Cursor at end of First, press Delete.
+     * Should merge Second (NOT Hidden which is collapsed).
+     */
+    it("merges next sibling when collapsed with children", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const [firstNodeId] = childNodeIds;
+
+        const hiddenChildId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: firstNodeId,
+          insert: "after",
+          text: "Hidden",
+        });
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+
+        const Block = yield* BlockT;
+        yield* Block.setExpanded(firstBlockId, false);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(firstNodeId, "FirstSecond");
+        yield* Then.NODE_HAS_CHILDREN(firstNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(hiddenChildId, "Hidden");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * Structure:
+     * Root
+     * └── Parent (expanded, with child that has grandchildren)
+     *     └── Child
+     *         └── Grandchild
+     *
+     * Cursor at end of Parent, press Delete.
+     * Should be no-op because merging Child would orphan Grandchild.
+     */
+    it("no-op when first child has grandchildren (would orphan them)", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "Parent" },
+          ]);
+
+        const [parentNodeId] = childNodeIds;
+
+        const childId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: parentNodeId,
+          insert: "after",
+          text: "Child",
+        });
+
+        const grandchildId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: childId,
+          insert: "after",
+          text: "Grandchild",
+        });
+
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(parentNodeId, "Parent");
+        yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(childId, "Child");
+        yield* Then.NODE_HAS_CHILDREN(childId, 1);
+        yield* Then.NODE_HAS_TEXT(grandchildId, "Grandchild");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
+      }).pipe(runtime.runPromise);
+    });
+
+    /**
+     * Structure:
+     * Root
+     * ├── First|        <- cursor at end
+     * └── Second
+     *     └── Nephew
+     *
+     * Cursor at end of First, press Delete.
+     * Should be no-op because merging Second would orphan Nephew.
+     */
+    it("no-op when next sibling has children (would orphan nieces/nephews)", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, rootNodeId, childNodeIds } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            { text: "First" },
+            { text: "Second" },
+          ]);
+
+        const [firstNodeId, secondNodeId] = childNodeIds;
+
+        const nephewId = yield* Given.INSERT_NODE_WITH_TEXT({
+          parentId: secondNodeId,
+          insert: "after",
+          text: "Nephew",
+        });
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
+        yield* When.USER_PRESSES("{Delete}");
+
+        yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+        yield* Then.NODE_HAS_TEXT(firstNodeId, "First");
+        yield* Then.NODE_HAS_TEXT(secondNodeId, "Second");
+        yield* Then.NODE_HAS_CHILDREN(secondNodeId, 1);
+        yield* Then.NODE_HAS_TEXT(nephewId, "Nephew");
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
       }).pipe(runtime.runPromise);
     });
   });
