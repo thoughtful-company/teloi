@@ -19,11 +19,10 @@ import { outdent } from "./outdent";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
-import { split, type SplitParams, type SplitResult } from "./split";
 import { BufferView, subscribe } from "./subscribe";
 import { moveToFirst, moveToLast, swap } from "./swap";
 
-export type { MergeResult, SplitParams, SplitResult };
+export type { MergeResult };
 
 /**
  * Editor interaction mode - derived from Window.activeElement.
@@ -111,7 +110,6 @@ export class BufferT extends Context.Tag("BufferT")<
       bufferId: Id.Buffer,
       nodeId: Id.Node,
     ) => Effect.Effect<Option.Option<MergeResult>, never>;
-    split: (params: SplitParams) => Effect.Effect<SplitResult, never>;
     swap: (
       nodeId: Id.Node,
       direction: "up" | "down",
@@ -225,8 +223,6 @@ export const BufferLive = Layer.effect(
         mergeForward(bufferId, nodeId).pipe(Effect.provide(context)),
       forceDelete: (bufferId: Id.Buffer, nodeId: Id.Node) =>
         forceDelete(bufferId, nodeId).pipe(Effect.provide(context)),
-      split: (params: SplitParams) =>
-        split(params).pipe(Effect.provide(context)),
       swap: (nodeId: Id.Node, direction: "up" | "down") =>
         swap(nodeId, direction).pipe(Effect.provideService(NodeT, Node)),
       moveToFirst: (nodeId: Id.Node) =>

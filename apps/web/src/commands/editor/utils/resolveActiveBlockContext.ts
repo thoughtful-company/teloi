@@ -7,6 +7,7 @@ interface ActiveBlockContext {
   bufferId: Id.Buffer;
   nodeId: Id.Node;
   blockId: Id.Block;
+  isTitle: boolean;
 }
 
 export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
@@ -21,17 +22,6 @@ export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
 
     const el = activeElement.value;
 
-    if (el.type === "title") {
-      const rootNodeId = yield* Buffer.getAssignedNodeId(el.bufferId);
-      if (rootNodeId == null) return Option.none<ActiveBlockContext>();
-      const blockId = Id.makeBufferBlockId(el.bufferId, rootNodeId);
-      return Option.some({
-        bufferId: el.bufferId,
-        nodeId: rootNodeId,
-        blockId,
-      });
-    }
-
     if (el.type !== "block") {
       return Option.none<ActiveBlockContext>();
     }
@@ -42,10 +32,16 @@ export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
       return Option.none<ActiveBlockContext>();
     }
 
+    const assignedNodeId = yield* Buffer.getAssignedNodeId(
+      blockContext.bufferId,
+    );
+    const isTitle = blockContext.nodeId === assignedNodeId;
+
     return Option.some({
       bufferId: blockContext.bufferId,
       nodeId: blockContext.nodeId,
       blockId,
+      isTitle,
     });
   },
 );

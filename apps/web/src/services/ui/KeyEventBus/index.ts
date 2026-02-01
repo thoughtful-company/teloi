@@ -15,6 +15,7 @@ import {
   DeleteToLineEnd,
   DeleteWordBackward,
   DeleteWordForward,
+  Enter,
   Left,
   Right,
   Up,
@@ -55,6 +56,7 @@ export interface KeyEvent {
 const plainKeymap: Record<string, () => Command> = {
   Backspace: () => new Backspace(),
   Delete: () => new Delete(),
+  Enter: () => new Enter(),
   ArrowLeft: () => new Left(),
   ArrowRight: () => new Right(),
   ArrowUp: () => new Up(),

@@ -44,18 +44,7 @@ export const createEditorModeHandlers = (
   nav: NavigationHandlers,
   safe: SafeWrapper,
 ): EditorModeHandlers => {
-  const { Buffer, Block, Node, Type, Picker, Title, TypePicker, Window } = deps;
-
-  const getFirstAvailableType = (query: string): Effect.Effect<Id.Node> =>
-    Effect.gen(function* () {
-      const types = yield* TypePicker.getAvailableTypes();
-      const filtered = TypePicker.filterTypes(types, query);
-      if (filtered.length > 0) {
-        return filtered[0]!.id;
-      }
-      // Create new type if no match
-      return yield* TypePicker.createType(query);
-    });
+  const { Buffer, Block, Node, Type, Picker, Window } = deps;
 
   const interpretKeyDown = (
     action: AppAction & { _tag: "KeyDown" },
@@ -73,86 +62,6 @@ export const createEditorModeHandlers = (
         if (key === "Enter" && modifiers.meta && !modifiers.shift) {
           yield* BlockType.toggleCheckbox(nodeId);
           return ActionResult.handled({});
-        }
-
-        // --- Enter ---
-        if (key === "Enter" && !modifiers.shift && !modifiers.meta) {
-          // Picker open? Select item
-          if (pickerOpen) {
-            yield* Picker.selectType(
-              yield* getFirstAvailableType(ctx.pickerState!.query),
-            );
-            return ActionResult.handled({
-              focus: { type: "block", blockId },
-            });
-          }
-
-          // Title Enter: create first child block
-          if (ctx.isTitle) {
-            yield* Title.enter(bufferId, nodeId, {
-              cursorPos: cursor.position,
-              textAfter: cursor.textAfter,
-            });
-            // Title.enter handles selection and focus
-            const children = yield* Node.getNodeChildren(nodeId);
-            if (children.length > 0) {
-              const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
-              return ActionResult.handled({
-                focus: {
-                  type: "block",
-                  blockId: newBlockId,
-                  selection: { anchor: 0, head: 0 },
-                },
-                scroll: newBlockId,
-              });
-            }
-            return ActionResult.handled({});
-          }
-
-          // Empty block with removable type? Remove type
-          if (cursor.atStart && cursor.atEnd) {
-            for (const def of activeDefinitions) {
-              if (def.enter?.removeOnEmpty) {
-                yield* Type.removeType(nodeId, def.id);
-                return ActionResult.handled({});
-              }
-            }
-          }
-
-          // Normal: split block
-          const result = yield* Buffer.split({
-            nodeId,
-            cursorPos: cursor.position,
-            textAfter: cursor.textAfter,
-          });
-
-          // Propagate types
-          for (const def of activeDefinitions) {
-            if (def.enter?.propagateToNewBlock) {
-              yield* Type.addType(result.newNodeId, def.id);
-            }
-          }
-
-          const newBlockId = Id.makeBufferBlockId(bufferId, result.newNodeId);
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(newBlockId, result.cursorOffset),
-          );
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: newBlockId }),
-          );
-
-          return ActionResult.handled({
-            focus: {
-              type: "block",
-              blockId: newBlockId,
-              selection: {
-                anchor: result.cursorOffset,
-                head: result.cursorOffset,
-              },
-            },
-            scroll: newBlockId,
-          });
         }
 
         // --- Backspace ---

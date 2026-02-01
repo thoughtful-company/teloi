@@ -2,6 +2,7 @@ import { Backspace } from "./backspace";
 import { Delete } from "./delete";
 import { DeleteToLineStart } from "./deleteToLineStart";
 import { DeleteToLineEnd } from "./deleteToLineEnd";
+import { Enter } from "./enter";
 import { DeleteWordBackward } from "./deleteWordBackward";
 import { DeleteWordForward } from "./deleteWordForward";
 import { Left } from "./left";
@@ -20,6 +21,7 @@ export {
   DeleteToLineEnd,
   DeleteWordBackward,
   DeleteWordForward,
+  Enter,
   Left,
   Right,
   Up,
@@ -37,6 +39,7 @@ export const editorCommands = [
   DeleteToLineEnd,
   DeleteWordBackward,
   DeleteWordForward,
+  Enter,
   Left,
   Right,
   Up,
