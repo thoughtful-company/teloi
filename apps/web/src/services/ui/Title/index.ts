@@ -7,11 +7,10 @@ import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
 import { blur } from "./blur";
-import { enter, type EnterParams } from "./enter";
 import { navigateToFirstChild } from "./navigation";
 import { subscribe, type TitleSelection, type TitleView } from "./subscribe";
 
-export type { EnterParams, TitleSelection, TitleView };
+export type { TitleSelection, TitleView };
 
 export class TitleT extends Context.Tag("TitleT")<
   TitleT,
@@ -24,11 +23,6 @@ export class TitleT extends Context.Tag("TitleT")<
       bufferId: Id.Buffer,
       nodeId: Id.Node,
       goalX?: number,
-    ) => Effect.Effect<void>;
-    enter: (
-      bufferId: Id.Buffer,
-      nodeId: Id.Node,
-      params: EnterParams,
     ) => Effect.Effect<void>;
     blur: (bufferId: Id.Buffer, nodeId: Id.Node) => Effect.Effect<void>;
   }
@@ -53,7 +47,6 @@ export const TitleLive = Layer.effect(
     return {
       subscribe: withContext(subscribe)(context),
       navigateToFirstChild: withContext(navigateToFirstChild)(context),
-      enter: withContext(enter)(context),
       blur: withContext(blur)(context),
     };
   }),

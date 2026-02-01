@@ -2450,4 +2450,196 @@ describe("editor navigation", () => {
       }).pipe(runtime.runPromise);
     });
   });
+
+  describe("Enter", () => {
+    describe("block", () => {
+      it("splits text when Enter pressed in middle of text", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, rootNodeId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "First child" },
+            ]);
+
+          const firstChildBlockId = Id.makeBufferBlockId(
+            bufferId,
+            childNodeIds[0],
+          );
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(2);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          yield* Then.NODE_HAS_TEXT(children[0]!, "First");
+          yield* Then.NODE_HAS_TEXT(children[1]!, " child");
+
+          yield* Then.SELECTION_IS_NOT_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("creates new empty sibling when Enter pressed at end of text", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, rootNodeId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "First child" },
+            ]);
+
+          const firstChildBlockId = Id.makeBufferBlockId(
+            bufferId,
+            childNodeIds[0],
+          );
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 11);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(2);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+          yield* Then.SELECTION_IS_NOT_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("creates new empty sibling above when Enter pressed at start of non-empty text", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, rootNodeId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+              { text: "First child" },
+            ]);
+
+          const originalBlockId = Id.makeBufferBlockId(
+            bufferId,
+            childNodeIds[0],
+          );
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(2);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+
+          yield* Then.NODE_HAS_TEXT(childNodeIds[0], "First child");
+
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          yield* Then.NODE_HAS_TEXT(children[0]!, "");
+          yield* Then.NODE_HAS_TEXT(children[1]!, "First child");
+
+          yield* Then.SELECTION_IS_NOT_ON_BLOCK(originalBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("creates new empty sibling below when Enter pressed in empty block", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, rootNodeId, childNodeIds } =
+            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [{ text: "" }]);
+
+          const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(emptyBlockId, 0);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(2);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+
+          yield* Then.NODE_HAS_TEXT(childNodeIds[0], "");
+
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          yield* Then.NODE_HAS_TEXT(children[0]!, "");
+          yield* Then.NODE_HAS_TEXT(children[1]!, "");
+
+          yield* Then.SELECTION_IS_NOT_ON_BLOCK(emptyBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+    });
+
+    describe("title", () => {
+      it("creates first child block when Enter pressed at end of title", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, nodeId: rootNodeId } =
+            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* When.USER_CLICKS_TITLE(bufferId);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(1);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+          yield* Then.NODE_HAS_TEXT(rootNodeId, "Document Title");
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          expect(children.length).toBe(1);
+          yield* Then.NODE_HAS_TEXT(children[0]!, "");
+
+          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("moves all content to first block when Enter pressed at start of title", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, nodeId: rootNodeId } =
+            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 0);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(1);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+          yield* Then.NODE_HAS_TEXT(rootNodeId, "");
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          yield* Then.NODE_HAS_TEXT(children[0]!, "Document Title");
+
+          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("splits title text when Enter pressed in middle", async () => {
+        await Effect.gen(function* () {
+          const { bufferId, nodeId: rootNodeId } =
+            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+
+          render(() => <BufferView bufferId={bufferId} />);
+
+          yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 8);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(1);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
+
+          yield* Then.NODE_HAS_TEXT(rootNodeId, "Document");
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          yield* Then.NODE_HAS_TEXT(children[0]!, " Title");
+
+          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+        }).pipe(runtime.runPromise);
+      });
+    });
+  });
 });

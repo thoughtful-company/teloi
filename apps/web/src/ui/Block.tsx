@@ -9,8 +9,8 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
-import { FormattedText } from "./FormattedText";
 import Editor from "./Editor";
+import { FormattedText } from "./FormattedText";
 import TypeBadge from "./TypeBadge";
 
 interface BlockProps {
