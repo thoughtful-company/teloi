@@ -1,10 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import type { WorkspaceTexts } from "@/services/external/Automerge";
-import { createDispatch, type Dispatch } from "@/services/ui/Action";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { EditorT } from "@/services/ui/Editor";
-import { getCursorContext } from "@/utils/cursorContext";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { defaultKeymap } from "@codemirror/commands";
@@ -81,8 +79,6 @@ const ROUTABLE_KEYS = new Set([
   "ArrowLeft",
   "ArrowUp",
   "ArrowDown",
-  "Home",
-  "End",
   "PageUp",
   "PageDown",
   // Structural
@@ -111,50 +107,29 @@ const isRoutableKey = (key: string, event: KeyboardEvent): boolean => {
 
 const createKeydownHandler = (
   blockId: Id.Block,
-  dispatch: Dispatch,
   runtime: ReturnType<typeof useBrowserRuntime>,
 ): Extension =>
   Prec.high(
     EditorView.domEventHandlers({
-      keydown(event, editorView) {
-        // Routable keys go through KeyEventBus, blocking CodeMirror
-        if (isRoutableKey(event.key, event)) {
-          const handled = runtime.runSync(
-            Effect.gen(function* () {
-              const KeyEventBus = yield* KeyEventBusT;
-              return yield* KeyEventBus.emit({
-                key: event.key,
-                modifiers: {
-                  meta: event.metaKey,
-                  ctrl: event.ctrlKey,
-                  alt: event.altKey,
-                  shift: event.shiftKey,
-                },
-                source: { type: "editor", blockId },
-              });
-            }),
-          );
-          if (handled) {
-            event.preventDefault();
-            event.stopPropagation();
-            return true;
-          }
-        }
+      keydown(event, _editorView) {
+        if (!isRoutableKey(event.key, event)) return false;
 
-        // Non-routable keys: existing ActionT dispatch (e.g., "#" for type picker)
-        const cursor = getCursorContext(editorView);
-        const result = dispatch({
-          _tag: "KeyDown",
-          key: event.key,
-          modifiers: {
-            meta: event.metaKey,
-            ctrl: event.ctrlKey,
-            alt: event.altKey,
-            shift: event.shiftKey,
-          },
-          source: { type: "editor", blockId, cursor },
-        });
-        if (result.handled) {
+        const handled = runtime.runSync(
+          Effect.gen(function* () {
+            const KeyEventBus = yield* KeyEventBusT;
+            return yield* KeyEventBus.emit({
+              key: event.key,
+              modifiers: {
+                meta: event.metaKey,
+                ctrl: event.ctrlKey,
+                alt: event.altKey,
+                shift: event.shiftKey,
+              },
+              source: { type: "editor", blockId },
+            });
+          }),
+        );
+        if (handled) {
           event.preventDefault();
           event.stopPropagation();
           return true;
@@ -237,15 +212,12 @@ interface EditorProps {
  *
  * Uses automergeSyncPlugin for real-time collaborative editing.
  * - Selection/blur state synced via EditorT
- * - Routable keys (navigation, structural) handled via KeyEventBus
- * - Non-routable keys (typing, "#" for picker) handled via ActionT
+ * - Routable keys handled via KeyEventBus → CommandBus
  */
 export default function Editor(props: EditorProps) {
   const runtime = useBrowserRuntime();
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
-
-  const dispatch = createDispatch(runtime);
 
   onMount(() => {
     const editor = runtime.runSync(EditorT);
@@ -258,7 +230,7 @@ export default function Editor(props: EditorProps) {
       keymap.of(defaultKeymap),
       automergeSyncPlugin({ handle: props.handle, path: props.path }),
       editor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
-      createKeydownHandler(props.blockId, dispatch, runtime),
+      createKeydownHandler(props.blockId, runtime),
     ];
 
     if (props.readonly) {

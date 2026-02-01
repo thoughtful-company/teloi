@@ -165,7 +165,7 @@ export const SELECTION_IS_ON_TITLE = (bufferId: Id.Buffer) =>
 /**
  * Gets the CodeMirror EditorView from the focused .cm-content element.
  */
-const getCodeMirrorView = (): EditorView | null => {
+export const getCodeMirrorView = (): EditorView | null => {
   const cmContent = document.querySelector<HTMLElement>(".cm-content");
   if (!cmContent) return null;
   return EditorView.findFromDOM(cmContent);

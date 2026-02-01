@@ -8,7 +8,22 @@
  * whether to preventDefault on the original DOM event.
  */
 
-import { Left, Right, Up, Down, Home, End } from "@/commands/editor";
+import {
+  Backspace,
+  Delete,
+  DeleteToLineStart,
+  DeleteToLineEnd,
+  DeleteWordBackward,
+  DeleteWordForward,
+  Left,
+  Right,
+  Up,
+  Down,
+  MoveToLineStart,
+  MoveToLineEnd,
+  MoveWordLeft,
+  MoveWordRight,
+} from "@/commands/editor";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
 import { Context, Effect, Layer, Option } from "effect";
@@ -38,12 +53,26 @@ export interface KeyEvent {
 // ============================================================================
 
 const plainKeymap: Record<string, () => Command> = {
+  Backspace: () => new Backspace(),
+  Delete: () => new Delete(),
   ArrowLeft: () => new Left(),
   ArrowRight: () => new Right(),
   ArrowUp: () => new Up(),
   ArrowDown: () => new Down(),
-  Home: () => new Home(),
-  End: () => new End(),
+};
+
+const metaKeymap: Record<string, () => Command> = {
+  ArrowLeft: () => new MoveToLineStart(),
+  ArrowRight: () => new MoveToLineEnd(),
+  Backspace: () => new DeleteToLineStart(),
+  Delete: () => new DeleteToLineEnd(),
+};
+
+const altKeymap: Record<string, () => Command> = {
+  ArrowLeft: () => new MoveWordLeft(),
+  ArrowRight: () => new MoveWordRight(),
+  Backspace: () => new DeleteWordBackward(),
+  Delete: () => new DeleteWordForward(),
 };
 
 /**
@@ -59,6 +88,16 @@ const lookupKeymap = (event: KeyEvent): Option.Option<Command> => {
 
   if (!meta && !ctrl && !alt && !shift) {
     const factory = plainKeymap[key];
+    if (factory) return Option.some(factory());
+  }
+
+  if (meta && !ctrl && !alt && !shift) {
+    const factory = metaKeymap[key];
+    if (factory) return Option.some(factory());
+  }
+
+  if (alt && !meta && !ctrl && !shift) {
+    const factory = altKeymap[key];
     if (factory) return Option.some(factory());
   }
 
