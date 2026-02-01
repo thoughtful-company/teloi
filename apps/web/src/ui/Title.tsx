@@ -87,7 +87,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         fallback={
           <h1
             ref={h1Ref}
-            class="text-title leading-[var(--text-title--line-height)] font-semibold whitespace-break-spaces"
+            class="text-title leading-[var(--text-title--line-height)] font-semibold whitespace-break-spaces wrap-anywhere"
           >
             {store.textContent}
           </h1>
