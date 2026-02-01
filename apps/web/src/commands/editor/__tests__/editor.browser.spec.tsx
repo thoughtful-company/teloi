@@ -1180,12 +1180,145 @@ describe("editor navigation", () => {
       });
 
       describe("delete commands clear goalX", () => {
+        it("Cmd+Backspace (deleteToLineStart) deletes to visual line start, not logical line start", async () => {
+          await Effect.gen(function* () {
+            const longText =
+              "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: longText },
+              ]);
+
+            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+            render(() => <BufferView bufferId={bufferId} />);
+            yield* Given.BUFFER_HAS_WIDTH(400);
+
+            // Place cursor at end of visual line 2
+            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+              line: 2,
+              side: "end",
+            });
+
+            const { offset: visualLine2Start } =
+              yield* Given.VISUAL_LINE_OFFSET(blockId, {
+                line: 2,
+                side: "start",
+              });
+            expect(
+              visualLine2Start,
+              "visual line 2 start should not be 0",
+            ).toBeGreaterThan(0);
+
+            // Cmd+Backspace should delete to visual line 2 start only
+            yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
+            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+
+            // Cursor lands at visual line 2 start — NOT at 0
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(visualLine2Start);
+          }).pipe(runtime.runPromise);
+        });
+
+        it("Cmd+Backspace at visual line start deletes previous visual line", async () => {
+          await Effect.gen(function* () {
+            const longText =
+              "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: longText },
+              ]);
+
+            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+            render(() => <BufferView bufferId={bufferId} />);
+            yield* Given.BUFFER_HAS_WIDTH(400);
+
+            // Place cursor at start of visual line 2 (the wrap point)
+            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+              line: 2,
+              side: "start",
+            });
+
+            const { offset: visualLine2Start } =
+              yield* Given.VISUAL_LINE_OFFSET(blockId, {
+                line: 2,
+                side: "start",
+              });
+            expect(
+              visualLine2Start,
+              "visual line 2 start should not be 0",
+            ).toBeGreaterThan(0);
+
+            // Cmd+Backspace at a visual line boundary should delete the entire previous visual line
+            yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
+            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+
+            // Cursor lands at offset 0 — the previous visual line was fully deleted
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          }).pipe(runtime.runPromise);
+        });
+
+        it("Cmd+Delete (deleteToLineEnd) deletes to visual line end, not logical line end", async () => {
+          await Effect.gen(function* () {
+            const longText =
+              "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
+            const { bufferId, childNodeIds } =
+              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+                { text: longText },
+              ]);
+
+            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+            render(() => <BufferView bufferId={bufferId} />);
+            yield* Given.BUFFER_HAS_WIDTH(400);
+
+            // Place cursor at start of visual line 2
+            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+              line: 2,
+              side: "start",
+            });
+
+            const { offset: visualLine2End } = yield* Given.VISUAL_LINE_OFFSET(
+              blockId,
+              {
+                line: 2,
+                side: "end",
+              },
+            );
+            expect(
+              visualLine2End,
+              "visual line 2 end should be less than total doc length",
+            ).toBeLessThan(longText.length);
+
+            const { offset: cursorOffset } = yield* Given.VISUAL_LINE_OFFSET(
+              blockId,
+              {
+                line: 2,
+                side: "start",
+              },
+            );
+            const deletedChars = visualLine2End - cursorOffset;
+
+            // Cmd+Delete should delete to visual line 2 end only
+            yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
+            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+
+            // Cursor stays at visual line 2 start — text after cursor was removed
+            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(cursorOffset);
+
+            // Doc shrank by exactly the visual line 2 content (not the entire rest of the doc)
+            yield* doubleRaf;
+            const view = Then.getCodeMirrorView()!;
+            expect(view.state.doc.length).toBe(longText.length - deletedChars);
+          }).pipe(runtime.runPromise);
+        });
+
         it("Cmd+Backspace (deleteToLineStart) clears goalX", async () => {
           await Effect.gen(function* () {
             const { bufferId, childNodeIds } =
               yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
-                { text: "some text" },
-                { text: "longer text here" },
+                { text: "hello world test" },
+                { text: "ab" },
               ]);
 
             const firstBlockId = Id.makeBufferBlockId(
@@ -1199,21 +1332,37 @@ describe("editor navigation", () => {
 
             render(() => <BufferView bufferId={bufferId} />);
 
-            // Start at end of second (longer) block
-            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
+            // Start at end of second (shorter) block
+            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
 
-            // ArrowUp establishes goalX at pixel of offset 16 in second block;
-            // cursor clamps to end of first block (offset 9)
+            // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
             yield* When.USER_PRESSES("{ArrowUp}");
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
 
-            // Cmd+Backspace deletes to line start: "some text" -> "", cursor at 0
+            // Verify goalX is set (non-null) after vertical nav
+            const Store = yield* StoreT;
+            const bufBefore = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufBefore.selection!.goalX,
+              "goalX should be set after ArrowUp",
+            ).not.toBeNull();
+
+            // Cmd+Backspace deletes from cursor to line start
             yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
-            yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
 
-            // ArrowDown should use fresh goalX from offset 0, not stale from offset 16
+            // goalX should now be cleared
+            const bufAfter = Option.getOrThrow(
+              yield* Store.getDocument("buffer", bufferId),
+            );
+            expect(
+              bufAfter.selection!.goalX,
+              "goalX should be null after Cmd+Backspace",
+            ).toBeNull();
+
+            // ArrowDown without goalX should land at offset 0 (no remembered X)
             yield* When.USER_PRESSES("{ArrowDown}");
             yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
             yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);

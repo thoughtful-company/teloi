@@ -1,11 +1,16 @@
 import { events } from "@/livestore/schema";
 import { Entity, Id, System } from "@/schema";
+import { posAtCoordsInElement } from "@/services/browser/TextBlock";
+import { getVisualLines } from "@/services/browser/TextBlock/getVisualLines";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
 import { WindowT } from "@/services/ui/Window";
+import { doubleRaf } from "@/utils/effect";
+import { EditorSelection } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { screen } from "@testing-library/dom";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
@@ -501,6 +506,92 @@ export const BLOCK_IS_FOCUSED_AT = (
       return Effect.sync(() => clearTimeout(timeout));
     });
   }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT"));
+
+/**
+ * Queries the character offset and assoc at the start or end of a visual line.
+ * Uses posAtCoordsInElement so assoc correctly disambiguates wrap boundaries.
+ */
+export const VISUAL_LINE_OFFSET = (
+  blockId: Id.Block,
+  opts: { line: number; side: "start" | "end" },
+) =>
+  Effect.gen(function* () {
+    const blockEl = document.querySelector<HTMLElement>(
+      `[data-element-id="${blockId}"]`,
+    );
+    if (!blockEl) throw new Error(`Block element not found: ${blockId}`);
+
+    const textEl =
+      blockEl.querySelector<HTMLElement>(".cm-line") ??
+      blockEl.querySelector<HTMLElement>("p");
+    if (!textEl) throw new Error("No text element found in block");
+
+    const lines = yield* getVisualLines(textEl);
+    const line = lines.find((l) => l.lineNumber === opts.line);
+    if (!line) {
+      throw new Error(
+        `Block has ${lines.length} visual lines, requested line ${opts.line}`,
+      );
+    }
+
+    const x = opts.side === "start" ? line.left : line.right;
+    const y = (line.top + line.bottom) / 2;
+    const pos = posAtCoordsInElement(textEl, x, y);
+    if (!pos) {
+      throw new Error(
+        `Could not determine offset at ${opts.side} of visual line ${opts.line}`,
+      );
+    }
+
+    return pos;
+  }).pipe(Effect.withSpan("Given.VISUAL_LINE_OFFSET"));
+
+/**
+ * Focuses a block and places cursor at the start or end of a visual line.
+ * Requires the block to be rendered (call after render + BUFFER_HAS_WIDTH).
+ * Errors if the block has fewer visual lines than requested.
+ * Returns the computed { offset, assoc }.
+ */
+export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
+  blockId: Id.Block,
+  opts: { line: number; side: "start" | "end" },
+) =>
+  Effect.gen(function* () {
+    const Buffer = yield* BufferT;
+
+    // Mount the editor by focusing at offset 0, then wait for CM to render
+    yield* BLOCK_IS_FOCUSED_AT(blockId, 0);
+    yield* doubleRaf;
+
+    const { offset, assoc } = yield* VISUAL_LINE_OFFSET(blockId, opts);
+
+    // Dispatch directly to CodeMirror so its internal state matches
+    const cmContent = document.querySelector<HTMLElement>(".cm-content");
+    const view = cmContent && EditorView.findFromDOM(cmContent);
+    if (!view) throw new Error("No CodeMirror view found");
+    view.dispatch({
+      selection: EditorSelection.create([
+        EditorSelection.cursor(offset, assoc),
+      ]),
+    });
+
+    // Keep buffer state in sync
+    const [bufferId] = yield* Id.parseBlockId(blockId);
+    yield* Buffer.setSelection(
+      bufferId,
+      Option.some({
+        anchor: { elementId: blockId },
+        anchorOffset: offset,
+        focus: { elementId: blockId },
+        focusOffset: offset,
+        goalX: null,
+        goalLine: null,
+        assoc,
+      }),
+    );
+
+    return { offset, assoc };
+  }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE"));
 
 /**
  * Sets up a title as focused with cursor at a specific position.

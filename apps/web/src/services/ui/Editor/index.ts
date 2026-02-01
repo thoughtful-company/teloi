@@ -285,48 +285,32 @@ export const EditorLive = Layer.effect(
 
       deleteToLineStart: () =>
         withView((view) => {
-          const sel = view.state.selection.main;
-          const lineStart = view.lineBlockAt(sel.head).from;
-          if (sel.head > lineStart) {
-            view.dispatch({
-              changes: { from: lineStart, to: sel.head },
-              selection: EditorSelection.create([
-                EditorSelection.cursor(lineStart, -1),
-              ]),
-            });
-          } else if (sel.head > 0) {
-            // At visual line start — delete entire previous visual line
-            const prevLineStart = view.lineBlockAt(sel.head - 1).from;
-            view.dispatch({
-              changes: { from: prevLineStart, to: sel.head },
-              selection: EditorSelection.create([
-                EditorSelection.cursor(prevLineStart, -1),
-              ]),
-            });
-          }
+          const range = view.state.selection.main;
+          if (range.head === 0) return;
+          const lineStart = view.moveToLineBoundary(range, false).head;
+          const from =
+            range.head > lineStart
+              ? lineStart
+              : view.moveToLineBoundary(
+                  EditorSelection.cursor(range.head - 1),
+                  false,
+                ).head;
+          view.dispatch({ changes: { from, to: range.head } });
         }).pipe(Effect.asVoid),
 
       deleteToLineEnd: () =>
         withView((view) => {
-          const sel = view.state.selection.main;
-          const lineEnd = view.lineBlockAt(sel.head).to;
-          if (sel.head < lineEnd) {
-            view.dispatch({
-              changes: { from: sel.head, to: lineEnd },
-              selection: EditorSelection.create([
-                EditorSelection.cursor(sel.head, 1),
-              ]),
-            });
-          } else if (sel.head < view.state.doc.length) {
-            // At visual line end — delete entire next visual line
-            const nextLineEnd = view.lineBlockAt(sel.head + 1).to;
-            view.dispatch({
-              changes: { from: sel.head, to: nextLineEnd },
-              selection: EditorSelection.create([
-                EditorSelection.cursor(sel.head, 1),
-              ]),
-            });
-          }
+          const range = view.state.selection.main;
+          if (range.head === view.state.doc.length) return;
+          const lineEnd = view.moveToLineBoundary(range, true).head;
+          const to =
+            range.head < lineEnd
+              ? lineEnd
+              : view.moveToLineBoundary(
+                  EditorSelection.cursor(range.head + 1),
+                  true,
+                ).head;
+          view.dispatch({ changes: { from: range.head, to } });
         }).pipe(Effect.asVoid),
 
       deleteWordBackward: () =>
