@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
   Then,
@@ -12,20 +12,17 @@ import {
   type BrowserRuntime,
 } from "@/test-utils/bdd";
 
-describe("Editor Tab key", () => {
+describe("Buffer indent/outdent (Tab key)", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
+    if (cleanup!) await cleanup();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     render = setup.render;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   it("indents block to become child of previous sibling when Tab pressed", async () => {

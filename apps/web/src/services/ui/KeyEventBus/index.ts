@@ -8,6 +8,7 @@
  * whether to preventDefault on the original DOM event.
  */
 
+import { Indent, Outdent } from "@/commands/buffer";
 import {
   Backspace,
   Delete,
@@ -24,8 +25,6 @@ import {
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
-  Tab,
-  ShiftTab,
 } from "@/commands/editor";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
@@ -63,7 +62,7 @@ const plainKeymap: Record<string, () => Command> = {
   ArrowRight: () => new Right(),
   ArrowUp: () => new Up(),
   ArrowDown: () => new Down(),
-  Tab: () => new Tab(),
+  Tab: () => new Indent(),
 };
 
 const metaKeymap: Record<string, () => Command> = {
@@ -74,7 +73,7 @@ const metaKeymap: Record<string, () => Command> = {
 };
 
 const shiftKeymap: Record<string, () => Command> = {
-  Tab: () => new ShiftTab(),
+  Tab: () => new Outdent(),
 };
 
 const altKeymap: Record<string, () => Command> = {

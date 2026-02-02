@@ -6,9 +6,11 @@
  * those services and provides them during execution.
  */
 
+import { bufferCommands, type BufferCommand } from "@/commands/buffer";
 import { editorCommands, type EditorCommand } from "@/commands/editor";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
+import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
 import { WindowT } from "@/services/ui/Window";
@@ -18,7 +20,7 @@ import { Context, Effect, Layer } from "effect";
 // Command Type
 // ============================================================================
 
-export type Command = EditorCommand;
+export type Command = EditorCommand | BufferCommand;
 
 // ============================================================================
 // Handler Registry
@@ -28,9 +30,10 @@ type Handler<C extends Command> = (
   command: C,
 ) => Effect.Effect<void, unknown, unknown>;
 
-const handlers: Record<string, Handler<Command>> = Object.fromEntries(
-  editorCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
-);
+const handlers: Record<string, Handler<Command>> = Object.fromEntries([
+  ...editorCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
+  ...bufferCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
+]);
 
 // ============================================================================
 // Service Definition
@@ -56,6 +59,7 @@ export const CommandBusLive = Layer.effect(
     const Buffer = yield* BufferT;
     const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
+    const Store = yield* StoreT;
 
     // Build context to provide to command handlers
     const commandContext = Context.empty().pipe(
@@ -64,6 +68,7 @@ export const CommandBusLive = Layer.effect(
       Context.add(BufferT, Buffer),
       Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),
+      Context.add(StoreT, Store),
     );
 
     return {

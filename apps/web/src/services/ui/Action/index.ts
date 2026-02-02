@@ -25,6 +25,8 @@ import { TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer, Match, Option, Stream } from "effect";
 
+import { Indent, Outdent } from "@/commands/buffer";
+import { CommandBusT } from "@/services/ui/CommandBus";
 import { createBlockSelectionHandlers } from "./blockSelection";
 import { createEditorModeHandlers } from "./editorMode";
 import { createNavigationHandlers } from "./navigation";
@@ -103,6 +105,7 @@ export const ActionLive = Layer.effect(
     const Automerge = yield* AutomergeT;
     const Store = yield* StoreT;
     const Navigation = yield* NavigationT;
+    const CommandBus = yield* CommandBusT;
 
     // Build deps object for handler modules
     const deps: ActionDeps = {
@@ -350,8 +353,18 @@ export const ActionLive = Layer.effect(
               return;
             }
 
-            // --- Block selection mode: route to handle() ---
+            // --- Block selection mode ---
             if (mode.type === "blockSelection") {
+              // Route Tab/Shift+Tab through CommandBus
+              if (event.key === "Tab") {
+                const command = event.modifiers.shift
+                  ? new Outdent()
+                  : new Indent();
+                yield* CommandBus.dispatch(command);
+                event.preventDefault();
+                return;
+              }
+
               const result = yield* handle({
                 _tag: "KeyDown",
                 key: event.key,
