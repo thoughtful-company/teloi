@@ -287,6 +287,31 @@ describe("Selection sync", () => {
     }).pipe(runtime.runPromise);
   });
 
+  // Regression test for: clicking on non-content DOM elements (e.g. type badges)
+  // inside a block's <p> produces an offset beyond the actual text length.
+  // posAtCoordsInElement walks all text nodes including badge labels, so the
+  // cumulative offset can exceed doc.length. setSelection now clamps offsets
+  // to the Automerge text length before writing to LiveStore.
+  it("clamps out-of-bounds cursor offset to document end", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "hello" }],
+      );
+
+      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // Set cursor far beyond text length (simulates badge text node overshoot)
+      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 999);
+      yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
+
+      // Cursor should be clamped to end of "hello" (5), not 999
+      yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
+    }).pipe(runtime.runPromise);
+  });
+
   // Regression test for: typing into empty block after body click produces wrong text
   //
   // The bug: When clicking body to focus an empty block, then typing, the first

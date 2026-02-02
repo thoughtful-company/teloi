@@ -42,6 +42,7 @@ export const setSelection = (
 
     const currentBuffer = bufferDoc.value;
     const assignedNodeId = currentBuffer.assignedNodeId;
+    let clampedSelection: Option.Option<Model.BufferSelection> = selection;
 
     if (Option.isSome(selection) && assignedNodeId) {
       const rootNodeId = Id.Node.make(assignedNodeId);
@@ -62,18 +63,36 @@ export const setSelection = (
       if (focusNodeId && focusNodeId !== anchorNodeId) {
         yield* expandAncestors(bufferId, rootNodeId, focusNodeId);
       }
+
+      // Clamp offsets to text length — click position resolution can overshoot
+      // when non-content DOM nodes (e.g. type badges) are inside the container
+      const Automerge = yield* AutomergeT;
+      const getNodeId = (ctx: Id.BlockContext): Id.Node =>
+        ctx.type === "buffer" ? ctx.nodeId : ctx.hostNodeId;
+
+      const anchorText = yield* Automerge.getText(getNodeId(anchorContext));
+      const focusTextLen =
+        focus.elementId === anchor.elementId
+          ? anchorText.length
+          : (yield* Automerge.getText(getNodeId(focusContext))).length;
+
+      clampedSelection = Option.some({
+        ...selection.value,
+        anchorOffset: Math.min(selection.value.anchorOffset, anchorText.length),
+        focusOffset: Math.min(selection.value.focusOffset, focusTextLen),
+      });
     }
 
     yield* Store.setDocument(
       "buffer",
       {
         ...currentBuffer,
-        selection: Option.getOrNull(selection),
+        selection: Option.getOrNull(clampedSelection),
       },
       bufferId,
     ).pipe(Effect.orDie);
 
-    const logAnnotations = yield* Option.match(selection, {
+    const logAnnotations = yield* Option.match(clampedSelection, {
       onNone: () =>
         Effect.succeed({ selection: null } as Record<string, unknown>),
       onSome: (s) =>

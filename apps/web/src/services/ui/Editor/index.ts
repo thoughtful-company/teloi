@@ -321,9 +321,8 @@ export const EditorLive = Layer.effect(
 
       setCursor: (offset: number) =>
         withView((view) => {
-          const pos = Math.min(offset, view.state.doc.length);
           view.dispatch({
-            selection: EditorSelection.create([EditorSelection.cursor(pos)]),
+            selection: EditorSelection.create([EditorSelection.cursor(offset)]),
           });
         }).pipe(Effect.asVoid),
     };
