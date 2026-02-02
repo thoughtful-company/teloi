@@ -24,6 +24,8 @@ import {
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  Tab,
+  ShiftTab,
 } from "@/commands/editor";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
@@ -61,6 +63,7 @@ const plainKeymap: Record<string, () => Command> = {
   ArrowRight: () => new Right(),
   ArrowUp: () => new Up(),
   ArrowDown: () => new Down(),
+  Tab: () => new Tab(),
 };
 
 const metaKeymap: Record<string, () => Command> = {
@@ -68,6 +71,10 @@ const metaKeymap: Record<string, () => Command> = {
   ArrowRight: () => new MoveToLineEnd(),
   Backspace: () => new DeleteToLineStart(),
   Delete: () => new DeleteToLineEnd(),
+};
+
+const shiftKeymap: Record<string, () => Command> = {
+  Tab: () => new ShiftTab(),
 };
 
 const altKeymap: Record<string, () => Command> = {
@@ -95,6 +102,11 @@ const lookupKeymap = (event: KeyEvent): Option.Option<Command> => {
 
   if (meta && !ctrl && !alt && !shift) {
     const factory = metaKeymap[key];
+    if (factory) return Option.some(factory());
+  }
+
+  if (shift && !meta && !ctrl && !alt) {
+    const factory = shiftKeymap[key];
     if (factory) return Option.some(factory());
   }
 

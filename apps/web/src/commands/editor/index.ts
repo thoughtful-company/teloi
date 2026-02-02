@@ -13,6 +13,8 @@ import { MoveToLineStart } from "./moveToLineStart";
 import { MoveToLineEnd } from "./moveToLineEnd";
 import { MoveWordLeft } from "./moveWordLeft";
 import { MoveWordRight } from "./moveWordRight";
+import { Tab } from "./tab";
+import { ShiftTab } from "./shiftTab";
 
 export {
   Backspace,
@@ -30,6 +32,8 @@ export {
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  Tab,
+  ShiftTab,
 };
 
 export const editorCommands = [
@@ -48,6 +52,8 @@ export const editorCommands = [
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  Tab,
+  ShiftTab,
 ] as const;
 
 export type EditorCommand = InstanceType<(typeof editorCommands)[number]>;

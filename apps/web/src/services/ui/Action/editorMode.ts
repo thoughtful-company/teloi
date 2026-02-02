@@ -169,24 +169,6 @@ export const createEditorModeHandlers = (
           }
         }
 
-        // --- Tab ---
-        if (
-          key === "Tab" &&
-          !modifiers.meta &&
-          !modifiers.ctrl &&
-          !modifiers.alt
-        ) {
-          if (modifiers.shift) {
-            yield* Buffer.outdent(bufferId, [nodeId]);
-          } else {
-            yield* Buffer.indent([nodeId]);
-          }
-          // Re-set selection to trigger ancestor expansion
-          const selection = yield* Buffer.getSelection(bufferId);
-          yield* Buffer.setSelection(bufferId, selection);
-          return ActionResult.handled({});
-        }
-
         // --- Escape ---
         if (key === "Escape") {
           if (pickerOpen) {
