@@ -13,6 +13,7 @@ import { MoveToLineStart } from "./moveToLineStart";
 import { MoveToLineEnd } from "./moveToLineEnd";
 import { MoveWordLeft } from "./moveWordLeft";
 import { MoveWordRight } from "./moveWordRight";
+import { SelectBlock } from "./selectBlock";
 export {
   Backspace,
   Delete,
@@ -29,6 +30,7 @@ export {
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  SelectBlock,
 };
 
 export const editorCommands = [
@@ -47,6 +49,7 @@ export const editorCommands = [
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  SelectBlock,
 ] as const;
 
 export type EditorCommand = InstanceType<(typeof editorCommands)[number]>;

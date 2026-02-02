@@ -25,6 +25,7 @@ import {
   MoveToLineEnd,
   MoveWordLeft,
   MoveWordRight,
+  SelectBlock,
 } from "@/commands/editor";
 import { Id } from "@/schema";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
@@ -63,6 +64,7 @@ const plainKeymap: Record<string, () => Command> = {
   ArrowUp: () => new Up(),
   ArrowDown: () => new Down(),
   Tab: () => new Indent(),
+  Escape: () => new SelectBlock(),
 };
 
 const metaKeymap: Record<string, () => Command> = {

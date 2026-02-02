@@ -370,40 +370,6 @@ export const createBlockSelectionHandlers = (
           lastFocusedBlockId,
         } = bufferDoc.value;
 
-        // --- Enter: Start editing selected block ---
-        if (key === "Enter" && !modifiers.meta) {
-          const targetBlock = blockSelectionFocus ?? blockSelectionAnchor;
-          if (!targetBlock) {
-            return ActionResult.notHandled();
-          }
-
-          const text = yield* Automerge.getText(targetBlock);
-          const textLength = text.length;
-          const blockId = Id.makeBufferBlockId(bufferId, targetBlock);
-
-          yield* Buffer.setSelection(
-            bufferId,
-            Option.some({
-              anchor: { elementId: blockId },
-              anchorOffset: textLength,
-              focus: { elementId: blockId },
-              focusOffset: textLength,
-              goalX: null,
-              goalLine: null,
-              assoc: 0,
-            }),
-          );
-          yield* Buffer.setBlockSelection(bufferId, [], targetBlock);
-
-          return ActionResult.handled({
-            focus: {
-              type: "block",
-              blockId,
-              selection: { anchor: textLength, head: textLength },
-            },
-          });
-        }
-
         // --- Escape: Clear selection ---
         if (key === "Escape") {
           if (blockSelectionAnchor && blockSelectionFocus) {
