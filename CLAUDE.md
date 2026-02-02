@@ -59,7 +59,7 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **TDD-first (MANDATORY)**: You MUST write tests **before** implementing ANY feature code. Do NOT write implementation until tests exist. This is non-negotiable—no exceptions.
 
-**Use `test-architect` for writing new tests** (Task tool with `subagent_type: "test-architect"`). For debugging flaky/failing tests, work directly—debugging is interactive and benefits from direct investigation. **Always read `docs/testing.md`** before writing, modifying, or debugging any test code—whether directly or via an agent.
+**Use `test-architect` for writing new tests** (Task tool with `subagent_type: "test-architect"`). For debugging flaky/failing tests, work directly—debugging is interactive and benefits from direct investigation. **Always read `docs/testing.md`** before writing, modifying, moving, or debugging any test code—whether directly or via an agent.
 
 **Before saying you're done**: Always remind the user if any implemented functionality is not covered by tests. This is mandatory—never skip this check.
 
@@ -118,12 +118,19 @@ This is a pnpm monorepo with:
         - Thin wrapper around CodeMirror 
       - Child blocks (also Block components)
 
-**Action Handling** (TEA-inspired):
-All keyboard/mouse actions route through `ActionT` (`services/ui/Action/`) — interprets primitive events based on model state and executes state changes.
+**Action Handling** (two systems, legacy migrating to new):
 
-- **Components emit primitives**: `KeyDown`, `SelectionChange`, `Blur`, `Focus`, `Click` (via `createDispatch(runtime)`)
-- **ActionT interprets meaning**: "Backspace at cursor 0 with removable type" → remove type; same key elsewhere → merge backward
-- **Synchronous execution**: Must use `runSync` because `preventDefault()` requires immediate sync decision
+**New system** — `KeyEventBus` → `CommandBus` → Commands (`commands/`):
+- `KeyEventBus` maps key events to `Command` objects via layered keymaps (plain, meta, shift, alt, blockSelection)
+- `CommandBus` dispatches commands to static `handle` methods
+- Sources: `"editor"` (from CodeMirror), `"app"` (from `window.keydown` in block selection mode)
+- New keyboard shortcuts should be added as commands here
+
+**Legacy system** — `ActionT` (`services/ui/Action/`):
+- Components emit primitives: `KeyDown`, `SelectionChange`, `Blur`, `Focus`, `Click` (via `createDispatch(runtime)`)
+- `ActionT` interprets meaning based on model state and executes state changes
+- Synchronous execution: Must use `runSync` because `preventDefault()` requires immediate sync decision
+- Being migrated to the command system above; avoid adding new handlers here
 
 **Focus Architecture** (reactive, not imperative):
 Focus is driven by state propagation, never by direct DOM `.focus()` calls:
@@ -135,7 +142,9 @@ Focus is driven by state propagation, never by direct DOM `.focus()` calls:
 This means: to focus a block, set `activeElement` state. The UI reacts and focus happens as a consequence.
 
 Key services:
-- `ActionT` — Keyboard/mouse action interpretation and execution
+- `KeyEventBusT` — Routes keyboard events to commands via keymaps
+- `CommandBusT` — Dispatches command objects to their handlers
+- `ActionT` — Legacy keyboard/mouse action interpretation (being migrated)
 - `PickerT` — Type picker state (open/close, query)
 - `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
 

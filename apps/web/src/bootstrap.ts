@@ -135,6 +135,7 @@ export const bootstrap = Effect.gen(function* () {
       toggledNodes: [],
       selection: null,
       activeViewId: null,
+      popup: null,
     },
     bufferId,
   );

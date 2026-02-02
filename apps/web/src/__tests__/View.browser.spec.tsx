@@ -67,6 +67,7 @@ describe("ViewT", () => {
             toggledNodes: [],
             selection: null,
             activeViewId: null,
+            popup: null,
           },
           bufferId,
         ),

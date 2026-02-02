@@ -42,6 +42,14 @@ export const BufferSelection = Schema.Struct({
 });
 export type BufferSelection = typeof BufferSelection.Type;
 
+export const TypePickerPopup = Schema.Struct({
+  type: Schema.Literal("typePicker"),
+  query: Schema.String,
+});
+
+export const BufferPopup = Schema.Union(TypePickerPopup);
+export type BufferPopup = typeof BufferPopup.Type;
+
 export const Buffer = Schema.mutable(
   Schema.Struct({
     windowId: Id.Window,
@@ -58,6 +66,8 @@ export const Buffer = Schema.mutable(
     selection: Schema.NullOr(BufferSelection),
     /** Active view node ID - null means default page/tree view */
     activeViewId: Schema.NullOr(Id.Node),
+    /** Active popup state - null means no popup open */
+    popup: Schema.NullOr(BufferPopup),
   }),
 );
 export type Buffer = typeof Buffer.Type;

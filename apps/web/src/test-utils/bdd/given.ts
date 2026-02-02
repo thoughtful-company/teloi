@@ -70,6 +70,7 @@ export const A_BUFFER_WITH_TEXT = (textContent: string) =>
         toggledNodes: [],
         selection: null,
         activeViewId: null,
+        popup: null,
       },
       bufferId,
     );
@@ -150,6 +151,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
         toggledNodes: [],
         selection: null,
         activeViewId: null,
+        popup: null,
       },
       bufferId,
     );
@@ -282,6 +284,7 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
         toggledNodes: [],
         selection: null,
         activeViewId: null,
+        popup: null,
       },
       bufferId,
     );
@@ -370,6 +373,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
         toggledNodes: [],
         selection: null,
         activeViewId: null,
+        popup: null,
       },
       bufferId,
     );
@@ -763,6 +767,7 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
         toggledNodes: [],
         selection: null,
         activeViewId: null,
+        popup: null,
       },
       bufferId,
     );
