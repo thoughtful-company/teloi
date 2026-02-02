@@ -175,6 +175,8 @@ export default function Block({ blockId }: BlockProps) {
               handle={Automerge.handle}
               path={Automerge.getTextPath(nodeId)}
               blockId={blockId}
+              inlineTypes={store.userTypes}
+              nodeId={nodeId}
               {...(store.selection
                 ? { initialSelection: store.selection }
                 : {})}
