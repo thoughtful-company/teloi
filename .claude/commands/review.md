@@ -1,6 +1,8 @@
 **Backup first**: Before doing anything else, create a named backup of all current changes tied to the current branch:
 ```bash
 git stash push -m "review-backup:$(git branch --show-current)" --include-untracked
+```
+```bash
 git stash apply
 ```
 This saves a backup (named `review-backup:<branch-name>`) while keeping your changes in place.
