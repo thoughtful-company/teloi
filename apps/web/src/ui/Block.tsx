@@ -154,7 +154,7 @@ export default function Block({ blockId }: BlockProps) {
             fallback={
               <p
                 ref={pRef}
-                class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces wrap-anywhere"
+                class="font-[family-name:var(--font-sans)] text-[length:var(--text-block)] leading-[var(--text-block--line-height)] min-h-[var(--text-block--line-height)] whitespace-break-spaces wrap-anywhere pl-[var(--block-padding-left)]"
               >
                 <Show when={store.textContent} fallback={"\u00A0"}>
                   <FormattedText text={store.textContent} />
