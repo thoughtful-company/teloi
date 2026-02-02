@@ -100,10 +100,10 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
 
   const TestLayer = pipe(
     ActionLive, // needs BlockT from below
-    Layer.provideMerge(NavigationLive),
     Layer.provideMerge(DataPortBootstrapGroup),
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
+    Layer.provideMerge(NavigationLive),
     Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),

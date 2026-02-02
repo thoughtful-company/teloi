@@ -34,7 +34,6 @@ export interface NavigationHandlers {
     ctx: InterpretContext,
     direction: "up" | "down",
   ) => Effect.Effect<ActionResult>;
-  handleZoomOut: (ctx: InterpretContext) => Effect.Effect<ActionResult>;
   handleMove: (
     ctx: InterpretContext,
     moveAction: "swapUp" | "swapDown" | "first" | "last",
@@ -45,7 +44,7 @@ export const createNavigationHandlers = (
   deps: ActionDeps,
   safe: SafeWrapper,
 ): NavigationHandlers => {
-  const { Buffer, Block, Node, Automerge, Store, Window, Navigation } = deps;
+  const { Buffer, Block, Node, Automerge, Store, Window } = deps;
 
   const handleArrowLeftAtStart = (
     ctx: InterpretContext,
@@ -280,48 +279,6 @@ export const createNavigationHandlers = (
       }),
     );
 
-  const handleZoomOut = (ctx: InterpretContext): Effect.Effect<ActionResult> =>
-    safe(
-      Effect.gen(function* () {
-        const { bufferId, nodeId } = ctx;
-
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        if (Option.isNone(bufferDoc) || !bufferDoc.value.assignedNodeId) {
-          return ActionResult.handled({});
-        }
-
-        const rootNodeId = Id.Node.make(bufferDoc.value.assignedNodeId);
-        const parentId = yield* Node.getParent(rootNodeId).pipe(
-          Effect.catchTag("NodeHasNoParentError", () =>
-            Effect.succeed<Id.Node | null>(null),
-          ),
-        );
-
-        if (!parentId) {
-          return ActionResult.handled({});
-        }
-
-        yield* Navigation.navigateTo(parentId);
-
-        // Check if the previous root (now a block) is expanded
-        const rootBlockId = Id.makeBufferBlockId(bufferId, rootNodeId);
-        const isRootExpanded = yield* Block.isExpanded(rootBlockId);
-
-        // If expanded, select the original node; if collapsed, select the root block
-        const targetBlockId = isRootExpanded
-          ? Id.makeBufferBlockId(bufferId, nodeId)
-          : rootBlockId;
-
-        yield* Window.setActiveElement(
-          Option.some({ type: "block" as const, id: targetBlockId }),
-        );
-
-        return ActionResult.handled({
-          focus: { type: "block", blockId: targetBlockId },
-        });
-      }),
-    );
-
   const handleMove = (
     ctx: InterpretContext,
     moveAction: "swapUp" | "swapDown" | "first" | "last",
@@ -385,7 +342,6 @@ export const createNavigationHandlers = (
     handleArrowUpOnFirstLine,
     handleArrowDownOnLastLine,
     enterBlockSelectionWithExtend,
-    handleZoomOut,
     handleMove,
   };
 };
