@@ -7,6 +7,7 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import {
   createContext,
+  createEffect,
   createSignal,
   For,
   Index,
@@ -126,6 +127,17 @@ export default function BufferView({ bufferId }: BufferViewProps) {
 
   const getActiveElement = () => store.activeElement;
 
+  let containerRef!: HTMLDivElement;
+
+  // Focus the buffer container when entering block-selection mode.
+  // This is the reactive counterpart to Editor.tsx calling view.focus() on mount —
+  // but here the container is already in the DOM, so we react to state instead.
+  createEffect(() => {
+    if (store.activeElement?.type === "buffer") {
+      containerRef.focus();
+    }
+  });
+
   const getChildNodeIds = () =>
     store.childBlockIds.map((blockId) => {
       const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
@@ -143,6 +155,7 @@ export default function BufferView({ bufferId }: BufferViewProps) {
   return (
     <ActiveElementContext.Provider value={getActiveElement}>
       <div
+        ref={containerRef}
         data-testid="buffer"
         data-buffer-id={bufferId}
         tabIndex={0}

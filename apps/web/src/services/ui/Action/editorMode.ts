@@ -44,7 +44,7 @@ export const createEditorModeHandlers = (
   nav: NavigationHandlers,
   safe: SafeWrapper,
 ): EditorModeHandlers => {
-  const { Buffer, Block, Node, Type, Picker, Window } = deps;
+  const { Buffer, Block, Node, Type, Window } = deps;
 
   const interpretKeyDown = (
     action: AppAction & { _tag: "KeyDown" },
@@ -167,29 +167,6 @@ export const createEditorModeHandlers = (
               },
             });
           }
-        }
-
-        // --- Escape ---
-        if (key === "Escape") {
-          if (pickerOpen) {
-            yield* Picker.close();
-            return ActionResult.handled({});
-          }
-
-          // Enter block selection mode
-          yield* Buffer.enterBlockSelection(bufferId);
-          yield* Buffer.setSelection(bufferId, Option.none());
-          yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
-
-          // Focus the Buffer container to receive keyboard events
-          yield* Effect.sync(() => {
-            const container = document.querySelector(
-              `[data-buffer-id="${bufferId}"]`,
-            );
-            (container as HTMLElement | null)?.focus();
-          });
-
-          return ActionResult.handled({ focus: { type: "none" } });
         }
 
         // --- Arrow navigation at boundaries ---

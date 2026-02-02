@@ -25,7 +25,7 @@ import { TypePickerT } from "@/services/ui/TypePicker";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer, Match, Option, Stream } from "effect";
 
-import { Indent, Outdent } from "@/commands/buffer";
+import { EditBlock, Indent, Outdent } from "@/commands/buffer";
 import { CommandBusT } from "@/services/ui/CommandBus";
 import { createBlockSelectionHandlers } from "./blockSelection";
 import { createEditorModeHandlers } from "./editorMode";
@@ -355,6 +355,13 @@ export const ActionLive = Layer.effect(
 
             // --- Block selection mode ---
             if (mode.type === "blockSelection") {
+              // Route Enter through CommandBus (Cmd+Enter is toggle-todo, handled by legacy path)
+              if (event.key === "Enter" && !event.modifiers.meta) {
+                yield* CommandBus.dispatch(new EditBlock());
+                event.preventDefault();
+                return;
+              }
+
               // Route Tab/Shift+Tab through CommandBus
               if (event.key === "Tab") {
                 const command = event.modifiers.shift
