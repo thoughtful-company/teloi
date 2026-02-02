@@ -16,6 +16,7 @@ import {
 import {
   Decoration,
   type DecorationSet,
+  drawSelection,
   EditorView,
   keymap,
   placeholder,
@@ -60,7 +61,7 @@ const createTheme = (styles: VariantStyles): Extension =>
       padding: "0",
     },
     ".cm-line": {
-      padding: "0",
+      padding: "0 0 0 var(--block-padding-left)",
     },
     "&.cm-focused .cm-cursor": {
       borderLeftColor: "currentColor",
@@ -225,6 +226,16 @@ class InlineTypeBadgeWidget extends WidgetType {
     this.dispose?.();
   }
 
+  coordsAt(dom: HTMLElement) {
+    const rect = dom.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.left,
+      top: rect.top,
+      bottom: rect.bottom,
+    };
+  }
+
   eq(other: InlineTypeBadgeWidget) {
     if (this.nodeId !== other.nodeId) return false;
     if (this.types.length !== other.types.length) return false;
@@ -300,6 +311,7 @@ export default function Editor(props: EditorProps) {
 
     const extensions: Extension[] = [
       EditorView.lineWrapping,
+      drawSelection(),
       placeholder("\u00A0"),
       variantThemes[props.variant ?? "block"],
       keymap.of(defaultKeymap),
