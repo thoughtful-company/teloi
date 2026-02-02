@@ -434,22 +434,6 @@ export const createBlockSelectionHandlers = (
           );
         }
 
-        // --- Tab indent/outdent ---
-        if (key === "Tab" && selectedBlocks.length > 0) {
-          if (modifiers.shift) {
-            yield* Buffer.outdent(bufferId, selectedBlocks);
-          } else {
-            yield* Buffer.indent(selectedBlocks);
-          }
-          yield* Buffer.setBlockSelection(
-            bufferId,
-            selectedBlocks,
-            blockSelectionAnchor!,
-            blockSelectionFocus,
-          );
-          return ActionResult.handled({});
-        }
-
         // --- Mod+Enter: Toggle checkbox on selected blocks ---
         if (key === "Enter" && modifiers.meta && !modifiers.shift) {
           for (const nodeId of selectedBlocks) {

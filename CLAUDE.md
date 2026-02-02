@@ -176,6 +176,12 @@ URL format: `/workspace/<nodeId>` (workspace name hardcoded for now)
 
 ## Coding Pattern
 
+**File layout**: Exported API (command classes, public functions) goes at the top of the file. Internal helpers go below a box-drawing separator:
+```ts
+// ================================ Internal ==================================
+```
+The separator is 80 characters wide (including `// ` prefix).
+
 **Command naming**: Commands that directly mirror a keyboard key are named after the key (`Left`, `Right`, `Backspace`, `Delete`). Commands that represent an action not tied to a single key use action verbs (`MoveToLineStart`, `MoveWordLeft`, `DeleteToLineEnd`, `DeleteWordForward`).
 
 **Effect-TS** use it extensively for types programming, also use utils from there.

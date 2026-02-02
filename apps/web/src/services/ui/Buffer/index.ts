@@ -12,10 +12,8 @@ import { findNextVisibleNode } from "./findNextVisibleNode";
 import { findPreviousVisibleNode } from "./findPreviousVisibleNode";
 import { forceDelete } from "./forceDelete";
 import { get } from "./get";
-import { indent } from "./indent";
 import { mergeBackward, type MergeResult } from "./mergeBackward";
 import { mergeForward } from "./mergeForward";
-import { outdent } from "./outdent";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
@@ -72,6 +70,18 @@ export class BufferT extends Context.Tag("BufferT")<
       blockSelectionFocus?: Id.Node | null,
     ) => Effect.Effect<void, BufferNotFoundError>;
 
+    /**
+     * Get block selection state for a buffer.
+     */
+    getBlockSelectionState: (bufferId: Id.Buffer) => Effect.Effect<
+      {
+        selectedBlocks: readonly Id.Node[];
+        anchor: Id.Node | null;
+        focus: Id.Node | null;
+      },
+      BufferNotFoundError
+    >;
+
     // Mode operations (derived from Window.activeElement)
     /**
      * Get current editor mode - derived from Window.activeElement.
@@ -91,13 +101,6 @@ export class BufferT extends Context.Tag("BufferT")<
     clearFocus: () => Effect.Effect<void>;
 
     // Structural operations
-    indent: (
-      nodeIds: readonly Id.Node[],
-    ) => Effect.Effect<Option.Option<Id.Node>, never>;
-    outdent: (
-      bufferId: Id.Buffer,
-      nodeIds: readonly Id.Node[],
-    ) => Effect.Effect<boolean, never>;
     mergeBackward: (
       bufferId: Id.Buffer,
       nodeId: Id.Node,
@@ -182,6 +185,16 @@ export const BufferLive = Layer.effect(
           blockSelectionFocus,
         ).pipe(Effect.provide(context)),
 
+      getBlockSelectionState: (bufferId: Id.Buffer) =>
+        get(bufferId).pipe(
+          Effect.map((doc) => ({
+            selectedBlocks: doc.selectedBlocks,
+            anchor: doc.blockSelectionAnchor,
+            focus: doc.blockSelectionFocus,
+          })),
+          Effect.provideService(StoreT, Store),
+        ),
+
       // Mode operations
       getMode: (): Effect.Effect<EditorMode> =>
         Effect.gen(function* () {
@@ -213,10 +226,6 @@ export const BufferLive = Layer.effect(
         Window.setActiveElement(Option.none()),
 
       // Structural operations
-      indent: (nodeIds: readonly Id.Node[]) =>
-        indent(nodeIds).pipe(Effect.provideService(NodeT, Node)),
-      outdent: (bufferId: Id.Buffer, nodeIds: readonly Id.Node[]) =>
-        outdent(bufferId, nodeIds).pipe(Effect.provide(context)),
       mergeBackward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
         mergeBackward(bufferId, nodeId).pipe(Effect.provide(context)),
       mergeForward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
