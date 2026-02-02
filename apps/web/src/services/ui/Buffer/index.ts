@@ -138,6 +138,19 @@ export class BufferT extends Context.Tag("BufferT")<
       currentId: Id.Node,
       bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>>;
+
+    // Popup operations
+    openPopup: (
+      bufferId: Id.Buffer,
+      popup: Model.BufferPopup,
+    ) => Effect.Effect<void, BufferNotFoundError>;
+    closePopup: (
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<void, BufferNotFoundError>;
+    updatePopupQuery: (
+      bufferId: Id.Buffer,
+      query: string,
+    ) => Effect.Effect<void, BufferNotFoundError>;
   }
 >() {}
 
@@ -246,6 +259,38 @@ export const BufferLive = Layer.effect(
         ),
       findNextVisibleNode: (currentId: Id.Node, bufferId: Id.Buffer) =>
         findNextVisibleNode(currentId, bufferId).pipe(Effect.provide(context)),
+
+      // Popup operations
+      openPopup: (bufferId: Id.Buffer, popup: Model.BufferPopup) =>
+        get(bufferId).pipe(
+          Effect.flatMap((buffer) =>
+            Store.setDocument("buffer", { ...buffer, popup }, bufferId),
+          ),
+          Effect.asVoid,
+          Effect.orDie,
+          Effect.provideService(StoreT, Store),
+        ),
+      closePopup: (bufferId: Id.Buffer) =>
+        get(bufferId).pipe(
+          Effect.flatMap((buffer) =>
+            Store.setDocument("buffer", { ...buffer, popup: null }, bufferId),
+          ),
+          Effect.asVoid,
+          Effect.orDie,
+          Effect.provideService(StoreT, Store),
+        ),
+      updatePopupQuery: (bufferId: Id.Buffer, query: string) =>
+        get(bufferId).pipe(
+          Effect.flatMap((buffer) => {
+            if (!buffer.popup) return Effect.void;
+            return Store.setDocument(
+              "buffer",
+              { ...buffer, popup: { ...buffer.popup, query } },
+              bufferId,
+            ).pipe(Effect.asVoid, Effect.orDie);
+          }),
+          Effect.provideService(StoreT, Store),
+        ),
     };
   }),
 );

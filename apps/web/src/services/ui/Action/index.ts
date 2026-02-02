@@ -27,6 +27,7 @@ import { Context, Effect, Layer, Match, Option, Stream } from "effect";
 
 import { EditBlock, Indent, Outdent } from "@/commands/buffer";
 import { CommandBusT } from "@/services/ui/CommandBus";
+import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { createBlockSelectionHandlers } from "./blockSelection";
 import { createEditorModeHandlers } from "./editorMode";
 import { createNavigationHandlers } from "./navigation";
@@ -106,6 +107,7 @@ export const ActionLive = Layer.effect(
     const Store = yield* StoreT;
     const Navigation = yield* NavigationT;
     const CommandBus = yield* CommandBusT;
+    const KeyEventBus = yield* KeyEventBusT;
 
     // Build deps object for handler modules
     const deps: ActionDeps = {
@@ -355,6 +357,25 @@ export const ActionLive = Layer.effect(
 
             // --- Block selection mode ---
             if (mode.type === "blockSelection") {
+              // When a popup is open, let the popup component handle all keys
+              const bufferDoc = yield* Store.getDocument(
+                "buffer",
+                mode.bufferId,
+              ).pipe(Effect.orDie);
+              if (Option.isSome(bufferDoc) && bufferDoc.value.popup != null) {
+                return;
+              }
+
+              const handled = yield* KeyEventBus.emit({
+                key: event.key,
+                modifiers: event.modifiers,
+                source: { type: "app" },
+              });
+              if (handled) {
+                event.preventDefault();
+                return;
+              }
+
               // Route Enter through CommandBus (Cmd+Enter is toggle-todo, handled by legacy path)
               if (event.key === "Enter" && !event.modifiers.meta) {
                 yield* CommandBus.dispatch(new EditBlock());

@@ -1,6 +1,9 @@
 import "@/index.css";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
+import { TypePickerT } from "@/services/ui/TypePicker";
 import BufferView from "@/ui/BufferView";
 import { Effect } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -11,6 +14,7 @@ import {
   setupClientTest,
   type BrowserRuntime,
 } from "@/test-utils/bdd";
+import { waitFor } from "solid-testing-library";
 
 describe("Buffer indent/outdent (Tab key)", () => {
   let runtime: BrowserRuntime;
@@ -179,5 +183,462 @@ describe("Buffer indent/outdent (Tab key)", () => {
       // Grandparent should still have only one child (buffer root)
       yield* Then.NODE_HAS_CHILDREN(parentNodeId, 1);
     }).pipe(runtime.runPromise);
+  });
+});
+
+describe("BlockTypePicker", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  describe("Opening the picker", () => {
+    it("pressing # in block selection mode opens the type picker", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+
+        yield* When.USER_PRESSES("#");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              expect(picker).toBeTruthy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Filtering types", () => {
+    it("typing in popup input filters the type list", async () => {
+      await Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        yield* TypePicker.createType("Page");
+        yield* TypePicker.createType("Project");
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Type "pa" in the input to filter
+        yield* When.USER_PRESSES("pa");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              )!;
+              const buttons = picker.querySelectorAll("button");
+              const texts = Array.from(buttons).map((btn) => btn.textContent);
+              // "Page" should be visible
+              expect(texts.some((t) => t?.includes("Page"))).toBe(true);
+              // "Project" should NOT be visible (doesn't match "pa")
+              expect(texts.some((t) => t?.includes("Project"))).toBe(false);
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Applying types", () => {
+    it("Enter on a type applies it to all selected blocks", async () => {
+      await Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const uniqueName = `ApplyTest_${Date.now()}`;
+        const typeId = yield* TypePicker.createType(uniqueName);
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        // Enter block selection with first block, then extend to second
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+
+        // Open picker
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker and types to load
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+              const buttons = picker.querySelectorAll("button");
+              if (buttons.length === 0) throw new Error("Types not loaded");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Type part of the name to filter down to our type
+        yield* When.USER_PRESSES("apply");
+
+        // Wait for filter to take effect and our type to show
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              )!;
+              const buttons = picker.querySelectorAll("button");
+              const hasType = Array.from(buttons).some((btn) =>
+                btn.textContent?.includes(uniqueName),
+              );
+              if (!hasType)
+                throw new Error("Type not showing in filtered list");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // First type is already selected (index 0), just press Enter
+        yield* When.USER_PRESSES("{Enter}");
+
+        // Verify type applied to both blocks
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const Type = await TypeT.pipe(runtime.runPromise);
+              const has1 = await Type.hasType(childNodeIds[0], typeId).pipe(
+                runtime.runPromise,
+              );
+              const has2 = await Type.hasType(childNodeIds[1], typeId).pipe(
+                runtime.runPromise,
+              );
+              expect(has1).toBe(true);
+              expect(has2).toBe(true);
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Picker should be closed
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              expect(picker).toBeFalsy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+
+    it("Enter on 'Create and apply' creates and applies a new type", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }, { text: "Second" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        // Select both blocks
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+
+        // Open picker and type a new tag name
+        yield* When.USER_PRESSES("#");
+
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        yield* When.USER_PRESSES("newtag");
+
+        // Wait for "Create and apply" to appear
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const create = document.querySelector(
+                "[data-testid='block-type-picker-create']",
+              );
+              if (!create) throw new Error("Create button not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // No matching types, so "Create and apply" is at index 0 (the only item)
+        yield* When.USER_PRESSES("{Enter}");
+
+        // Verify the new type was created under System.SCHEMA
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const Node = await runtime.runPromise(NodeT);
+              const Automerge = await runtime.runPromise(AutomergeT);
+              const typeChildren = await runtime.runPromise(
+                Node.getNodeChildren(System.SCHEMA),
+              );
+              const typeNames = await Promise.all(
+                typeChildren.map((id) =>
+                  runtime.runPromise(Automerge.getText(id)),
+                ),
+              );
+              expect(typeNames).toContain("newtag");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Verify type applied to both selected blocks
+        yield* Effect.promise(() =>
+          waitFor(
+            async () => {
+              const Node = await runtime.runPromise(NodeT);
+              const Automerge = await runtime.runPromise(AutomergeT);
+              const Type = await TypeT.pipe(runtime.runPromise);
+
+              // Find the "newtag" type id
+              const typeChildren = await runtime.runPromise(
+                Node.getNodeChildren(System.SCHEMA),
+              );
+              let newtagId: Id.Node | null = null;
+              for (const id of typeChildren) {
+                const text = await runtime.runPromise(Automerge.getText(id));
+                if (text === "newtag") {
+                  newtagId = id;
+                  break;
+                }
+              }
+              expect(newtagId).not.toBeNull();
+
+              const has1 = await Type.hasType(childNodeIds[0], newtagId!).pipe(
+                runtime.runPromise,
+              );
+              const has2 = await Type.hasType(childNodeIds[1], newtagId!).pipe(
+                runtime.runPromise,
+              );
+              expect(has1).toBe(true);
+              expect(has2).toBe(true);
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Closing the picker", () => {
+    it("Escape closes the popup without applying types", async () => {
+      await Effect.gen(function* () {
+        const TypePicker = yield* TypePickerT;
+        const typeId = yield* TypePicker.createType("ShouldNotApply");
+
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Close with Escape
+        yield* When.USER_PRESSES("{Escape}");
+
+        // Picker should be gone
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              expect(picker).toBeFalsy();
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // No type should have been applied
+        const Type = yield* TypeT;
+        const hasType = yield* Type.hasType(childNodeIds[0], typeId);
+        expect(hasType).toBe(false);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("after closing, focus returns to buffer container", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // Close with Escape
+        yield* When.USER_PRESSES("{Escape}");
+
+        // Buffer container should have focus
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const container = document.querySelector(
+                `[data-buffer-id="${bufferId}"]`,
+              ) as HTMLElement | null;
+              expect(container).toBeTruthy();
+              expect(document.activeElement).toBe(container);
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("Create and apply button", () => {
+    it("'Create and apply' is visible at end when query is non-empty", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root",
+          [{ text: "First" }],
+        );
+
+        const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_PRESSES("#");
+
+        // Wait for picker
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const picker = document.querySelector(
+                "[data-testid='block-type-picker']",
+              );
+              if (!picker) throw new Error("Picker not found");
+            },
+            { timeout: 2000 },
+          ),
+        );
+
+        // "Create and apply" should NOT be visible when query is empty
+        const createBefore = document.querySelector(
+          "[data-testid='block-type-picker-create']",
+        );
+        expect(createBefore).toBeFalsy();
+
+        // Type something
+        yield* When.USER_PRESSES("abc");
+
+        // "Create and apply" should now be visible
+        yield* Effect.promise(() =>
+          waitFor(
+            () => {
+              const create = document.querySelector(
+                "[data-testid='block-type-picker-create']",
+              );
+              expect(create).toBeTruthy();
+              expect(create?.textContent).toContain("Create and apply");
+              expect(create?.textContent).toContain("#abc");
+            },
+            { timeout: 2000 },
+          ),
+        );
+      }).pipe(runtime.runPromise);
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { tables, TeloiNode } from "@/livestore/schema";
-import { Entity, Id } from "@/schema";
+import { Entity, Id, Model } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
 import { queryDb } from "@livestore/livestore";
@@ -11,6 +11,7 @@ export interface BufferView {
   childBlockIds: readonly string[];
   activeViewId: Id.Node | null;
   activeElement: Option.Option<Entity.Element>;
+  popup: Model.BufferPopup | null;
 }
 
 export const subscribe = (bufferId: Id.Buffer) =>
@@ -37,8 +38,14 @@ export const subscribe = (bufferId: Id.Buffer) =>
         Option.Option<Entity.Element>
       >;
 
-    // Create a stream that emits {nodeId, activeViewId} pairs
-    // Filter out cases where nodeId is null
+    // Separate popup stream — changes to popup should NOT re-subscribe to node/children
+    const popupStream = bufferStream.pipe(
+      Stream.map(
+        (buffer) => (buffer?.popup as Model.BufferPopup | null) ?? null,
+      ),
+    );
+
+    // Structural data stream — only nodeId/activeViewId (deduped to avoid unnecessary re-subscriptions)
     const bufferDataStream = bufferStream.pipe(
       Stream.map((buffer) => ({
         nodeId: buffer?.assignedNodeId ?? null,
@@ -48,6 +55,9 @@ export const subscribe = (bufferId: Id.Buffer) =>
         nodeId != null
           ? Option.some({ nodeId: nodeId as Id.Node, activeViewId })
           : Option.none(),
+      ),
+      Stream.changesWith(
+        (a, b) => a.nodeId === b.nodeId && a.activeViewId === b.activeViewId,
       ),
     );
 
@@ -75,13 +85,22 @@ export const subscribe = (bufferId: Id.Buffer) =>
       { switch: true },
     );
 
-    // Combine buffer content with active element
-    return Stream.zipLatestWith(
+    // Combine buffer content with active element and popup
+    const contentWithElement = Stream.zipLatestWith(
       bufferContentStream,
       activeElementStream,
       (content, activeElement) => ({
         ...content,
         activeElement,
+      }),
+    );
+
+    return Stream.zipLatestWith(
+      contentWithElement,
+      popupStream,
+      (content, popup) => ({
+        ...content,
+        popup,
       }),
     );
   });

@@ -8,7 +8,7 @@
  * whether to preventDefault on the original DOM event.
  */
 
-import { Indent, Outdent } from "@/commands/buffer";
+import { Indent, OpenTypePicker, Outdent } from "@/commands/buffer";
 import {
   Backspace,
   Delete,
@@ -28,6 +28,7 @@ import {
   SelectBlock,
 } from "@/commands/editor";
 import { Id } from "@/schema";
+import { BufferT } from "@/services/ui/Buffer";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
 import { Context, Effect, Layer, Option } from "effect";
 
@@ -42,13 +43,15 @@ export interface Modifiers {
   shift: boolean;
 }
 
+export type KeyEventSource =
+  | { type: "editor"; blockId: Id.Block }
+  | { type: "document"; blockId: Id.Block }
+  | { type: "app" };
+
 export interface KeyEvent {
   key: string;
   modifiers: Modifiers;
-  source: {
-    type: "editor" | "document";
-    blockId: Id.Block;
-  };
+  source: KeyEventSource;
 }
 
 // ============================================================================
@@ -85,6 +88,11 @@ const altKeymap: Record<string, () => Command> = {
   Delete: () => new DeleteWordForward(),
 };
 
+/** Keymap for block selection mode (app-level events). */
+const blockSelectionKeymap: Record<string, () => Command> = {
+  "#": () => new OpenTypePicker(),
+};
+
 /**
  * Look up command for a key event.
  * Returns Option.some(command) if matched, Option.none() if not.
@@ -92,9 +100,20 @@ const altKeymap: Record<string, () => Command> = {
  * Context-dependent behavior (e.g., "at cursor start") is handled
  * INSIDE command handlers, not here. The keymap is just key → command.
  */
-const lookupKeymap = (event: KeyEvent): Option.Option<Command> => {
+const lookupKeymap = (
+  event: KeyEvent,
+  mode: "blockSelection" | "editor",
+): Option.Option<Command> => {
   const { key, modifiers } = event;
   const { meta, ctrl, alt, shift } = modifiers;
+
+  // Block selection mode: only check blockSelectionKeymap, don't fall through
+  // to editor keymaps (e.g., ArrowUp/Down mean different things in each mode)
+  if (mode === "blockSelection") {
+    const factory = blockSelectionKeymap[key];
+    if (factory && !meta && !ctrl) return Option.some(factory());
+    return Option.none();
+  }
 
   if (!meta && !ctrl && !alt && !shift) {
     const factory = plainKeymap[key];
@@ -138,6 +157,7 @@ export const KeyEventBusLive = Layer.effect(
   KeyEventBusT,
   Effect.gen(function* () {
     const CommandBus = yield* CommandBusT;
+    const Buffer = yield* BufferT;
 
     return {
       emit: (event: KeyEvent): Effect.Effect<boolean> =>
@@ -150,11 +170,22 @@ export const KeyEventBusLive = Layer.effect(
               alt: event.modifiers.alt,
               shift: event.modifiers.shift,
               sourceType: event.source.type,
-              blockId: event.source.blockId,
+              ...(event.source.type !== "app"
+                ? { blockId: event.source.blockId }
+                : {}),
             }),
           );
 
-          const commandOpt = lookupKeymap(event);
+          const keymapMode: "blockSelection" | "editor" =
+            event.source.type === "app"
+              ? yield* Buffer.getMode().pipe(
+                  Effect.map((m) =>
+                    m.type === "blockSelection" ? "blockSelection" : "editor",
+                  ),
+                )
+              : "editor";
+
+          const commandOpt = lookupKeymap(event, keymapMode);
 
           if (Option.isSome(commandOpt)) {
             yield* CommandBus.dispatch(commandOpt.value);

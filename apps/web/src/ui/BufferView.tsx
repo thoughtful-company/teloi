@@ -1,5 +1,5 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Entity, Id } from "@/schema";
+import { Entity, Id, Model } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
@@ -19,6 +19,7 @@ import Block from "./Block";
 import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
+import { BlockTypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
 import ViewTabs from "./ViewTabs";
 
@@ -116,12 +117,14 @@ export default function BufferView({ bufferId }: BufferViewProps) {
       ),
       activeViewId: v.activeViewId,
       activeElement: Option.getOrNull(v.activeElement),
+      popup: v.popup,
     }),
     initial: {
       nodeId: null as Id.Node | null,
       childBlockIds: [] as Id.Block[],
       activeViewId: null as Id.Node | null,
       activeElement: null as Entity.Element | null,
+      popup: null as Model.BufferPopup | null,
     },
   });
 
@@ -129,11 +132,10 @@ export default function BufferView({ bufferId }: BufferViewProps) {
 
   let containerRef!: HTMLDivElement;
 
-  // Focus the buffer container when entering block-selection mode.
-  // This is the reactive counterpart to Editor.tsx calling view.focus() on mount —
-  // but here the container is already in the DOM, so we react to state instead.
+  // Focus the buffer container when entering block-selection mode
+  // or when popup closes (to restore keyboard event routing).
   createEffect(() => {
-    if (store.activeElement?.type === "buffer") {
+    if (store.activeElement?.type === "buffer" && !store.popup) {
       containerRef.focus();
     }
   });
@@ -161,6 +163,17 @@ export default function BufferView({ bufferId }: BufferViewProps) {
         tabIndex={0}
         class="h-full flex flex-col outline-none"
       >
+        <Show
+          when={store.popup?.type === "typePicker" ? store.popup : null}
+          keyed
+        >
+          {(popup) => (
+            <BlockTypePicker
+              bufferId={bufferId}
+              popup={popup as Model.BufferPopup & { type: "typePicker" }}
+            />
+          )}
+        </Show>
         <Show when={store.nodeId} keyed>
           {(nodeId) => (
             <>
