@@ -8,7 +8,13 @@
  * whether to preventDefault on the original DOM event.
  */
 
-import { Indent, OpenTypePicker, Outdent } from "@/commands/buffer";
+import {
+  Indent,
+  OpenTypePicker,
+  Outdent,
+  ZoomIn,
+  ZoomOut,
+} from "@/commands/buffer";
 import {
   Backspace,
   Delete,
@@ -75,6 +81,8 @@ const metaKeymap: Record<string, () => Command> = {
   ArrowRight: () => new MoveToLineEnd(),
   Backspace: () => new DeleteToLineStart(),
   Delete: () => new DeleteToLineEnd(),
+  ".": () => new ZoomIn(),
+  ",": () => new ZoomOut(),
 };
 
 const shiftKeymap: Record<string, () => Command> = {

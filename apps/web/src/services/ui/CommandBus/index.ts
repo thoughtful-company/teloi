@@ -11,8 +11,10 @@ import { editorCommands, type EditorCommand } from "@/commands/editor";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
+import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
+import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer } from "effect";
 
@@ -60,6 +62,8 @@ export const CommandBusLive = Layer.effect(
     const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
     const Store = yield* StoreT;
+    const Block = yield* BlockT;
+    const Navigation = yield* NavigationT;
 
     // Build context to provide to command handlers
     const commandContext = Context.empty().pipe(
@@ -69,6 +73,8 @@ export const CommandBusLive = Layer.effect(
       Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),
       Context.add(StoreT, Store),
+      Context.add(BlockT, Block),
+      Context.add(NavigationT, Navigation),
     );
 
     return {

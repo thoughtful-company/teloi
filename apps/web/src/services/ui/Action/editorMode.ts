@@ -245,23 +245,6 @@ export const createEditorModeHandlers = (
           return yield* nav.enterBlockSelectionWithExtend(ctx, "down");
         }
 
-        // --- Zoom In/Out (Cmd+.) ---
-        if (key === "." && modifiers.meta) {
-          yield* deps.Navigation.navigateTo(nodeId);
-          // After navigation, nodeId is the new title
-          const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: titleBlockId }),
-          );
-          return ActionResult.handled({
-            focus: { type: "title", bufferId },
-          });
-        }
-
-        if (key === "," && modifiers.meta) {
-          return yield* nav.handleZoomOut(ctx);
-        }
-
         // --- Move (Alt+Cmd+Arrow) ---
         if (key === "ArrowUp" && modifiers.alt && modifiers.meta) {
           return yield* nav.handleMove(
