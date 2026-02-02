@@ -6,7 +6,7 @@ import { NavigationT } from "@/services/ui/Navigation";
 import { TypeColorT, TypeColors } from "@/services/ui/TypeColor";
 import { DEFAULT_COLORS } from "@/services/ui/TypeColor/types";
 import { Badge } from "@kobalte/core/badge";
-import { Effect, Stream } from "effect";
+import { Cause, Effect, Runtime, Stream } from "effect";
 import { createSignal, onCleanup, onMount } from "solid-js";
 
 interface TypeBadgeProps {
@@ -38,19 +38,33 @@ export default function TypeBadge({
 
     // Subscribe to color changes
     const colorAbortController = new AbortController();
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const TypeColor = yield* TypeColorT;
-        const colorStream = yield* TypeColor.subscribeColors(typeId);
+    runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const TypeColor = yield* TypeColorT;
+          const colorStream = yield* TypeColor.subscribeColors(typeId);
 
-        yield* colorStream.pipe(
-          Stream.runForEach((newColors) =>
-            Effect.sync(() => setColors(newColors)),
-          ),
-        );
-      }),
-      { signal: colorAbortController.signal },
-    );
+          yield* colorStream.pipe(
+            Stream.runForEach((newColors) =>
+              Effect.sync(() => setColors(newColors)),
+            ),
+          );
+        }),
+        { signal: colorAbortController.signal },
+      )
+      .catch((e) => {
+        if (Runtime.isFiberFailure(e)) {
+          const cause = e[Runtime.FiberFailureCauseId];
+          if (Cause.isInterruptedOnly(cause)) return;
+          console.error(
+            "[TypeBadge] Color subscription failed",
+            typeId,
+            Cause.pretty(cause),
+          );
+        } else if (e?.name !== "AbortError") {
+          console.error("[TypeBadge] Color subscription failed", typeId, e);
+        }
+      });
 
     onCleanup(() => {
       Automerge.handle.off("change", onChange);
@@ -92,7 +106,7 @@ export default function TypeBadge({
       }}
     >
       <button
-        onClick={handleRemove}
+        onMouseDown={handleRemove}
         class="pl-1 pr-0.5 opacity-60 group-hover:opacity-100 hover:text-red-500 cursor-pointer"
       >
         <span class="group-hover:hidden inline-block w-2 max-w-2 text-center">
@@ -110,7 +124,7 @@ export default function TypeBadge({
         </svg>
       </button>
       <button
-        onClick={handleNavigate}
+        onMouseDown={handleNavigate}
         class="pr-1 pl-0.5 rounded group-hover:shadow-sm cursor-pointer"
         style={{
           "background-color": colors().bg,

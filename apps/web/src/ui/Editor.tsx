@@ -7,14 +7,24 @@ import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { defaultKeymap } from "@codemirror/commands";
 import {
+  Compartment,
   EditorSelection,
   EditorState,
   Extension,
   Prec,
 } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  keymap,
+  placeholder,
+  WidgetType,
+} from "@codemirror/view";
 import { Effect } from "effect";
-import { onCleanup, onMount } from "solid-js";
+import { createEffect, For, onCleanup, onMount } from "solid-js";
+import { render } from "solid-js/web";
+import TypeBadge from "./TypeBadge";
 
 export type EditorVariant = "block" | "title";
 
@@ -181,6 +191,65 @@ function computeInitialSelection(
 }
 
 // ============================================================================
+// Inline Type Badge Widget
+// ============================================================================
+
+class InlineTypeBadgeWidget extends WidgetType {
+  private dispose?: () => void;
+
+  constructor(
+    private types: readonly Id.Node[],
+    private nodeId: Id.Node,
+  ) {
+    super();
+  }
+
+  toDOM() {
+    const container = document.createElement("span");
+    container.className =
+      "inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]";
+
+    this.dispose = render(
+      () => (
+        <For each={this.types}>
+          {(typeId) => <TypeBadge typeId={typeId} nodeId={this.nodeId} />}
+        </For>
+      ),
+      container,
+    );
+
+    return container;
+  }
+
+  destroy() {
+    this.dispose?.();
+  }
+
+  eq(other: InlineTypeBadgeWidget) {
+    if (this.nodeId !== other.nodeId) return false;
+    if (this.types.length !== other.types.length) return false;
+    for (let i = 0; i < this.types.length; i++) {
+      if (this.types[i] !== other.types[i]) return false;
+    }
+    return true;
+  }
+}
+
+function createTypeBadgeDecorations(
+  state: { doc: { length: number } },
+  types: readonly Id.Node[],
+  nodeId: Id.Node,
+): DecorationSet {
+  if (types.length === 0) return Decoration.none;
+  return Decoration.set([
+    Decoration.widget({
+      widget: new InlineTypeBadgeWidget(types, nodeId),
+      side: 1,
+    }).range(state.doc.length),
+  ]);
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -205,6 +274,10 @@ interface EditorProps {
   variant?: EditorVariant;
   /** Whether the editor is readonly */
   readonly?: boolean;
+  /** Type IDs to render as inline badges after text */
+  inlineTypes?: readonly Id.Node[];
+  /** Node ID for type badge operations (remove, navigate) */
+  nodeId?: Id.Node;
 }
 
 /**
@@ -218,6 +291,7 @@ export default function Editor(props: EditorProps) {
   const runtime = useBrowserRuntime();
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
+  const typeBadgeCompartment = new Compartment();
 
   onMount(() => {
     const editor = runtime.runSync(EditorT);
@@ -226,11 +300,23 @@ export default function Editor(props: EditorProps) {
 
     const extensions: Extension[] = [
       EditorView.lineWrapping,
+      placeholder("\u00A0"),
       variantThemes[props.variant ?? "block"],
       keymap.of(defaultKeymap),
       automergeSyncPlugin({ handle: props.handle, path: props.path }),
       editor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
       createKeydownHandler(props.blockId, runtime),
+      typeBadgeCompartment.of(
+        props.inlineTypes?.length && props.nodeId
+          ? EditorView.decorations.compute(["doc"], (state) =>
+              createTypeBadgeDecorations(
+                state,
+                props.inlineTypes!,
+                props.nodeId!,
+              ),
+            )
+          : [],
+      ),
     ];
 
     if (props.readonly) {
@@ -266,6 +352,22 @@ export default function Editor(props: EditorProps) {
     onCleanup(() => {
       // Don't call runSync here - runtime may be disposed during test cleanup
       view?.destroy();
+    });
+  });
+
+  createEffect(() => {
+    if (!view) return;
+    const types = props.inlineTypes;
+    const nodeId = props.nodeId;
+
+    view.dispatch({
+      effects: typeBadgeCompartment.reconfigure(
+        types?.length && nodeId
+          ? EditorView.decorations.compute(["doc"], (state) =>
+              createTypeBadgeDecorations(state, types, nodeId),
+            )
+          : [],
+      ),
     });
   });
 
