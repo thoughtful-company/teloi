@@ -39,8 +39,6 @@ const createBasicMockLayer = () => {
     setBlockSelection: () => Effect.void,
     indent: () => Effect.succeed(Option.none()),
     outdent: () => Effect.succeed(false),
-    mergeBackward: () => Effect.succeed(Option.none()),
-    mergeForward: () => Effect.succeed(Option.none()),
     forceDelete: () => Effect.succeed(Option.none()),
     split: () => Effect.succeed({ newNodeId: TEST_NODE_ID, cursorOffset: 0 }),
     swap: () => Effect.succeed(false),

@@ -1,6 +1,7 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
+import { ViewNavigationT } from "@/services/ui/ViewNavigation";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
@@ -24,35 +25,30 @@ export class Down extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    yield* navigateToNextBlock();
+    const ViewNav = yield* ViewNavigationT;
+    const Window = yield* WindowT;
+    const Buffer = yield* BufferT;
+
+    const ctx = yield* resolveActiveBlockContext();
+    if (Option.isNone(ctx)) return;
+    const { bufferId, nodeId } = ctx.value;
+
+    const targetOpt = yield* ViewNav.resolveBlockBelow(nodeId, bufferId);
+    if (Option.isNone(targetOpt)) {
+      yield* Editor.moveDown();
+      return;
+    }
+
+    const goalX = yield* resolveGoalX(bufferId);
+    const targetNodeId = targetOpt.value;
+    const targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
+
+    yield* Buffer.setSelection(
+      bufferId,
+      makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
+    );
+    yield* Window.setActiveElement(
+      Option.some({ type: "block" as const, id: targetBlockId }),
+    );
   });
 }
-
-/* ─── Private ─── */
-
-const navigateToNextBlock = Effect.fn("navigateToNextBlock:down")(function* () {
-  const Window = yield* WindowT;
-  const Buffer = yield* BufferT;
-  const ctx = yield* resolveActiveBlockContext();
-  if (Option.isNone(ctx)) return;
-  const { bufferId, nodeId } = ctx.value;
-
-  const targetOpt = yield* Buffer.findNextVisibleNode(nodeId, bufferId);
-  if (Option.isNone(targetOpt)) {
-    const Editor = yield* EditorT;
-    yield* Editor.moveDown();
-    return;
-  }
-
-  const goalX = yield* resolveGoalX(bufferId);
-  const targetNodeId = targetOpt.value;
-  const targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
-
-  yield* Buffer.setSelection(
-    bufferId,
-    makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
-  );
-  yield* Window.setActiveElement(
-    Option.some({ type: "block" as const, id: targetBlockId }),
-  );
-});

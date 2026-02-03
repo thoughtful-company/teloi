@@ -71,6 +71,10 @@ When working on keyboard shortcuts, always check `docs/shortcuts.md` first to un
 
 **No click-to-focus in tests**: Never use `USER_CLICKS_BLOCK` just to focus/activate a block. Use `SELECTION_IS_SET_TO` first, then `ACTIVE_ELEMENT_IS` — selection before activation, so the editor mounts with the cursor already in place.
 
+## Unit Tests
+
+Unit tests (`*.unit.test.ts`) run in Node via `@livestore/adapter-node` with in-memory storage. Use `makeAdapter({ storage: { type: "in-memory" } })` + `createStorePromise` for `StoreT`, and `makeAutomergeLive({ workspaceName: "...", persist: false })` for `AutomergeT`. Compose layers with `Layer.provideMerge` and run via `ManagedRuntime`. Cleanup goes in `beforeEach` (never `afterEach`), same as browser tests. See `test-utils/unit/setup.ts` for the shared setup function.
+
 ## Known System Resiliency Issues
 
 **CodeMirror `EditorSelection.cursor()` returns a `SelectionRange`, not an `EditorSelection`**. Passing it directly as `selection:` in `view.dispatch()` silently drops `assoc` because `resolveTransactionInner` falls through to `EditorSelection.single(anchor, head)` which discards flags. Always wrap in `EditorSelection.create([...])`:

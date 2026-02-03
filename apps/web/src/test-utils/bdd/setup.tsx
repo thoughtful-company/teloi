@@ -9,6 +9,7 @@ import { NodeLive } from "@/services/domain/Node";
 import { TupleLive } from "@/services/domain/Tuple";
 import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
+import { ViewNavigationLive } from "@/services/ui/ViewNavigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
 import { ActionLive, ActionT } from "@/services/ui/Action";
@@ -101,13 +102,15 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     KeyEventBusLive,
     CommandBusLive,
   );
+  // Group navigation services (both need BufferT from below)
+  const NavigationGroup = Layer.merge(NavigationLive, ViewNavigationLive);
 
   const TestLayer = pipe(
     ActionLive, // needs BlockT from below
     Layer.provideMerge(DataPortBootstrapGroup),
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
-    Layer.provideMerge(NavigationLive),
+    Layer.provideMerge(NavigationGroup),
     Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),

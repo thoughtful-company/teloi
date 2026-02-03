@@ -6,6 +6,8 @@
  * - handleSelectionChange, handleBlur, handleFocusAction, handleClick
  */
 
+import { mergeBackward } from "@/commands/editor/utils/mergeBackward";
+import { mergeForward } from "@/commands/editor/utils/mergeForward";
 import { Id } from "@/schema";
 import * as BlockType from "@/services/ui/BlockType";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
@@ -86,51 +88,13 @@ export const createEditorModeHandlers = (
           }
 
           // At start, no removable type: merge backward
-          const result = yield* Buffer.mergeBackward(bufferId, nodeId);
-          if (Option.isNone(result)) {
-            return ActionResult.handled({});
-          }
-
-          const { targetNodeId, cursorOffset, isTitle } = result.value;
-          const targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
-
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(targetBlockId, cursorOffset),
-          );
-
-          // Title is just a block - use the same activeElement type
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: targetBlockId }),
-          );
-
-          if (isTitle) {
-            return ActionResult.handled({
-              focus: { type: "title", bufferId },
-            });
-          } else {
-            return ActionResult.handled({
-              focus: {
-                type: "block",
-                blockId: targetBlockId,
-                selection: { anchor: cursorOffset, head: cursorOffset },
-              },
-            });
-          }
+          yield* mergeBackward();
+          return ActionResult.handled({});
         }
 
         // --- Delete at end ---
         if (key === "Delete" && cursor.atEnd) {
-          const result = yield* Buffer.mergeForward(bufferId, nodeId);
-          if (Option.isNone(result)) {
-            return ActionResult.handled({});
-          }
-
-          yield* Buffer.setSelection(
-            bufferId,
-            makeCollapsedSelection(blockId, result.value.cursorOffset),
-          );
-
+          yield* mergeForward();
           return ActionResult.handled({});
         }
 

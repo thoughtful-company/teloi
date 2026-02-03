@@ -8,12 +8,8 @@ import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
-import { findNextVisibleNode } from "./findNextVisibleNode";
-import { findPreviousVisibleNode } from "./findPreviousVisibleNode";
-import { forceDelete } from "./forceDelete";
+import { forceDelete, type MergeResult } from "./forceDelete";
 import { get } from "./get";
-import { mergeBackward, type MergeResult } from "./mergeBackward";
-import { mergeForward } from "./mergeForward";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
@@ -101,14 +97,6 @@ export class BufferT extends Context.Tag("BufferT")<
     clearFocus: () => Effect.Effect<void>;
 
     // Structural operations
-    mergeBackward: (
-      bufferId: Id.Buffer,
-      nodeId: Id.Node,
-    ) => Effect.Effect<Option.Option<MergeResult>, never>;
-    mergeForward: (
-      bufferId: Id.Buffer,
-      nodeId: Id.Node,
-    ) => Effect.Effect<Option.Option<{ cursorOffset: number }>, never>;
     forceDelete: (
       bufferId: Id.Buffer,
       nodeId: Id.Node,
@@ -119,25 +107,6 @@ export class BufferT extends Context.Tag("BufferT")<
     ) => Effect.Effect<boolean, never>;
     moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
     moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
-
-    // Navigation
-    /**
-     * Find previous visible node in document order.
-     * Respects collapsed state - won't descend into collapsed nodes.
-     */
-    findPreviousVisibleNode: (
-      currentId: Id.Node,
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<Id.Node>>;
-
-    /**
-     * Find next visible node in document order.
-     * Descends into children if expanded, otherwise moves to next sibling.
-     */
-    findNextVisibleNode: (
-      currentId: Id.Node,
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<Id.Node>>;
 
     // Popup operations
     openPopup: (
@@ -239,10 +208,6 @@ export const BufferLive = Layer.effect(
         Window.setActiveElement(Option.none()),
 
       // Structural operations
-      mergeBackward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
-        mergeBackward(bufferId, nodeId).pipe(Effect.provide(context)),
-      mergeForward: (bufferId: Id.Buffer, nodeId: Id.Node) =>
-        mergeForward(bufferId, nodeId).pipe(Effect.provide(context)),
       forceDelete: (bufferId: Id.Buffer, nodeId: Id.Node) =>
         forceDelete(bufferId, nodeId).pipe(Effect.provide(context)),
       swap: (nodeId: Id.Node, direction: "up" | "down") =>
@@ -251,14 +216,6 @@ export const BufferLive = Layer.effect(
         moveToFirst(nodeId).pipe(Effect.provideService(NodeT, Node)),
       moveToLast: (nodeId: Id.Node) =>
         moveToLast(nodeId).pipe(Effect.provideService(NodeT, Node)),
-
-      // Navigation
-      findPreviousVisibleNode: (currentId: Id.Node, bufferId: Id.Buffer) =>
-        findPreviousVisibleNode(currentId, bufferId).pipe(
-          Effect.provide(context),
-        ),
-      findNextVisibleNode: (currentId: Id.Node, bufferId: Id.Buffer) =>
-        findNextVisibleNode(currentId, bufferId).pipe(Effect.provide(context)),
 
       // Popup operations
       openPopup: (bufferId: Id.Buffer, popup: Model.BufferPopup) =>
