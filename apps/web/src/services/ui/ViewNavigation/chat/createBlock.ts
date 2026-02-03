@@ -83,6 +83,12 @@ export const createBlock = (
           yield* Type.addType(newNodeId, roleType);
         }
       }
+    } else {
+      const siblingTypes = yield* Type.getTypes(nodeId);
+      const roleType = siblingTypes.find(isMessageRoleType);
+      if (roleType) {
+        yield* Type.addType(newNodeId, roleType);
+      }
     }
 
     yield* Effect.logDebug("[Chat.createBlock] Message created").pipe(
