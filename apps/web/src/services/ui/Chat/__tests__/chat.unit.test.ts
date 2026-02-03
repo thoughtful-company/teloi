@@ -12,7 +12,7 @@ import { WindowLive } from "@/services/ui/Window";
 import * as Given from "@/test-utils/bdd/given";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
-import { Effect, Fiber, Layer, ManagedRuntime, Option, Stream } from "effect";
+import { Effect, Fiber, Layer, ManagedRuntime, Stream } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -94,7 +94,7 @@ const A_CHAT_MESSAGE = (
 
 // ============================================================================
 
-describe("Chat.subscribeMessages", () => {
+describe("Chat.getMessages", () => {
   let runtime: TestRuntime;
   let cleanup: (() => Promise<void>) | undefined;
 
@@ -105,24 +105,76 @@ describe("Chat.subscribeMessages", () => {
     cleanup = setup.cleanup;
   });
 
-  it("emits current messages on initial subscription", async () => {
+  it("returns messages sorted by fractional index with correct role and content", async () => {
     await Effect.gen(function* () {
       const { chatNodeId } = yield* A_CHAT_BUFFER();
+      const Automerge = yield* AutomergeT;
+
       const idx1 = generateKeyBetween(null, null);
-      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
+      const idx2 = generateKeyBetween(idx1, null);
+
+      // Insert in reverse order to verify sorting by fractional index
+      const m2 = yield* A_CHAT_MESSAGE(chatNodeId, idx2, System.MSG_USER);
+      yield* Automerge.setText(m2, "Hello, world!");
+
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_SYSTEM);
+      yield* Automerge.setText(m1, "You are a helpful assistant.");
 
       const Chat = yield* ChatT;
-      const stream = yield* Chat.subscribeMessages(chatNodeId);
+      const messages = yield* Chat.getMessages(chatNodeId);
 
-      // Take the first emission
-      const messages = yield* Stream.runHead(stream);
-      expect(Option.isSome(messages)).toBe(true);
-
-      const list = Option.getOrThrow(messages);
-      expect(list).toHaveLength(1);
-      expect(list[0]!.nodeId).toBe(m1);
-      expect(list[0]!.role).toBe("user");
+      expect(messages).toHaveLength(2);
+      expect(messages[0]!.nodeId).toBe(m1);
+      expect(messages[0]!.role).toBe("system");
+      expect(messages[0]!.content).toBe("You are a helpful assistant.");
+      expect(messages[1]!.nodeId).toBe(m2);
+      expect(messages[1]!.role).toBe("user");
+      expect(messages[1]!.content).toBe("Hello, world!");
     }).pipe(runtime.runPromise);
+  });
+
+  it("filters out messages without a recognized role type", async () => {
+    await Effect.gen(function* () {
+      const { chatNodeId } = yield* A_CHAT_BUFFER();
+      const Node = yield* NodeT;
+      const Tuple = yield* TupleT;
+
+      const idx1 = generateKeyBetween(null, null);
+      const idx2 = generateKeyBetween(idx1, null);
+
+      // Message with a role type
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
+
+      // Message without a role type (just node + tuple, no type)
+      const noRoleNode = yield* Node.insertNode({
+        parentId: chatNodeId,
+        insert: "after",
+      });
+      yield* Tuple.create(
+        System.CHAT_HAS_MESSAGE,
+        [chatNodeId, noRoleNode],
+        ["", idx2],
+      );
+
+      const Chat = yield* ChatT;
+      const messages = yield* Chat.getMessages(chatNodeId);
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]!.nodeId).toBe(m1);
+      expect(messages[0]!.role).toBe("user");
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("Chat.subscribeMessages", () => {
+  let runtime: TestRuntime;
+  let cleanup: (() => Promise<void>) | undefined;
+
+  beforeEach(async () => {
+    await cleanup?.();
+    const setup = await setupTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
   });
 
   it("emits updated list when a new message tuple is created", async () => {
@@ -158,60 +210,6 @@ describe("Chat.subscribeMessages", () => {
       expect(lastEmission[0]!.role).toBe("user");
 
       yield* Fiber.interrupt(fiber);
-    }).pipe(runtime.runPromise);
-  });
-
-  it("returns messages sorted by fractional index", async () => {
-    await Effect.gen(function* () {
-      const { chatNodeId } = yield* A_CHAT_BUFFER();
-      const idx1 = generateKeyBetween(null, null);
-      const idx2 = generateKeyBetween(idx1, null);
-      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_SYSTEM);
-      const m2 = yield* A_CHAT_MESSAGE(chatNodeId, idx2, System.MSG_USER);
-
-      const Chat = yield* ChatT;
-      const stream = yield* Chat.subscribeMessages(chatNodeId);
-
-      const messages = yield* Stream.runHead(stream);
-      const list = Option.getOrThrow(messages);
-      expect(list).toHaveLength(2);
-      expect(list[0]!.nodeId).toBe(m1);
-      expect(list[0]!.role).toBe("system");
-      expect(list[1]!.nodeId).toBe(m2);
-      expect(list[1]!.role).toBe("user");
-    }).pipe(runtime.runPromise);
-  });
-
-  it("skips messages without a recognized role type", async () => {
-    await Effect.gen(function* () {
-      const { chatNodeId } = yield* A_CHAT_BUFFER();
-      const Node = yield* NodeT;
-      const Tuple = yield* TupleT;
-
-      // Create a message with a role type
-      const idx1 = generateKeyBetween(null, null);
-      yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
-
-      // Create a message WITHOUT a role type (just node + tuple, no type)
-      const noRoleNode = yield* Node.insertNode({
-        parentId: chatNodeId,
-        insert: "after",
-      });
-      const idx2 = generateKeyBetween(idx1, null);
-      yield* Tuple.create(
-        System.CHAT_HAS_MESSAGE,
-        [chatNodeId, noRoleNode],
-        ["", idx2],
-      );
-
-      const Chat = yield* ChatT;
-      const stream = yield* Chat.subscribeMessages(chatNodeId);
-
-      const messages = yield* Stream.runHead(stream);
-      const list = Option.getOrThrow(messages);
-      // Only the message with a recognized role should appear
-      expect(list).toHaveLength(1);
-      expect(list[0]!.role).toBe("user");
     }).pipe(runtime.runPromise);
   });
 });
