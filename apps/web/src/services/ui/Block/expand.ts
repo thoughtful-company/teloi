@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { Effect } from "effect";
-import { isBlockExpanded } from "@/services/ui/Buffer/navigation";
+import { isBlockExpanded } from "./isBlockExpanded";
 
 /**
  * Recursively expand nodes level-by-level using DFS order.

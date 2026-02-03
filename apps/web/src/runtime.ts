@@ -20,6 +20,7 @@ import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
+import { ViewNavigationLive } from "./services/ui/ViewNavigation";
 import { PickerLive } from "./services/ui/Picker";
 import { TypePickerLive } from "./services/ui/TypePicker";
 import { TypeColorLive } from "./services/ui/TypeColor";
@@ -81,13 +82,15 @@ const EventCommandBusGroup = Layer.provideMerge(
   KeyEventBusLive,
   CommandBusLive,
 );
+// Group navigation services (both need BufferT from below)
+const NavigationGroup = Layer.merge(NavigationLive, ViewNavigationLive);
 
 const BrowserLayer = pipe(
   ActionLive, // needs BlockT from below
   Layer.provideMerge(DataPortBootstrapGroup),
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
-  Layer.provideMerge(NavigationLive),
+  Layer.provideMerge(NavigationGroup),
   Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
   // BlockLive needs TypeT, PickerT from layers below
   Layer.provideMerge(BlockLive),

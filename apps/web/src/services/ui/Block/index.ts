@@ -16,12 +16,11 @@ import {
   VirtualBlockError,
 } from "./errors";
 import { expandOneLevel } from "./expand";
-import {
-  findDeepestLastChild,
-  findNextNode,
-  findNextNodeInDocumentOrder,
-  findPreviousNode,
-} from "@/services/ui/Buffer/navigation";
+import { findDeepestLastChild } from "@/services/ui/ViewNavigation/page/findDeepestLastChild";
+import { findNextNode } from "@/services/ui/ViewNavigation/page/findNextNode";
+import { findNextNodeInDocumentOrder } from "@/services/ui/ViewNavigation/page/findNextNodeInDocumentOrder";
+import { findPreviousNode } from "@/services/ui/ViewNavigation/page/findPreviousNode";
+import { isBlockExpanded } from "./isBlockExpanded";
 import { BlockView, subscribe } from "./subscribe";
 
 export {
@@ -52,6 +51,10 @@ export class BlockT extends Context.Tag("BlockT")<
       isExpanded: boolean,
     ) => Effect.Effect<void, never>;
     isExpanded: (blockId: Id.Block) => Effect.Effect<boolean, never>;
+    isBlockExpanded: (
+      bufferId: Id.Buffer,
+      nodeId: Id.Node,
+    ) => Effect.Effect<boolean, never>;
 
     // Tree navigation
     findDeepestLastChild: (
@@ -109,6 +112,8 @@ export const BlockLive = Layer.effect(
         Store.getDocument("block", blockId).pipe(
           Effect.map((doc) => Option.isNone(doc) || doc.value.isExpanded),
         ),
+
+      isBlockExpanded: withContext(isBlockExpanded)(context),
 
       // Tree navigation
       findDeepestLastChild: withContext(findDeepestLastChild)(context),

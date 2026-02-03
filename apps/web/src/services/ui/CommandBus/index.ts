@@ -18,6 +18,7 @@ import { BufferT } from "@/services/ui/Buffer";
 import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
 import { NavigationT } from "@/services/ui/Navigation";
+import { ViewNavigationT } from "@/services/ui/ViewNavigation";
 import { WindowT } from "@/services/ui/Window";
 import { Context, Effect, Layer } from "effect";
 
@@ -70,6 +71,7 @@ export const CommandBusLive = Layer.effect(
     const Navigation = yield* NavigationT;
     const Type = yield* TypeT;
     const Chat = yield* ChatT;
+    const ViewNavigation = yield* ViewNavigationT;
 
     // Build context to provide to command handlers
     const commandContext = Context.empty().pipe(
@@ -83,6 +85,7 @@ export const CommandBusLive = Layer.effect(
       Context.add(NavigationT, Navigation),
       Context.add(TypeT, Type),
       Context.add(ChatT, Chat),
+      Context.add(ViewNavigationT, ViewNavigation),
     );
 
     return {

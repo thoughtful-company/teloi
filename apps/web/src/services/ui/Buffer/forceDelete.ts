@@ -2,9 +2,14 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { findPreviousNode } from "./navigation";
+import { findPreviousNode } from "@/services/ui/ViewNavigation/page/findPreviousNode";
 import { Effect, Option } from "effect";
-import { MergeResult } from "./mergeBackward";
+
+export interface MergeResult {
+  targetNodeId: Id.Node;
+  cursorOffset: number;
+  isTitle: boolean;
+}
 
 /**
  * Force delete a node and all its descendants (Cmd+Shift+Backspace).

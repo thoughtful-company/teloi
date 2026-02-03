@@ -1,6 +1,7 @@
 import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
+import { ViewNavigationT } from "@/services/ui/ViewNavigation";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
@@ -24,14 +25,7 @@ export class Up extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    yield* navigateToPreviousBlock();
-  });
-}
-
-/* ─── Private ─── */
-
-const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
-  function* () {
+    const ViewNav = yield* ViewNavigationT;
     const Window = yield* WindowT;
     const Buffer = yield* BufferT;
 
@@ -39,7 +33,7 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
     if (Option.isNone(ctx)) return;
     const { bufferId, nodeId } = ctx.value;
 
-    const targetOpt = yield* Buffer.findPreviousVisibleNode(nodeId, bufferId);
+    const targetOpt = yield* ViewNav.resolveBlockAbove(nodeId, bufferId);
     if (Option.isNone(targetOpt)) return;
 
     const goalX = yield* resolveGoalX(bufferId);
@@ -53,5 +47,5 @@ const navigateToPreviousBlock = Effect.fn("navigateToPreviousBlock:up")(
     yield* Window.setActiveElement(
       Option.some({ type: "block" as const, id: targetBlockId }),
     );
-  },
-);
+  });
+}
