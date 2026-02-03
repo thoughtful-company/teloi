@@ -6,10 +6,11 @@ import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { BufferLive, BufferT } from "@/services/ui/Buffer";
-import { ChatLive, ChatT } from "@/services/ui/Chat";
+import { ChatLive, ChatT, type ChatMessageEntry } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
 import { WindowLive } from "@/services/ui/Window";
 import * as Given from "@/test-utils/bdd/given";
+import { validateMessages } from "@/ui/chat/validateMessages";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
 import { Effect, Fiber, Layer, ManagedRuntime, Stream } from "effect";
@@ -211,5 +212,49 @@ describe("Chat.subscribeMessages", () => {
 
       yield* Fiber.interrupt(fiber);
     }).pipe(runtime.runPromise);
+  });
+});
+
+describe("validateMessages", () => {
+  const msg = (
+    role: ChatMessageEntry["role"],
+    id = "node-1",
+  ): ChatMessageEntry => ({
+    nodeId: id as Id.Node,
+    role,
+  });
+
+  it("marks no wrong place for a valid conversation", () => {
+    const result = validateMessages([
+      msg("system", "n1"),
+      msg("user", "n2"),
+      msg("assistant", "n3"),
+    ]);
+    expect(result.every((m) => m.wrongPlace === null)).toBe(true);
+  });
+
+  it("flags system message after non-system as system-not-first", () => {
+    const result = validateMessages([msg("user", "n1"), msg("system", "n2")]);
+    expect(result[0]!.wrongPlace).toBe(null);
+    expect(result[1]!.wrongPlace).toBe("system-not-first");
+  });
+
+  it("flags assistant before any user message as aengel-before-user", () => {
+    const result = validateMessages([
+      msg("system", "n1"),
+      msg("assistant", "n2"),
+    ]);
+    expect(result[0]!.wrongPlace).toBe(null);
+    expect(result[1]!.wrongPlace).toBe("aengel-before-user");
+  });
+
+  it("flags assistant as aengel-before-user even without system prefix", () => {
+    const result = validateMessages([msg("assistant", "n1")]);
+    expect(result[0]!.wrongPlace).toBe("aengel-before-user");
+  });
+
+  it("does not flag consecutive same-role messages", () => {
+    const result = validateMessages([msg("user", "n1"), msg("user", "n2")]);
+    expect(result.every((m) => m.wrongPlace === null)).toBe(true);
   });
 });

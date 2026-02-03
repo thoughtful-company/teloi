@@ -5,24 +5,18 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
+import { validateMessages, type WrongPlace } from "./chat/validateMessages";
 
 interface ChatViewProps {
   bufferId: Id.Buffer;
   nodeId: Id.Node;
 }
 
-type MessageRole = ChatMessageEntry["role"];
-
 /** A visual group of consecutive messages with the same role */
 interface MessageGroup {
-  role: MessageRole;
+  role: ChatMessageEntry["role"];
   messages: Array<ChatMessageEntry & { wrongPlace: WrongPlace | null }>;
 }
-
-type WrongPlace =
-  | "system-not-first"
-  | "aengel-before-user"
-  | "consecutive-same-role";
 
 export default function ChatView(props: ChatViewProps) {
   const runtime = useBrowserRuntime();
@@ -115,38 +109,6 @@ export default function ChatView(props: ChatViewProps) {
 
 // ================================ Internal ==================================
 
-/**
- * Validate message ordering rules:
- * 1. System messages must come before any non-system message
- * 2. Aengel cannot appear before the first user message
- * 3. No consecutive same-role messages
- */
-function validateMessages(
-  messages: readonly ChatMessageEntry[],
-): Array<ChatMessageEntry & { wrongPlace: WrongPlace | null }> {
-  let seenNonSystem = false;
-  let seenUser = false;
-  let prevRole: MessageRole | null = null;
-
-  return messages.map((msg) => {
-    let wrongPlace: WrongPlace | null = null;
-
-    if (msg.role === "system" && seenNonSystem) {
-      wrongPlace = "system-not-first";
-    } else if (msg.role === "assistant" && !seenUser) {
-      wrongPlace = "aengel-before-user";
-    } else if (prevRole !== null && msg.role === prevRole) {
-      wrongPlace = "consecutive-same-role";
-    }
-
-    if (msg.role !== "system") seenNonSystem = true;
-    if (msg.role === "user") seenUser = true;
-    prevRole = msg.role;
-
-    return { ...msg, wrongPlace };
-  });
-}
-
 /** Group consecutive messages with the same role */
 function groupMessages(
   messages: Array<ChatMessageEntry & { wrongPlace: WrongPlace | null }>,
@@ -171,7 +133,5 @@ function wrongPlaceLabel(wp: WrongPlace): string {
       return "system messages must be first";
     case "aengel-before-user":
       return "assistant before any user message";
-    case "consecutive-same-role":
-      return "consecutive same role";
   }
 }
