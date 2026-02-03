@@ -15,6 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "@/commands/buffer";
+import { Send as ChatSend } from "@/commands/chat";
 import {
   Backspace,
   Delete,
@@ -83,6 +84,7 @@ const metaKeymap: Record<string, () => Command> = {
   Delete: () => new DeleteToLineEnd(),
   ".": () => new ZoomIn(),
   ",": () => new ZoomOut(),
+  Enter: () => new ChatSend(),
 };
 
 const shiftKeymap: Record<string, () => Command> = {

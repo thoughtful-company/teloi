@@ -336,6 +336,33 @@ const ensureSystemNodes = () =>
       );
     }
 
+    // === Message Role (meta-type, like BOOLEAN) ===
+    pos = nextPosition(pos);
+    const messageRoleExists = yield* nodeExists(System.MESSAGE_ROLE);
+    if (!messageRoleExists) {
+      yield* createChildNode(System.MESSAGE_ROLE, System.ROOT, pos);
+      yield* setNodeText(System.MESSAGE_ROLE, "Message Role");
+    }
+
+    // === Chat View (view type marker) ===
+    pos = nextPosition(pos);
+    const chatViewExists = yield* nodeExists(System.CHAT_VIEW);
+    if (!chatViewExists) {
+      yield* createChildNode(System.CHAT_VIEW, System.ROOT, pos);
+      yield* setNodeText(System.CHAT_VIEW, "Chat View");
+    }
+
+    // === CHAT_HAS_MESSAGE (tuple type) ===
+    pos = nextPosition(pos);
+    const chatHasMessageExists = yield* nodeExists(System.CHAT_HAS_MESSAGE);
+    if (!chatHasMessageExists) {
+      yield* createChildNode(System.CHAT_HAS_MESSAGE, System.ROOT, pos);
+      yield* setNodeText(System.CHAT_HAS_MESSAGE, "Chat Has Message");
+      yield* Type.addType(System.CHAT_HAS_MESSAGE, System.TUPLE_TYPE);
+      yield* Tuple.addRole(System.CHAT_HAS_MESSAGE, 0, "chat", true);
+      yield* Tuple.addRole(System.CHAT_HAS_MESSAGE, 1, "message", true);
+    }
+
     // === Workspace Home ===
     let rootPos = generateKeyBetween(generateKeyBetween(null, null), null);
     const workspaceExists = yield* nodeExists(System.WORKSPACE);
@@ -374,6 +401,45 @@ const ensureSystemNodes = () =>
     if (!schemaExists) {
       yield* createRootNode(System.SCHEMA, rootPos);
       yield* setNodeText(System.SCHEMA, "Schema");
+    }
+
+    // === Chat type (user-facing, under SCHEMA) ===
+    let schemaPos = generateKeyBetween(null, null);
+    const chatExists = yield* nodeExists(System.CHAT);
+    if (!chatExists) {
+      yield* createChildNode(System.CHAT, System.SCHEMA, schemaPos);
+      yield* setNodeText(System.CHAT, "chat");
+    }
+
+    // === Message role instances (user-facing, under SCHEMA) ===
+    schemaPos = nextPosition(schemaPos);
+    const msgSystemExists = yield* nodeExists(System.MSG_SYSTEM);
+    if (!msgSystemExists) {
+      yield* createChildNode(System.MSG_SYSTEM, System.SCHEMA, schemaPos);
+      yield* setNodeText(System.MSG_SYSTEM, "msg:system");
+    }
+    if (!(yield* Type.hasType(System.MSG_SYSTEM, System.MESSAGE_ROLE))) {
+      yield* Type.addType(System.MSG_SYSTEM, System.MESSAGE_ROLE);
+    }
+
+    schemaPos = nextPosition(schemaPos);
+    const msgUserExists = yield* nodeExists(System.MSG_USER);
+    if (!msgUserExists) {
+      yield* createChildNode(System.MSG_USER, System.SCHEMA, schemaPos);
+      yield* setNodeText(System.MSG_USER, "msg:user");
+    }
+    if (!(yield* Type.hasType(System.MSG_USER, System.MESSAGE_ROLE))) {
+      yield* Type.addType(System.MSG_USER, System.MESSAGE_ROLE);
+    }
+
+    schemaPos = nextPosition(schemaPos);
+    const msgAengelExists = yield* nodeExists(System.MSG_AENGEL);
+    if (!msgAengelExists) {
+      yield* createChildNode(System.MSG_AENGEL, System.SCHEMA, schemaPos);
+      yield* setNodeText(System.MSG_AENGEL, "msg:aengel");
+    }
+    if (!(yield* Type.hasType(System.MSG_AENGEL, System.MESSAGE_ROLE))) {
+      yield* Type.addType(System.MSG_AENGEL, System.MESSAGE_ROLE);
     }
   });
 

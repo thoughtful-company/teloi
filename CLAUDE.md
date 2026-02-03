@@ -108,8 +108,9 @@ This is a pnpm monorepo with:
 **Component Hierarchy**:
 - **App**
   - **Sidebar** (navigation, page list)
-  - **BufferView**: is akin to page view of a node.
-    Subscribes to buffer, renders title and children as tree.
+  - **BufferView**: Renders a node. Subscribes to buffer, renders title, view tabs, properties, and content.
+    Conditionally renders **page view** (default outline) or an alternate view (e.g., **TableView**) based on `activeViewId`.
+    See `docs/views.md` for the view system design.
     - **Title**
       Unfocused/focused same as Block
     - **Block**
@@ -147,6 +148,8 @@ Key services:
 - `ActionT` — Legacy keyboard/mouse action interpretation (being migrated)
 - `PickerT` — Type picker state (open/close, query)
 - `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
+- `ViewT` — View queries and creation (`services/ui/View/`)
+- `ChatT` — Chat message collection and role mapping (`services/ui/Chat/`)
 
 **Text Content Architecture**:
 - **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state

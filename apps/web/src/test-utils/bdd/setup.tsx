@@ -19,6 +19,7 @@ import { TypeColorLive } from "@/services/ui/TypeColor";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { PropertyLive } from "@/services/ui/Property";
+import { ChatLive } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
 import { CommandBusLive } from "@/services/ui/CommandBus";
 import { KeyEventBusLive } from "@/services/ui/KeyEventBus";
@@ -83,7 +84,10 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
 
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
   // Group layers to avoid pipe's argument limit (max 20)
-  const ViewPropertyLive = Layer.merge(ViewLive, PropertyLive);
+  const ViewPropertyChatLive = Layer.merge(
+    ViewLive,
+    Layer.merge(PropertyLive, ChatLive),
+  );
   const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
   // Group DataPort and Bootstrap (both independent domain services)
   const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
@@ -110,7 +114,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(TypePickerGroup),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(BufferLive),
-    Layer.provideMerge(ViewPropertyLive),
+    Layer.provideMerge(ViewPropertyChatLive),
     Layer.provideMerge(WindowLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
