@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
-import { Context, Effect, Layer, Stream } from "effect";
+import { Context, Effect, Layer, Option, Stream } from "effect";
 import { addRole } from "./addRole";
 import { addAllowedType } from "./addAllowedType";
 import { getRoles } from "./getRoles";
@@ -52,10 +52,12 @@ export class TupleT extends Context.Tag("TupleT")<
     /**
      * Create a new tuple instance with the given type and members.
      * Members are provided in position order.
+     * Optional fractional indices define ordering per position.
      */
     create: (
       tupleTypeId: Id.Node,
       members: readonly Id.Node[],
+      memberFractionalIndices?: readonly string[],
     ) => Effect.Effect<Id.Tuple>;
 
     /**
@@ -65,26 +67,29 @@ export class TupleT extends Context.Tag("TupleT")<
 
     /**
      * Find all tuples where a specific position has a specific value.
+     * When `sortByPosition` is specified, results are sorted by that
+     * position's fractional index.
      */
     findByPosition: (
       tupleTypeId: Id.Node,
       position: number,
       nodeId: Id.Node,
+      sortByPosition?: number,
     ) => Effect.Effect<readonly Tuple[]>;
 
     /**
      * Subscribe to tuples where a specific position has a specific value.
+     * When `sortByPosition` is specified, results are sorted by that
+     * position's fractional index.
      */
     subscribeByPosition: (
       tupleTypeId: Id.Node,
       position: number,
       nodeId: Id.Node,
+      sortByPosition?: number,
     ) => Effect.Effect<Stream.Stream<readonly Tuple[]>>;
 
-    /**
-     * Get a tuple by ID.
-     */
-    get: (tupleId: Id.Tuple) => Effect.Effect<Tuple, TupleNotFoundError>;
+    get: (tupleId: Id.Tuple) => Effect.Effect<Option.Option<Tuple>>;
 
     /**
      * Get the display node from a tuple - the member that isn't the host node.

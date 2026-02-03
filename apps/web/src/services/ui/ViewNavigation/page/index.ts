@@ -3,6 +3,7 @@ import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
 import { Context, Effect } from "effect";
 import type { ViewNavigationT } from "../index";
+import { createBlock } from "./createBlock";
 import { findNextNodeInDocumentOrder } from "./findNextNodeInDocumentOrder";
 import { findPreviousNode } from "./findPreviousNode";
 
@@ -21,5 +22,6 @@ export const makePageViewNavigation = Effect.gen(function* () {
     // In page view, left/right resolve to same targets as above/below
     resolveBlockLeft: resolveAbove,
     resolveBlockRight: resolveBelow,
+    createBlock: withContext(createBlock)(context),
   } satisfies ViewNavigationT["Type"];
 });

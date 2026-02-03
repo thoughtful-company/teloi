@@ -31,9 +31,11 @@ export const expandOneLevel = (
 
         if (!isExpanded) {
           const blockId = Id.makeBufferBlockId(bufferId, nId);
-          yield* Store.setDocument("block", { isExpanded: true }, blockId).pipe(
-            Effect.catchAll(() => Effect.void),
-          );
+          yield* Store.setDocument(
+            "block",
+            { isExpanded: true, activeViewId: null },
+            blockId,
+          ).pipe(Effect.catchAll(() => Effect.void));
           return true;
         }
 

@@ -24,6 +24,12 @@ export class ViewNavigationT extends Context.Tag("ViewNavigationT")<
       nodeId: Id.Node,
       bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>>;
+
+    createBlock: (
+      nodeId: Id.Node,
+      bufferId: Id.Buffer,
+      position: "before" | "after",
+    ) => Effect.Effect<Id.Node>;
   }
 >() {}
 

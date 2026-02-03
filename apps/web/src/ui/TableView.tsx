@@ -1,21 +1,22 @@
 import { tables } from "@/livestore/schema";
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
-import { Effect } from "effect";
+import { bindStreamToStore } from "@/utils/bindStreamToStore";
+import { Effect, Stream } from "effect";
 import {
   ColumnDef,
   createSolidTable,
   flexRender,
   getCoreRowModel,
 } from "@tanstack/solid-table";
-import { createSignal, For, onMount } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 
 interface TableViewProps {
   bufferId: Id.Buffer;
   nodeId: Id.Node;
-  childNodeIds: readonly Id.Node[];
 }
 
 interface RowData {
@@ -34,16 +35,32 @@ interface TupleTypeInfo {
  * Renders a node's children as a table.
  * - Title column: text content of each child
  * - Property columns: derived from 2-member tuples where child is at position 0
+ * Owns its own child-fetching via Node.subscribeChildren.
  */
 export default function TableView(props: TableViewProps) {
   const runtime = useBrowserRuntime();
+
+  // Subscribe to children reactively
+  const childrenStream = Stream.unwrap(
+    Effect.gen(function* () {
+      const Node = yield* NodeT;
+      return yield* Node.subscribeChildren(props.nodeId);
+    }),
+  );
+
+  const { store, start } = bindStreamToStore({
+    stream: childrenStream,
+    project: (childIds) => ({
+      childNodeIds: childIds.map((id) => Id.Node.make(id)),
+    }),
+    initial: { childNodeIds: [] as Id.Node[] },
+  });
+
   const [data, setData] = createSignal<RowData[]>([]);
   const [columns, setColumns] = createSignal<ColumnDef<RowData, unknown>[]>([]);
 
-  onMount(() => {
-    const childNodeIds = props.childNodeIds;
-
-    const loadData = Effect.gen(function* () {
+  const loadTableData = (childNodeIds: readonly Id.Node[]) =>
+    Effect.gen(function* () {
       const Store = yield* StoreT;
       const Automerge = yield* AutomergeT;
 
@@ -51,13 +68,11 @@ export default function TableView(props: TableViewProps) {
       const childTuples = new Map<string, Map<string, string>>();
 
       for (const childId of childNodeIds) {
-        // Find all tuple members where this child is at position 0
         const members = yield* Store.query(
           tables.tupleMembers.select().where({ position: 0, nodeId: childId }),
         );
 
         for (const member of members) {
-          // Get the tuple to find its type
           const tuple = yield* Store.query(
             tables.tuples
               .select()
@@ -66,7 +81,6 @@ export default function TableView(props: TableViewProps) {
           );
 
           if (tuple) {
-            // Only process 2-member tuples
             const allMembers = yield* Store.query(
               tables.tupleMembers
                 .select()
@@ -78,7 +92,6 @@ export default function TableView(props: TableViewProps) {
               const tupleTypeId = tuple.tupleTypeId;
               const valueNodeId = allMembers[1]!.nodeId as Id.Node;
 
-              // Register tuple type if not seen
               if (!tupleTypeMap.has(tupleTypeId)) {
                 const typeName = yield* Automerge.getText(
                   tupleTypeId as Id.Node,
@@ -89,10 +102,8 @@ export default function TableView(props: TableViewProps) {
                 });
               }
 
-              // Get value text
               const valueText = yield* Automerge.getText(valueNodeId);
 
-              // Store in childTuples map
               if (!childTuples.has(childId)) {
                 childTuples.set(childId, new Map());
               }
@@ -113,11 +124,7 @@ export default function TableView(props: TableViewProps) {
         }
 
         const title = yield* Automerge.getText(childId);
-        rows.push({
-          nodeId: childId,
-          title,
-          properties,
-        });
+        rows.push({ nodeId: childId, title, properties });
       }
 
       const titleColumn: ColumnDef<RowData, unknown> = {
@@ -140,7 +147,17 @@ export default function TableView(props: TableViewProps) {
       setData(rows);
     });
 
-    runtime.runPromise(loadData);
+  // Reload table data whenever children change
+  createEffect(() => {
+    const childNodeIds = store.childNodeIds;
+    if (childNodeIds.length > 0) {
+      runtime.runPromise(loadTableData(childNodeIds));
+    }
+  });
+
+  onMount(() => {
+    const dispose = start(runtime);
+    onCleanup(() => dispose());
   });
 
   const table = createSolidTable({

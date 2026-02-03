@@ -74,6 +74,7 @@ export type Buffer = typeof Buffer.Type;
 
 export const Block = Schema.Struct({
   isExpanded: Schema.Boolean,
+  activeViewId: Schema.NullOr(Id.Node),
 });
 export type Block = typeof Block.Type;
 

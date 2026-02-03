@@ -1,14 +1,14 @@
 import { Id } from "@/schema";
-import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
+import { ViewNavigationT } from "@/services/ui/ViewNavigation";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
 
 export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
-  const Node = yield* NodeT;
+  const ViewNav = yield* ViewNavigationT;
   const Automerge = yield* AutomergeT;
   const Buffer = yield* BufferT;
   const Window = yield* WindowT;
@@ -24,14 +24,9 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const clampedPos = Math.max(0, Math.min(cursorPos, currentText.length));
 
   const isAtStartOfNonEmpty = clampedPos === 0 && currentText.length > 0;
+  const position = isAtStartOfNonEmpty ? "before" : "after";
 
-  const newNodeId = isTitle
-    ? yield* Node.insertNode({ parentId: nodeId, insert: "before" })
-    : yield* Node.insertNode({
-        parentId: yield* Node.getParent(nodeId),
-        insert: isAtStartOfNonEmpty ? "before" : "after",
-        siblingId: nodeId,
-      });
+  const newNodeId = yield* ViewNav.createBlock(nodeId, bufferId, position);
 
   if (isTitle || !isAtStartOfNonEmpty) {
     yield* Automerge.setText(nodeId, currentText.slice(0, clampedPos));

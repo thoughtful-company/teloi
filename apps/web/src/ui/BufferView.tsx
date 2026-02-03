@@ -1,31 +1,25 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Entity, Id, Model, System } from "@/schema";
-import { TypeT } from "@/services/domain/Type";
+import { Entity, Id, Model } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
-import { ViewT } from "@/services/ui/View";
+import { ViewT, type ViewInfo } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import {
   createContext,
   createEffect,
   createSignal,
-  For,
   Index,
   onCleanup,
   onMount,
   Show,
 } from "solid-js";
-import Block from "./Block";
-import ChatView from "./ChatView";
 import PropertySection from "./PropertySection";
-import TableView from "./TableView";
 import Title from "./Title";
 import { BlockTypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
+import ViewRenderer from "./ViewRenderer";
 import ViewTabs from "./ViewTabs";
-
-type ActiveViewType = "table" | "chat" | null;
 
 /** Context to expose activeElement to child components for scroll-on-mount behavior */
 export const ActiveElementContext = createContext<() => Entity.Element | null>(
@@ -97,10 +91,7 @@ interface BufferViewProps {
  * Render the editor UI for a single buffer.
  *
  * Subscribes to the buffer identified by `bufferId`, binds its updates to local state, and renders
- * the buffer header (Title) and a list of child Block components when a root node is present.
- *
- * @param bufferId - Identifier of the buffer to subscribe to and render
- * @returns The component's JSX element; an outer container that conditionally renders a header with a Title and a column of Block components for the buffer's child blocks when the buffer's root node is available
+ * the buffer header (Title) and the active view when a root node is present.
  */
 export default function BufferView({ bufferId }: BufferViewProps) {
   const runtime = useBrowserRuntime();
@@ -115,45 +106,24 @@ export default function BufferView({ bufferId }: BufferViewProps) {
   const { store, start } = bindStreamToStore({
     stream: bufferStream,
     project: (v) => ({
-      nodeId: Id.Node.make(v.nodeData.id),
-      childBlockIds: v.childBlockIds.map((childId) =>
-        Id.makeBufferBlockId(bufferId, Id.Node.make(childId)),
-      ),
+      nodeId: Id.Node.make(v.nodeData.id) as Id.Node | null,
       activeViewId: v.activeViewId,
+      activeViewType: v.activeViewType,
+      availableViews: v.availableViews as ViewInfo[],
       activeElement: Option.getOrNull(v.activeElement),
       popup: v.popup,
     }),
     initial: {
       nodeId: null as Id.Node | null,
-      childBlockIds: [] as Id.Block[],
       activeViewId: null as Id.Node | null,
+      activeViewType: "page" as const,
+      availableViews: [] as ViewInfo[],
       activeElement: null as Entity.Element | null,
       popup: null as Model.BufferPopup | null,
     },
   });
 
   const getActiveElement = () => store.activeElement;
-  const [viewType, setViewType] = createSignal<ActiveViewType>(null);
-
-  // Resolve view type when activeViewId changes
-  createEffect(() => {
-    const viewId = store.activeViewId;
-    if (!viewId) {
-      setViewType(null);
-      return;
-    }
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Type = yield* TypeT;
-        const types = yield* Type.getTypes(viewId);
-        if (types.includes(System.CHAT_VIEW)) {
-          setViewType("chat");
-        } else {
-          setViewType("table");
-        }
-      }),
-    );
-  });
 
   let containerRef!: HTMLDivElement;
 
@@ -164,12 +134,6 @@ export default function BufferView({ bufferId }: BufferViewProps) {
       containerRef.focus();
     }
   });
-
-  const getChildNodeIds = () =>
-    store.childBlockIds.map((blockId) => {
-      const [, nodeId] = Id.parseBlockId(blockId).pipe(Effect.runSync);
-      return nodeId;
-    });
 
   onMount(() => {
     const dispose = start(runtime);
@@ -207,54 +171,25 @@ export default function BufferView({ bufferId }: BufferViewProps) {
                 <TypeList nodeId={nodeId} />
               </header>
               <ViewTabs
-                bufferId={bufferId}
-                nodeId={nodeId}
+                availableViews={store.availableViews}
                 activeViewId={store.activeViewId}
+                onTabClick={(viewId) => {
+                  runtime.runPromise(
+                    Effect.gen(function* () {
+                      const Buffer = yield* BufferT;
+                      yield* Buffer.setActiveView(bufferId, viewId);
+                    }),
+                  );
+                }}
               />
               <PropertyList pageId={nodeId} bufferId={bufferId} />
-              <Show
-                when={viewType()}
-                fallback={
-                  <div
-                    data-testid="editor-body"
-                    class="flex-1 flex flex-col pt-4"
-                  >
-                    <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
-                      <For each={store.childBlockIds}>
-                        {(childId) => <Block blockId={childId} />}
-                      </For>
-                    </div>
-                    <div
-                      data-testid="editor-click-zone"
-                      class="flex-1 min-h-[25vh] cursor-text"
-                    />
-                  </div>
-                }
-              >
-                {(vt) => (
-                  <div
-                    data-testid="editor-body"
-                    class="flex-1 flex flex-col pt-4"
-                  >
-                    <Show
-                      when={vt() === "chat"}
-                      fallback={
-                        <TableView
-                          bufferId={bufferId}
-                          nodeId={nodeId}
-                          childNodeIds={getChildNodeIds()}
-                        />
-                      }
-                    >
-                      <ChatView
-                        bufferId={bufferId}
-                        nodeId={nodeId}
-                        childBlockIds={store.childBlockIds}
-                      />
-                    </Show>
-                  </div>
-                )}
-              </Show>
+              <div class="flex-1 flex flex-col pt-4">
+                <ViewRenderer
+                  viewType={store.activeViewType}
+                  bufferId={bufferId}
+                  nodeId={nodeId}
+                />
+              </div>
             </>
           )}
         </Show>

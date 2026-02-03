@@ -266,7 +266,7 @@ export const System = {
   CHAT: "system:chat" as Id.Node,
 
   /**
-   * View type for chat views (like sys:type:table-view for tables).
+   * View type for chat views (like system:table-view for tables).
    */
   CHAT_VIEW: "system:chat-view" as Id.Node,
 
@@ -278,6 +278,11 @@ export const System = {
    * Message order determined by position-1 fractional index.
    */
   CHAT_HAS_MESSAGE: "system:chat-has-message" as Id.Node,
+
+  /**
+   * View type for table views. Applied to view nodes that render as tables.
+   */
+  TABLE_VIEW: "system:table-view" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];

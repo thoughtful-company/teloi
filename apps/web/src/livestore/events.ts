@@ -140,6 +140,7 @@ export const tupleCreated = Events.synced({
       tupleId: Schema.String,
       tupleTypeId: Schema.String,
       members: Schema.Array(Schema.String),
+      memberFractionalIndices: Schema.optional(Schema.Array(Schema.String)),
     }),
   }),
 });

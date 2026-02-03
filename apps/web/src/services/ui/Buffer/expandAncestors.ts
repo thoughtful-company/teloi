@@ -46,15 +46,19 @@ export const expandAncestors = (
       ancestorsToExpand,
       (nodeId) => {
         const blockId = Id.makeBufferBlockId(bufferId, nodeId);
-        return Store.setDocument("block", { isExpanded: true }, blockId).pipe(
-          Effect.orDie,
-        );
+        return Store.setDocument(
+          "block",
+          { isExpanded: true, activeViewId: null },
+          blockId,
+        ).pipe(Effect.orDie);
       },
       { concurrency: 1 },
     );
 
     if (ancestorsToExpand.length > 0) {
-      yield* Effect.logDebug("[Buffer.expandAncestors] Expanded ancestors").pipe(
+      yield* Effect.logDebug(
+        "[Buffer.expandAncestors] Expanded ancestors",
+      ).pipe(
         Effect.annotateLogs({
           bufferId,
           rootNodeId,
@@ -105,9 +109,11 @@ export const expandAncestorsForNodes = (
       [...ancestorsToExpand],
       (nodeId) => {
         const blockId = Id.makeBufferBlockId(bufferId, nodeId);
-        return Store.setDocument("block", { isExpanded: true }, blockId).pipe(
-          Effect.orDie,
-        );
+        return Store.setDocument(
+          "block",
+          { isExpanded: true, activeViewId: null },
+          blockId,
+        ).pipe(Effect.orDie);
       },
       { concurrency: 1 },
     );

@@ -14,7 +14,7 @@ View tabs appear automatically when a node has 2+ views. Clicking a tab updates 
 
 **Page view**: The default hierarchical outline. No view node is required, but one can be added to configure properties or other settings. When `activeViewId` is null, page view is rendered.
 
-**Table view** (`sys:type:table-view`): Renders children as rows with columns derived from tuple relationships. See `docs/specs/table-feature.md`.
+**Table view** (`system:table-view`): Renders children as rows with columns derived from tuple relationships. See `docs/specs/table-feature.md`.
 
 **Chat view** (`system:chat-view`): Renders children as a conversation with role labels, visual grouping, and ordering validation. See `docs/specs/chat-feature.md`.
 
@@ -28,7 +28,7 @@ When a property is created (via `> ` syntax), the system finds or creates a view
 
 View nodes are regular nodes stored as shadow children of their page. They have:
 - A title (stored in Y.Text, e.g., "Table View", "Projects Overview")
-- A type (optional, e.g., `sys:type:table-view`)
+- A type (optional, e.g., `system:table-view`)
 - Configuration stored via tuples or shadow children (view-type specific)
 
 The `HAS_VIEW` tuple links pages to views:
@@ -44,7 +44,7 @@ Buffer documents store the active view:
 
 Views are created through commands or UI actions. For example, the "Create Table View" command:
 1. Creates a view node as a shadow child of the current page
-2. Sets its type to `sys:type:table-view`
+2. Sets its type to `system:table-view`
 3. Creates `HAS_VIEW(currentPage, viewNode)` tuple
 4. Sets buffer's `activeViewId` to the new view
 

@@ -51,9 +51,13 @@ export class TypePickerT extends Context.Tag("TypePickerT")<
      */
     createType: (name: string) => Effect.Effect<Id.Node>;
     /**
-     * Apply a type to a node.
+     * Apply a type to a node. Returns the auto-created view ID when a
+     * view-bearing type (e.g. chat) is applied, null otherwise.
      */
-    applyType: (nodeId: Id.Node, typeId: Id.Node) => Effect.Effect<void>;
+    applyType: (
+      nodeId: Id.Node,
+      typeId: Id.Node,
+    ) => Effect.Effect<Id.Node | null>;
   }
 >() {}
 
@@ -133,9 +137,11 @@ const applyType = (nodeId: Id.Node, typeId: Id.Node) =>
     yield* Type.addType(nodeId, typeId);
 
     // Auto-create chat view when #chat type is applied
+    let createdViewId: Id.Node | null = null;
     if (typeId === System.CHAT) {
       const viewId = yield* getOrCreateView(nodeId);
       yield* Type.addType(viewId, System.CHAT_VIEW);
+      createdViewId = viewId;
       yield* Effect.logDebug(
         "[TypePicker.applyType] Auto-created chat view",
       ).pipe(Effect.annotateLogs({ nodeId, viewId }));
@@ -144,6 +150,8 @@ const applyType = (nodeId: Id.Node, typeId: Id.Node) =>
     yield* Effect.logDebug(
       "[TypePicker.applyType] Type applied successfully",
     ).pipe(Effect.annotateLogs({ nodeId, typeId }));
+
+    return createdViewId;
   });
 
 export const TypePickerLive = Layer.effect(

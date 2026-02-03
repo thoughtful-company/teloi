@@ -27,7 +27,7 @@ const createBasicMockLayer = () => {
     getAvailableTypes: () => Effect.succeed([]),
     filterTypes: () => [],
     createType: () => Effect.succeed(TEST_TYPE_ID),
-    applyType: () => Effect.void,
+    applyType: () => Effect.succeed(null),
   });
 
   const MockBufferT = Layer.succeed(BufferT, {
@@ -199,7 +199,7 @@ describe("PickerT", () => {
     let setSelectionMock: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
-      applyTypeMock = vi.fn(() => Effect.void);
+      applyTypeMock = vi.fn(() => Effect.succeed(null));
       setSelectionMock = vi.fn(() => Effect.void);
 
       const MockTypePickerT = Layer.succeed(TypePickerT, {
@@ -349,7 +349,7 @@ describe("PickerT", () => {
 
     beforeEach(async () => {
       createTypeMock = vi.fn(() => Effect.succeed(NEW_TYPE_ID));
-      applyTypeMock = vi.fn(() => Effect.void);
+      applyTypeMock = vi.fn(() => Effect.succeed(null));
       setSelectionMock = vi.fn(() => Effect.void);
 
       const MockTypePickerT = Layer.succeed(TypePickerT, {

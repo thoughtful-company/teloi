@@ -1,11 +1,12 @@
 import { Id } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
-import { TupleT, TupleNotFoundError } from "@/services/domain/Tuple";
+import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { PickerT } from "@/services/ui/Picker";
+import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
@@ -38,10 +39,10 @@ export class BlockT extends Context.Tag("BlockT")<
     ) => Effect.Effect<
       Stream.Stream<BlockView, BlockGoneError>,
       | BlockNotFoundError
+      | BlockGoneError
       | NodeNotFoundError
       | Id.InvalidBlockIdError
       | VirtualBlockError
-      | TupleNotFoundError
     >;
     attestExistence: (
       blockId: Id.Block,
@@ -78,6 +79,12 @@ export class BlockT extends Context.Tag("BlockT")<
       bufferId: Id.Buffer,
       nodeId: Id.Node,
     ) => Effect.Effect<boolean, never>;
+
+    // View
+    setActiveView: (
+      blockId: Id.Block,
+      viewId: Id.Node | null,
+    ) => Effect.Effect<void, never>;
   }
 >() {}
 
@@ -91,6 +98,7 @@ export const BlockLive = Layer.effect(
     const Automerge = yield* AutomergeT;
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
+    const View = yield* ViewT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
@@ -99,13 +107,25 @@ export const BlockLive = Layer.effect(
       Context.add(AutomergeT, Automerge),
       Context.add(TypeT, Type),
       Context.add(PickerT, Picker),
+      Context.add(ViewT, View),
     );
 
     return {
       subscribe: withContext(subscribe)(context),
       attestExistence: withContext(attestExistence)(context),
       setExpanded: (blockId: Id.Block, isExpanded: boolean) =>
-        Store.setDocument("block", { isExpanded }, blockId).pipe(
+        Store.getDocument("block", blockId).pipe(
+          Effect.flatMap((doc) => {
+            const current = Option.getOrElse(doc, () => ({
+              isExpanded: true,
+              activeViewId: null,
+            }));
+            return Store.setDocument(
+              "block",
+              { ...current, isExpanded },
+              blockId,
+            );
+          }),
           Effect.catchAll(() => Effect.void),
         ),
       isExpanded: (blockId: Id.Block) =>
@@ -125,6 +145,23 @@ export const BlockLive = Layer.effect(
 
       // Expand/collapse
       expandOneLevel: withContext(expandOneLevel)(context),
+
+      // View
+      setActiveView: (blockId: Id.Block, viewId: Id.Node | null) =>
+        Store.getDocument("block", blockId).pipe(
+          Effect.flatMap((doc) => {
+            const current = Option.getOrElse(doc, () => ({
+              isExpanded: true,
+              activeViewId: null,
+            }));
+            return Store.setDocument(
+              "block",
+              { ...current, activeViewId: viewId },
+              blockId,
+            );
+          }),
+          Effect.catchAll(() => Effect.void),
+        ),
     };
   }),
 );

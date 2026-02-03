@@ -4,6 +4,7 @@ import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
 import { AppAction, createDispatch } from "@/services/ui/Action";
 import { BlockT, type BlockView } from "@/services/ui/Block";
+import type { ViewInfo } from "@/services/ui/View";
 import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
@@ -12,6 +13,8 @@ import { Transition } from "solid-transition-group";
 import Editor from "./Editor";
 import { FormattedText } from "./FormattedText";
 import TypeBadge from "./TypeBadge";
+import ViewRenderer from "./ViewRenderer";
+import ViewTabs from "./ViewTabs";
 
 interface BlockProps {
   blockId: Id.Block;
@@ -51,11 +54,13 @@ export default function Block({ blockId }: BlockProps) {
     project: (v) => v,
     initial: {
       nodeData: { id: "" as Id.Node, createdAt: 0, modifiedAt: 0 },
-      childBlockIds: [],
       isActive: false,
       isSelected: false,
-      isExpanded: true,
+      isExpanded: false,
       selection: null,
+      activeViewId: null,
+      activeViewType: "page" as const,
+      availableViews: [] as ViewInfo[],
       activeTypes: [],
       userTypes: [],
       textContent: "",
@@ -79,8 +84,6 @@ export default function Block({ blockId }: BlockProps) {
     const dispose = start(runtime);
     onCleanup(() => dispose());
   });
-
-  const hasChildren = () => store.childBlockIds.length > 0;
 
   // TODO: These handlers should be passed as props from a container/ViewModel
   const handleToggleExpand = (_e: MouseEvent) => {};
@@ -108,21 +111,20 @@ export default function Block({ blockId }: BlockProps) {
 
   return (
     <div data-element-id={blockId} data-element-type="block" class="relative">
-      <Show when={hasChildren()}>
-        <button
-          type="button"
-          class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
-          onClick={handleToggleExpand}
-          tabIndex={-1}
-        >
-          <span
-            class="block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[6px] border-l-gray-400 hover:border-l-gray-600"
-            classList={{
-              "rotate-90": store.isExpanded,
-            }}
-          />
-        </button>
-      </Show>
+      {/* Expand toggle: non-functional placeholder, expand/collapse via keyboard */}
+      <button
+        type="button"
+        class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
+        onClick={handleToggleExpand}
+        tabIndex={-1}
+      >
+        <span
+          class="block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[6px] border-l-gray-400 hover:border-l-gray-600"
+          classList={{
+            "rotate-90": store.isExpanded,
+          }}
+        />
+      </button>
       <div
         onMouseDown={handleMouseDown}
         data-block-content
@@ -191,12 +193,23 @@ export default function Block({ blockId }: BlockProps) {
             "bg-selection-children-bg rounded-b": store.isSelected,
           }}
         >
-          <Show when={store.childBlockIds.length > 0}>
-            <div class="w-max h-0"> </div>
-          </Show>
-          <For each={store.childBlockIds}>
-            {(childId) => <Block blockId={childId} />}
-          </For>
+          <ViewTabs
+            availableViews={store.availableViews}
+            activeViewId={store.activeViewId}
+            onTabClick={(viewId) => {
+              runtime.runPromise(
+                Effect.gen(function* () {
+                  const Block = yield* BlockT;
+                  yield* Block.setActiveView(blockId, viewId);
+                }),
+              );
+            }}
+          />
+          <ViewRenderer
+            viewType={store.activeViewType}
+            bufferId={blockContext.bufferId}
+            nodeId={nodeId}
+          />
         </div>
       </Show>
     </div>

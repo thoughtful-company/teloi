@@ -6,8 +6,13 @@ import { Effect } from "effect";
 /**
  * Create a new tuple instance with the given type and members.
  * Members are provided in position order.
+ * Optional fractional indices define ordering per position.
  */
-export const create = (tupleTypeId: Id.Node, members: readonly Id.Node[]) =>
+export const create = (
+  tupleTypeId: Id.Node,
+  members: readonly Id.Node[],
+  memberFractionalIndices?: readonly string[],
+) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -20,6 +25,9 @@ export const create = (tupleTypeId: Id.Node, members: readonly Id.Node[]) =>
           tupleId,
           tupleTypeId,
           members: [...members],
+          memberFractionalIndices: memberFractionalIndices
+            ? [...memberFractionalIndices]
+            : [],
         },
       }),
     );

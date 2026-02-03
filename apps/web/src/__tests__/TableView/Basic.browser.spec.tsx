@@ -1,6 +1,7 @@
 import "@/index.css";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import BufferView from "@/ui/BufferView";
@@ -10,19 +11,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
 import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 import { events } from "@/livestore/schema";
-
-/**
- * System IDs for TableView feature.
- * These will be defined in schema/system.ts once the feature is implemented.
- *
- * TABLE_VIEW type would be used to type the view node itself:
- *   const TABLE_VIEW = "sys:type:table-view" as Id.Node;
- *
- * For now we only need the HAS_VIEW tuple type to link nodes to views.
- */
-const SystemTupleTypes = {
-  HAS_VIEW: "sys:tuple-type:has-view" as Id.Node,
-} as const;
 
 describe("TableView", () => {
   let runtime: BrowserRuntime;
@@ -455,9 +443,9 @@ const createTableViewForNode = (nodeId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
 
-    // Create the TableView node
     const tableViewNodeId = Id.Node.make(nanoid());
 
     yield* Store.commit(
@@ -467,12 +455,9 @@ const createTableViewForNode = (nodeId: Id.Node) =>
       }),
     );
 
-    // Set text content for the view (optional, for debugging)
     yield* Automerge.setText(tableViewNodeId, "Table View");
-
-    // Create HAS_VIEW tuple: (nodeId, tableViewNodeId)
-    // This links the node to its view
-    yield* Tuple.create(SystemTupleTypes.HAS_VIEW, [nodeId, tableViewNodeId]);
+    yield* Type.addType(tableViewNodeId, System.TABLE_VIEW);
+    yield* Tuple.create(System.HAS_VIEW, [nodeId, tableViewNodeId]);
 
     return tableViewNodeId;
   }).pipe(Effect.withSpan("createTableViewForNode"));
@@ -509,9 +494,9 @@ const createNamedTableViewForNode = (nodeId: Id.Node, viewName: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
 
-    // Create the TableView node
     const tableViewNodeId = Id.Node.make(nanoid());
 
     yield* Store.commit(
@@ -521,11 +506,9 @@ const createNamedTableViewForNode = (nodeId: Id.Node, viewName: string) =>
       }),
     );
 
-    // Set custom text content for the view name
     yield* Automerge.setText(tableViewNodeId, viewName);
-
-    // Create HAS_VIEW tuple: (nodeId, tableViewNodeId)
-    yield* Tuple.create(SystemTupleTypes.HAS_VIEW, [nodeId, tableViewNodeId]);
+    yield* Type.addType(tableViewNodeId, System.TABLE_VIEW);
+    yield* Tuple.create(System.HAS_VIEW, [nodeId, tableViewNodeId]);
 
     return tableViewNodeId;
   }).pipe(Effect.withSpan("createNamedTableViewForNode"));

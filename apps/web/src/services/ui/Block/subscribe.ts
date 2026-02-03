@@ -9,6 +9,12 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { PickerState, PickerT } from "@/services/ui/Picker";
 import { isSystemType } from "@/services/ui/TypePicker";
+import {
+  resolveActiveViewType,
+  ViewT,
+  type ViewInfo,
+  type ViewType,
+} from "@/services/ui/View";
 import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
@@ -23,22 +29,19 @@ export interface BlockSelection {
 }
 
 export interface BlockView {
-  // Base block properties
   nodeData: TeloiNode;
-  childBlockIds: readonly Id.Block[];
   isActive: boolean;
   isSelected: boolean;
   isExpanded: boolean;
   selection: BlockSelection | null;
 
-  // Type information
+  activeViewId: Id.Node | null;
+  activeViewType: ViewType;
+  availableViews: readonly ViewInfo[];
+
   activeTypes: readonly Id.Node[];
-  userTypes: readonly Id.Node[]; // activeTypes without system types (for rendering badges)
-
-  // Text content
+  userTypes: readonly Id.Node[];
   textContent: string;
-
-  // Picker state (filtered by blockId)
   picker: PickerState | null;
 }
 
@@ -51,6 +54,7 @@ export const subscribe = (blockId: Id.Block) =>
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
     const Automerge = yield* AutomergeT;
+    const View = yield* ViewT;
 
     // Extract bufferId and nodeId based on block type
     let bufferId: Id.Buffer;
@@ -68,8 +72,13 @@ export const subscribe = (blockId: Id.Block) =>
         return yield* Effect.fail(new VirtualBlockError({ blockId }));
       }
 
-      // Look up the tuple to get the display node
-      const tuple = yield* Tuple.get(ctx.tupleId);
+      const maybeTuple = yield* Tuple.get(ctx.tupleId);
+      if (Option.isNone(maybeTuple)) {
+        return yield* Effect.fail(
+          new BlockGoneError({ blockId, nodeId: Id.Node.make(ctx.tupleId) }),
+        );
+      }
+      const tuple = maybeTuple.value;
 
       // Get display position from property config
       const configTuples = yield* Tuple.findByPosition(
@@ -89,12 +98,12 @@ export const subscribe = (blockId: Id.Block) =>
 
     yield* Node.attestExistence(nodeId);
 
-    // Base block streams
     const block$ = yield* makeBlockStreamEither(blockId);
-    const childrenBlockIds$ = yield* makeChildrenIdsStream(bufferId, nodeId);
     const node$ = yield* makeNodeStreamEither(nodeId);
     const selection$ = yield* makeSelectionStream(bufferId, nodeId, blockId);
     const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
+
+    const viewInfo$ = yield* View.subscribeViewInfo(nodeId);
 
     const unsettledActiveElement = yield* Window.subscribeActiveElement();
     // Settle the stream: delay by 2 frames so selection state propagates first
@@ -115,10 +124,8 @@ export const subscribe = (blockId: Id.Block) =>
       ),
     );
 
-    // Type stream
     const typesStream = yield* Type.subscribeTypes(nodeId);
 
-    // Picker stream (filtered by blockId)
     // Prepend current state since ref.changes might not emit initial value immediately
     const initialPickerState = yield* Picker.getState();
     const pickerStream = yield* Picker.subscribe();
@@ -129,17 +136,15 @@ export const subscribe = (blockId: Id.Block) =>
       Stream.map((state) => (state?.elementId === blockId ? state : null)),
     );
 
-    // Text content stream
     const textStream = yield* Automerge.subscribeText(nodeId);
     const textContentStream = textStream.pipe(
       Stream.map((textData) => textData.content),
     );
 
-    // Combine all streams
     const view$ = Stream.zipLatestAll(
       block$,
-      childrenBlockIds$,
       node$,
+      viewInfo$,
       isActiveStream,
       selection$,
       isSelected$,
@@ -150,8 +155,8 @@ export const subscribe = (blockId: Id.Block) =>
       Stream.map(
         ([
           blockEither,
-          blockChildrenIds,
           nodeEither,
+          availableViews,
           isActive,
           selection,
           isSelected,
@@ -167,20 +172,24 @@ export const subscribe = (blockId: Id.Block) =>
           const block = Either.getOrThrow(blockEither);
           const nodeData = Either.getOrThrow(nodeEither);
 
+          const activeViewId = block.activeViewId;
+          const activeViewType = resolveActiveViewType(
+            activeViewId,
+            availableViews,
+          );
+
           return Either.right({
-            // Base block properties
             nodeData,
-            childBlockIds: blockChildrenIds,
             isActive,
             isSelected,
             isExpanded: block.isExpanded,
             selection,
-            // Type information
+            activeViewId,
+            activeViewType,
+            availableViews,
             activeTypes,
             userTypes: activeTypes.filter((t) => !isSystemType(t)),
-            // Text content
             textContent,
-            // Picker state
             picker,
           } satisfies BlockView);
         },
@@ -210,7 +219,7 @@ export const subscribe = (blockId: Id.Block) =>
 //   Internal Functions
 // ===============================
 
-type BlockDoc = { isExpanded: boolean };
+type BlockDoc = { isExpanded: boolean; activeViewId: Id.Node | null };
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
   Effect.gen(function* () {
@@ -234,7 +243,7 @@ const makeBlockStreamEither = (blockId: Id.Block) =>
       // Block docs are created lazily, so the first emission might be null
       Stream.map(
         (b): Either.Either<BlockDoc, never> =>
-          Either.right(b ?? { isExpanded: true }),
+          Either.right(b ?? { isExpanded: false, activeViewId: null }),
       ),
     );
   });
@@ -259,18 +268,6 @@ const makeNodeStreamEither = (nodeId: Id.Node) =>
               }),
             ),
         }),
-      ),
-    );
-  });
-
-const makeChildrenIdsStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
-  Effect.gen(function* () {
-    const Node = yield* NodeT;
-    const stream = yield* Node.subscribeChildren(nodeId);
-
-    return stream.pipe(
-      Stream.map((nodeIds) =>
-        nodeIds.map((id) => Id.makeBufferBlockId(bufferId, Id.Node.make(id))),
       ),
     );
   });
