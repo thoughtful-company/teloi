@@ -92,10 +92,11 @@ const BrowserLayer = pipe(
   Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
   Layer.provideMerge(NavigationGroup),
   Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
-  // BlockLive needs TypeT, PickerT from layers below
+  // BlockLive needs ViewT, TypeT, PickerT from layers below
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
+  // BufferLive needs ViewT from below
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(ViewPropertyChatLive),
   Layer.provideMerge(WindowLive),

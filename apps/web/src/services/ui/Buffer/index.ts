@@ -6,6 +6,7 @@ import { NodeNotFoundError } from "@/services/domain/errors";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
+import { ViewT } from "../View";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { forceDelete, type MergeResult } from "./forceDelete";
@@ -120,6 +121,10 @@ export class BufferT extends Context.Tag("BufferT")<
       bufferId: Id.Buffer,
       query: string,
     ) => Effect.Effect<void, BufferNotFoundError>;
+    setActiveView: (
+      bufferId: Id.Buffer,
+      viewId: Id.Node | null,
+    ) => Effect.Effect<void, BufferNotFoundError>;
   }
 >() {}
 
@@ -130,11 +135,13 @@ export const BufferLive = Layer.effect(
     const Node = yield* NodeT;
     const Automerge = yield* AutomergeT;
     const Window = yield* WindowT;
+    const View = yield* ViewT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(AutomergeT, Automerge),
       Context.add(WindowT, Window),
+      Context.add(ViewT, View),
     );
 
     return {
@@ -246,6 +253,19 @@ export const BufferLive = Layer.effect(
               bufferId,
             ).pipe(Effect.asVoid, Effect.orDie);
           }),
+          Effect.provideService(StoreT, Store),
+        ),
+      setActiveView: (bufferId: Id.Buffer, viewId: Id.Node | null) =>
+        get(bufferId).pipe(
+          Effect.flatMap((buffer) =>
+            Store.setDocument(
+              "buffer",
+              { ...buffer, activeViewId: viewId },
+              bufferId,
+            ),
+          ),
+          Effect.asVoid,
+          Effect.orDie,
           Effect.provideService(StoreT, Store),
         ),
     };

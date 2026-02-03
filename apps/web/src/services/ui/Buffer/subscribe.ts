@@ -2,14 +2,21 @@ import { tables, TeloiNode } from "@/livestore/schema";
 import { Entity, Id, Model } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
+import {
+  resolveActiveViewType,
+  ViewT,
+  type ViewInfo,
+  type ViewType,
+} from "@/services/ui/View";
 import { queryDb } from "@livestore/livestore";
 import { Effect, Option, Stream } from "effect";
 import { NodeT } from "../../domain/Node";
 
 export interface BufferView {
   nodeData: TeloiNode;
-  childBlockIds: readonly string[];
   activeViewId: Id.Node | null;
+  activeViewType: ViewType;
+  availableViews: readonly ViewInfo[];
   activeElement: Option.Option<Entity.Element>;
   popup: Model.BufferPopup | null;
 }
@@ -19,6 +26,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
+    const View = yield* ViewT;
 
     // Subscribe to buffer document to watch for assignedNodeId and activeViewId changes
     const bufferQuery = queryDb(
@@ -38,7 +46,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
         Option.Option<Entity.Element>
       >;
 
-    // Separate popup stream — changes to popup should NOT re-subscribe to node/children
+    // Separate popup stream — changes to popup should NOT re-subscribe to node/views
     const popupStream = bufferStream.pipe(
       Stream.map(
         (buffer) => (buffer?.popup as Model.BufferPopup | null) ?? null,
@@ -61,7 +69,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
       ),
     );
 
-    // For each buffer state, create streams for the node and its children
+    // For each buffer state, create streams for the node and its views
     // switch: true ensures we cancel the old stream when assignedNodeId changes
     const bufferContentStream = Stream.flatMap(
       bufferDataStream,
@@ -69,15 +77,15 @@ export const subscribe = (bufferId: Id.Buffer) =>
         Stream.unwrap(
           Effect.gen(function* () {
             const nodeStream = yield* Node.subscribe(nodeId);
-            const childrenStream = yield* Node.subscribeChildren(nodeId);
+            const viewInfoStream = yield* View.subscribeViewInfo(nodeId);
 
             return Stream.zipLatestWith(
               nodeStream,
-              childrenStream,
-              (nodeData, childBlockIds) => ({
+              viewInfoStream,
+              (nodeData, availableViews) => ({
                 nodeData,
-                childBlockIds,
                 activeViewId,
+                availableViews,
               }),
             );
           }),
@@ -85,9 +93,38 @@ export const subscribe = (bufferId: Id.Buffer) =>
       { switch: true },
     );
 
+    // Auto-detect: when activeViewId is null and there's a typed view, activate it
+    const autoDetectedStream = bufferContentStream.pipe(
+      Stream.tap(({ activeViewId, availableViews }) => {
+        if (activeViewId !== null) return Effect.void;
+        const typedView = availableViews.find(
+          (v) => v.type === "chat" || v.type === "table",
+        );
+        if (!typedView) return Effect.void;
+        const Buffer = Effect.gen(function* () {
+          const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(bufferDoc)) return;
+          yield* Store.setDocument(
+            "buffer",
+            { ...bufferDoc.value, activeViewId: typedView.id },
+            bufferId,
+          ).pipe(Effect.orDie);
+        });
+        return Buffer;
+      }),
+      Stream.map(({ nodeData, activeViewId, availableViews }) => ({
+        nodeData,
+        activeViewId,
+        activeViewType: resolveActiveViewType(activeViewId, availableViews),
+        availableViews,
+      })),
+    );
+
     // Combine buffer content with active element and popup
     const contentWithElement = Stream.zipLatestWith(
-      bufferContentStream,
+      autoDetectedStream,
       activeElementStream,
       (content, activeElement) => ({
         ...content,

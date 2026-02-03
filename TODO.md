@@ -18,6 +18,11 @@
 - [ ] Find proper shortcut to mark todo blocks as done
   Need to research how other block editors handle this (Notion, Logseq, Roam, Obsidian, etc.)
 
+**Tests needed**:
+- [ ] Buffer rendering browser tests (new test file, not in legacy `__tests__/`)
+  - Block-level view tab switching: when a block has 2+ views, ViewTabs appear and clicking switches `activeViewType`
+  - Block-level inline view rendering: a block with a HAS_VIEW → table view renders `<table>` instead of PageView
+
 **Active work**:
 - [ ] Block-level undo (structural changes, not just text)
 - [ ] Implement toggles for nodes that have children >

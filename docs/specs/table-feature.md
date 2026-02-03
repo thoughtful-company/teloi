@@ -18,7 +18,7 @@ Tables are an alternative **view** for displaying a node's children. Instead of 
 ### View Architecture
 
 - **View node**: Defines table configuration, linked to parent via `HAS_VIEW` tuple
-- **View type**: Node type (e.g., `sys:type:table-view`)
+- **View type**: Node type (e.g., `system:table-view`)
 - **View config**: Stored on view node (columns, order, visibility)
   For example ViewShowsColumnsFor[Projects #table-view][ProjectHasTodo][ColumnSettingsNode]
 - **Active view**: Stored per-buffer (`activeViewId`)

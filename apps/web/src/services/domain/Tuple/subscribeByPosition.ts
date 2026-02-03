@@ -2,22 +2,26 @@ import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { queryDb } from "@livestore/livestore";
-import { Effect, Stream } from "effect";
+import { Effect, Layer, Option, Stream } from "effect";
+import { get } from "./get";
 import { Tuple } from "./types";
 
 /**
  * Subscribe to tuples of a given type where a specific position has a specific value.
- * Returns a stream that emits whenever relevant tuples change.
+ *
+ * When `sortByPosition` is specified, results are sorted by that position's
+ * fractional index (ascending lexicographic).
  */
 export const subscribeByPosition = (
   tupleTypeId: Id.Node,
   position: number,
   nodeId: Id.Node,
+  sortByPosition?: number,
 ) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
+    const storeLayer = Layer.succeed(StoreT, Store);
 
-    // Subscribe to tuple_members matching position + nodeId
     const membersQuery = queryDb(
       tables.tupleMembers.select().where({ position, nodeId }),
       {
@@ -28,35 +32,29 @@ export const subscribeByPosition = (
 
     const membersStream = yield* Store.subscribeStream(membersQuery);
 
-    // For each emission, look up full tuple data
     return membersStream.pipe(
       Stream.mapEffect((members) =>
         Effect.gen(function* () {
           const result: Tuple[] = [];
 
           for (const member of members) {
-            const tuple = yield* Store.query(
-              tables.tuples
-                .select()
-                .where({ id: member.tupleId, tupleTypeId })
-                .first({ fallback: () => null }),
+            const maybeTuple = yield* get(member.tupleId as Id.Tuple).pipe(
+              Effect.provide(storeLayer),
             );
-
-            if (tuple) {
-              const allMembers = yield* Store.query(
-                tables.tupleMembers
-                  .select()
-                  .where({ tupleId: tuple.id })
-                  .orderBy("position", "asc"),
-              );
-
-              result.push({
-                id: tuple.id as Id.Tuple,
-                tupleTypeId: tuple.tupleTypeId as Id.Node,
-                members: allMembers.map((m) => m.nodeId as Id.Node),
-                createdAt: tuple.createdAt,
-              });
+            if (
+              Option.isSome(maybeTuple) &&
+              maybeTuple.value.tupleTypeId === tupleTypeId
+            ) {
+              result.push(maybeTuple.value);
             }
+          }
+
+          if (sortByPosition != null) {
+            result.sort((a, b) => {
+              const aIdx = a.memberFractionalIndices[sortByPosition] ?? "";
+              const bIdx = b.memberFractionalIndices[sortByPosition] ?? "";
+              return aIdx < bIdx ? -1 : aIdx > bIdx ? 1 : 0;
+            });
           }
 
           return result as readonly Tuple[];

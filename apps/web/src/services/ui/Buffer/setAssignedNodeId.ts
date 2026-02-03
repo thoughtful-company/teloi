@@ -25,6 +25,7 @@ export const setAssignedNodeId = (
       {
         ...currentBuffer,
         assignedNodeId: nodeId,
+        activeViewId: null,
       },
       bufferId,
     ).pipe(Effect.orDie);

@@ -1,4 +1,5 @@
 import { Id } from "@/schema";
+import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { ViewNavigationT } from "@/services/ui/ViewNavigation";
 import * as Given from "@/test-utils/bdd/given";
@@ -20,7 +21,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 const SET_BLOCK_COLLAPSED = (blockId: Id.Block) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    yield* Store.setDocument("block", { isExpanded: false }, blockId);
+    yield* Store.setDocument(
+      "block",
+      { isExpanded: false, activeViewId: null },
+      blockId,
+    );
   });
 
 // ============================================================================
@@ -390,6 +395,77 @@ describe("ViewNavigation - page view", () => {
 
         expect(Option.getOrThrow(below)).toBe(nodeB);
         expect(Option.getOrThrow(right)).toBe(nodeB);
+      }).pipe(runtime.runPromise);
+    });
+  });
+
+  describe("createBlock", () => {
+    it("creates a sibling after the given node", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds, rootNodeId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+            { text: "A" },
+            { text: "B" },
+            { text: "C" },
+          ]);
+        const [_nodeA, nodeB, nodeC] = childNodeIds;
+
+        const Nav = yield* ViewNavigationT;
+        const newNodeId = yield* Nav.createBlock(nodeB, bufferId, "after");
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+
+        // New node should be between B and C
+        expect(children).toHaveLength(4);
+        expect(children[2]).toBe(newNodeId);
+        expect(children[3]).toBe(nodeC);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("creates a sibling before the given node", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds, rootNodeId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+            { text: "A" },
+            { text: "B" },
+            { text: "C" },
+          ]);
+        const [nodeA, nodeB] = childNodeIds;
+
+        const Nav = yield* ViewNavigationT;
+        const newNodeId = yield* Nav.createBlock(nodeB, bufferId, "before");
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+
+        // New node should be between A and B
+        expect(children).toHaveLength(4);
+        expect(children[0]).toBe(nodeA);
+        expect(children[1]).toBe(newNodeId);
+        expect(children[2]).toBe(nodeB);
+      }).pipe(runtime.runPromise);
+    });
+
+    it("creates first child when nodeId is the buffer root (title context)", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds, rootNodeId } =
+          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+            { text: "A" },
+            { text: "B" },
+          ]);
+        const [nodeA] = childNodeIds;
+
+        const Nav = yield* ViewNavigationT;
+        const newNodeId = yield* Nav.createBlock(rootNodeId, bufferId, "after");
+
+        const Node = yield* NodeT;
+        const children = yield* Node.getNodeChildren(rootNodeId);
+
+        // New node should be the first child, before A
+        expect(children).toHaveLength(3);
+        expect(children[0]).toBe(newNodeId);
+        expect(children[1]).toBe(nodeA);
       }).pipe(runtime.runPromise);
     });
   });

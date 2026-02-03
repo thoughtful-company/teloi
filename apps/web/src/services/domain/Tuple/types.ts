@@ -21,6 +21,7 @@ export interface Tuple {
   id: Id.Tuple;
   tupleTypeId: Id.Node;
   members: readonly Id.Node[];
+  memberFractionalIndices: readonly string[];
   createdAt: number;
 }
 

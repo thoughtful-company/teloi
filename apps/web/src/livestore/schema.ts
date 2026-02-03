@@ -117,6 +117,7 @@ const tupleMembers = State.SQLite.table({
     tupleId: State.SQLite.text(),
     position: State.SQLite.integer(),
     nodeId: State.SQLite.text(),
+    fractionalIndex: State.SQLite.text({ default: "" }),
   },
   indexes: [
     {
@@ -454,6 +455,7 @@ const materializers = State.SQLite.materializers(events, {
         tupleId: data.tupleId,
         position,
         nodeId,
+        fractionalIndex: data.memberFractionalIndices?.[position] ?? "",
       }),
     );
 
