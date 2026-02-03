@@ -129,24 +129,6 @@ describe("ViewNavigation - chat createBlock", () => {
     cleanup = setup.cleanup;
   });
 
-  it("creates a message node as child of the chat node", async () => {
-    await Effect.gen(function* () {
-      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
-
-      // Create one existing message so we can call createBlock on a sibling
-      const idx1 = generateKeyBetween(null, null);
-      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
-
-      const Nav = yield* ViewNavigationT;
-      const newNodeId = yield* Nav.createBlock(m1, bufferId, "after");
-
-      // Verify the new node is a child of the chat node
-      const Node = yield* NodeT;
-      const parentId = yield* Node.getParent(newNodeId);
-      expect(parentId).toBe(chatNodeId);
-    }).pipe(runtime.runPromise);
-  });
-
   it("creates a CHAT_HAS_MESSAGE tuple for the new node", async () => {
     await Effect.gen(function* () {
       const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();

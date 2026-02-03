@@ -119,6 +119,11 @@ const computeFractionalIndex = (
 ) =>
   Effect.gen(function* () {
     if (isTitle) {
+      if (position !== "after") {
+        yield* Effect.logDebug(
+          "[Chat.computeFractionalIndex] position ignored in title context",
+        ).pipe(Effect.annotateLogs({ position }));
+      }
       const firstIdx =
         existingTuples.length > 0
           ? existingTuples[0]!.memberFractionalIndices[1]!
