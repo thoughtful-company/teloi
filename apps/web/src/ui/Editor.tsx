@@ -309,6 +309,16 @@ export default function Editor(props: EditorProps) {
     const doc = props.handle.doc();
     const initialText = doc?.texts?.[props.path[1]] ?? "";
 
+    // Ensure the Automerge text exists before automergeSyncPlugin binds to it.
+    // Without this, the plugin crashes on splice if the path doesn't exist yet
+    // (e.g., new node created by splitAtCursor with cursor at position 0).
+    if (!doc?.texts?.[props.path[1]]) {
+      props.handle.change((d) => {
+        if (!d.texts) d.texts = {};
+        d.texts[props.path[1]] = "";
+      });
+    }
+
     const extensions: Extension[] = [
       EditorView.lineWrapping,
       drawSelection(),

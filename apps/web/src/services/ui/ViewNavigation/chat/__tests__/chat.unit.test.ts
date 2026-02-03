@@ -224,6 +224,66 @@ describe("ViewNavigation - chat createBlock", () => {
     }).pipe(runtime.runPromise);
   });
 
+  it("block context inherits sibling's role type", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      // Create a message with msg:user role
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+      yield* MESSAGE_HAS_ROLE(m1, System.MSG_USER);
+
+      // createBlock on a sibling (block context) - should inherit sibling's role
+      const Nav = yield* ViewNavigationT;
+      const newNodeId = yield* Nav.createBlock(m1, bufferId, "after");
+
+      const Type = yield* TypeT;
+      const types = yield* Type.getTypes(newNodeId);
+      expect(types).toContain(System.MSG_USER);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("block context inherits msg:aengel role from sibling", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      // Create a message with msg:aengel role
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+      yield* MESSAGE_HAS_ROLE(m1, System.MSG_AENGEL);
+
+      const Nav = yield* ViewNavigationT;
+      const newNodeId = yield* Nav.createBlock(m1, bufferId, "after");
+
+      const Type = yield* TypeT;
+      const types = yield* Type.getTypes(newNodeId);
+      expect(types).toContain(System.MSG_AENGEL);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("block context with untyped sibling assigns no role type", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      // Create a message with NO role type
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Nav = yield* ViewNavigationT;
+      const newNodeId = yield* Nav.createBlock(m1, bufferId, "after");
+
+      const Type = yield* TypeT;
+      const types = yield* Type.getTypes(newNodeId);
+      const hasRole = types.some(
+        (t) =>
+          t === System.MSG_USER ||
+          t === System.MSG_SYSTEM ||
+          t === System.MSG_AENGEL,
+      );
+      expect(hasRole).toBe(false);
+    }).pipe(runtime.runPromise);
+  });
+
   it("title context with existing messages assigns first message's role type", async () => {
     await Effect.gen(function* () {
       const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
