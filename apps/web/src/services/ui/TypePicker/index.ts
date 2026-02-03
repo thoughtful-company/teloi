@@ -5,6 +5,7 @@ import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
+import { getOrCreateView } from "@/services/ui/View/getOrCreateView";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer } from "effect";
 
@@ -24,6 +25,7 @@ const SYSTEM_TYPE_IDS = new Set<Id.Node>([
   System.FALSE,
   System.TUPLE_TYPE,
   System.IS_CHECKED,
+  System.MESSAGE_ROLE,
 ]);
 
 /** Check if a type ID is a system type */
@@ -129,6 +131,16 @@ const applyType = (nodeId: Id.Node, typeId: Id.Node) =>
       Effect.annotateLogs({ nodeId, typeId }),
     );
     yield* Type.addType(nodeId, typeId);
+
+    // Auto-create chat view when #chat type is applied
+    if (typeId === System.CHAT) {
+      const viewId = yield* getOrCreateView(nodeId);
+      yield* Type.addType(viewId, System.CHAT_VIEW);
+      yield* Effect.logDebug(
+        "[TypePicker.applyType] Auto-created chat view",
+      ).pipe(Effect.annotateLogs({ nodeId, viewId }));
+    }
+
     yield* Effect.logDebug(
       "[TypePicker.applyType] Type applied successfully",
     ).pipe(Effect.annotateLogs({ nodeId, typeId }));

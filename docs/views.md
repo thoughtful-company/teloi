@@ -16,6 +16,8 @@ View tabs appear automatically when a node has 2+ views. Clicking a tab updates 
 
 **Table view** (`sys:type:table-view`): Renders children as rows with columns derived from tuple relationships. See `docs/specs/table-feature.md`.
 
+**Chat view** (`system:chat-view`): Renders children as a conversation with role labels, visual grouping, and ordering validation. See `docs/specs/chat-feature.md`.
+
 ## Views and Properties
 
 Views link to properties via `Has_Property(view, property)` tuples. This determines which property sections appear when that view is active. Different views on the same page can show different sets of properties.

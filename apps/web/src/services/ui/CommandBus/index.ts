@@ -7,12 +7,15 @@
  */
 
 import { bufferCommands, type BufferCommand } from "@/commands/buffer";
+import { chatCommands, type ChatCommand } from "@/commands/chat";
 import { editorCommands, type EditorCommand } from "@/commands/editor";
 import { NodeT } from "@/services/domain/Node";
+import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
+import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
@@ -22,7 +25,7 @@ import { Context, Effect, Layer } from "effect";
 // Command Type
 // ============================================================================
 
-export type Command = EditorCommand | BufferCommand;
+export type Command = EditorCommand | BufferCommand | ChatCommand;
 
 // ============================================================================
 // Handler Registry
@@ -35,6 +38,7 @@ type Handler<C extends Command> = (
 const handlers: Record<string, Handler<Command>> = Object.fromEntries([
   ...editorCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
   ...bufferCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
+  ...chatCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
 ]);
 
 // ============================================================================
@@ -64,6 +68,8 @@ export const CommandBusLive = Layer.effect(
     const Store = yield* StoreT;
     const Block = yield* BlockT;
     const Navigation = yield* NavigationT;
+    const Type = yield* TypeT;
+    const Chat = yield* ChatT;
 
     // Build context to provide to command handlers
     const commandContext = Context.empty().pipe(
@@ -75,6 +81,8 @@ export const CommandBusLive = Layer.effect(
       Context.add(StoreT, Store),
       Context.add(BlockT, Block),
       Context.add(NavigationT, Navigation),
+      Context.add(TypeT, Type),
+      Context.add(ChatT, Chat),
     );
 
     return {

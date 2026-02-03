@@ -1,5 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Entity, Id, Model } from "@/schema";
+import { Entity, Id, Model, System } from "@/schema";
+import { TypeT } from "@/services/domain/Type";
 import { BufferT } from "@/services/ui/Buffer";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
@@ -16,12 +17,15 @@ import {
   Show,
 } from "solid-js";
 import Block from "./Block";
+import ChatView from "./ChatView";
 import PropertySection from "./PropertySection";
 import TableView from "./TableView";
 import Title from "./Title";
 import { BlockTypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
 import ViewTabs from "./ViewTabs";
+
+type ActiveViewType = "table" | "chat" | null;
 
 /** Context to expose activeElement to child components for scroll-on-mount behavior */
 export const ActiveElementContext = createContext<() => Entity.Element | null>(
@@ -129,6 +133,27 @@ export default function BufferView({ bufferId }: BufferViewProps) {
   });
 
   const getActiveElement = () => store.activeElement;
+  const [viewType, setViewType] = createSignal<ActiveViewType>(null);
+
+  // Resolve view type when activeViewId changes
+  createEffect(() => {
+    const viewId = store.activeViewId;
+    if (!viewId) {
+      setViewType(null);
+      return;
+    }
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const Type = yield* TypeT;
+        const types = yield* Type.getTypes(viewId);
+        if (types.includes(System.CHAT_VIEW)) {
+          setViewType("chat");
+        } else {
+          setViewType("table");
+        }
+      }),
+    );
+  });
 
   let containerRef!: HTMLDivElement;
 
@@ -188,7 +213,7 @@ export default function BufferView({ bufferId }: BufferViewProps) {
               />
               <PropertyList pageId={nodeId} bufferId={bufferId} />
               <Show
-                when={store.activeViewId}
+                when={viewType()}
                 fallback={
                   <div
                     data-testid="editor-body"
@@ -206,16 +231,29 @@ export default function BufferView({ bufferId }: BufferViewProps) {
                   </div>
                 }
               >
-                <div
-                  data-testid="editor-body"
-                  class="flex-1 flex flex-col pt-4"
-                >
-                  <TableView
-                    bufferId={bufferId}
-                    nodeId={nodeId}
-                    childNodeIds={getChildNodeIds()}
-                  />
-                </div>
+                {(vt) => (
+                  <div
+                    data-testid="editor-body"
+                    class="flex-1 flex flex-col pt-4"
+                  >
+                    <Show
+                      when={vt() === "chat"}
+                      fallback={
+                        <TableView
+                          bufferId={bufferId}
+                          nodeId={nodeId}
+                          childNodeIds={getChildNodeIds()}
+                        />
+                      }
+                    >
+                      <ChatView
+                        bufferId={bufferId}
+                        nodeId={nodeId}
+                        childBlockIds={store.childBlockIds}
+                      />
+                    </Show>
+                  </div>
+                )}
               </Show>
             </>
           )}

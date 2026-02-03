@@ -236,6 +236,48 @@ export const System = {
    * Used in PROPERTY_CONFIG to indicate tuple position.
    */
   POSITION_1: "system:position-1" as Id.Node,
+
+  // === Chat System ===
+  // Chat view displays a node's children as a conversation.
+
+  /**
+   * Meta-type for message role nodes (like BOOLEAN for TRUE/FALSE).
+   */
+  MESSAGE_ROLE: "system:message-role" as Id.Node,
+
+  /**
+   * Message role: system prompt. Has type MESSAGE_ROLE.
+   */
+  MSG_SYSTEM: "system:msg-system" as Id.Node,
+
+  /**
+   * Message role: user message. Has type MESSAGE_ROLE.
+   */
+  MSG_USER: "system:msg-user" as Id.Node,
+
+  /**
+   * Message role: assistant (aengel) message. Has type MESSAGE_ROLE.
+   */
+  MSG_AENGEL: "system:msg-aengel" as Id.Node,
+
+  /**
+   * Type applied to nodes that render as chat. Non-removable once applied.
+   */
+  CHAT: "system:chat" as Id.Node,
+
+  /**
+   * View type for chat views (like sys:type:table-view for tables).
+   */
+  CHAT_VIEW: "system:chat-view" as Id.Node,
+
+  /**
+   * TupleType linking a chat node to its messages.
+   * Schema: CHAT_HAS_MESSAGE(chat, message)
+   * - Position 0: The chat node
+   * - Position 1: The message node
+   * Message order determined by position-1 fractional index.
+   */
+  CHAT_HAS_MESSAGE: "system:chat-has-message" as Id.Node,
 } as const;
 
 export type SystemId = (typeof System)[keyof typeof System];
