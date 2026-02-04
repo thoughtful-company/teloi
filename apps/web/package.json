@@ -16,6 +16,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@automerge/automerge": "^3.2.3",
     "@automerge/automerge-codemirror": "^0.2.0",
     "@automerge/automerge-repo": "^2.5.1",

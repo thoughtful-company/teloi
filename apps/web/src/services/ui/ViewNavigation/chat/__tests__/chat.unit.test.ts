@@ -12,7 +12,7 @@ import { WindowLive } from "@/services/ui/Window";
 import * as Given from "@/test-utils/bdd/given";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Effect, Layer, ManagedRuntime, Option } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeChatViewNavigation } from "../index";
@@ -302,6 +302,124 @@ describe("ViewNavigation - chat createBlock", () => {
       const Type = yield* TypeT;
       const types = yield* Type.getTypes(newNodeId);
       expect(types).toContain(System.MSG_SYSTEM);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("ViewNavigation - chat resolveBlockAbove", () => {
+  let runtime: TestRuntime;
+  let cleanup: (() => Promise<void>) | undefined;
+
+  beforeEach(async () => {
+    await cleanup?.();
+    const setup = await setupChatUnitTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  it("returns the previous message in tuple order", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      const idx2 = generateKeyBetween(idx1, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+      const m2 = yield* A_CHAT_MESSAGE(chatNodeId, idx2);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockAbove(m2, bufferId);
+
+      expect(result).toEqual(Option.some(m1));
+    }).pipe(runtime.runPromise);
+  });
+
+  it("returns None for the first message", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockAbove(m1, bufferId);
+
+      expect(result).toEqual(Option.none());
+    }).pipe(runtime.runPromise);
+  });
+
+  it("returns None for an unknown nodeId", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockAbove(
+        Id.Node.make("unknown-node"),
+        bufferId,
+      );
+
+      expect(result).toEqual(Option.none());
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("ViewNavigation - chat resolveBlockBelow", () => {
+  let runtime: TestRuntime;
+  let cleanup: (() => Promise<void>) | undefined;
+
+  beforeEach(async () => {
+    await cleanup?.();
+    const setup = await setupChatUnitTest();
+    runtime = setup.runtime;
+    cleanup = setup.cleanup;
+  });
+
+  it("returns the next message in tuple order", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      const idx2 = generateKeyBetween(idx1, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+      const m2 = yield* A_CHAT_MESSAGE(chatNodeId, idx2);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockBelow(m1, bufferId);
+
+      expect(result).toEqual(Option.some(m2));
+    }).pipe(runtime.runPromise);
+  });
+
+  it("returns None for the last message", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockBelow(m1, bufferId);
+
+      expect(result).toEqual(Option.none());
+    }).pipe(runtime.runPromise);
+  });
+
+  it("returns None for an unknown nodeId", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, chatNodeId } = yield* A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      yield* A_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Nav = yield* ViewNavigationT;
+      const result = yield* Nav.resolveBlockBelow(
+        Id.Node.make("unknown-node"),
+        bufferId,
+      );
+
+      expect(result).toEqual(Option.none());
     }).pipe(runtime.runPromise);
   });
 });

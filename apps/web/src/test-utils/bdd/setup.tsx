@@ -20,6 +20,7 @@ import { TypeColorLive } from "@/services/ui/TypeColor";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { PropertyLive } from "@/services/ui/Property";
+import { ChatProviderT } from "@/services/external/ChatProvider";
 import { ChatLive } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
 import { CommandBusLive } from "@/services/ui/CommandBus";
@@ -118,7 +119,14 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(ViewPropertyChatLive),
-    Layer.provideMerge(WindowLive),
+    Layer.provideMerge(
+      Layer.merge(
+        WindowLive,
+        Layer.succeed(ChatProviderT, {
+          send: () => Effect.succeed("[test response]"),
+        }),
+      ),
+    ),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(NodeLive),
