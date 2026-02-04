@@ -2,6 +2,7 @@ import { Id } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
+import { ChatProviderT } from "@/services/external/ChatProvider";
 import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
@@ -31,11 +32,13 @@ export const ChatLive = Layer.effect(
     const Tuple = yield* TupleT;
     const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
+    const ChatProvider = yield* ChatProviderT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(TupleT, Tuple),
       Context.add(TypeT, Type),
       Context.add(AutomergeT, Automerge),
+      Context.add(ChatProviderT, ChatProvider),
     );
 
     return {

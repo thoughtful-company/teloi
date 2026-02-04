@@ -42,6 +42,15 @@ export class Send extends Data.TaggedClass(tag)<{}> {
     const hasChat = yield* Type.hasType(nodeId, System.CHAT);
     if (!hasChat) return;
 
-    yield* Chat.send(nodeId);
+    // Fork as daemon — Chat.send does async HTTP work but the command
+    // pipeline runs inside runSync (for preventDefault on key events)
+    yield* Chat.send(nodeId).pipe(
+      Effect.catchAll((error) =>
+        Effect.logError("Chat.send failed").pipe(
+          Effect.annotateLogs({ error: String(error) }),
+        ),
+      ),
+      Effect.forkDaemon,
+    );
   });
 }

@@ -5,6 +5,8 @@ import { withContext } from "@/utils";
 import { Context, Effect, Option } from "effect";
 import type { ViewNavigationT } from "../index";
 import { createBlock } from "./createBlock";
+import { resolveAbove } from "./resolveAbove";
+import { resolveBelow } from "./resolveBelow";
 
 export const makeChatViewNavigation = Effect.gen(function* () {
   const Store = yield* StoreT;
@@ -18,9 +20,8 @@ export const makeChatViewNavigation = Effect.gen(function* () {
   );
 
   return {
-    // Chat view uses tuple ordering, not tree ordering — navigation stubs for now
-    resolveBlockAbove: (_nodeId, _bufferId) => Effect.succeed(Option.none()),
-    resolveBlockBelow: (_nodeId, _bufferId) => Effect.succeed(Option.none()),
+    resolveBlockAbove: withContext(resolveAbove)(context),
+    resolveBlockBelow: withContext(resolveBelow)(context),
     resolveBlockLeft: (_nodeId, _bufferId) => Effect.succeed(Option.none()),
     resolveBlockRight: (_nodeId, _bufferId) => Effect.succeed(Option.none()),
     createBlock: withContext(createBlock)(context),

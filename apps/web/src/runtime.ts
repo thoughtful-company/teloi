@@ -26,6 +26,7 @@ import { TypePickerLive } from "./services/ui/TypePicker";
 import { TypeColorLive } from "./services/ui/TypeColor";
 import { PropertyLive } from "./services/ui/Property";
 import { ChatLive } from "./services/ui/Chat";
+import { ChatProviderLive } from "./services/external/ChatProvider";
 import { ViewLive } from "./services/ui/View";
 import { CommandBusLive } from "./services/ui/CommandBus";
 import { KeyEventBusLive } from "./services/ui/KeyEventBus";
@@ -99,7 +100,7 @@ const BrowserLayer = pipe(
   // BufferLive needs ViewT from below
   Layer.provideMerge(BufferLive),
   Layer.provideMerge(ViewPropertyChatLive),
-  Layer.provideMerge(WindowLive),
+  Layer.provideMerge(Layer.merge(WindowLive, ChatProviderLive)),
   Layer.provideMerge(TupleLive),
   Layer.provideMerge(TypeLive),
   Layer.provideMerge(NodeLive),

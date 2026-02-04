@@ -6,6 +6,7 @@ import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { BufferLive, BufferT } from "@/services/ui/Buffer";
+import { ChatProviderT } from "@/services/external/ChatProvider";
 import { ChatLive, ChatT, type ChatMessageEntry } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
 import { WindowLive } from "@/services/ui/Window";
@@ -44,9 +45,14 @@ const setupTest = async () => {
     disableDevtools: true,
   });
 
+  const TestChatProviderLive = Layer.succeed(ChatProviderT, {
+    send: () => Effect.succeed("[test response]"),
+  });
+
   const TestLayer = ChatLive.pipe(
     Layer.provideMerge(BufferLive),
     Layer.provideMerge(ViewLive),
+    Layer.provideMerge(TestChatProviderLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(WindowLive),
