@@ -3,12 +3,13 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
-import { For, onCleanup, onMount } from "solid-js";
+import { For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
 
 interface PageViewProps {
   bufferId: Id.Buffer;
   nodeId: Id.Node;
+  inline?: boolean;
 }
 
 export default function PageView(props: PageViewProps) {
@@ -37,16 +38,22 @@ export default function PageView(props: PageViewProps) {
   });
 
   return (
-    <div data-testid="editor-body" class="flex-1 flex flex-col pt-4">
+    <div
+      data-testid="editor-body"
+      class="flex flex-col"
+      classList={{ "flex-1 pt-4": !props.inline }}
+    >
       <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
         <For each={store.childBlockIds}>
           {(childId) => <Block blockId={childId} />}
         </For>
       </div>
-      <div
-        data-testid="editor-click-zone"
-        class="flex-1 min-h-[25vh] cursor-text"
-      />
+      <Show when={!props.inline}>
+        <div
+          data-testid="editor-click-zone"
+          class="flex-1 min-h-[25vh] cursor-text"
+        />
+      </Show>
     </div>
   );
 }

@@ -67,6 +67,7 @@ export default function Block({ blockId }: BlockProps) {
       userTypes: [],
       textContent: "",
       picker: null,
+      childCount: 0,
     } satisfies BlockView,
   });
 
@@ -125,7 +126,10 @@ export default function Block({ blockId }: BlockProps) {
       {/* Expand/collapse toggle */}
       <button
         type="button"
-        class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
+        class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none transition-opacity"
+        classList={{
+          "opacity-0 hover:opacity-100": store.childCount === 0,
+        }}
         onClick={handleToggleExpand}
         tabIndex={-1}
       >
@@ -220,6 +224,7 @@ export default function Block({ blockId }: BlockProps) {
             viewType={store.activeViewType}
             bufferId={blockContext.bufferId}
             nodeId={nodeId}
+            inline
           />
         </div>
       </Show>

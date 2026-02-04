@@ -10,11 +10,12 @@ interface ViewRendererProps {
   viewType: ViewType;
   bufferId: Id.Buffer;
   nodeId: Id.Node;
+  inline?: boolean;
 }
 
 const viewComponents: Record<
   ViewType,
-  Component<{ bufferId: Id.Buffer; nodeId: Id.Node }>
+  Component<{ bufferId: Id.Buffer; nodeId: Id.Node; inline?: boolean }>
 > = {
   page: PageView,
   chat: ChatView,
@@ -28,6 +29,7 @@ export default function ViewRenderer(props: ViewRendererProps) {
       component={viewComponents[props.viewType]}
       bufferId={props.bufferId}
       nodeId={props.nodeId}
+      {...(props.inline ? { inline: true } : {})}
     />
   );
 }

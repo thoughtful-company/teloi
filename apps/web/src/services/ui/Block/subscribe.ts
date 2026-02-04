@@ -43,6 +43,7 @@ export interface BlockView {
   userTypes: readonly Id.Node[];
   textContent: string;
   picker: PickerState | null;
+  childCount: number;
 }
 
 export const subscribe = (blockId: Id.Block) =>
@@ -141,6 +142,12 @@ export const subscribe = (blockId: Id.Block) =>
       Stream.map((textData) => textData.content),
     );
 
+    const childrenStream = yield* Node.subscribeChildren(nodeId);
+    const childCountStream = childrenStream.pipe(
+      Stream.map((children) => children.length),
+      Stream.changesWith((a, b) => a === b),
+    );
+
     const view$ = Stream.zipLatestAll(
       block$,
       node$,
@@ -151,6 +158,7 @@ export const subscribe = (blockId: Id.Block) =>
       typesStream,
       filteredPickerStream,
       textContentStream,
+      childCountStream,
     ).pipe(
       Stream.map(
         ([
@@ -163,6 +171,7 @@ export const subscribe = (blockId: Id.Block) =>
           activeTypes,
           picker,
           textContent,
+          childCount,
         ]) => {
           // Block doc uses default if missing (created lazily)
           if (Either.isLeft(nodeEither)) {
@@ -191,6 +200,7 @@ export const subscribe = (blockId: Id.Block) =>
             userTypes: activeTypes.filter((t) => !isSystemType(t)),
             textContent,
             picker,
+            childCount,
           } satisfies BlockView);
         },
       ),
