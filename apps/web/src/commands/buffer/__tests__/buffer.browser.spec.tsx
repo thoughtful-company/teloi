@@ -3,9 +3,12 @@ import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
+import { BlockT } from "@/services/ui/Block";
+import { BufferT } from "@/services/ui/Buffer";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import BufferView from "@/ui/BufferView";
-import { Effect } from "effect";
+import { makeCollapsedSelection } from "@/utils/selectionStrategy";
+import { Effect, Option } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   Given,
@@ -640,5 +643,610 @@ describe("BlockTypePicker", () => {
         );
       }).pipe(runtime.runPromise);
     });
+  });
+});
+
+// =============================================================================
+// Collapse (Mod+Up) — Text editing mode
+// =============================================================================
+
+describe("Collapse (Mod+Up) — Text editing mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("Mod+Up on expanded block collapses it and stays on the block", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on collapsed block navigates to parent", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on root block (collapsed) focuses title", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "TopLevel" }],
+      );
+
+      const rootBlockNodeId = childNodeIds[0];
+      const rootBlockId = Id.makeBufferBlockId(bufferId, rootBlockNodeId);
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: rootBlockNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(rootBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(rootBlockId);
+
+      yield* Given.BLOCK_IS_FOCUSED_AT(rootBlockId, 0);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up preserves goalX when navigating to parent", async () => {
+    await Effect.gen(function* () {
+      const Buffer = yield* BufferT;
+
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // Pre-set goalX=42 on the child block
+      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0, 0, { goalX: 42 });
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+
+      const selectionAfter = yield* Buffer.getSelection(bufferId);
+      expect(Option.isSome(selectionAfter)).toBe(true);
+      expect(Option.getOrThrow(selectionAfter).goalX).toBe(42);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// Collapse (Mod+Up) — Block selection mode
+// =============================================================================
+
+describe("Collapse (Mod+Up) — Block selection mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  // Multi-block collapse not yet implemented (Collapse only handles selectedBlocks[0])
+  it.fails("Mod+Up collapses all expanded selected blocks", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+      // Give both children so they are expandable
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "Child of A",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "Child of B",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+
+      // Select both blocks
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB]);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Up on collapsed blocks navigates to focus block's parent", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // Select both collapsed sibling blocks (no children = treated as collapsed)
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB]);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      // Should navigate to parent (root node) — focuses title since parent is buffer root
+      yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// Expand (Mod+Down) — Text editing mode
+// =============================================================================
+
+describe("Expand (Mod+Down) — Text editing mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("Mod+Down expands a collapsed block", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(parentBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// Expand (Mod+Down) — Block selection mode
+// =============================================================================
+
+describe("Expand (Mod+Down) — Block selection mode", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("Mod+Down expands all collapsed selected blocks", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "Child of A",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "Child of B",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Select both blocks
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB]);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA, nodeB]);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down expands children when the node is already expanded", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+
+      const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "B",
+      });
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+      // Give B a child so it's collapsible
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "C",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // A expanded by default, collapse B
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Select A in block selection mode
+      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // A was already expanded, so B (child) should expand
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// Expand (Mod+Down) — Title
+// =============================================================================
+
+describe("Expand (Mod+Down) — Title", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("Mod+Down on title expands all first-level nodes", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+      // Give both children so they are collapsible
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "Child of A",
+      });
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "Child of B",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // Collapse both
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Block.setExpanded(blockB, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      yield* When.USER_CLICKS_TITLE(bufferId);
+
+      // DFS expand: first press expands A (first collapsed child)
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+
+      // Second press expands B (next collapsed child at same level)
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down expands next level when first level already expanded", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }],
+      );
+
+      const nodeA = childNodeIds[0];
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+
+      const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "A1",
+      });
+      const blockA1 = Id.makeBufferBlockId(bufferId, nodeA1);
+
+      yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA1,
+        insert: "after",
+        text: "A1a",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // A expanded by default, collapse A1
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA1, false);
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA1);
+
+      yield* When.USER_CLICKS_TITLE(bufferId);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // First level (A) already expanded, so A1 should expand
+      yield* Then.BLOCK_IS_EXPANDED(blockA1);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+// =============================================================================
+// Auto-expand ancestors on selection
+// =============================================================================
+
+describe("Auto-expand ancestors on selection", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("expands collapsed parent when setting block selection to child", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Parent" }],
+      );
+
+      const parentNodeId = childNodeIds[0];
+      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+      const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: parentNodeId,
+        insert: "after",
+        text: "Child content",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(parentBlockId, false);
+      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+
+      const Buffer = yield* BufferT;
+      yield* Buffer.setBlockSelection(
+        bufferId,
+        [childNodeId],
+        childNodeId,
+        childNodeId,
+      );
+
+      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("expands all necessary ancestors for multiple nodes at different depths", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+
+      const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeA,
+        insert: "after",
+        text: "A1",
+      });
+
+      const nodeB1 = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB,
+        insert: "after",
+        text: "B1",
+      });
+      const blockB1 = Id.makeBufferBlockId(bufferId, nodeB1);
+
+      const nodeB1a = yield* Given.INSERT_NODE_WITH_TEXT({
+        parentId: nodeB1,
+        insert: "after",
+        text: "B1a",
+      });
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Block = yield* BlockT;
+      yield* Block.setExpanded(blockA, false);
+      yield* Block.setExpanded(blockB, false);
+      yield* Block.setExpanded(blockB1, false);
+      yield* Then.BLOCK_IS_COLLAPSED(blockA);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      yield* Then.BLOCK_IS_COLLAPSED(blockB1);
+
+      const Buffer = yield* BufferT;
+      yield* Buffer.setBlockSelection(
+        bufferId,
+        [nodeA1, nodeB1a],
+        nodeA1,
+        nodeB1a,
+      );
+
+      yield* Then.BLOCK_IS_EXPANDED(blockA);
+      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.BLOCK_IS_EXPANDED(blockB1);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("does not expand anything when selecting direct child of buffer root", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Direct child" }],
+      );
+
+      const childNodeId = childNodeIds[0];
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      const Buffer = yield* BufferT;
+      const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+      yield* Buffer.setSelection(
+        bufferId,
+        makeCollapsedSelection(childBlockId, 0),
+      );
+
+      const selection = yield* Buffer.getSelection(bufferId);
+      expect(Option.isSome(selection)).toBe(true);
+      expect(Option.getOrThrow(selection).anchor.elementId).toBe(childBlockId);
+    }).pipe(runtime.runPromise);
   });
 });

@@ -9,6 +9,8 @@
  */
 
 import {
+  Collapse,
+  Expand,
   Indent,
   OpenTypePicker,
   Outdent,
@@ -78,6 +80,8 @@ const plainKeymap: Record<string, () => Command> = {
 };
 
 const metaKeymap: Record<string, () => Command> = {
+  ArrowUp: () => new Collapse(),
+  ArrowDown: () => new Expand(),
   ArrowLeft: () => new MoveToLineStart(),
   ArrowRight: () => new MoveToLineEnd(),
   Backspace: () => new DeleteToLineStart(),
@@ -103,6 +107,12 @@ const blockSelectionKeymap: Record<string, () => Command> = {
   "#": () => new OpenTypePicker(),
 };
 
+/** Cmd+ keymap for block selection mode. */
+const blockSelectionMetaKeymap: Record<string, () => Command> = {
+  ArrowUp: () => new Collapse(),
+  ArrowDown: () => new Expand(),
+};
+
 /**
  * Look up command for a key event.
  * Returns Option.some(command) if matched, Option.none() if not.
@@ -117,9 +127,12 @@ const lookupKeymap = (
   const { key, modifiers } = event;
   const { meta, ctrl, alt, shift } = modifiers;
 
-  // Block selection mode: only check blockSelectionKeymap, don't fall through
-  // to editor keymaps (e.g., ArrowUp/Down mean different things in each mode)
+  // Block selection mode: check block selection keymaps only
   if (mode === "blockSelection") {
+    if (meta && !ctrl && !alt && !shift) {
+      const factory = blockSelectionMetaKeymap[key];
+      if (factory) return Option.some(factory());
+    }
     const factory = blockSelectionKeymap[key];
     if (factory && !meta && !ctrl) return Option.some(factory());
     return Option.none();

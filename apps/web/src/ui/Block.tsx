@@ -1,9 +1,11 @@
+import { Collapse, Expand } from "@/commands/buffer";
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
 import { AppAction, createDispatch } from "@/services/ui/Action";
 import { BlockT, type BlockView } from "@/services/ui/Block";
+import { CommandBusT } from "@/services/ui/CommandBus";
 import type { ViewInfo } from "@/services/ui/View";
 import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -85,8 +87,17 @@ export default function Block({ blockId }: BlockProps) {
     onCleanup(() => dispose());
   });
 
-  // TODO: These handlers should be passed as props from a container/ViewModel
-  const handleToggleExpand = (_e: MouseEvent) => {};
+  const handleToggleExpand = (e: MouseEvent) => {
+    e.stopPropagation();
+    runtime.runPromise(
+      Effect.gen(function* () {
+        const CommandBus = yield* CommandBusT;
+        yield* CommandBus.dispatch(
+          store.isExpanded ? new Collapse() : new Expand(),
+        );
+      }),
+    );
+  };
 
   // Ref to p element for click position resolution
   let pRef: HTMLParagraphElement | undefined;
@@ -111,7 +122,7 @@ export default function Block({ blockId }: BlockProps) {
 
   return (
     <div data-element-id={blockId} data-element-type="block" class="relative">
-      {/* Expand toggle: non-functional placeholder, expand/collapse via keyboard */}
+      {/* Expand/collapse toggle */}
       <button
         type="button"
         class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none"
