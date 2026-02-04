@@ -12,12 +12,6 @@ interface ChatViewProps {
   nodeId: Id.Node;
 }
 
-/** A visual group of consecutive messages with the same role */
-interface MessageGroup {
-  role: ChatMessageEntry["role"];
-  messages: Array<ChatMessageEntry & { wrongPlace: WrongPlace | null }>;
-}
-
 export default function ChatView(props: ChatViewProps) {
   const runtime = useBrowserRuntime();
 
@@ -28,13 +22,13 @@ export default function ChatView(props: ChatViewProps) {
     }),
   );
 
-  // Store a flat array of message entries (nodeId + role)
   const { store, start } = bindStreamToStore({
     stream: messagesStream,
     project: (messages) => ({
       messages: [...messages],
     }),
     initial: { messages: [] as ChatMessageEntry[] },
+    reconcileKey: "nodeId",
   });
 
   onMount(() => {
@@ -42,10 +36,10 @@ export default function ChatView(props: ChatViewProps) {
     onCleanup(() => dispose());
   });
 
-  // Derive validation and grouping reactively at render time
-  const groups = createMemo(() =>
-    groupMessages(validateMessages(store.messages)),
-  );
+  const wrongPlaces = createMemo(() => {
+    const validated = validateMessages(store.messages);
+    return new Map(validated.map((m) => [m.nodeId, m.wrongPlace]));
+  });
 
   return (
     <div class="mx-auto max-w-[var(--max-line-width)] w-full">
@@ -60,47 +54,54 @@ export default function ChatView(props: ChatViewProps) {
         </button>
       </div>
 
-      <div class="flex flex-col gap-4 pt-4">
-        <For each={groups()}>
-          {(group) => (
-            <div class="flex flex-col">
-              <div class="text-xs font-medium text-foreground-lighter px-1 pb-1">
-                {group.role === "assistant" ? "aengel" : group.role}
+      <div class="flex flex-col pt-4">
+        <For each={store.messages}>
+          {(msg, i) => {
+            const isGroupStart = () =>
+              i() === 0 || store.messages[i() - 1]?.role !== msg.role;
+            const wrongPlace = () => wrongPlaces().get(msg.nodeId) ?? null;
+            const borderColor = () => {
+              switch (msg.role) {
+                case "user":
+                  return "border-l-blue-400";
+                case "assistant":
+                  return "border-l-purple-400";
+                case "system":
+                  return "border-l-amber-400";
+              }
+            };
+
+            return (
+              <div>
+                <Show when={isGroupStart()}>
+                  <div
+                    class="text-xs font-medium text-foreground-lighter px-1 pb-1"
+                    classList={{ "pt-4": i() !== 0 }}
+                  >
+                    {msg.role === "assistant" ? "aengel" : msg.role}
+                  </div>
+                </Show>
+                <div
+                  class="border-l-2 pl-3"
+                  classList={{
+                    [borderColor()]: true,
+                    "bg-pink-500/10 rounded": wrongPlace() !== null,
+                  }}
+                >
+                  <Show when={wrongPlace()}>
+                    {(wp) => (
+                      <div class="text-xs text-pink-400 px-1 py-0.5">
+                        wrong place: {wrongPlaceLabel(wp())}
+                      </div>
+                    )}
+                  </Show>
+                  <Block
+                    blockId={Id.makeBufferBlockId(props.bufferId, msg.nodeId)}
+                  />
+                </div>
               </div>
-              <div
-                class="flex flex-col border-l-2 border-foreground-lighter/30 pl-3"
-                classList={{
-                  "border-l-blue-400": group.role === "user",
-                  "border-l-purple-400": group.role === "assistant",
-                  "border-l-amber-400": group.role === "system",
-                }}
-              >
-                <For each={group.messages}>
-                  {(msg) => (
-                    <div
-                      classList={{
-                        "bg-pink-500/10 rounded": msg.wrongPlace !== null,
-                      }}
-                    >
-                      <Show when={msg.wrongPlace}>
-                        {(wp) => (
-                          <div class="text-xs text-pink-400 px-1 py-0.5">
-                            wrong place: {wrongPlaceLabel(wp())}
-                          </div>
-                        )}
-                      </Show>
-                      <Block
-                        blockId={Id.makeBufferBlockId(
-                          props.bufferId,
-                          msg.nodeId,
-                        )}
-                      />
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
-          )}
+            );
+          }}
         </For>
       </div>
     </div>
@@ -108,24 +109,6 @@ export default function ChatView(props: ChatViewProps) {
 }
 
 // ================================ Internal ==================================
-
-/** Group consecutive messages with the same role */
-function groupMessages(
-  messages: Array<ChatMessageEntry & { wrongPlace: WrongPlace | null }>,
-): MessageGroup[] {
-  const groups: MessageGroup[] = [];
-
-  for (const msg of messages) {
-    const last = groups[groups.length - 1];
-    if (last && last.role === msg.role) {
-      last.messages.push(msg);
-    } else {
-      groups.push({ role: msg.role, messages: [msg] });
-    }
-  }
-
-  return groups;
-}
 
 function wrongPlaceLabel(wp: WrongPlace): string {
   switch (wp) {

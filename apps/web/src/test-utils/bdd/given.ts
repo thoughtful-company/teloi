@@ -4,6 +4,7 @@ import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { getVisualLines } from "@/services/browser/TextBlock/getVisualLines";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BufferT } from "@/services/ui/Buffer";
@@ -950,3 +951,71 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
       expectedBg: bgColor,
     } satisfies TypeWithDirectColorResult;
   }).pipe(Effect.withSpan("Given.A_TYPE_WITH_DIRECT_COLOR"));
+
+export interface ChatBufferResult {
+  bufferId: Id.Buffer;
+  chatNodeId: Id.Node;
+  windowId: Id.Window;
+}
+
+export const A_CHAT_BUFFER = () =>
+  Effect.gen(function* () {
+    const { bufferId, rootNodeId, windowId } = yield* A_BUFFER_WITH_CHILDREN(
+      "Chat",
+      [],
+    );
+
+    return {
+      bufferId,
+      chatNodeId: rootNodeId,
+      windowId,
+    } satisfies ChatBufferResult;
+  }).pipe(Effect.withSpan("Given.A_CHAT_BUFFER"));
+
+export const A_CHAT_MESSAGE = (
+  chatNodeId: Id.Node,
+  fractionalIndex: string,
+  roleTypeId: Id.Node,
+) =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
+
+    const msgNodeId = yield* Node.insertNode({
+      parentId: chatNodeId,
+      insert: "after",
+    });
+
+    yield* Tuple.create(
+      System.CHAT_HAS_MESSAGE,
+      [chatNodeId, msgNodeId],
+      ["", fractionalIndex],
+    );
+
+    yield* Type.addType(msgNodeId, roleTypeId);
+
+    return msgNodeId;
+  }).pipe(Effect.withSpan("Given.A_CHAT_MESSAGE"));
+
+export const AN_UNTYPED_CHAT_MESSAGE = (
+  chatNodeId: Id.Node,
+  fractionalIndex: string,
+) =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
+
+    const msgNodeId = yield* Node.insertNode({
+      parentId: chatNodeId,
+      insert: "after",
+    });
+
+    yield* Tuple.create(
+      System.CHAT_HAS_MESSAGE,
+      [chatNodeId, msgNodeId],
+      ["", fractionalIndex],
+    );
+
+    return msgNodeId;
+  }).pipe(Effect.withSpan("Given.AN_UNTYPED_CHAT_MESSAGE"));

@@ -7,35 +7,19 @@ import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
 import { getMessages } from "./getMessages";
 import { send } from "./send";
-import { subscribeMessages, type ChatMessageEntry } from "./subscribeMessages";
-import type { ChatError, ChatMessage } from "./types";
+import { subscribeMessages } from "./subscribeMessages";
+import type { ChatError, ChatMessage, ChatMessageEntry } from "./types";
 
-export type { ChatMessage } from "./types";
-export type { ChatMessageEntry } from "./subscribeMessages";
+export type { ChatMessage, ChatMessageEntry } from "./types";
 export { ChatError } from "./types";
 
 export class ChatT extends Context.Tag("ChatT")<
   ChatT,
   {
-    /**
-     * Get ordered messages for a chat node.
-     * Reads CHAT_HAS_MESSAGE tuples, resolves role types, and returns content.
-     */
     getMessages: (chatNodeId: Id.Node) => Effect.Effect<readonly ChatMessage[]>;
-
-    /**
-     * Subscribe to messages for a chat node.
-     * Emits whenever CHAT_HAS_MESSAGE tuples change.
-     * Only nodeId + role — no text content.
-     */
     subscribeMessages: (
       chatNodeId: Id.Node,
     ) => Effect.Effect<Stream.Stream<readonly ChatMessageEntry[]>>;
-
-    /**
-     * Send conversation to LLM and create response message.
-     * Returns the new response node ID.
-     */
     send: (chatNodeId: Id.Node) => Effect.Effect<Id.Node, ChatError>;
   }
 >() {}

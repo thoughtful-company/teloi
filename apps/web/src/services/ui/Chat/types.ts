@@ -10,6 +10,11 @@ export const resolveRole = (types: readonly Id.Node[]): MessageRole | null => {
   return null;
 };
 
+export interface ChatMessageEntry {
+  readonly nodeId: Id.Node;
+  readonly role: MessageRole;
+}
+
 export interface ChatMessage {
   readonly nodeId: Id.Node;
   readonly role: MessageRole;
@@ -19,3 +24,17 @@ export interface ChatMessage {
 export class ChatError extends Data.TaggedError("ChatError")<{
   readonly message: string;
 }> {}
+
+// ================================ Internal ==================================
+
+export const resolveEntries = (
+  messageNodeIds: readonly Id.Node[],
+  typesPerMessage: readonly (readonly Id.Node[])[],
+): readonly ChatMessageEntry[] => {
+  let prevRole: MessageRole = "user";
+  return messageNodeIds.map((nodeId, i) => {
+    const role = resolveRole(typesPerMessage[i]!) ?? prevRole;
+    prevRole = role;
+    return { nodeId, role };
+  });
+};

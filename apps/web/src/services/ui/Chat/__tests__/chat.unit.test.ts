@@ -13,11 +13,20 @@ import * as Given from "@/test-utils/bdd/given";
 import { validateMessages } from "@/ui/chat/validateMessages";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
-import { Effect, Fiber, Layer, ManagedRuntime, Stream } from "effect";
+import { Effect, Fiber, Layer, ManagedRuntime, Schedule, Stream } from "effect";
 import { generateKeyBetween } from "fractional-indexing";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // ================================ Internal ==================================
+
+const pollSchedule = Schedule.spaced("10 millis").pipe(
+  Schedule.upTo("2 seconds"),
+);
+
+const pollUntil = (condition: () => void) =>
+  Effect.try({ try: condition, catch: (e) => e as Error }).pipe(
+    Effect.retry(pollSchedule),
+  );
 
 type TestRuntime = ManagedRuntime.ManagedRuntime<
   ChatT | NodeT | TupleT | TypeT | BufferT | AutomergeT | StoreT,
@@ -59,40 +68,6 @@ const setupTest = async () => {
   };
 };
 
-const A_CHAT_BUFFER = () =>
-  Effect.gen(function* () {
-    const { bufferId, rootNodeId, windowId } =
-      yield* Given.A_BUFFER_WITH_CHILDREN("Chat", []);
-
-    return { bufferId, chatNodeId: rootNodeId, windowId };
-  });
-
-const A_CHAT_MESSAGE = (
-  chatNodeId: Id.Node,
-  fractionalIndex: string,
-  roleTypeId: Id.Node,
-) =>
-  Effect.gen(function* () {
-    const Node = yield* NodeT;
-    const Tuple = yield* TupleT;
-    const Type = yield* TypeT;
-
-    const msgNodeId = yield* Node.insertNode({
-      parentId: chatNodeId,
-      insert: "after",
-    });
-
-    yield* Tuple.create(
-      System.CHAT_HAS_MESSAGE,
-      [chatNodeId, msgNodeId],
-      ["", fractionalIndex],
-    );
-
-    yield* Type.addType(msgNodeId, roleTypeId);
-
-    return msgNodeId;
-  });
-
 // ============================================================================
 
 describe("Chat.getMessages", () => {
@@ -108,17 +83,21 @@ describe("Chat.getMessages", () => {
 
   it("returns messages sorted by fractional index with correct role and content", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
       const Automerge = yield* AutomergeT;
 
       const idx1 = generateKeyBetween(null, null);
       const idx2 = generateKeyBetween(idx1, null);
 
       // Insert in reverse order to verify sorting by fractional index
-      const m2 = yield* A_CHAT_MESSAGE(chatNodeId, idx2, System.MSG_USER);
+      const m2 = yield* Given.A_CHAT_MESSAGE(chatNodeId, idx2, System.MSG_USER);
       yield* Automerge.setText(m2, "Hello, world!");
 
-      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_SYSTEM);
+      const m1 = yield* Given.A_CHAT_MESSAGE(
+        chatNodeId,
+        idx1,
+        System.MSG_SYSTEM,
+      );
       yield* Automerge.setText(m1, "You are a helpful assistant.");
 
       const Chat = yield* ChatT;
@@ -134,35 +113,53 @@ describe("Chat.getMessages", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("filters out messages without a recognized role type", async () => {
+  it("includes untyped messages with inherited role from previous message", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* A_CHAT_BUFFER();
-      const Node = yield* NodeT;
-      const Tuple = yield* TupleT;
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
 
       const idx1 = generateKeyBetween(null, null);
       const idx2 = generateKeyBetween(idx1, null);
 
-      // Message with a role type
-      const m1 = yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
+      const m1 = yield* Given.A_CHAT_MESSAGE(
+        chatNodeId,
+        idx1,
+        System.MSG_AENGEL,
+      );
+      const m2 = yield* Given.AN_UNTYPED_CHAT_MESSAGE(chatNodeId, idx2);
 
-      // Message without a role type (just node + tuple, no type)
-      const noRoleNode = yield* Node.insertNode({
-        parentId: chatNodeId,
-        insert: "after",
-      });
-      yield* Tuple.create(
-        System.CHAT_HAS_MESSAGE,
-        [chatNodeId, noRoleNode],
-        ["", idx2],
+      const Chat = yield* ChatT;
+      const messages = yield* Chat.getMessages(chatNodeId);
+
+      expect(messages).toHaveLength(2);
+      expect(messages[0]!.nodeId).toBe(m1);
+      expect(messages[0]!.role).toBe("assistant");
+      expect(messages[1]!.nodeId).toBe(m2);
+      expect(messages[1]!.role).toBe("assistant");
+    }).pipe(runtime.runPromise);
+  });
+
+  it("defaults untyped first message to user", async () => {
+    await Effect.gen(function* () {
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+
+      const idx1 = generateKeyBetween(null, null);
+      const idx2 = generateKeyBetween(idx1, null);
+
+      const m1 = yield* Given.AN_UNTYPED_CHAT_MESSAGE(chatNodeId, idx1);
+      const m2 = yield* Given.A_CHAT_MESSAGE(
+        chatNodeId,
+        idx2,
+        System.MSG_AENGEL,
       );
 
       const Chat = yield* ChatT;
       const messages = yield* Chat.getMessages(chatNodeId);
 
-      expect(messages).toHaveLength(1);
+      expect(messages).toHaveLength(2);
       expect(messages[0]!.nodeId).toBe(m1);
       expect(messages[0]!.role).toBe("user");
+      expect(messages[1]!.nodeId).toBe(m2);
+      expect(messages[1]!.role).toBe("assistant");
     }).pipe(runtime.runPromise);
   });
 });
@@ -180,12 +177,11 @@ describe("Chat.subscribeMessages", () => {
 
   it("emits updated list when a new message tuple is created", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
 
       const Chat = yield* ChatT;
       const stream = yield* Chat.subscribeMessages(chatNodeId);
 
-      // Collect emissions into an array via a fiber
       const collected: Array<
         readonly { nodeId: Id.Node; role: "system" | "user" | "assistant" }[]
       > = [];
@@ -195,20 +191,101 @@ describe("Chat.subscribeMessages", () => {
         }),
       ).pipe(Effect.fork);
 
-      // Wait for initial emission (empty chat)
-      yield* Effect.sleep("50 millis");
-      expect(collected.length).toBeGreaterThanOrEqual(1);
-      expect(collected[0]).toHaveLength(0);
+      yield* pollUntil(() => {
+        expect(collected.length).toBeGreaterThanOrEqual(1);
+        expect(collected[0]).toHaveLength(0);
+      });
 
-      // Add a message
       const idx1 = generateKeyBetween(null, null);
-      yield* A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
+      yield* Given.A_CHAT_MESSAGE(chatNodeId, idx1, System.MSG_USER);
 
-      // Wait for re-emission
-      yield* Effect.sleep("50 millis");
-      const lastEmission = collected[collected.length - 1]!;
-      expect(lastEmission).toHaveLength(1);
-      expect(lastEmission[0]!.role).toBe("user");
+      yield* pollUntil(() => {
+        const last = collected[collected.length - 1]!;
+        expect(last).toHaveLength(1);
+        expect(last[0]!.role).toBe("user");
+      });
+
+      yield* Fiber.interrupt(fiber);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("emits when a message's type is added", async () => {
+    await Effect.gen(function* () {
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const Type = yield* TypeT;
+
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* Given.AN_UNTYPED_CHAT_MESSAGE(chatNodeId, idx1);
+
+      const Chat = yield* ChatT;
+      const stream = yield* Chat.subscribeMessages(chatNodeId);
+
+      const collected: Array<readonly ChatMessageEntry[]> = [];
+      const fiber = yield* Stream.runForEach(stream, (msgs) =>
+        Effect.sync(() => {
+          collected.push(msgs);
+        }),
+      ).pipe(Effect.fork);
+
+      yield* pollUntil(() => {
+        expect(collected.length).toBeGreaterThanOrEqual(1);
+        const initial = collected[collected.length - 1]!;
+        expect(initial).toHaveLength(1);
+        expect(initial[0]!.role).toBe("user");
+      });
+
+      const prevLength = collected.length;
+      yield* Type.addType(m1, System.MSG_AENGEL);
+
+      yield* pollUntil(() => {
+        expect(collected.length).toBeGreaterThan(prevLength);
+        const updated = collected[collected.length - 1]!;
+        expect(updated).toHaveLength(1);
+        expect(updated[0]!.role).toBe("assistant");
+      });
+
+      yield* Fiber.interrupt(fiber);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("emits when a message's type is removed", async () => {
+    await Effect.gen(function* () {
+      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const Type = yield* TypeT;
+
+      const idx1 = generateKeyBetween(null, null);
+      const m1 = yield* Given.A_CHAT_MESSAGE(
+        chatNodeId,
+        idx1,
+        System.MSG_AENGEL,
+      );
+
+      const Chat = yield* ChatT;
+      const stream = yield* Chat.subscribeMessages(chatNodeId);
+
+      const collected: Array<readonly ChatMessageEntry[]> = [];
+      const fiber = yield* Stream.runForEach(stream, (msgs) =>
+        Effect.sync(() => {
+          collected.push(msgs);
+        }),
+      ).pipe(Effect.fork);
+
+      yield* pollUntil(() => {
+        expect(collected.length).toBeGreaterThanOrEqual(1);
+        const initial = collected[collected.length - 1]!;
+        expect(initial[0]!.role).toBe("assistant");
+      });
+
+      // Falls back to inherited role ("user" default) when type is removed
+      const prevLength = collected.length;
+      yield* Type.removeType(m1, System.MSG_AENGEL);
+
+      yield* pollUntil(() => {
+        expect(collected.length).toBeGreaterThan(prevLength);
+        const updated = collected[collected.length - 1]!;
+        expect(updated).toHaveLength(1);
+        expect(updated[0]!.role).toBe("user");
+      });
 
       yield* Fiber.interrupt(fiber);
     }).pipe(runtime.runPromise);
