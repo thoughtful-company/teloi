@@ -475,6 +475,7 @@ export const BLOCK_IS_FOCUSED_AT = (
   blockId: Id.Block,
   offset: number,
   assoc: -1 | 0 | 1 = 0,
+  opts?: { goalX?: number | null },
 ) =>
   Effect.gen(function* () {
     const Buffer = yield* BufferT;
@@ -490,7 +491,7 @@ export const BLOCK_IS_FOCUSED_AT = (
         anchorOffset: offset,
         focus: { elementId: blockId },
         focusOffset: offset,
-        goalX: null,
+        goalX: opts?.goalX ?? null,
         goalLine: null,
         assoc,
       }),

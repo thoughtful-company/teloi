@@ -46,7 +46,7 @@ export const createEditorModeHandlers = (
   nav: NavigationHandlers,
   safe: SafeWrapper,
 ): EditorModeHandlers => {
-  const { Buffer, Block, Node, Type, Window } = deps;
+  const { Buffer, Type, Window } = deps;
 
   const interpretKeyDown = (
     action: AppAction & { _tag: "KeyDown" },
@@ -56,8 +56,7 @@ export const createEditorModeHandlers = (
     safe(
       Effect.gen(function* () {
         const { key, modifiers } = action;
-        const { bufferId, nodeId, blockId, activeDefinitions, pickerOpen } =
-          ctx;
+        const { bufferId, nodeId, activeDefinitions, pickerOpen } = ctx;
 
         // --- Toggle Todo (Cmd+Enter) ---
         // Must check BEFORE regular Enter to avoid split behavior
@@ -222,65 +221,6 @@ export const createEditorModeHandlers = (
             ctx,
             modifiers.shift ? "last" : "swapDown",
           );
-        }
-
-        // --- Collapse / Navigate to parent (Cmd+ArrowUp) ---
-        if (key === "ArrowUp" && modifiers.meta && !modifiers.alt) {
-          const children = yield* Node.getNodeChildren(nodeId);
-
-          if (children.length > 0 && ctx.isExpanded) {
-            // Has children and expanded: collapse
-            yield* Block.setExpanded(blockId, false);
-            return ActionResult.handled({});
-          } else {
-            // Collapsed or no children: navigate to parent
-            const parentId = yield* Node.getParent(nodeId).pipe(
-              Effect.catchTag("NodeHasNoParentError", () =>
-                Effect.succeed<Id.Node | null>(null),
-              ),
-            );
-
-            if (parentId) {
-              const bufferDoc = yield* deps.Store.getDocument(
-                "buffer",
-                bufferId,
-              );
-              const assignedNodeId = Option.isSome(bufferDoc)
-                ? bufferDoc.value.assignedNodeId
-                : null;
-
-              if (parentId === assignedNodeId) {
-                // Parent is title: focus title
-                const titleBlockId = Id.makeBufferBlockId(bufferId, parentId);
-                yield* Window.setActiveElement(
-                  Option.some({ type: "block" as const, id: titleBlockId }),
-                );
-                return ActionResult.handled({
-                  focus: { type: "title", bufferId },
-                });
-              } else {
-                // Navigate to parent block
-                const parentBlockId = Id.makeBufferBlockId(bufferId, parentId);
-                yield* Buffer.setSelection(
-                  bufferId,
-                  makeCollapsedSelection(parentBlockId, 0),
-                );
-                yield* Window.setActiveElement(
-                  Option.some({ type: "block" as const, id: parentBlockId }),
-                );
-                return ActionResult.handled({
-                  focus: { type: "block", blockId: parentBlockId },
-                });
-              }
-            }
-          }
-          return ActionResult.handled({});
-        }
-
-        // --- Expand (Cmd+ArrowDown) ---
-        if (key === "ArrowDown" && modifiers.meta && !modifiers.alt) {
-          yield* Block.expandOneLevel(bufferId, nodeId);
-          return ActionResult.handled({});
         }
 
         // Not handled - let native behavior proceed

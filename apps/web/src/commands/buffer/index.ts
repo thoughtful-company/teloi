@@ -1,14 +1,27 @@
+import { Collapse } from "./collapse";
 import { EditBlock } from "./editBlock";
+import { Expand } from "./expand";
 import { Indent } from "./indent";
 import { OpenTypePicker } from "./openTypePicker";
 import { Outdent } from "./outdent";
 import { ZoomIn } from "./zoomIn";
 import { ZoomOut } from "./zoomOut";
 
-export { EditBlock, Indent, OpenTypePicker, Outdent, ZoomIn, ZoomOut };
+export {
+  Collapse,
+  EditBlock,
+  Expand,
+  Indent,
+  OpenTypePicker,
+  Outdent,
+  ZoomIn,
+  ZoomOut,
+};
 
 export const bufferCommands = [
+  Collapse,
   EditBlock,
+  Expand,
   Indent,
   OpenTypePicker,
   Outdent,

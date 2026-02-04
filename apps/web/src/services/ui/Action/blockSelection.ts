@@ -408,64 +408,6 @@ export const createBlockSelectionHandlers = (
           return ActionResult.handled({});
         }
 
-        // --- Cmd+Up: Collapse selected blocks ---
-        if (key === "ArrowUp" && modifiers.meta && !modifiers.alt) {
-          if (selectedBlocks.length === 1) {
-            const nodeId = selectedBlocks[0]!;
-            const blockId = Id.makeBufferBlockId(bufferId, nodeId);
-            const isExpanded = yield* Block.isExpanded(blockId);
-            const children = yield* Node.getNodeChildren(nodeId);
-
-            if (children.length > 0 && isExpanded) {
-              // Has children and expanded: collapse
-              yield* Block.setExpanded(blockId, false);
-              return ActionResult.handled({});
-            } else {
-              // Collapsed or no children: navigate to parent
-              const parentId = yield* Node.getParent(nodeId).pipe(
-                Effect.catchTag("NodeHasNoParentError", () =>
-                  Effect.succeed<Id.Node | null>(null),
-                ),
-              );
-
-              if (parentId) {
-                const assignedNodeId = bufferDoc.value.assignedNodeId;
-                if (parentId === assignedNodeId) {
-                  // Parent is title: focus title (EditorMode updates via focus handler)
-                  const titleBlockId = Id.makeBufferBlockId(bufferId, parentId);
-                  yield* Buffer.setBlockSelection(bufferId, [], nodeId);
-                  yield* Window.setActiveElement(
-                    Option.some({ type: "block" as const, id: titleBlockId }),
-                  );
-                  return ActionResult.handled({
-                    focus: { type: "title", bufferId },
-                  });
-                } else {
-                  // Navigate to parent block
-                  yield* Buffer.setBlockSelection(
-                    bufferId,
-                    [parentId],
-                    parentId,
-                    parentId,
-                  );
-                  return ActionResult.handled({
-                    scroll: Id.makeBufferBlockId(bufferId, parentId),
-                  });
-                }
-              }
-            }
-          }
-          return ActionResult.handled({});
-        }
-
-        // --- Cmd+Down: Expand selected blocks ---
-        if (key === "ArrowDown" && modifiers.meta && !modifiers.alt) {
-          for (const nodeId of selectedBlocks) {
-            yield* Block.expandOneLevel(bufferId, nodeId);
-          }
-          return ActionResult.handled({});
-        }
-
         // --- ArrowLeft: Navigate to parent ---
         if (key === "ArrowLeft" && !modifiers.shift && !modifiers.alt) {
           const currentFocus = blockSelectionFocus ?? blockSelectionAnchor;
