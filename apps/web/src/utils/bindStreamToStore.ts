@@ -23,6 +23,8 @@ export function bindStreamToStore<
   equals?: (a: U, b: U) => boolean;
   /** Replays last value so late subscribers get it immediately */
   share?: ShareConfig;
+  /** Key field for reconcile to match array items across updates (default: "id") */
+  reconcileKey?: string;
   /** @example msg => console.debug(msg) */
   log?: (msg: string) => void;
 }) {
@@ -32,6 +34,7 @@ export function bindStreamToStore<
     initial,
     equals,
     share = { capacity: "unbounded", replay: 1 },
+    reconcileKey,
     log,
   } = args;
 
@@ -47,8 +50,11 @@ export function bindStreamToStore<
             const next = project(s);
             if (!equals || !equals(store, next)) {
               if (log) log("[bind] applying update");
-              // Structural diff to minimize DOM/graphs churn
-              setStore(reconcile(next));
+              setStore(
+                reconcileKey
+                  ? reconcile(next, { key: reconcileKey })
+                  : reconcile(next),
+              );
             } else {
               if (log) log("[bind] skipped (equal)");
             }
