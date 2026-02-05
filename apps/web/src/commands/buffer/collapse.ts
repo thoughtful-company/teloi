@@ -57,18 +57,20 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   if (ctx.type !== "buffer") return;
 
   const { bufferId, nodeId } = ctx;
-  const isExpanded = yield* deps.Block.isBlockExpanded(bufferId, nodeId);
+  const blockDoc = yield* deps.Block.get(bufferId, nodeId);
   const children = yield* deps.Node.getNodeChildren(nodeId);
 
-  if (children.length > 0 && isExpanded) {
+  if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
     yield* deps.Block.setExpanded(blockId, false);
     return;
   }
 
-  // Navigate to parent
-  const parentId = yield* deps.Node.getParent(nodeId).pipe(
-    Effect.catchTag("NodeHasNoParentError", () => Effect.succeed(null)),
-  );
+  // Navigate to parent (ghosts have no parent_links, use ghostParentId)
+  const parentId =
+    blockDoc.ghostParentId ??
+    (yield* deps.Node.getParent(nodeId).pipe(
+      Effect.catchTag("NodeHasNoParentError", () => Effect.succeed(null)),
+    ));
 
   if (!parentId) return;
 
@@ -109,10 +111,10 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
     // Use the first selected block for progressive collapse
     const nodeId = selectedBlocks[0]!;
     const blockId = Id.makeBufferBlockId(bufferId, nodeId);
-    const isExpanded = yield* deps.Block.isBlockExpanded(bufferId, nodeId);
+    const blockDoc = yield* deps.Block.get(bufferId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);
 
-    if (children.length > 0 && isExpanded) {
+    if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
       yield* deps.Block.setExpanded(blockId, false);
       return;
     }

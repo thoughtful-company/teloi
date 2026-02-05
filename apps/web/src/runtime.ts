@@ -20,7 +20,6 @@ import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
-import { ViewNavigationLive } from "./services/ui/ViewNavigation";
 import { PickerLive } from "./services/ui/Picker";
 import { TypePickerLive } from "./services/ui/TypePicker";
 import { TypeColorLive } from "./services/ui/TypeColor";
@@ -66,10 +65,7 @@ const getLoggerLayer = (): Layer.Layer<never> => {
 const automergePersist = true;
 
 // Group layers to avoid pipe's argument limit (max 20)
-const ViewPropertyChatLive = Layer.merge(
-  ViewLive,
-  Layer.merge(PropertyLive, ChatLive),
-);
+const PropertyChatLive = Layer.merge(PropertyLive, ChatLive);
 const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
 // Group DataPort and Bootstrap (both independent domain services)
 const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
@@ -83,23 +79,22 @@ const EventCommandBusGroup = Layer.provideMerge(
   KeyEventBusLive,
   CommandBusLive,
 );
-// Group navigation services (both need BufferT from below)
-const NavigationGroup = Layer.merge(NavigationLive, ViewNavigationLive);
+// Group Editor and View (both need BufferT, WindowT from below)
+const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
 const BrowserLayer = pipe(
   ActionLive, // needs BlockT from below
   Layer.provideMerge(DataPortBootstrapGroup),
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
-  Layer.provideMerge(NavigationGroup),
-  Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
-  // BlockLive needs ViewT, TypeT, PickerT from layers below
+  Layer.provideMerge(NavigationLive),
+  Layer.provideMerge(EditorViewGroup), // EditorLive + ViewLive
+  // BlockLive needs TypeT, PickerT from layers below
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
-  // BufferLive needs ViewT from below
   Layer.provideMerge(BufferLive),
-  Layer.provideMerge(ViewPropertyChatLive),
+  Layer.provideMerge(PropertyChatLive),
   Layer.provideMerge(Layer.merge(WindowLive, ChatProviderLive)),
   Layer.provideMerge(TupleLive),
   Layer.provideMerge(TypeLive),

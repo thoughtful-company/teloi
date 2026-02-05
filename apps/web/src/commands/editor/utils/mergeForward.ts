@@ -1,8 +1,9 @@
+import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
-import { ViewNavigationT } from "@/services/ui/ViewNavigation";
+import { ViewT } from "@/services/ui/View";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
@@ -12,25 +13,29 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
   if (Option.isNone(ctx)) return;
   const { bufferId, nodeId, blockId } = ctx.value;
 
-  const ViewNav = yield* ViewNavigationT;
-  const targetOpt = yield* ViewNav.resolveBlockBelow(nodeId, bufferId);
+  const View = yield* ViewT;
+  const targetOpt = yield* View.resolveBlockBelow(blockId);
   if (Option.isNone(targetOpt)) return;
 
-  const targetId = targetOpt.value;
+  const targetBlockId = targetOpt.value;
+  const targetCtx = Id.parseBlockContextSync(targetBlockId);
+  if (targetCtx.type !== "buffer") return;
+  const targetNodeId = targetCtx.nodeId;
+
   const Node = yield* NodeT;
 
   // Merging a block with children would orphan them
-  const targetChildren = yield* Node.getNodeChildren(targetId);
+  const targetChildren = yield* Node.getNodeChildren(targetNodeId);
   if (targetChildren.length > 0) return;
 
   const Automerge = yield* AutomergeT;
   const currentText = yield* Automerge.getText(nodeId);
   const mergePoint = currentText.length;
-  const targetText = yield* Automerge.getText(targetId);
+  const targetText = yield* Automerge.getText(targetNodeId);
 
   yield* Automerge.setText(nodeId, currentText + targetText);
-  yield* Node.deleteNode(targetId);
-  yield* Automerge.deleteText(targetId);
+  yield* Node.deleteNode(targetNodeId);
+  yield* Automerge.deleteText(targetNodeId);
 
   const Buffer = yield* BufferT;
   const Editor = yield* EditorT;

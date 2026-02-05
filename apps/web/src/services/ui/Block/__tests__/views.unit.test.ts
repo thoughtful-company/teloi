@@ -161,7 +161,12 @@ describe("Block subscribe - view system", () => {
       const blockId = Id.makeBufferBlockId(bufferId, rootNodeId);
       yield* Store.setDocument(
         "block",
-        { isExpanded: true, activeViewId: chatViewNodeId },
+        {
+          isExpanded: true,
+          activeViewId: chatViewNodeId,
+          ghostChildId: null,
+          ghostParentId: null,
+        },
         blockId,
       );
 

@@ -11,10 +11,10 @@ import { PickerState, PickerT } from "@/services/ui/Picker";
 import { isSystemType } from "@/services/ui/TypePicker";
 import {
   resolveActiveViewType,
-  ViewT,
+  subscribeViewInfo,
   type ViewInfo,
   type ViewType,
-} from "@/services/ui/View";
+} from "./views";
 import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
@@ -44,6 +44,8 @@ export interface BlockView {
   textContent: string;
   picker: PickerState | null;
   childCount: number;
+  ghostChildId: Id.Node | null;
+  ghostParentId: Id.Node | null;
 }
 
 export const subscribe = (blockId: Id.Block) =>
@@ -55,7 +57,6 @@ export const subscribe = (blockId: Id.Block) =>
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
     const Automerge = yield* AutomergeT;
-    const View = yield* ViewT;
 
     // Extract bufferId and nodeId based on block type
     let bufferId: Id.Buffer;
@@ -97,14 +98,21 @@ export const subscribe = (blockId: Id.Block) =>
       nodeId = tuple.members[displayPosition] as Id.Node;
     }
 
-    yield* Node.attestExistence(nodeId);
+    // Ghost blocks have no LiveStore node yet — skip existence check
+    const Store = yield* StoreT;
+    const initialDoc = yield* Store.getDocument("block", blockId);
+    const isGhost =
+      Option.isSome(initialDoc) && !!initialDoc.value.ghostParentId;
+    if (!isGhost) {
+      yield* Node.attestExistence(nodeId);
+    }
 
     const block$ = yield* makeBlockStreamEither(blockId);
     const node$ = yield* makeNodeStreamEither(nodeId);
     const selection$ = yield* makeSelectionStream(bufferId, nodeId, blockId);
     const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
 
-    const viewInfo$ = yield* View.subscribeViewInfo(nodeId);
+    const viewInfo$ = yield* subscribeViewInfo(nodeId);
 
     const unsettledActiveElement = yield* Window.subscribeActiveElement();
     // Settle the stream: delay by 2 frames so selection state propagates first
@@ -173,13 +181,19 @@ export const subscribe = (blockId: Id.Block) =>
           textContent,
           childCount,
         ]) => {
-          // Block doc uses default if missing (created lazily)
-          if (Either.isLeft(nodeEither)) {
-            return Either.left(new BlockGoneError({ blockId, nodeId }));
-          }
-
           const block = Either.getOrThrow(blockEither);
-          const nodeData = Either.getOrThrow(nodeEither);
+
+          // Ghost blocks may not have a LiveStore node yet
+          let nodeData: TeloiNode;
+          if (Either.isLeft(nodeEither)) {
+            if (block.ghostParentId) {
+              nodeData = { id: nodeId, createdAt: 0, modifiedAt: 0 };
+            } else {
+              return Either.left(new BlockGoneError({ blockId, nodeId }));
+            }
+          } else {
+            nodeData = Either.getOrThrow(nodeEither);
+          }
 
           const activeViewId = block.activeViewId;
           const activeViewType = resolveActiveViewType(
@@ -201,6 +215,8 @@ export const subscribe = (blockId: Id.Block) =>
             textContent,
             picker,
             childCount,
+            ghostChildId: block.ghostChildId ?? null,
+            ghostParentId: block.ghostParentId ?? null,
           } satisfies BlockView);
         },
       ),
@@ -229,7 +245,12 @@ export const subscribe = (blockId: Id.Block) =>
 //   Internal Functions
 // ===============================
 
-type BlockDoc = { isExpanded: boolean; activeViewId: Id.Node | null };
+type BlockDoc = {
+  isExpanded: boolean;
+  activeViewId: Id.Node | null;
+  ghostChildId: Id.Node | null;
+  ghostParentId: Id.Node | null;
+};
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
   Effect.gen(function* () {
@@ -253,7 +274,14 @@ const makeBlockStreamEither = (blockId: Id.Block) =>
       // Block docs are created lazily, so the first emission might be null
       Stream.map(
         (b): Either.Either<BlockDoc, never> =>
-          Either.right(b ?? { isExpanded: false, activeViewId: null }),
+          Either.right(
+            b ?? {
+              isExpanded: true,
+              activeViewId: null,
+              ghostChildId: null,
+              ghostParentId: null,
+            },
+          ),
       ),
     );
   });

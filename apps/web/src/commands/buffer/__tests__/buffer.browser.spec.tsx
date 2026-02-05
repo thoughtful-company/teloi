@@ -3,6 +3,7 @@ import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
+import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { TypePickerT } from "@/services/ui/TypePicker";
@@ -782,6 +783,40 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       expect(Option.getOrThrow(selectionAfter).goalX).toBe(42);
     }).pipe(runtime.runPromise);
   });
+
+  it("Mod+Up on ghost block navigates to parent and collapses it", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Leaf" }],
+      );
+
+      const leafNodeId = childNodeIds[0];
+      const leafBlockId = Id.makeBufferBlockId(bufferId, leafNodeId);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      // Focus the leaf and expand it — creates a ghost
+      yield* Given.BLOCK_IS_FOCUSED_AT(leafBlockId, 0);
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Ghost should exist and be focused
+      const Store = yield* StoreT;
+      const blockDoc = yield* Store.getDocument("block", leafBlockId);
+      const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId!;
+      const ghostBlockId = Id.makeBufferBlockId(
+        bufferId,
+        ghostChildId as Id.Node,
+      );
+      yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+
+      // Mod+Up on ghost → navigate to parent and collapse it
+      yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
+
+      yield* Then.SELECTION_IS_ON_BLOCK(leafBlockId);
+      yield* Then.BLOCK_IS_COLLAPSED(leafBlockId);
+    }).pipe(runtime.runPromise);
+  });
 });
 
 // =============================================================================
@@ -911,6 +946,38 @@ describe("Expand (Mod+Down) — Text editing mode", () => {
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("Mod+Down on a childless block creates ghost and focuses it", async () => {
+    await Effect.gen(function* () {
+      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        "Root",
+        [{ text: "Leaf" }],
+      );
+
+      const leafNodeId = childNodeIds[0];
+      const leafBlockId = Id.makeBufferBlockId(bufferId, leafNodeId);
+
+      render(() => <BufferView bufferId={bufferId} />);
+
+      yield* Given.BLOCK_IS_FOCUSED_AT(leafBlockId, 0);
+
+      yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+      // Parent should have a ghostChildId
+      const Store = yield* StoreT;
+      const blockDoc = yield* Store.getDocument("block", leafBlockId);
+      expect(Option.isSome(blockDoc)).toBe(true);
+      const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId;
+      expect(ghostChildId).not.toBeNull();
+
+      // Focus should have moved to the ghost block
+      const ghostBlockId = Id.makeBufferBlockId(
+        bufferId,
+        ghostChildId! as Id.Node,
+      );
+      yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
     }).pipe(runtime.runPromise);
   });
 });

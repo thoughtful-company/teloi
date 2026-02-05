@@ -3,10 +3,11 @@ import { LiveStoreError, StoreT } from "../../external/Store";
 
 import { Id, Model } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
+import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
-import { ViewT } from "../View";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
 import { forceDelete, type MergeResult } from "./forceDelete";
@@ -133,15 +134,17 @@ export const BufferLive = Layer.effect(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
     const Window = yield* WindowT;
-    const View = yield* ViewT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
+      Context.add(TupleT, Tuple),
+      Context.add(TypeT, Type),
       Context.add(AutomergeT, Automerge),
       Context.add(WindowT, Window),
-      Context.add(ViewT, View),
     );
 
     return {

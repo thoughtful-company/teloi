@@ -10,7 +10,7 @@ import type { ViewInfo } from "@/services/ui/View";
 import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
-import { For, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
 import Editor from "./Editor";
 import { FormattedText } from "./FormattedText";
@@ -39,6 +39,8 @@ export default function Block({ blockId }: BlockProps) {
     blockContext.type === "buffer"
       ? blockContext.nodeId
       : blockContext.hostNodeId; // section or tuple case
+  const bufferId =
+    blockContext.type === "buffer" ? blockContext.bufferId : null;
 
   // AutomergeT for handle access
   const Automerge = runtime.runSync(AutomergeT);
@@ -68,6 +70,8 @@ export default function Block({ blockId }: BlockProps) {
       textContent: "",
       picker: null,
       childCount: 0,
+      ghostChildId: null,
+      ghostParentId: null,
     } satisfies BlockView,
   });
 
@@ -86,6 +90,47 @@ export default function Block({ blockId }: BlockProps) {
   onMount(() => {
     const dispose = start(runtime);
     onCleanup(() => dispose());
+  });
+
+  // Ghost materialization: when this block is a ghost, listen for the first
+  // keystroke and convert it into a real LiveStore node.
+  createEffect(() => {
+    const ghostParentId = store.ghostParentId;
+    if (!ghostParentId || !bufferId) return;
+
+    let materialized = false;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const onChange = () => {
+      if (materialized) return;
+      runtime.runPromise(Automerge.getText(nodeId)).then((text) => {
+        if (text.length > 0 && !materialized) {
+          if (timeout) clearTimeout(timeout);
+          timeout = setTimeout(() => {
+            if (!materialized) {
+              materialized = true;
+              runtime.runPromise(
+                Effect.gen(function* () {
+                  const Block = yield* BlockT;
+                  yield* Block.materialize({
+                    ghostNodeId: nodeId,
+                    parentNodeId: ghostParentId,
+                    bufferId,
+                  });
+                }),
+              );
+            }
+          }, 50);
+        }
+      });
+    };
+
+    Automerge.handle.on("change", onChange);
+
+    onCleanup(() => {
+      if (timeout) clearTimeout(timeout);
+      Automerge.handle.off("change", onChange);
+    });
   });
 
   const handleToggleExpand = (e: MouseEvent) => {
@@ -128,7 +173,8 @@ export default function Block({ blockId }: BlockProps) {
         type="button"
         class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none transition-opacity"
         classList={{
-          "opacity-0 hover:opacity-100": store.childCount === 0,
+          "opacity-0 hover:opacity-100":
+            store.childCount === 0 && !store.ghostChildId,
         }}
         onClick={handleToggleExpand}
         tabIndex={-1}

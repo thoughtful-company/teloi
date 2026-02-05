@@ -193,13 +193,8 @@ export const PickerLive = Layer.effect(
               ? blockContext.nodeId
               : blockContext.hostNodeId;
 
-          // Apply the type
-          const viewId = yield* TypePicker.applyType(nodeId, typeId);
-
-          // Auto-switch to the created view
-          if (viewId) {
-            yield* Buffer.setActiveView(blockContext.bufferId, viewId);
-          }
+          // Apply the type (view switching handled by TypePicker if needed)
+          yield* TypePicker.applyType(nodeId, typeId);
 
           // Cleanup: delete trigger text, set selection, close picker
           yield* finishPickerAction(state, ref);
@@ -225,13 +220,8 @@ export const PickerLive = Layer.effect(
           // Create the type
           const typeId = yield* TypePicker.createType(name);
 
-          // Apply the type
-          const viewId = yield* TypePicker.applyType(nodeId, typeId);
-
-          // Auto-switch to the created view
-          if (viewId) {
-            yield* Buffer.setActiveView(blockContext.bufferId, viewId);
-          }
+          // Apply the type (view switching handled by TypePicker if needed)
+          yield* TypePicker.applyType(nodeId, typeId);
 
           // Cleanup: delete trigger text, set selection, close picker
           yield* finishPickerAction(state, ref);
