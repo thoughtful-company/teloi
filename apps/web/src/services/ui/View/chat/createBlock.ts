@@ -19,89 +19,88 @@ import { nanoid } from "nanoid";
  *
  * Block context (nodeId is a sibling message):
  * - Inserts before/after the given message in tuple ordering
- * - No auto-type assignment
+ * - Inherits sibling's role type
  */
-export const createBlock = (
+export const createBlock = Effect.fn("View.chat.createBlock")(function* (
   nodeId: Id.Node,
   bufferId: Id.Buffer,
   position: "before" | "after",
-) =>
-  Effect.gen(function* () {
-    const Store = yield* StoreT;
-    const Tuple = yield* TupleT;
-    const Type = yield* TypeT;
+) {
+  const Store = yield* StoreT;
+  const Tuple = yield* TupleT;
+  const Type = yield* TypeT;
 
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-    const chatNodeId = Option.isSome(bufferDoc)
-      ? (bufferDoc.value.assignedNodeId as Id.Node | null)
-      : null;
+  const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+  const chatNodeId = Option.isSome(bufferDoc)
+    ? (bufferDoc.value.assignedNodeId as Id.Node | null)
+    : null;
 
-    if (!chatNodeId) {
-      return yield* Effect.die(
-        new Error(`Buffer ${bufferId} has no assigned node`),
-      );
-    }
-
-    const isTitle = nodeId === chatNodeId;
-
-    const newNodeId = Id.Node.make(nanoid());
-    yield* Store.commit(
-      events.nodeCreated({
-        timestamp: Date.now(),
-        data: { nodeId: newNodeId, parentId: chatNodeId, position: "" },
-      }),
+  if (!chatNodeId) {
+    return yield* Effect.die(
+      new Error(`Buffer ${bufferId} has no assigned node`),
     );
+  }
 
-    const existingTuples = yield* Tuple.findByPosition(
-      System.CHAT_HAS_MESSAGE,
-      0,
-      chatNodeId,
-      1,
-    );
+  const isTitle = nodeId === chatNodeId;
 
-    const newIdx = yield* computeFractionalIndex(
-      nodeId,
-      isTitle,
-      position,
-      existingTuples,
-    );
+  const newNodeId = Id.Node.make(nanoid());
+  yield* Store.commit(
+    events.nodeCreated({
+      timestamp: Date.now(),
+      data: { nodeId: newNodeId, parentId: chatNodeId, position: "" },
+    }),
+  );
 
-    yield* Tuple.create(
-      System.CHAT_HAS_MESSAGE,
-      [chatNodeId, newNodeId],
-      ["", newIdx],
-    );
+  const existingTuples = yield* Tuple.findByPosition(
+    System.CHAT_HAS_MESSAGE,
+    0,
+    chatNodeId,
+    1,
+  );
 
-    if (isTitle) {
-      if (existingTuples.length === 0) {
-        yield* Type.addType(newNodeId, System.MSG_USER);
-      } else {
-        const firstMessageNodeId = existingTuples[0]!.members[1]!;
-        const firstMessageTypes = yield* Type.getTypes(firstMessageNodeId);
-        const roleType = firstMessageTypes.find(isMessageRoleType);
-        if (roleType) {
-          yield* Type.addType(newNodeId, roleType);
-        }
-      }
+  const newIdx = yield* computeFractionalIndex(
+    nodeId,
+    isTitle,
+    position,
+    existingTuples,
+  );
+
+  yield* Tuple.create(
+    System.CHAT_HAS_MESSAGE,
+    [chatNodeId, newNodeId],
+    ["", newIdx],
+  );
+
+  if (isTitle) {
+    if (existingTuples.length === 0) {
+      yield* Type.addType(newNodeId, System.MSG_USER);
     } else {
-      const siblingTypes = yield* Type.getTypes(nodeId);
-      const roleType = siblingTypes.find(isMessageRoleType);
+      const firstMessageNodeId = existingTuples[0]!.members[1]!;
+      const firstMessageTypes = yield* Type.getTypes(firstMessageNodeId);
+      const roleType = firstMessageTypes.find(isMessageRoleType);
       if (roleType) {
         yield* Type.addType(newNodeId, roleType);
       }
     }
+  } else {
+    const siblingTypes = yield* Type.getTypes(nodeId);
+    const roleType = siblingTypes.find(isMessageRoleType);
+    if (roleType) {
+      yield* Type.addType(newNodeId, roleType);
+    }
+  }
 
-    yield* Effect.logDebug("[Chat.createBlock] Message created").pipe(
-      Effect.annotateLogs({
-        chatNodeId,
-        newNodeId,
-        isTitle,
-        position,
-      }),
-    );
+  yield* Effect.logDebug("[View.chat.createBlock] Message created").pipe(
+    Effect.annotateLogs({
+      chatNodeId,
+      newNodeId,
+      isTitle,
+      position,
+    }),
+  );
 
-    return newNodeId;
-  });
+  return newNodeId;
+});
 
 // ================================ Internal ==================================
 
@@ -127,7 +126,7 @@ const computeFractionalIndex = (
     if (isTitle) {
       if (position !== "after") {
         yield* Effect.logDebug(
-          "[Chat.computeFractionalIndex] position ignored in title context",
+          "[View.chat.computeFractionalIndex] position ignored in title context",
         ).pipe(Effect.annotateLogs({ position }));
       }
       const firstIdx =

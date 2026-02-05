@@ -164,10 +164,23 @@ Key services:
 - **Automerge**: Text content per node (`AutomergeT` service, synced via `automerge-repo`)
 - Split/merge update both; typing only touches Automerge
 
-**Ghost Block Pattern** (PropertySection):
-Automerge text is independent of LiveStore—we can bind Editor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first keystroke (debounced 50ms), we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
-- `ui/PropertySection.tsx` - GhostBlock component
-- `services/ui/Property/addLinkedBlock.ts` - accepts optional `nodeId` for materialization
+**Ghost Block Pattern**:
+Automerge text is independent of LiveStore—we can bind an Editor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first structural mutation, we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
+
+Two use cases share this pattern:
+
+1. **PropertySection ghosts** (`ui/PropertySection.tsx`): Empty property editor that materializes on first keystroke (debounced 50ms). See `services/ui/Property/addLinkedBlock.ts`.
+
+2. **Expand/collapse ghosts** (`services/ui/Block/expand.ts`): When expanding a childless block, a ghost child appears for typing. Created via `expandOneLevel`, materialized via `Block.materialize`.
+
+**Ghost invariants**:
+- A ghost only exists when its parent has **zero real children** (created when `children.length === 0`)
+- Ghost state lives on block documents: parent has `ghostChildId`, ghost has `ghostParentId`
+- Ghosts have **no LiveStore rows** (`nodes`, `parent_links`)—`Node.getParent(ghostId)` fails
+- Any tree mutation on a ghost (except deletion) **materializes first**, then proceeds normally
+- Collapsing a parent with a ghost cleans up the ghost (deletes Automerge text, clears block docs)
+
+Key files: `services/ui/Block/materialize.ts`, `services/ui/Block/getBlockDoc.ts`, `services/ui/Block/expand.ts`
 
 ### LiveStore Integration
 Local-first SQLite database with event sourcing:

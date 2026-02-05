@@ -9,7 +9,6 @@ import { NodeLive } from "@/services/domain/Node";
 import { TupleLive } from "@/services/domain/Tuple";
 import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
-import { ViewNavigationLive } from "@/services/ui/ViewNavigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
 import { ActionLive, ActionT } from "@/services/ui/Action";
@@ -86,10 +85,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
 
   // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
   // Group layers to avoid pipe's argument limit (max 20)
-  const ViewPropertyChatLive = Layer.merge(
-    ViewLive,
-    Layer.merge(PropertyLive, ChatLive),
-  );
+  const PropertyChatLive = Layer.merge(PropertyLive, ChatLive);
   const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
   // Group DataPort and Bootstrap (both independent domain services)
   const DataPortBootstrapGroup = Layer.merge(DataPortLive, BootstrapLive);
@@ -103,22 +99,22 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     KeyEventBusLive,
     CommandBusLive,
   );
-  // Group navigation services (both need BufferT from below)
-  const NavigationGroup = Layer.merge(NavigationLive, ViewNavigationLive);
+  // Group Editor and View (both need BufferT, WindowT from below)
+  const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
   const TestLayer = pipe(
     ActionLive, // needs BlockT from below
     Layer.provideMerge(DataPortBootstrapGroup),
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
-    Layer.provideMerge(NavigationGroup),
-    Layer.provideMerge(EditorLive), // needs BufferT, WindowT from below
+    Layer.provideMerge(NavigationLive),
+    Layer.provideMerge(EditorViewGroup), // EditorLive + ViewLive
     // BlockLive needs TypeT, PickerT from layers below
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(TypePickerGroup),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(BufferLive),
-    Layer.provideMerge(ViewPropertyChatLive),
+    Layer.provideMerge(PropertyChatLive),
     Layer.provideMerge(
       Layer.merge(
         WindowLive,

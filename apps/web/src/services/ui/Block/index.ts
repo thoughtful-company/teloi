@@ -1,4 +1,4 @@
-import { Id } from "@/schema";
+import { Id, Model } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
@@ -6,7 +6,6 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { PickerT } from "@/services/ui/Picker";
-import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
@@ -16,13 +15,25 @@ import {
   BlockNotFoundError,
   VirtualBlockError,
 } from "./errors";
-import { expandOneLevel } from "./expand";
-import { findDeepestLastChild } from "@/services/ui/ViewNavigation/page/findDeepestLastChild";
-import { findNextNode } from "@/services/ui/ViewNavigation/page/findNextNode";
-import { findNextNodeInDocumentOrder } from "@/services/ui/ViewNavigation/page/findNextNodeInDocumentOrder";
-import { findPreviousNode } from "@/services/ui/ViewNavigation/page/findPreviousNode";
+import { expandOneLevel, type ExpandResult } from "./expand";
+import { materialize, type MaterializeParams } from "./materialize";
+import {
+  findDeepestLastChild,
+  findNextNode,
+  findNextNodeInDocumentOrder,
+  findPreviousNode,
+} from "@/services/ui/View/page/navigation";
+import { getBlockDoc } from "./getBlockDoc";
 import { isBlockExpanded } from "./isBlockExpanded";
 import { BlockView, subscribe } from "./subscribe";
+import {
+  getActiveView,
+  getOrCreateView,
+  getViewsForNode,
+  subscribeViewInfo,
+  subscribeViewsForNode,
+  type ViewInfo,
+} from "./views";
 
 export {
   BlockGoneError,
@@ -30,6 +41,13 @@ export {
   VirtualBlockError,
 } from "./errors";
 export type { BlockView } from "./subscribe";
+export type { MaterializeParams } from "./materialize";
+export {
+  resolveActiveViewType,
+  resolveViewType,
+  type ViewInfo,
+  type ViewType,
+} from "./views";
 
 export class BlockT extends Context.Tag("BlockT")<
   BlockT,
@@ -47,6 +65,7 @@ export class BlockT extends Context.Tag("BlockT")<
     attestExistence: (
       blockId: Id.Block,
     ) => Effect.Effect<void, BlockNotFoundError>;
+    get: (bufferId: Id.Buffer, nodeId: Id.Node) => Effect.Effect<Model.Block>;
     setExpanded: (
       blockId: Id.Block,
       isExpanded: boolean,
@@ -64,6 +83,7 @@ export class BlockT extends Context.Tag("BlockT")<
     ) => Effect.Effect<Id.Node, never>;
     findNextNode: (
       currentId: Id.Node,
+      bufferId: Id.Buffer,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     findNextNodeInDocumentOrder: (
       currentId: Id.Node,
@@ -78,13 +98,26 @@ export class BlockT extends Context.Tag("BlockT")<
     expandOneLevel: (
       bufferId: Id.Buffer,
       nodeId: Id.Node,
-    ) => Effect.Effect<boolean, never>;
+    ) => Effect.Effect<ExpandResult, never>;
 
-    // View
+    materialize: (params: MaterializeParams) => Effect.Effect<void, never>;
+
+    // View entity management
     setActiveView: (
       blockId: Id.Block,
       viewId: Id.Node | null,
     ) => Effect.Effect<void, never>;
+    getActiveView: (
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<Option.Option<Id.Node>>;
+    getViewsForNode: (nodeId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
+    getOrCreateView: (nodeId: Id.Node) => Effect.Effect<Id.Node>;
+    subscribeViewsForNode: (
+      nodeId: Id.Node,
+    ) => Effect.Effect<Stream.Stream<readonly Id.Node[]>>;
+    subscribeViewInfo: (
+      nodeId: Id.Node,
+    ) => Effect.Effect<Stream.Stream<readonly ViewInfo[]>>;
   }
 >() {}
 
@@ -98,7 +131,6 @@ export const BlockLive = Layer.effect(
     const Automerge = yield* AutomergeT;
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
-    const View = yield* ViewT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
@@ -107,19 +139,56 @@ export const BlockLive = Layer.effect(
       Context.add(AutomergeT, Automerge),
       Context.add(TypeT, Type),
       Context.add(PickerT, Picker),
-      Context.add(ViewT, View),
     );
 
     return {
       subscribe: withContext(subscribe)(context),
       attestExistence: withContext(attestExistence)(context),
+      get: withContext(getBlockDoc)(context),
       setExpanded: (blockId: Id.Block, isExpanded: boolean) =>
         Store.getDocument("block", blockId).pipe(
           Effect.flatMap((doc) => {
             const current = Option.getOrElse(doc, () => ({
               isExpanded: true,
               activeViewId: null,
+              ghostChildId: null as Id.Node | null,
+              ghostParentId: null as Id.Node | null,
             }));
+
+            // When collapsing a block with a ghost, clean up the ghost
+            if (!isExpanded && current.ghostChildId) {
+              const ctx = Id.parseBlockContextSync(blockId);
+              if (ctx.type === "buffer") {
+                const ghostBlockId = Id.makeBufferBlockId(
+                  ctx.bufferId,
+                  current.ghostChildId,
+                );
+                return Effect.all([
+                  // Delete ghost's Automerge text
+                  Automerge.deleteText(current.ghostChildId).pipe(
+                    Effect.catchAll(() => Effect.void),
+                  ),
+                  // Clear ghost's block doc
+                  Store.setDocument(
+                    "block",
+                    {
+                      isExpanded: false,
+                      activeViewId: null,
+                      ghostChildId: null,
+                      ghostParentId: null,
+                    },
+                    ghostBlockId,
+                  ).pipe(Effect.catchAll(() => Effect.void)),
+                  // Collapse parent and clear ghostChildId
+                  Store.setDocument(
+                    "block",
+                    { ...current, isExpanded: false, ghostChildId: null },
+                    blockId,
+                  ),
+                ]).pipe(Effect.asVoid);
+              }
+            }
+
             return Store.setDocument(
               "block",
               { ...current, isExpanded },
@@ -145,14 +214,17 @@ export const BlockLive = Layer.effect(
 
       // Expand/collapse
       expandOneLevel: withContext(expandOneLevel)(context),
+      materialize: withContext(materialize)(context),
 
-      // View
+      // View entity management
       setActiveView: (blockId: Id.Block, viewId: Id.Node | null) =>
         Store.getDocument("block", blockId).pipe(
           Effect.flatMap((doc) => {
             const current = Option.getOrElse(doc, () => ({
               isExpanded: true,
               activeViewId: null,
+              ghostChildId: null,
+              ghostParentId: null,
             }));
             return Store.setDocument(
               "block",
@@ -162,6 +234,11 @@ export const BlockLive = Layer.effect(
           }),
           Effect.catchAll(() => Effect.void),
         ),
+      getActiveView: withContext(getActiveView)(context),
+      getViewsForNode: withContext(getViewsForNode)(context),
+      getOrCreateView: withContext(getOrCreateView)(context),
+      subscribeViewsForNode: withContext(subscribeViewsForNode)(context),
+      subscribeViewInfo: withContext(subscribeViewInfo)(context),
     };
   }),
 );

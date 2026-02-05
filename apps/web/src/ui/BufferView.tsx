@@ -1,8 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Entity, Id, Model } from "@/schema";
+import { BlockT, type ViewInfo } from "@/services/ui/Block";
 import { BufferT } from "@/services/ui/Buffer";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
-import { ViewT, type ViewInfo } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
 import {
@@ -35,11 +35,11 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
     // Subscribe to views for the page, then subscribe to properties when a view exists
     const fiber = runtime.runFork(
       Effect.gen(function* () {
-        const View = yield* ViewT;
+        const Block = yield* BlockT;
         const Property = yield* PropertyT;
 
-        // Subscribe to views for the page
-        const viewsStream = yield* View.subscribeViewsForPage(props.pageId);
+        // Subscribe to views for the node
+        const viewsStream = yield* Block.subscribeViewsForNode(props.pageId);
 
         // When views change, subscribe to properties of the first view
         yield* Stream.runForEach(

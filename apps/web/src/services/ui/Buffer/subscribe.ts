@@ -4,12 +4,15 @@ import { StoreT } from "@/services/external/Store";
 import { WindowT } from "@/services/ui/Window";
 import {
   resolveActiveViewType,
-  ViewT,
+  subscribeViewInfo,
   type ViewInfo,
   type ViewType,
-} from "@/services/ui/View";
+} from "@/services/ui/Block/views";
+import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
 import { queryDb } from "@livestore/livestore";
-import { Effect, Option, Stream } from "effect";
+import { Context, Effect, Option, Stream } from "effect";
 import { NodeT } from "../../domain/Node";
 
 export interface BufferView {
@@ -25,8 +28,17 @@ export const subscribe = (bufferId: Id.Buffer) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
+    const Automerge = yield* AutomergeT;
     const Window = yield* WindowT;
-    const View = yield* ViewT;
+
+    // Context for subscribeViewInfo (called inside Stream.unwrap where
+    // the outer generator's resolved services aren't automatically available)
+    const viewContext = Context.make(TupleT, Tuple).pipe(
+      Context.add(TypeT, Type),
+      Context.add(AutomergeT, Automerge),
+    );
 
     // Subscribe to buffer document to watch for assignedNodeId and activeViewId changes
     const bufferQuery = queryDb(
@@ -77,7 +89,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
         Stream.unwrap(
           Effect.gen(function* () {
             const nodeStream = yield* Node.subscribe(nodeId);
-            const viewInfoStream = yield* View.subscribeViewInfo(nodeId);
+            const viewInfoStream = yield* subscribeViewInfo(nodeId);
 
             return Stream.zipLatestWith(
               nodeStream,
@@ -88,7 +100,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
                 availableViews,
               }),
             );
-          }),
+          }).pipe(Effect.provide(viewContext)),
         ),
       { switch: true },
     );

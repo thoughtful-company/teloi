@@ -22,7 +22,13 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
 
     const { bufferId, nodeIds } = target.value;
     for (const nodeId of nodeIds) {
-      yield* Block.expandOneLevel(bufferId, nodeId);
+      const { ghostNodeId } = yield* Block.expandOneLevel(bufferId, nodeId);
+      if (ghostNodeId) {
+        const ghostBlockId = Id.makeBufferBlockId(bufferId, ghostNodeId);
+        yield* Window.setActiveElement(
+          Option.some({ id: ghostBlockId, type: "block" as const }),
+        );
+      }
     }
   });
 }

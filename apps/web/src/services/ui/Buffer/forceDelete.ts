@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { findPreviousNode } from "@/services/ui/ViewNavigation/page/findPreviousNode";
+import { findPreviousNode } from "@/services/ui/View/page/navigation";
 import { Effect, Option } from "effect";
 
 export interface MergeResult {

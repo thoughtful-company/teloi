@@ -48,7 +48,12 @@ export const expandAncestors = (
         const blockId = Id.makeBufferBlockId(bufferId, nodeId);
         return Store.setDocument(
           "block",
-          { isExpanded: true, activeViewId: null },
+          {
+            isExpanded: true,
+            activeViewId: null,
+            ghostChildId: null,
+            ghostParentId: null,
+          },
           blockId,
         ).pipe(Effect.orDie);
       },
@@ -111,7 +116,12 @@ export const expandAncestorsForNodes = (
         const blockId = Id.makeBufferBlockId(bufferId, nodeId);
         return Store.setDocument(
           "block",
-          { isExpanded: true, activeViewId: null },
+          {
+            isExpanded: true,
+            activeViewId: null,
+            ghostChildId: null,
+            ghostParentId: null,
+          },
           blockId,
         ).pipe(Effect.orDie);
       },

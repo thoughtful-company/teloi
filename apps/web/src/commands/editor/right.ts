@@ -1,7 +1,6 @@
-import { Id } from "@/schema";
 import { BufferT } from "@/services/ui/Buffer";
 import { EditorT } from "@/services/ui/Editor";
-import { ViewNavigationT } from "@/services/ui/ViewNavigation";
+import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
@@ -27,19 +26,18 @@ export class Right extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    const ViewNav = yield* ViewNavigationT;
+    const View = yield* ViewT;
     const Window = yield* WindowT;
     const Buffer = yield* BufferT;
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { bufferId, nodeId } = ctx.value;
+    const { bufferId, blockId } = ctx.value;
 
-    const targetOpt = yield* ViewNav.resolveBlockRight(nodeId, bufferId);
+    const targetOpt = yield* View.resolveBlockRight(blockId);
     if (Option.isNone(targetOpt)) return;
 
-    const targetNodeId = targetOpt.value;
-    const targetBlockId = Id.makeBufferBlockId(bufferId, targetNodeId);
+    const targetBlockId = targetOpt.value;
 
     yield* Buffer.setSelection(
       bufferId,

@@ -5,7 +5,10 @@ import { TupleLive, TupleT } from "@/services/domain/Tuple";
 import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
+import { BlockLive } from "@/services/ui/Block";
 import { BufferLive, BufferT } from "@/services/ui/Buffer";
+import { PickerLive } from "@/services/ui/Picker";
+import { TypePickerLive } from "@/services/ui/TypePicker";
 import { ChatProviderT } from "@/services/external/ChatProvider";
 import { ChatLive, ChatT, type ChatMessageEntry } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
@@ -49,9 +52,13 @@ const setupTest = async () => {
     send: () => Effect.succeed("[test response]"),
   });
 
+  // Layer order: lower provides to higher; Picker needs Buffer, Block needs Picker
   const TestLayer = ChatLive.pipe(
-    Layer.provideMerge(BufferLive),
     Layer.provideMerge(ViewLive),
+    Layer.provideMerge(BlockLive),
+    Layer.provideMerge(PickerLive),
+    Layer.provideMerge(TypePickerLive),
+    Layer.provideMerge(BufferLive),
     Layer.provideMerge(TestChatProviderLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),

@@ -123,7 +123,7 @@ export const createNavigationHandlers = (
         }
 
         // Find next node in document order
-        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        const nextNodeOpt = yield* Block.findNextNode(nodeId, bufferId);
         if (Option.isNone(nextNodeOpt)) {
           return ActionResult.handled({});
         }
@@ -233,7 +233,7 @@ export const createNavigationHandlers = (
         }
 
         // Find next node in document order
-        const nextNodeOpt = yield* Block.findNextNode(nodeId);
+        const nextNodeOpt = yield* Block.findNextNode(nodeId, bufferId);
         if (Option.isNone(nextNodeOpt)) {
           // No next block - stay at current position
           const text = yield* Automerge.getText(nodeId);

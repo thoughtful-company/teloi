@@ -9,7 +9,6 @@
 import { bufferCommands, type BufferCommand } from "@/commands/buffer";
 import { chatCommands, type ChatCommand } from "@/commands/chat";
 import { editorCommands, type EditorCommand } from "@/commands/editor";
-import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
@@ -20,10 +19,9 @@ import { BufferT } from "@/services/ui/Buffer";
 import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
 import { NavigationT } from "@/services/ui/Navigation";
-import { ViewNavigationT } from "@/services/ui/ViewNavigation";
-import { makeChatViewNavigation } from "@/services/ui/ViewNavigation/chat";
+import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
-import { Context, Effect, Layer, Option } from "effect";
+import { Context, Effect, Layer } from "effect";
 
 // ============================================================================
 // Command Type
@@ -75,10 +73,9 @@ export const CommandBusLive = Layer.effect(
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
     const Chat = yield* ChatT;
-    const PageViewNavigation = yield* ViewNavigationT;
+    const View = yield* ViewT;
 
-    // Build base context (without ViewNavigationT — added dynamically per dispatch)
-    const baseContext = Context.empty().pipe(
+    const commandContext = Context.empty().pipe(
       Context.add(EditorT, Editor),
       Context.add(WindowT, Window),
       Context.add(BufferT, Buffer),
@@ -90,16 +87,7 @@ export const CommandBusLive = Layer.effect(
       Context.add(TypeT, Type),
       Context.add(TupleT, Tuple),
       Context.add(ChatT, Chat),
-    );
-
-    // Pre-build the chat ViewNavigation (captured once, reused per dispatch)
-    const chatViewNavContext = Context.empty().pipe(
-      Context.add(StoreT, Store),
-      Context.add(TupleT, Tuple),
-      Context.add(TypeT, Type),
-    );
-    const ChatViewNavigation = yield* makeChatViewNavigation.pipe(
-      Effect.provide(chatViewNavContext),
+      Context.add(ViewT, View),
     );
 
     return {
@@ -113,19 +101,6 @@ export const CommandBusLive = Layer.effect(
 
           yield* Effect.logDebug("CommandBus dispatching").pipe(
             Effect.annotateLogs({ command: command._tag }),
-          );
-
-          // Resolve the right ViewNavigation for the active view
-          const viewNav = yield* resolveViewNavigation(
-            Window,
-            Type,
-            Store,
-            PageViewNavigation,
-            ChatViewNavigation,
-          );
-
-          const commandContext = baseContext.pipe(
-            Context.add(ViewNavigationT, viewNav),
           );
 
           yield* handler(command).pipe(
@@ -143,50 +118,3 @@ export const CommandBusLive = Layer.effect(
     };
   }),
 );
-
-// ================================ Internal ==================================
-
-/**
- * Resolve the ViewNavigationT implementation based on the active buffer's view type.
- * Returns the chat implementation if the active view is a CHAT_VIEW, otherwise page (default).
- */
-const resolveViewNavigation = (
-  Window: WindowT["Type"],
-  Type: TypeT["Type"],
-  Store: StoreT["Type"],
-  pageNav: ViewNavigationT["Type"],
-  chatNav: ViewNavigationT["Type"],
-): Effect.Effect<ViewNavigationT["Type"]> =>
-  Effect.gen(function* () {
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement)) return pageNav;
-
-    const el = activeElement.value;
-
-    // Resolve buffer ID from active element
-    let bufferId: Id.Buffer | null = null;
-    if (el.type === "block") {
-      const ctx = Id.parseBlockContextSync(el.id);
-      if (ctx.type === "buffer") bufferId = ctx.bufferId;
-    } else if (el.type === "buffer") {
-      bufferId = el.id;
-    }
-
-    if (!bufferId) return pageNav;
-
-    // Get the buffer's activeViewId
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-    if (Option.isNone(bufferDoc)) return pageNav;
-
-    const activeViewId = bufferDoc.value.activeViewId as Id.Node | null;
-    if (!activeViewId) return pageNav;
-
-    // Check if the view has CHAT_VIEW type
-    const isChatView = yield* Type.hasType(activeViewId, System.CHAT_VIEW);
-    if (isChatView) return chatNav;
-
-    return pageNav;
-  }).pipe(
-    // If resolution fails for any reason, fall back to page navigation
-    Effect.catchAll(() => Effect.succeed(pageNav)),
-  );

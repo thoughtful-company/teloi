@@ -2141,6 +2141,44 @@ describe("editor navigation", () => {
         yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
       }).pipe(runtime.runPromise);
     });
+
+    it("removes ghost block and focuses parent on Backspace at start", async () => {
+      await Effect.gen(function* () {
+        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+          "Root node",
+          [{ text: "Parent" }],
+        );
+
+        const parentNodeId = childNodeIds[0];
+        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+
+        render(() => <BufferView bufferId={bufferId} />);
+
+        // Expand the childless block to create a ghost
+        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+        yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
+
+        // Ghost should be focused
+        const Store = yield* StoreT;
+        const blockDoc = yield* Store.getDocument("block", parentBlockId);
+        const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId!;
+        const ghostBlockId = Id.makeBufferBlockId(
+          bufferId,
+          ghostChildId as Id.Node,
+        );
+        yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+
+        // Backspace on empty ghost → remove ghost, focus parent at end
+        yield* When.USER_PRESSES("{Backspace}");
+
+        yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+        yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6); // "Parent".length
+
+        // Ghost should be cleaned up
+        const blockDocAfter = yield* Store.getDocument("block", parentBlockId);
+        expect(Option.getOrThrow(blockDocAfter).ghostChildId).toBeNull();
+      }).pipe(runtime.runPromise);
+    });
   });
 
   describe("Delete", () => {
