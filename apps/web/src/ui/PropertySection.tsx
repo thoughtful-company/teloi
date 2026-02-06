@@ -126,8 +126,8 @@ function GhostBlock(props: GhostBlockProps) {
     setIsActive(true);
   };
 
-  // TODO: handleBlur/handleSelectionChange will be handled via ActionT once
-  // blockId support is added. For now, focus/blur state is broken.
+  // TODO: handleBlur/handleSelectionChange needs blockId support.
+  // For now, focus/blur state is broken.
 
   return (
     <div
@@ -146,7 +146,7 @@ function GhostBlock(props: GhostBlockProps) {
       >
         {/* TODO: Pre-generate blockId for ghost block and pass to Editor.
             The ghost block pattern needs a blockId before materialization.
-            See: Editor now requires blockId for ActionT integration. */}
+            See: Editor requires blockId for KeyEventBus integration. */}
         <div class="text-neutral-400">[Ghost editor placeholder]</div>
       </Show>
     </div>
@@ -286,8 +286,8 @@ export default function PropertySection(props: PropertySectionProps) {
     );
   };
 
-  // TODO: handleBlur/handleSelectionChange will be handled via ActionT once
-  // blockId support is added. For now, focus/blur state is broken.
+  // TODO: handleBlur/handleSelectionChange needs blockId support.
+  // For now, focus/blur state is broken.
 
   return (
     <div
@@ -309,7 +309,7 @@ export default function PropertySection(props: PropertySectionProps) {
             }
           >
             {/* TODO: Pre-generate blockId for property header and pass to Editor.
-                Editor now requires blockId for ActionT integration. */}
+                Editor requires blockId for KeyEventBus integration. */}
             <div class="text-neutral-400">[Property editor placeholder]</div>
           </Show>
         </div>

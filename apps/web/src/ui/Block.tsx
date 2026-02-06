@@ -3,13 +3,13 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
-import { AppAction, createDispatch } from "@/services/ui/Action";
 import { BlockT, type BlockView } from "@/services/ui/Block";
 import { CommandBusT } from "@/services/ui/CommandBus";
 import type { ViewInfo } from "@/services/ui/View";
 import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
+import { focusBlock } from "./focusBlock";
 import { createEffect, For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
 import Editor from "./Editor";
@@ -42,10 +42,8 @@ export default function Block({ blockId }: BlockProps) {
   const bufferId =
     blockContext.type === "buffer" ? blockContext.bufferId : null;
 
-  // AutomergeT for handle access
   const Automerge = runtime.runSync(AutomergeT);
 
-  // Block state stream (BlockT.subscribe composes all streams internally)
   const blockStream = Stream.unwrap(
     Effect.gen(function* () {
       const Block = yield* BlockT;
@@ -145,12 +143,8 @@ export default function Block({ blockId }: BlockProps) {
     );
   };
 
-  // Ref to p element for click position resolution
   let pRef: HTMLParagraphElement | undefined;
 
-  const dispatch = createDispatch(runtime);
-
-  // Handle mousedown to focus block (mousedown enables drag-to-select)
   const handleMouseDown = (e: MouseEvent) => {
     if (store.isActive) return;
 
@@ -163,7 +157,15 @@ export default function Block({ blockId }: BlockProps) {
       assoc = resolved?.assoc;
     }
 
-    dispatch(AppAction.Focus(blockId, offset, assoc));
+    runtime.runSync(
+      focusBlock({
+        bufferId: blockContext.bufferId,
+        nodeId,
+        blockId,
+        offset,
+        assoc,
+      }),
+    );
   };
 
   return (
