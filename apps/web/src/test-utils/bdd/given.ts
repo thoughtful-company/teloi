@@ -7,7 +7,7 @@ import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { doubleRaf } from "@/utils/effect";
 import { EditorSelection } from "@codemirror/state";
@@ -16,24 +16,24 @@ import { screen } from "@testing-library/dom";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 
-export interface BufferWithNodeResult {
-  bufferId: Id.Buffer;
+export interface FrameWithNodeResult {
+  frameId: Id.Frame;
   nodeId: Id.Node;
   windowId: Id.Window;
   textContent: string;
 }
 
 /**
- * Creates a buffer with an assigned node containing the given text.
- * Sets up the minimal required documents: window, buffer, node.
+ * Creates a frame with an assigned node containing the given text.
+ * Sets up the minimal required documents: window, frame, node.
  */
-export const A_BUFFER_WITH_TEXT = (textContent: string) =>
+export const A_FRAME_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
-    const bufferId = Id.Buffer.make(nanoid());
+    const frameId = Id.Frame.make(nanoid());
     const nodeId = Id.Node.make(nanoid());
 
     // Create node in LiveStore
@@ -53,36 +53,36 @@ export const A_BUFFER_WITH_TEXT = (textContent: string) =>
       {
         panes: [],
         activeElement: null,
-      },
-      windowId,
-    );
-
-    // Create buffer document
-    yield* Store.setDocument(
-      "buffer",
-      {
-        windowId,
-        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
-        assignedNodeId: nodeId,
+        selection: null,
         selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
+      },
+      windowId,
+    );
+
+    // Create frame document
+    yield* Store.setDocument(
+      "frame",
+      {
+        windowId,
+        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+        assignedNodeId: nodeId,
         toggledNodes: [],
-        selection: null,
         activeViewId: null,
         popup: null,
       },
-      bufferId,
+      frameId,
     );
 
     return {
-      bufferId,
+      frameId,
       nodeId,
       windowId,
       textContent,
-    } satisfies BufferWithNodeResult;
-  }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_TEXT"));
+    } satisfies FrameWithNodeResult;
+  }).pipe(Effect.withSpan("Given.A_FRAME_WITH_TEXT"));
 
 export interface ChildSpec {
   text: string;
@@ -91,20 +91,20 @@ export interface ChildSpec {
 /** Maps a tuple of ChildSpec to a tuple of Id.Node with matching length */
 type ToNodeIds<T extends readonly ChildSpec[]> = { [K in keyof T]: Id.Node };
 
-export interface BufferWithChildrenResult<
+export interface FrameWithChildrenResult<
   T extends readonly ChildSpec[] = readonly ChildSpec[],
 > {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
   windowId: Id.Window;
 }
 
 /**
- * Creates a buffer with a root node and child nodes.
+ * Creates a frame with a root node and child nodes.
  * Uses NodeT.insertNode to create children with proper positioning.
  */
-export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
+export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
   rootText: string,
   children: T,
 ) =>
@@ -114,7 +114,7 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     const Automerge = yield* AutomergeT;
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
-    const bufferId = Id.Buffer.make(nanoid());
+    const frameId = Id.Frame.make(nanoid());
     const rootNodeId = Id.Node.make(nanoid());
 
     // Create root node in LiveStore
@@ -134,27 +134,27 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       {
         panes: [],
         activeElement: null,
-      },
-      windowId,
-    );
-
-    // Create buffer document
-    yield* Store.setDocument(
-      "buffer",
-      {
-        windowId,
-        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
-        assignedNodeId: rootNodeId,
+        selection: null,
         selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
+      },
+      windowId,
+    );
+
+    // Create frame document
+    yield* Store.setDocument(
+      "frame",
+      {
+        windowId,
+        parent: { id: Id.Pane.make("test-pane"), type: "pane" },
+        assignedNodeId: rootNodeId,
         toggledNodes: [],
-        selection: null,
         activeViewId: null,
         popup: null,
       },
-      bufferId,
+      frameId,
     );
 
     // Create child nodes using NodeT.insertNode
@@ -170,28 +170,28 @@ export const A_BUFFER_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     }
 
     return {
-      bufferId,
+      frameId,
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       windowId,
     };
-  }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_CHILDREN"));
+  }).pipe(Effect.withSpan("Given.A_FRAME_WITH_CHILDREN"));
 
 /**
- * Sets the buffer container to a specific width.
+ * Sets the frame container to a specific width.
  * Useful for testing line wrapping behavior.
  */
-export const BUFFER_HAS_WIDTH = (width: number) =>
+export const FRAME_HAS_WIDTH = (width: number) =>
   Effect.promise(async () => {
-    const buffer = await screen.findByTestId("buffer");
-    buffer.style.width = `${width}px`;
-    buffer.style.maxWidth = `${width}px`; // Also set max-width to prevent overflow
+    const frame = await screen.findByTestId("frame");
+    frame.style.width = `${width}px`;
+    frame.style.maxWidth = `${width}px`; // Also set max-width to prevent overflow
     // Force reflow so text wrapping takes effect before we continue
-    void buffer.offsetHeight;
+    void frame.offsetHeight;
     // Wait for two animation frames to ensure layout is fully complete
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
-  }).pipe(Effect.withSpan("Given.BUFFER_HAS_WIDTH"));
+  }).pipe(Effect.withSpan("Given.FRAME_HAS_WIDTH"));
 
 /**
  * Inserts a node with text content.
@@ -219,7 +219,7 @@ export const INSERT_NODE_WITH_TEXT = (args: {
   }).pipe(Effect.withSpan("Given.INSERT_NODE_WITH_TEXT"));
 
 export interface FullHierarchyResult {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
   paneId: Id.Pane;
   windowId: Id.Window;
@@ -227,8 +227,8 @@ export interface FullHierarchyResult {
 }
 
 /**
- * Creates the full window → pane → buffer → node hierarchy.
- * Required for NavigationT tests which look up buffer via window.panes[0].
+ * Creates the full window → pane → frame → node hierarchy.
+ * Required for NavigationT tests which look up frame via window.panes[0].
  */
 export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
@@ -237,7 +237,7 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
-    const bufferId = Id.Buffer.make(nanoid());
+    const frameId = Id.Frame.make(nanoid());
     const nodeId = Id.Node.make(nanoid());
 
     // Create node in LiveStore
@@ -257,41 +257,41 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       {
         panes: [paneId],
         activeElement: null,
-      },
-      windowId,
-    );
-
-    // Create pane document with buffer reference
-    yield* Store.setDocument(
-      "pane",
-      {
-        parent: { id: windowId, type: "window" },
-        buffers: [bufferId],
-      },
-      paneId,
-    );
-
-    // Create buffer document (assignedNodeId starts as null for navigation tests)
-    yield* Store.setDocument(
-      "buffer",
-      {
-        windowId,
-        parent: { id: paneId, type: "pane" },
-        assignedNodeId: null,
+        selection: null,
         selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
+      },
+      windowId,
+    );
+
+    // Create pane document with frame reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        frames: [frameId],
+      },
+      paneId,
+    );
+
+    // Create frame document (assignedNodeId starts as null for navigation tests)
+    yield* Store.setDocument(
+      "frame",
+      {
+        windowId,
+        parent: { id: paneId, type: "pane" },
+        assignedNodeId: null,
         toggledNodes: [],
-        selection: null,
         activeViewId: null,
         popup: null,
       },
-      bufferId,
+      frameId,
     );
 
     return {
-      bufferId,
+      frameId,
       nodeId,
       paneId,
       windowId,
@@ -302,7 +302,7 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
 export interface FullHierarchyWithChildrenResult<
   T extends readonly ChildSpec[] = readonly ChildSpec[],
 > {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
   paneId: Id.Pane;
@@ -310,8 +310,8 @@ export interface FullHierarchyWithChildrenResult<
 }
 
 /**
- * Creates the full window → pane → buffer → node hierarchy with child nodes.
- * Required for NavigationT tests which look up buffer via window.panes[0].
+ * Creates the full window → pane → frame → node hierarchy with child nodes.
+ * Required for NavigationT tests which look up frame via window.panes[0].
  */
 export const A_FULL_HIERARCHY_WITH_CHILDREN = <
   const T extends readonly ChildSpec[],
@@ -326,7 +326,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
-    const bufferId = Id.Buffer.make(nanoid());
+    const frameId = Id.Frame.make(nanoid());
     const rootNodeId = Id.Node.make(nanoid());
 
     // Create root node in LiveStore
@@ -346,37 +346,37 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       {
         panes: [paneId],
         activeElement: null,
-      },
-      windowId,
-    );
-
-    // Create pane document with buffer reference
-    yield* Store.setDocument(
-      "pane",
-      {
-        parent: { id: windowId, type: "window" },
-        buffers: [bufferId],
-      },
-      paneId,
-    );
-
-    // Create buffer document
-    yield* Store.setDocument(
-      "buffer",
-      {
-        windowId,
-        parent: { id: paneId, type: "pane" },
-        assignedNodeId: rootNodeId,
+        selection: null,
         selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
+      },
+      windowId,
+    );
+
+    // Create pane document with frame reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        frames: [frameId],
+      },
+      paneId,
+    );
+
+    // Create frame document
+    yield* Store.setDocument(
+      "frame",
+      {
+        windowId,
+        parent: { id: paneId, type: "pane" },
+        assignedNodeId: rootNodeId,
         toggledNodes: [],
-        selection: null,
         activeViewId: null,
         popup: null,
       },
-      bufferId,
+      frameId,
     );
 
     // Create child nodes using NodeT.insertNode
@@ -392,7 +392,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
     }
 
     return {
-      bufferId,
+      frameId,
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       paneId,
@@ -401,20 +401,20 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_CHILDREN"));
 
 /**
- * Sets buffer cursor (collapsed selection) to a specific position in a node.
+ * Sets frame cursor (collapsed selection) to a specific position in a node.
  * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
  */
-export const BUFFER_HAS_CURSOR = (
-  bufferId: Id.Buffer,
+export const FRAME_HAS_CURSOR = (
+  frameId: Id.Frame,
   nodeId: Id.Node,
   offset: number,
   assoc: -1 | 0 | 1 = 0,
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
-    const elementId = Id.makeBufferBlockId(bufferId, nodeId);
-    yield* Buffer.setSelection(
-      bufferId,
+    const Frame = yield* FrameT;
+    const elementId = Id.makeFrameBlockId(frameId, nodeId);
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId },
         anchorOffset: offset,
@@ -425,23 +425,23 @@ export const BUFFER_HAS_CURSOR = (
         assoc,
       }),
     );
-  }).pipe(Effect.withSpan("Given.BUFFER_HAS_CURSOR"));
+  }).pipe(Effect.withSpan("Given.FRAME_HAS_CURSOR"));
 
 /**
- * Sets buffer selection to a range (anchor ≠ focus).
+ * Sets frame selection to a range (anchor ≠ focus).
  * Can span across nodes for multi-block selection.
  */
-export const BUFFER_HAS_SELECTION = (
-  bufferId: Id.Buffer,
+export const FRAME_HAS_SELECTION = (
+  frameId: Id.Frame,
   anchor: { nodeId: Id.Node; offset: number },
   focus: { nodeId: Id.Node; offset: number },
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
-    const anchorElementId = Id.makeBufferBlockId(bufferId, anchor.nodeId);
-    const focusElementId = Id.makeBufferBlockId(bufferId, focus.nodeId);
-    yield* Buffer.setSelection(
-      bufferId,
+    const Frame = yield* FrameT;
+    const anchorElementId = Id.makeFrameBlockId(frameId, anchor.nodeId);
+    const focusElementId = Id.makeFrameBlockId(frameId, focus.nodeId);
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: anchorElementId },
         anchorOffset: anchor.offset,
@@ -452,13 +452,13 @@ export const BUFFER_HAS_SELECTION = (
         assoc: 0,
       }),
     );
-  }).pipe(Effect.withSpan("Given.BUFFER_HAS_SELECTION"));
+  }).pipe(Effect.withSpan("Given.FRAME_HAS_SELECTION"));
 
 /**
  * Sets the window's active element.
  * Use Entity helpers to construct the element:
  * - Block: { id: blockId, type: "block" }
- * - Title: Use Block with title's blockId (Id.makeBufferBlockId(bufferId, titleNodeId))
+ * - Title: Use Block with title's blockId (Id.makeFrameBlockId(frameId, titleNodeId))
  */
 export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
   Effect.gen(function* () {
@@ -468,7 +468,7 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
 
 /**
  * Sets up a block as focused with cursor at a specific position.
- * Combines buffer selection + active element setting in one helper.
+ * Combines frame selection + active element setting in one helper.
  * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
  */
 export const BLOCK_IS_FOCUSED_AT = (
@@ -478,14 +478,14 @@ export const BLOCK_IS_FOCUSED_AT = (
   opts?: { goalX?: number | null },
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Window = yield* WindowT;
 
-    const [bufferId] = yield* Id.parseBlockId(blockId);
+    const [frameId] = yield* Id.parseBlockId(blockId);
 
-    // Set cursor in buffer selection
-    yield* Buffer.setSelection(
-      bufferId,
+    // Set cursor in frame selection
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: blockId },
         anchorOffset: offset,
@@ -554,7 +554,7 @@ export const VISUAL_LINE_OFFSET = (
 
 /**
  * Focuses a block and places cursor at the start or end of a visual line.
- * Requires the block to be rendered (call after render + BUFFER_HAS_WIDTH).
+ * Requires the block to be rendered (call after render + FRAME_HAS_WIDTH).
  * Errors if the block has fewer visual lines than requested.
  * Returns the computed { offset, assoc }.
  */
@@ -563,7 +563,7 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
   opts: { line: number; side: "start" | "end" },
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     // Mount the editor by focusing at offset 0, then wait for CM to render
     yield* BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -581,10 +581,10 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
       ]),
     });
 
-    // Keep buffer state in sync
-    const [bufferId] = yield* Id.parseBlockId(blockId);
-    yield* Buffer.setSelection(
-      bufferId,
+    // Keep frame state in sync
+    const [frameId] = yield* Id.parseBlockId(blockId);
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: blockId },
         anchorOffset: offset,
@@ -601,22 +601,22 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
 
 /**
  * Sets up a title as focused with cursor at a specific position.
- * Combines buffer selection + active element setting for titles.
+ * Combines frame selection + active element setting for titles.
  */
 export const TITLE_IS_FOCUSED_AT = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   rootNodeId: Id.Node,
   offset: number,
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Window = yield* WindowT;
 
-    const elementId = Id.makeBufferBlockId(bufferId, rootNodeId);
+    const elementId = Id.makeFrameBlockId(frameId, rootNodeId);
 
-    // Set cursor in buffer selection
-    yield* Buffer.setSelection(
-      bufferId,
+    // Set cursor in frame selection
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId },
         anchorOffset: offset,
@@ -683,10 +683,10 @@ export const NODE_HAS_ITALIC = (
 export const NODE_HAS_CODE = (nodeId: Id.Node, index: number, length: number) =>
   NODE_HAS_MARK(nodeId, index, length, "code");
 
-export interface BufferWithParentAndChildrenResult<
+export interface FrameWithParentAndChildrenResult<
   T extends readonly ChildSpec[] = readonly ChildSpec[],
 > {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   parentNodeId: Id.Node;
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
@@ -694,15 +694,15 @@ export interface BufferWithParentAndChildrenResult<
 }
 
 /**
- * Creates a buffer whose root node has a parent (not visible in buffer).
+ * Creates a frame whose root node has a parent (not visible in frame).
  * Structure:
- * - parentNode (not visible in buffer)
- *   - rootNode (buffer's assignedNodeId)
+ * - parentNode (not visible in frame)
+ *   - rootNode (frame's assignedNodeId)
  *     - children...
  *
- * Useful for testing edge cases where buffer root is not a top-level node.
+ * Useful for testing edge cases where frame root is not a top-level node.
  */
-export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
+export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
   const T extends readonly ChildSpec[],
 >(
   parentText: string,
@@ -716,10 +716,10 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
 
     const windowId = Id.Window.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
-    const bufferId = Id.Buffer.make(nanoid());
+    const frameId = Id.Frame.make(nanoid());
     const parentNodeId = Id.Node.make(nanoid());
 
-    // Create parent node in LiveStore (grandparent from buffer's perspective)
+    // Create parent node in LiveStore (grandparent from frame's perspective)
     yield* Store.commit(
       events.nodeCreated({
         timestamp: Date.now(),
@@ -741,37 +741,37 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
       {
         panes: [paneId],
         activeElement: null,
-      },
-      windowId,
-    );
-
-    // Create pane document with buffer reference
-    yield* Store.setDocument(
-      "pane",
-      {
-        parent: { id: windowId, type: "window" },
-        buffers: [bufferId],
-      },
-      paneId,
-    );
-
-    // Create buffer document with assignedNodeId = rootNodeId (not parentNodeId)
-    yield* Store.setDocument(
-      "buffer",
-      {
-        windowId,
-        parent: { id: paneId, type: "pane" },
-        assignedNodeId: rootNodeId,
+        selection: null,
         selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
+      },
+      windowId,
+    );
+
+    // Create pane document with frame reference
+    yield* Store.setDocument(
+      "pane",
+      {
+        parent: { id: windowId, type: "window" },
+        frames: [frameId],
+      },
+      paneId,
+    );
+
+    // Create frame document with assignedNodeId = rootNodeId (not parentNodeId)
+    yield* Store.setDocument(
+      "frame",
+      {
+        windowId,
+        parent: { id: paneId, type: "pane" },
+        assignedNodeId: rootNodeId,
         toggledNodes: [],
-        selection: null,
         activeViewId: null,
         popup: null,
       },
-      bufferId,
+      frameId,
     );
 
     // Create child nodes under root
@@ -786,13 +786,13 @@ export const A_BUFFER_WITH_PARENT_AND_CHILDREN = <
     }
 
     return {
-      bufferId,
+      frameId,
       parentNodeId,
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       windowId,
     };
-  }).pipe(Effect.withSpan("Given.A_BUFFER_WITH_PARENT_AND_CHILDREN"));
+  }).pipe(Effect.withSpan("Given.A_FRAME_WITH_PARENT_AND_CHILDREN"));
 
 export interface TypeWithNoColorResult {
   typeId: Id.Node;
@@ -953,25 +953,25 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
     } satisfies TypeWithDirectColorResult;
   }).pipe(Effect.withSpan("Given.A_TYPE_WITH_DIRECT_COLOR"));
 
-export interface ChatBufferResult {
-  bufferId: Id.Buffer;
+export interface ChatFrameResult {
+  frameId: Id.Frame;
   chatNodeId: Id.Node;
   windowId: Id.Window;
 }
 
-export const A_CHAT_BUFFER = () =>
+export const A_CHAT_FRAME = () =>
   Effect.gen(function* () {
-    const { bufferId, rootNodeId, windowId } = yield* A_BUFFER_WITH_CHILDREN(
+    const { frameId, rootNodeId, windowId } = yield* A_FRAME_WITH_CHILDREN(
       "Chat",
       [],
     );
 
     return {
-      bufferId,
+      frameId,
       chatNodeId: rootNodeId,
       windowId,
-    } satisfies ChatBufferResult;
-  }).pipe(Effect.withSpan("Given.A_CHAT_BUFFER"));
+    } satisfies ChatFrameResult;
+  }).pipe(Effect.withSpan("Given.A_CHAT_FRAME"));
 
 export const A_CHAT_MESSAGE = (
   chatNodeId: Id.Node,

@@ -14,7 +14,7 @@ import {
   Show,
 } from "solid-js";
 import CommandPalette from "./ui/CommandPalette";
-import BufferView from "./ui/BufferView";
+import FrameView from "./ui/FrameView";
 import PaneWrapper from "./ui/PaneWrapper";
 import { Sidebar } from "./ui/Sidebar";
 import type { CommandContext } from "./commands";
@@ -49,7 +49,7 @@ const App: Component = () => {
   });
 
   const openCommandPalette = () => {
-    // Get context from first buffer (MVP simplification)
+    // Get context from first frame (MVP simplification)
     runtime.runPromise(
       Effect.gen(function* () {
         const Store = yield* StoreT;
@@ -65,17 +65,17 @@ const App: Component = () => {
         const paneDoc = yield* Store.getDocument("pane", firstPaneId);
         if (Option.isNone(paneDoc)) return;
 
-        const firstBufferId = paneDoc.value.buffers[0];
-        if (!firstBufferId) return;
+        const firstFrameId = paneDoc.value.frames[0];
+        if (!firstFrameId) return;
 
-        const bufferDoc = yield* Store.getDocument("buffer", firstBufferId);
-        if (Option.isNone(bufferDoc)) return;
+        const frameDoc = yield* Store.getDocument("frame", firstFrameId);
+        if (Option.isNone(frameDoc)) return;
 
-        const nodeId = bufferDoc.value.assignedNodeId;
+        const nodeId = frameDoc.value.assignedNodeId;
         if (!nodeId) return;
 
         setCommandContext({
-          bufferId: firstBufferId,
+          frameId: firstFrameId,
           nodeId: nodeId as Id.Node,
         });
         setCommandPaletteOpen(true);
@@ -98,7 +98,7 @@ const App: Component = () => {
     );
   };
 
-  const { panes, buffersByPane } = runtime.runSync(
+  const { panes, framesByPane } = runtime.runSync(
     Effect.gen(function* () {
       // Ensure system nodes exist before anything else
       const Bootstrap = yield* BootstrapT;
@@ -111,15 +111,15 @@ const App: Component = () => {
       const windowDoc = yield* Store.getDocument("window", windowId);
       const paneIds = Option.isSome(windowDoc) ? windowDoc.value.panes : [];
 
-      const buffersByPane = new Map<Id.Pane, readonly Id.Buffer[]>();
+      const framesByPane = new Map<Id.Pane, readonly Id.Frame[]>();
       for (const paneId of paneIds) {
         const paneDoc = yield* Store.getDocument("pane", paneId);
         if (Option.isSome(paneDoc)) {
-          buffersByPane.set(paneId, paneDoc.value.buffers);
+          framesByPane.set(paneId, paneDoc.value.frames);
         }
       }
 
-      return { panes: paneIds, buffersByPane };
+      return { panes: paneIds, framesByPane };
     }),
   );
 
@@ -192,10 +192,10 @@ const App: Component = () => {
           <For each={panes}>
             {(paneId) => (
               <PaneWrapper>
-                <Show when={buffersByPane.get(paneId)}>
-                  {(buffers) => (
-                    <For each={[...buffers()]}>
-                      {(bufferId) => <BufferView bufferId={bufferId} />}
+                <Show when={framesByPane.get(paneId)}>
+                  {(frames) => (
+                    <For each={[...frames()]}>
+                      {(frameId) => <FrameView frameId={frameId} />}
                     </For>
                   )}
                 </Show>

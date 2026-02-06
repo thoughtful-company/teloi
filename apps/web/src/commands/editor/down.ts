@@ -1,4 +1,4 @@
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
@@ -26,11 +26,11 @@ export class Down extends Data.TaggedClass(tag)<{}> {
 
     const View = yield* ViewT;
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { bufferId, blockId } = ctx.value;
+    const { frameId, blockId } = ctx.value;
 
     const targetOpt = yield* View.resolveBlockBelow(blockId);
     if (Option.isNone(targetOpt)) {
@@ -38,11 +38,11 @@ export class Down extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    const goalX = yield* resolveGoalX(bufferId);
+    const goalX = yield* resolveGoalX(frameId);
     const targetBlockId = targetOpt.value;
 
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
     );
     yield* Window.setActiveElement(

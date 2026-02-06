@@ -23,8 +23,8 @@ const HAS_VIEW_TUPLE_TYPE = "sys:tuple-type:has-view" as Id.Node;
  *
  * Architecture:
  * - CommandPalette lives in App.tsx
- * - App tracks "active buffer" via focus events from Buffer
- * - Commands execute Effect-based actions with buffer/node context
+ * - App tracks "active frame" via focus events from Frame
+ * - Commands execute Effect-based actions with frame/node context
  */
 describe("CommandPalette", () => {
   let runtime: BrowserRuntime;
@@ -44,19 +44,19 @@ describe("CommandPalette", () => {
 
   /**
    * Sets up the full pane/window hierarchy for App rendering.
-   * Creates a buffer and registers it in the window's pane structure.
+   * Creates a frame and registers it in the window's pane structure.
    */
-  const setupBufferInApp = (bufferId: Id.Buffer, windowId: Id.Window) =>
+  const setupFrameInApp = (frameId: Id.Frame, windowId: Id.Window) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
       const paneId = Id.Pane.make("test-pane");
 
-      // Create pane document with the buffer
+      // Create pane document with the frame
       yield* Store.setDocument(
         "pane",
         {
           parent: { id: windowId, type: "window" },
-          buffers: [bufferId],
+          frames: [frameId],
         },
         paneId,
       );
@@ -67,6 +67,11 @@ describe("CommandPalette", () => {
         {
           panes: [paneId],
           activeElement: null,
+          selection: null,
+          selectedBlocks: [],
+          blockSelectionAnchor: null,
+          blockSelectionFocus: null,
+          lastFocusedBlockId: null,
         },
         windowId,
       );
@@ -143,12 +148,12 @@ describe("CommandPalette", () => {
   describe("Opening and closing", () => {
     it("pressing Cmd+K opens command palette", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -181,12 +186,12 @@ describe("CommandPalette", () => {
 
     it("pressing Escape closes command palette", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -232,12 +237,12 @@ describe("CommandPalette", () => {
   describe("Filtering commands", () => {
     it("typing filters visible commands", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -292,12 +297,12 @@ describe("CommandPalette", () => {
   describe("Input editing", () => {
     it("ArrowLeft keydown event is not prevented anywhere in event chain", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -362,12 +367,12 @@ describe("CommandPalette", () => {
 
     it("Backspace keydown event is not prevented anywhere in event chain", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -432,12 +437,12 @@ describe("CommandPalette", () => {
 
     it("arrow keys move cursor within input text", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -493,12 +498,12 @@ describe("CommandPalette", () => {
 
     it("Backspace deletes characters before cursor", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -537,12 +542,12 @@ describe("CommandPalette", () => {
 
     it("Delete key removes character after cursor", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Document",
           [{ text: "Block one" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for app to render
@@ -585,12 +590,12 @@ describe("CommandPalette", () => {
   describe("Executing commands", () => {
     it("selecting 'Add Table View' creates view and renders table", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Projects",
           [{ text: "Project Alpha" }, { text: "Project Beta" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for blocks to render
@@ -676,13 +681,13 @@ describe("CommandPalette", () => {
         const Tuple = yield* TupleT;
         const Automerge = yield* AutomergeT;
 
-        const { bufferId, rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Projects", [
+        const { frameId, rootNodeId, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Projects", [
             { text: "Project Alpha" },
             { text: "Project Beta" },
           ]);
 
-        // Given: A TableView node linked to the buffer's root node
+        // Given: A TableView node linked to the frame's root node
         const tableViewNodeId = Id.Node.make(nanoid());
         yield* Store.commit(
           events.nodeCreated({
@@ -693,19 +698,19 @@ describe("CommandPalette", () => {
         yield* Automerge.setText(tableViewNodeId, "Table View");
         yield* Tuple.create(HAS_VIEW_TUPLE_TYPE, [rootNodeId, tableViewNodeId]);
 
-        // Given: The buffer has the TableView as its active view
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        if (Option.isNone(bufferDoc)) throw new Error("Buffer not found");
+        // Given: The frame has the TableView as its active view
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        if (Option.isNone(frameDoc)) throw new Error("Frame not found");
         yield* Store.setDocument(
-          "buffer",
+          "frame",
           {
-            ...bufferDoc.value,
+            ...frameDoc.value,
             activeViewId: tableViewNodeId,
           },
-          bufferId,
+          frameId,
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for table to render (confirming table view is active)
@@ -792,12 +797,12 @@ describe("CommandPalette", () => {
 
     it("keyboard navigation: type, arrow down, enter executes command", async () => {
       await Effect.gen(function* () {
-        const { bufferId, windowId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Projects",
           [{ text: "Project Alpha" }, { text: "Project Beta" }],
         );
 
-        yield* setupBufferInApp(bufferId, windowId);
+        yield* setupFrameInApp(frameId, windowId);
         render(() => <App />);
 
         // Wait for blocks to render

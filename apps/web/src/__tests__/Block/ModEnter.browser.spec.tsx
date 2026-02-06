@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -49,15 +49,15 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a normal block (no checkbox type)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a normal block (no checkbox type)
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Buy groceries" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Click the block to focus CodeMirror
         yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
@@ -98,19 +98,19 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a child node that has unchecked checkbox
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has unchecked checkbox
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Task to complete" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple with FALSE
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.FALSE]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Click the block to focus CodeMirror
         yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
@@ -151,19 +151,19 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a child node that has checked checkbox
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has checked checkbox
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Completed task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple with TRUE (checked)
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Click the block to focus CodeMirror
         yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
@@ -203,18 +203,18 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a child node that has LIST_ELEMENT type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has LIST_ELEMENT type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Bullet item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add LIST_ELEMENT type (bullet)
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Click the block to focus CodeMirror
         yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
@@ -261,21 +261,21 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a normal block
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a normal block
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Task item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode (click then Escape)
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
 
         // Verify we're in block selection mode
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeId]);
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeId]);
 
         // Press Mod+Enter
         yield* When.USER_PRESSES("{Meta>}{Enter}{/Meta}");
@@ -310,8 +310,8 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with three blocks in different checkbox states
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with three blocks in different checkbox states
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [
             { text: "Normal block" }, // Will become unchecked
@@ -320,7 +320,7 @@ describe("Block Mod+Enter todo toggle", () => {
           ],
         );
         const [normalId, uncheckedId, checkedId] = childNodeIds;
-        const normalBlockId = Id.makeBufferBlockId(bufferId, normalId);
+        const normalBlockId = Id.makeFrameBlockId(frameId, normalId);
 
         // Set up initial states:
         // - First block: normal (no type)
@@ -331,7 +331,7 @@ describe("Block Mod+Enter todo toggle", () => {
         yield* Type.addType(checkedId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [checkedId, System.TRUE]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode on first block
         yield* When.USER_ENTERS_BLOCK_SELECTION(normalBlockId);
@@ -341,7 +341,7 @@ describe("Block Mod+Enter todo toggle", () => {
         yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
         // Verify all three blocks are selected
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [
           normalId,
           uncheckedId,
           checkedId,
@@ -401,15 +401,15 @@ describe("Block Mod+Enter todo toggle", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a normal block
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a normal block
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Cycle test" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -478,19 +478,19 @@ describe("Block Mod+Enter todo toggle", () => {
       await Effect.gen(function* () {
         const Type = yield* TypeT;
 
-        // Setup: buffer with a block that has a user-defined type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a block that has a user-defined type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Important task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Create a user type (simulate by adding any non-system type)
         const userTypeResult = yield* Given.A_TYPE_WITHOUT_COLOR();
         yield* Type.addType(childNodeId, userTypeResult.typeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);
@@ -551,17 +551,17 @@ describe("Block Mod+Enter todo toggle", () => {
 
         // Setup: unusual state - IS_CHECKED tuple exists but no CHECKBOX type
         // This could happen from data migration or manual manipulation
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Orphaned tuple" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Create orphaned IS_CHECKED tuple without CHECKBOX type
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(childBlockId);

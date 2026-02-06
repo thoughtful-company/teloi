@@ -1,6 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, Model } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { AvailableType, TypePickerT } from "@/services/ui/TypePicker";
 import { Effect } from "effect";
 import {
@@ -14,8 +14,8 @@ import {
 import { Portal } from "solid-js/web";
 
 export interface BlockTypePickerProps {
-  bufferId: Id.Buffer;
-  popup: Model.BufferPopup & { type: "typePicker" };
+  frameId: Id.Frame;
+  popup: Model.FramePopup & { type: "typePicker" };
 }
 
 export default function BlockTypePicker(props: BlockTypePickerProps) {
@@ -62,8 +62,8 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
   const close = () => {
     runtime.runPromise(
       Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        yield* Buffer.closePopup(props.bufferId);
+        const Frame = yield* FrameT;
+        yield* Frame.closePopup(props.frameId);
       }),
     );
   };
@@ -71,8 +71,8 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
   const getSelectedBlocks = () =>
     runtime.runSync(
       Effect.gen(function* () {
-        const Buffer = yield* BufferT;
-        const state = yield* Buffer.getBlockSelectionState(props.bufferId);
+        const Frame = yield* FrameT;
+        const state = yield* Frame.getBlockSelectionState(props.frameId);
         return state.selectedBlocks;
       }),
     );
@@ -82,11 +82,11 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
+        const Frame = yield* FrameT;
         for (const nodeId of blocks) {
           yield* TypePicker.applyType(nodeId, typeId);
         }
-        yield* Buffer.closePopup(props.bufferId);
+        yield* Frame.closePopup(props.frameId);
       }),
     );
   };
@@ -98,12 +98,12 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const TypePicker = yield* TypePickerT;
-        const Buffer = yield* BufferT;
+        const Frame = yield* FrameT;
         const typeId = yield* TypePicker.createType(q);
         for (const nodeId of blocks) {
           yield* TypePicker.applyType(nodeId, typeId);
         }
-        yield* Buffer.closePopup(props.bufferId);
+        yield* Frame.closePopup(props.frameId);
       }),
     );
   };

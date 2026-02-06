@@ -24,7 +24,7 @@ describe("NodeT.getAllDescendants", () => {
 
   it("returns empty array for node with no children", async () => {
     await Effect.gen(function* () {
-      const { nodeId } = yield* Given.A_BUFFER_WITH_TEXT("Leaf node");
+      const { nodeId } = yield* Given.A_FRAME_WITH_TEXT("Leaf node");
 
       const Node = yield* NodeT;
       const descendants = yield* Node.getAllDescendants(nodeId);
@@ -35,7 +35,7 @@ describe("NodeT.getAllDescendants", () => {
 
   it("returns direct children for single-level hierarchy", async () => {
     await Effect.gen(function* () {
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { rootNodeId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Parent",
         [{ text: "ChildA" }, { text: "ChildB" }, { text: "ChildC" }],
       );
@@ -62,7 +62,7 @@ describe("NodeT.getAllDescendants", () => {
       //       - A2
       //     - B
       //       - B1
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { rootNodeId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "B" }],
       );
@@ -129,7 +129,7 @@ describe("NodeT.getAllDescendants", () => {
       //       - Level2
       //         - Level3
       //           - Level4
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { rootNodeId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Level1" }],
       );
@@ -165,7 +165,7 @@ describe("NodeT.getAllDescendants", () => {
 
   it("does not include the root node itself", async () => {
     await Effect.gen(function* () {
-      const { rootNodeId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { rootNodeId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Child" }],
       );

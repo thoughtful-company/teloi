@@ -5,32 +5,20 @@ import { Id } from "../id";
 export const DocumentName = {
   Window: "window",
   Pane: "pane",
-  Buffer: "buffer",
+  Frame: "frame",
   Block: "block",
   Selection: "selection",
 } as const;
 
 export type DocumentName = (typeof DocumentName)[keyof typeof DocumentName];
 
-export const Window = Schema.Struct({
-  panes: Schema.Array(Id.Pane),
-  activeElement: Schema.NullOr(Entity.Element),
-});
-export type Window = typeof Window.Type;
-
-export const Pane = Schema.Struct({
-  parent: Entity.Window,
-  buffers: Schema.Array(Id.Buffer),
-});
-export type Pane = typeof Pane.Type;
-
-/** Target of a selection point - identified by elementId (BlockId format: buffer:{bufferId}/node:{nodeId}) */
+/** Target of a selection point - identified by elementId (BlockId format: frame:{frameId}/node:{nodeId}) */
 export const SelectionTarget = Schema.Struct({
   elementId: Id.Block,
 });
 export type SelectionTarget = typeof SelectionTarget.Type;
 
-export const BufferSelection = Schema.Struct({
+export const FrameSelection = Schema.Struct({
   anchor: SelectionTarget,
   anchorOffset: Schema.Number,
   focus: SelectionTarget,
@@ -40,37 +28,49 @@ export const BufferSelection = Schema.Struct({
   /** Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line */
   assoc: Schema.optionalWith(Schema.Literal(-1, 0, 1), { default: () => 0 }),
 });
-export type BufferSelection = typeof BufferSelection.Type;
+export type FrameSelection = typeof FrameSelection.Type;
+
+export const Window = Schema.Struct({
+  panes: Schema.Array(Id.Pane),
+  activeElement: Schema.NullOr(Entity.Element),
+  selection: Schema.NullOr(FrameSelection),
+  selectedBlocks: Schema.mutable(Schema.Array(Id.Node)),
+  /** Anchor of block selection - fixed endpoint where Escape was pressed */
+  blockSelectionAnchor: Schema.NullOr(Id.Node),
+  /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
+  blockSelectionFocus: Schema.NullOr(Id.Node),
+  /** Last focused block - preserved across selection clear for arrow key restoration */
+  lastFocusedBlockId: Schema.NullOr(Id.Node),
+});
+export type Window = typeof Window.Type;
+
+export const Pane = Schema.Struct({
+  parent: Entity.Window,
+  frames: Schema.Array(Id.Frame),
+});
+export type Pane = typeof Pane.Type;
 
 export const TypePickerPopup = Schema.Struct({
   type: Schema.Literal("typePicker"),
   query: Schema.String,
 });
 
-export const BufferPopup = Schema.Union(TypePickerPopup);
-export type BufferPopup = typeof BufferPopup.Type;
+export const FramePopup = Schema.Union(TypePickerPopup);
+export type FramePopup = typeof FramePopup.Type;
 
-export const Buffer = Schema.mutable(
+export const Frame = Schema.mutable(
   Schema.Struct({
     windowId: Id.Window,
     parent: Entity.Pane,
     assignedNodeId: Schema.NullOr(Schema.String),
-    selectedBlocks: Schema.mutable(Schema.Array(Id.Node)),
-    /** Anchor of block selection - fixed endpoint where Escape was pressed */
-    blockSelectionAnchor: Schema.NullOr(Id.Node),
-    /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
-    blockSelectionFocus: Schema.NullOr(Id.Node),
-    /** Last focused block - preserved across selection clear for arrow key restoration */
-    lastFocusedBlockId: Schema.NullOr(Id.Node),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
-    selection: Schema.NullOr(BufferSelection),
     /** Active view node ID - null means default page/tree view */
     activeViewId: Schema.NullOr(Id.Node),
     /** Active popup state - null means no popup open */
-    popup: Schema.NullOr(BufferPopup),
+    popup: Schema.NullOr(FramePopup),
   }),
 );
-export type Buffer = typeof Buffer.Type;
+export type Frame = typeof Frame.Type;
 
 export const Block = Schema.Struct({
   isExpanded: Schema.Boolean,
@@ -95,8 +95,8 @@ export const DocumentSchemas = {
   [DocumentName.Pane]: {
     schema: Schema.NullOr(Pane),
   },
-  [DocumentName.Buffer]: {
-    schema: Schema.NullOr(Buffer),
+  [DocumentName.Frame]: {
+    schema: Schema.NullOr(Frame),
   },
   [DocumentName.Block]: {
     schema: Schema.NullOr(Block),

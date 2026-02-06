@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { doubleRaf } from "@/utils/effect";
 import { Effect } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -24,13 +24,13 @@ describe("Triangle chevron visibility", () => {
 
   it("triangle button is always visible when a block has children", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
       // Give the parent a child so it has children
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -39,7 +39,7 @@ describe("Triangle chevron visibility", () => {
         text: "Child of parent",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* doubleRaf;
 
@@ -61,15 +61,15 @@ describe("Triangle chevron visibility", () => {
 
   it("triangle button has opacity-0 class when a block has no children", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Childless block" }],
       );
 
       const childlessNodeId = childNodeIds[0];
-      const childlessBlockId = Id.makeBufferBlockId(bufferId, childlessNodeId);
+      const childlessBlockId = Id.makeFrameBlockId(frameId, childlessNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* doubleRaf;
 
@@ -91,15 +91,15 @@ describe("Triangle chevron visibility", () => {
 
   it("triangle button has hover:opacity-100 class for childless blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Childless block" }],
       );
 
       const childlessNodeId = childNodeIds[0];
-      const childlessBlockId = Id.makeBufferBlockId(bufferId, childlessNodeId);
+      const childlessBlockId = Id.makeFrameBlockId(frameId, childlessNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* doubleRaf;
 
@@ -121,15 +121,15 @@ describe("Triangle chevron visibility", () => {
 
   it("triangle becomes visible when children are added to a childless block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Initially childless" }],
       );
 
       const nodeId = childNodeIds[0];
-      const blockId = Id.makeBufferBlockId(bufferId, nodeId);
+      const blockId = Id.makeFrameBlockId(frameId, nodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* doubleRaf;
 

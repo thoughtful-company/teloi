@@ -11,12 +11,12 @@ const BLOCK_DOC_DEFAULTS: Model.Block = {
 
 /** Read a block document with defaults applied. Standalone helper for use in navigation. */
 export const getBlockDoc = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   nodeId: Id.Node,
 ): Effect.Effect<Model.Block, never, StoreT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const blockId = Id.makeBufferBlockId(bufferId, nodeId);
+    const blockId = Id.makeFrameBlockId(frameId, nodeId);
     const doc = yield* Store.getDocument("block", blockId);
     if (Option.isNone(doc)) return BLOCK_DOC_DEFAULTS;
     return { ...BLOCK_DOC_DEFAULTS, ...doc.value };

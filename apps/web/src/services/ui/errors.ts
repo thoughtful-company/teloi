@@ -1,14 +1,12 @@
 import { Id } from "@/schema";
 import { Data } from "effect";
 
-export class BufferNotFoundError extends Data.TaggedError(
-  "BufferNotFoundError",
-)<{
-  bufferId: Id.Buffer;
+export class FrameNotFoundError extends Data.TaggedError("FrameNotFoundError")<{
+  frameId: Id.Frame;
 }> {}
 
-export class BufferNodeNotAssignedError extends Data.TaggedError(
-  "BufferNodeNotAssignedError",
+export class FrameNodeNotAssignedError extends Data.TaggedError(
+  "FrameNodeNotAssignedError",
 )<{
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
 }> {}

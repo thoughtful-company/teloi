@@ -10,7 +10,7 @@ import { nanoid } from "nanoid";
 const HAS_VIEW_TUPLE_TYPE = "sys:tuple-type:has-view" as Id.Node;
 
 export interface CommandContext {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
 }
 
@@ -24,7 +24,7 @@ export interface Command {
 
 /**
  * Creates a TableView node and links it to the target node via HAS_VIEW tuple.
- * Sets the new view as the buffer's activeViewId.
+ * Sets the new view as the frame's activeViewId.
  */
 const addTableViewAction = (ctx: CommandContext) =>
   Effect.gen(function* () {
@@ -43,36 +43,36 @@ const addTableViewAction = (ctx: CommandContext) =>
 
     yield* Tuple.create(HAS_VIEW_TUPLE_TYPE, [ctx.nodeId, viewNodeId]);
 
-    const bufferDoc = yield* Store.getDocument("buffer", ctx.bufferId);
-    if (Option.isNone(bufferDoc)) return;
+    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
+    if (Option.isNone(frameDoc)) return;
 
     yield* Store.setDocument(
-      "buffer",
+      "frame",
       {
-        ...bufferDoc.value,
+        ...frameDoc.value,
         activeViewId: viewNodeId,
       },
-      ctx.bufferId,
+      ctx.frameId,
     );
   });
 
 /**
- * Resets the buffer to show the default page view by clearing activeViewId.
+ * Resets the frame to show the default page view by clearing activeViewId.
  */
 const addPageViewAction = (ctx: CommandContext) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
-    const bufferDoc = yield* Store.getDocument("buffer", ctx.bufferId);
-    if (Option.isNone(bufferDoc)) return;
+    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
+    if (Option.isNone(frameDoc)) return;
 
     yield* Store.setDocument(
-      "buffer",
+      "frame",
       {
-        ...bufferDoc.value,
+        ...frameDoc.value,
         activeViewId: null,
       },
-      ctx.bufferId,
+      ctx.frameId,
     );
   });
 

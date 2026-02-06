@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { WindowT } from "@/services/ui/Window";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Given, setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
@@ -24,14 +24,14 @@ describe("Block blur clears activeElement", () => {
 
   it("clears activeElement when clicking outside focused block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 

@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -61,16 +61,16 @@ describe("Scroll behavior", () => {
         })),
       ];
 
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         children,
       );
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]!);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]!);
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "300px" }}>
-          <BufferView bufferId={bufferId} />
+          <FrameView frameId={frameId} />
         </div>
       ));
 
@@ -93,7 +93,7 @@ describe("Scroll behavior", () => {
         () => new Promise((resolve) => setTimeout(resolve, 5)),
       );
 
-      return { scrollContainer, bufferId, childNodeIds, firstBlockId };
+      return { scrollContainer, frameId, childNodeIds, firstBlockId };
     });
 
   it("ArrowDown scrolls cursor into view when off-screen", async () => {
@@ -142,13 +142,13 @@ describe("Scroll behavior", () => {
    */
   it("scroll selector targets content row, not full block with children", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
 
       const parentNodeId = childNodeIds[0]!;
-      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
       // Add a few children to make block taller than content row
       for (let i = 0; i < 3; i++) {
@@ -159,7 +159,7 @@ describe("Scroll behavior", () => {
         });
       }
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Wait for children to render
       yield* Effect.promise(() =>

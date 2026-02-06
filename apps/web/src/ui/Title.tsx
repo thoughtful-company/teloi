@@ -14,18 +14,18 @@ import { onCleanup, onMount, Show } from "solid-js";
 import Editor from "./Editor";
 
 interface TitleProps {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
 }
 
 /**
- * Render and manage an editable title for a buffer node.
+ * Render and manage an editable title for a frame node.
  *
  * Synchronizes the displayed text with Automerge, switches between a read-only heading
  * and an interactive Editor when the title becomes active, and handles focus and keyboard
  * navigation (ArrowRight at end, ArrowDown on last line, Enter to split/create a child node).
  */
-export default function Title({ bufferId, nodeId }: TitleProps) {
+export default function Title({ frameId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
 
   const Automerge = runtime.runSync(AutomergeT);
@@ -33,7 +33,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   const titleStream = Stream.unwrap(
     Effect.gen(function* () {
       const Title = yield* TitleT;
-      return yield* Title.subscribe(bufferId, nodeId);
+      return yield* Title.subscribe(frameId, nodeId);
     }),
   );
 
@@ -52,7 +52,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
   const handleMouseDown = (e: MouseEvent) => {
     if (store.isActive) return;
 
-    const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
+    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
 
     // Resolve click position on the unfocused h1
     let offset: number | undefined;
@@ -65,7 +65,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
     runtime.runSync(
       focusBlock({
-        bufferId,
+        frameId,
         nodeId,
         blockId: titleBlockId,
         offset,
@@ -81,7 +81,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
   return (
     <div
-      data-element-id={bufferId}
+      data-element-id={frameId}
       data-element-type="title"
       onMouseDown={handleMouseDown}
       class="min-h-[var(--text-title--line-height)]"
@@ -100,7 +100,7 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
         <Editor
           handle={Automerge.handle}
           path={Automerge.getTextPath(nodeId)}
-          blockId={Id.makeBufferBlockId(bufferId, nodeId)}
+          blockId={Id.makeFrameBlockId(frameId, nodeId)}
           {...(store.selection ? { initialSelection: store.selection } : {})}
           variant="title"
         />

@@ -4,7 +4,7 @@ import { WindowT } from "@/services/ui/Window";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "zoomIn";
 const tag = `${scope}:${commandName}` as const;
 
@@ -19,12 +19,12 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
 
-    const { bufferId, nodeId } = ctx.value;
+    const { frameId, nodeId } = ctx.value;
 
     yield* Navigation.navigateTo(nodeId);
 
     // After navigation, nodeId is the new title
-    const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
+    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
     yield* Window.setActiveElement(
       Option.some({ type: "block" as const, id: titleBlockId }),
     );

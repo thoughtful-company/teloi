@@ -3,7 +3,7 @@ import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { NavigationT } from "@/services/ui/Navigation";
 import { SCROLL_MARGIN } from "@/utils/scroll";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -34,23 +34,23 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
   it("zooms out from nested block when Mod+, pressed", async () => {
     await Effect.gen(function* () {
-      // Create hierarchy: parentNode > rootNode (buffer root) > children
+      // Create hierarchy: parentNode > rootNode (frame root) > children
       // First zoom into a child, then Mod+, should return to rootNode
-      const { bufferId, childNodeIds } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "First child" },
           { text: "Second child" },
         ]);
 
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Zoom into the first child using Mod+.
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
-      // Verify we zoomed in - buffer should now show "First child" as title
+      // Verify we zoomed in - frame should now show "First child" as title
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -79,14 +79,14 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
   it("updates URL to parent nodeId when Mod+, pressed", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
+      const { frameId, rootNodeId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // First zoom into the child
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
@@ -112,18 +112,18 @@ describe("Block Mod+, key (ZoomOut)", () => {
 
   it("does nothing at root level", async () => {
     await Effect.gen(function* () {
-      // Use a hierarchy where the buffer root has NO parent
-      const { bufferId, rootNodeId, childNodeIds } =
+      // Use a hierarchy where the frame root has NO parent
+      const { frameId, rootNodeId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
       // Set initial URL
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Click on the child block to have focus somewhere
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
@@ -143,8 +143,8 @@ describe("Block Mod+, key (ZoomOut)", () => {
   it("zooms out from title editor", async () => {
     await Effect.gen(function* () {
       // Create hierarchy with parent so we can zoom out
-      const { bufferId, parentNodeId, rootNodeId } =
-        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+      const { frameId, parentNodeId, rootNodeId } =
+        yield* Given.A_FRAME_WITH_PARENT_AND_CHILDREN(
           "Parent node",
           "Root node",
           [{ text: "First child" }],
@@ -153,10 +153,10 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Set URL to root node (which has a parent)
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Click on title to focus it
-      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_CLICKS_TITLE(frameId);
 
       // Zoom out from title
       yield* When.USER_PRESSES("{Meta>},{/Meta}");
@@ -189,16 +189,13 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Given: Root > First child (collapsed) > Grandchild
       // When zooming out from Grandchild view, and First child is collapsed in Root view,
       // selection should fall back to First child (the visible ancestor), not Grandchild.
-      const { bufferId, childNodeIds } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root", [
           { text: "First child" },
         ]);
 
       const firstChildNodeId = childNodeIds[0];
-      const firstChildBlockId = Id.makeBufferBlockId(
-        bufferId,
-        firstChildNodeId,
-      );
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, firstChildNodeId);
 
       // Add grandchild under "First child"
       const grandchildNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -206,12 +203,9 @@ describe("Block Mod+, key (ZoomOut)", () => {
         insert: "after",
         text: "Grandchild",
       });
-      const grandchildBlockId = Id.makeBufferBlockId(
-        bufferId,
-        grandchildNodeId,
-      );
+      const grandchildBlockId = Id.makeFrameBlockId(frameId, grandchildNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Collapse "First child" block (hides grandchild in Root view)
       const Block = yield* BlockT;
@@ -222,7 +216,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
-      // Verify we zoomed in - buffer should now show "First child" as title
+      // Verify we zoomed in - frame should now show "First child" as title
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -270,8 +264,8 @@ describe("Block Mod+, key (ZoomOut)", () => {
       const children = Array.from({ length: 20 }, (_, i) => ({
         text: `Block ${i + 1}`,
       }));
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_PARENT_AND_CHILDREN(
+      const { frameId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_PARENT_AND_CHILDREN(
           "Grandparent",
           "Root",
           children,
@@ -296,14 +290,14 @@ describe("Block Mod+, key (ZoomOut)", () => {
       // Start at Block 22's view (zoom into it)
       history.replaceState({}, "", `/workspace/${block22Id}`);
 
-      // Sync URL to buffer model
+      // Sync URL to frame model
       const Navigation = yield* NavigationT;
       yield* Navigation.syncUrlToModel();
 
       // Wrap in scroll container with limited height
       render(() => (
         <div class="overflow-y-auto" style={{ height: "300px" }}>
-          <BufferView bufferId={bufferId} />
+          <FrameView frameId={frameId} />
         </div>
       ));
 
@@ -319,7 +313,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
       );
 
       // Focus the title to enable keyboard shortcuts
-      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_CLICKS_TITLE(frameId);
 
       // Helper to check if element is visible in scroll container
       const isBlockVisibleInContainer = (blockId: Id.Block): boolean => {
@@ -354,7 +348,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block22BlockId = Id.makeBufferBlockId(bufferId, block22Id);
+      const block22BlockId = Id.makeFrameBlockId(frameId, block22Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -380,7 +374,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block21BlockId = Id.makeBufferBlockId(bufferId, block21Id);
+      const block21BlockId = Id.makeFrameBlockId(frameId, block21Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -406,7 +400,7 @@ describe("Block Mod+, key (ZoomOut)", () => {
         ),
       );
 
-      const block20BlockId = Id.makeBufferBlockId(bufferId, block20Id);
+      const block20BlockId = Id.makeFrameBlockId(frameId, block20Id);
       yield* Effect.promise(() =>
         waitFor(
           () => {

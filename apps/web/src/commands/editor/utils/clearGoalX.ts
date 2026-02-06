@@ -1,16 +1,16 @@
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Effect, Option } from "effect";
 
-/** Clear goalX/goalLine from buffer selection. Called by horizontal navigation commands. */
+/** Clear goalX/goalLine from frame selection. Called by horizontal navigation commands. */
 export const clearGoalX = Effect.fn("clearGoalX")(function* (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
-  const Buffer = yield* BufferT;
-  const sel = yield* Buffer.getSelection(bufferId);
+  const Frame = yield* FrameT;
+  const sel = yield* Frame.getSelection(frameId);
   if (Option.isSome(sel) && sel.value.goalX != null) {
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       Option.some({ ...sel.value, goalX: null, goalLine: null }),
     );
   }

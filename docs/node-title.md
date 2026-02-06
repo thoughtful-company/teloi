@@ -1,4 +1,4 @@
-All nodes can have text content stored in Y.Text. This is used for displaying the node in a buffer.
+All nodes can have text content stored in Y.Text. This is used for displaying the node in a frame.
 
 Nodes can also derive their displayed title from another node via a RENDERED_NAME tuple. The tuple has three positions: the node, the source node, and the mode. The mode determines editing behavior.
 

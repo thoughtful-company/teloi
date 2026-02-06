@@ -27,11 +27,11 @@ describe("Node Deletion", () => {
 
         // Create a tuple type node
         const { nodeId: tupleTypeId } =
-          yield* Given.A_BUFFER_WITH_TEXT("TupleType");
+          yield* Given.A_FRAME_WITH_TEXT("TupleType");
 
         // Create a type node that will be used as an allowed type
         const { nodeId: allowedTypeId } =
-          yield* Given.A_BUFFER_WITH_TEXT("AllowedType");
+          yield* Given.A_FRAME_WITH_TEXT("AllowedType");
 
         // Add a role to the tuple type
         yield* Store.commit(
@@ -91,11 +91,11 @@ describe("Node Deletion", () => {
 
         // Create a tuple type node
         const { nodeId: tupleTypeId } =
-          yield* Given.A_BUFFER_WITH_TEXT("TupleType");
+          yield* Given.A_FRAME_WITH_TEXT("TupleType");
 
         // Create a type node that will be used as an allowed type
         const { nodeId: allowedTypeId } =
-          yield* Given.A_BUFFER_WITH_TEXT("AllowedType");
+          yield* Given.A_FRAME_WITH_TEXT("AllowedType");
 
         // Add a role to the tuple type
         yield* Store.commit(
@@ -156,13 +156,13 @@ describe("Node Deletion", () => {
 
         // Create a tuple type node
         const { nodeId: tupleTypeId } =
-          yield* Given.A_BUFFER_WITH_TEXT("TupleType");
+          yield* Given.A_FRAME_WITH_TEXT("TupleType");
 
         // Create two member nodes
         const { nodeId: member1Id } =
-          yield* Given.A_BUFFER_WITH_TEXT("Member1");
+          yield* Given.A_FRAME_WITH_TEXT("Member1");
         const { nodeId: member2Id } =
-          yield* Given.A_BUFFER_WITH_TEXT("Member2");
+          yield* Given.A_FRAME_WITH_TEXT("Member2");
 
         // Create a tuple instance
         const tupleId = "tuple-1";

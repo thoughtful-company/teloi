@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id, System } from "@/schema";
 import { NavigationT } from "@/services/ui/Navigation";
 import { StoreT } from "@/services/external/Store";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -30,10 +30,10 @@ describe("Navigation", () => {
   });
 
   describe("syncUrlToModel", () => {
-    it("sets buffer assignedNodeId from valid nodeId in URL", async () => {
+    it("sets frame assignedNodeId from valid nodeId in URL", async () => {
       await Effect.gen(function* () {
-        // Given: A full hierarchy (window → pane → buffer → node)
-        const { bufferId, nodeId } =
+        // Given: A full hierarchy (window → pane → frame → node)
+        const { frameId, nodeId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains that nodeId
@@ -43,18 +43,18 @@ describe("Navigation", () => {
         const Navigation = yield* NavigationT;
         yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId matches the URL
+        // Then: Frame's assignedNodeId matches the URL
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(nodeId);
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBe(nodeId);
       }).pipe(runtime.runPromise);
     });
 
-    it("sets buffer assignedNodeId to null for invalid nodeId in URL", async () => {
+    it("sets frame assignedNodeId to null for invalid nodeId in URL", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } =
+        const { frameId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL contains a non-existent nodeId
@@ -64,18 +64,18 @@ describe("Navigation", () => {
         const Navigation = yield* NavigationT;
         yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId is null (node doesn't exist)
+        // Then: Frame's assignedNodeId is null (node doesn't exist)
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBeNull();
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBeNull();
       }).pipe(runtime.runPromise);
     });
 
     it("uses System.WORKSPACE when URL is empty", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } =
+        const { frameId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is just root (no nodeId)
@@ -85,18 +85,18 @@ describe("Navigation", () => {
         const Navigation = yield* NavigationT;
         yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId is set to workspace home
+        // Then: Frame's assignedNodeId is set to workspace home
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(System.WORKSPACE);
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBe(System.WORKSPACE);
       }).pipe(runtime.runPromise);
     });
 
     it("uses System.WORKSPACE when URL has /workspace/ but no nodeId", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } =
+        const { frameId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: URL is /workspace/ without a nodeId
@@ -106,20 +106,20 @@ describe("Navigation", () => {
         const Navigation = yield* NavigationT;
         yield* Navigation.syncUrlToModel();
 
-        // Then: Buffer's assignedNodeId is set to workspace home
+        // Then: Frame's assignedNodeId is set to workspace home
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(System.WORKSPACE);
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBe(System.WORKSPACE);
       }).pipe(runtime.runPromise);
     });
   });
 
   describe("navigateTo", () => {
-    it("updates buffer assignedNodeId and URL", async () => {
+    it("updates frame assignedNodeId and URL", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId, nodeId } =
+        const { frameId, nodeId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // And: Initial URL is root
@@ -129,21 +129,21 @@ describe("Navigation", () => {
         const Navigation = yield* NavigationT;
         yield* Navigation.navigateTo(nodeId);
 
-        // Then: Buffer's assignedNodeId is updated
+        // Then: Frame's assignedNodeId is updated
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBe(nodeId);
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBe(nodeId);
 
         // And: URL is updated
         expect(window.location.pathname).toBe(`/workspace/${nodeId}`);
       }).pipe(runtime.runPromise);
     });
 
-    it("navigateTo(null) clears buffer and sets URL to /workspace", async () => {
+    it("navigateTo(null) clears frame and sets URL to /workspace", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy with node assigned via navigateTo
-        const { bufferId, nodeId } =
+        const { frameId, nodeId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
         const Navigation = yield* NavigationT;
         yield* Navigation.navigateTo(nodeId);
@@ -151,11 +151,11 @@ describe("Navigation", () => {
         // When: navigateTo is called with null
         yield* Navigation.navigateTo(null);
 
-        // Then: Buffer's assignedNodeId is null
+        // Then: Frame's assignedNodeId is null
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBeNull();
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBeNull();
 
         // And: URL is /workspace
         expect(window.location.pathname).toBe("/workspace");
@@ -165,7 +165,7 @@ describe("Navigation", () => {
     it("navigateTo with invalid nodeId sets assignedNodeId to null", async () => {
       await Effect.gen(function* () {
         // Given: A full hierarchy
-        const { bufferId } =
+        const { frameId } =
           yield* Given.A_FULL_HIERARCHY_WITH_TEXT("Test content");
 
         // When: navigateTo is called with a non-existent nodeId
@@ -173,11 +173,11 @@ describe("Navigation", () => {
         const fakeNodeId = Id.Node.make("non-existent-node");
         yield* Navigation.navigateTo(fakeNodeId);
 
-        // Then: Buffer's assignedNodeId is null (node doesn't exist)
+        // Then: Frame's assignedNodeId is null (node doesn't exist)
         const Store = yield* StoreT;
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        const buffer = Option.getOrThrow(bufferDoc);
-        expect(buffer.assignedNodeId).toBeNull();
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        const frame = Option.getOrThrow(frameDoc);
+        expect(frame.assignedNodeId).toBeNull();
       }).pipe(runtime.runPromise);
     });
   });
@@ -207,7 +207,7 @@ describe("Navigation with UI", () => {
         const children = Array.from({ length: 20 }, (_, i) => ({
           text: `Block ${i + 1} content`,
         }));
-        const { bufferId, rootNodeId, childNodeIds } =
+        const { frameId, rootNodeId, childNodeIds } =
           yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root page", children);
 
         // Set URL to the root page
@@ -221,7 +221,7 @@ describe("Navigation with UI", () => {
         // Wrap in scroll container (simulates PaneWrapper) with limited height to force scrolling
         render(() => (
           <div class="overflow-y-auto" style={{ height: "300px" }}>
-            <BufferView bufferId={bufferId} />
+            <FrameView frameId={frameId} />
           </div>
         ));
 
@@ -241,13 +241,13 @@ describe("Navigation with UI", () => {
 
         // Get the last child block (index 19 = 20th element)
         const lastChildId = childNodeIds[19]!;
-        const lastBlockId = Id.makeBufferBlockId(bufferId, lastChildId);
+        const lastBlockId = Id.makeFrameBlockId(frameId, lastChildId);
 
         // Click on the last block (this should scroll it into view initially)
         yield* Given.BLOCK_IS_FOCUSED_AT(lastBlockId, 0);
 
         // Set cursor position in this block
-        yield* Given.BUFFER_HAS_CURSOR(bufferId, lastChildId, 3);
+        yield* Given.FRAME_HAS_CURSOR(frameId, lastChildId, 3);
 
         // Zoom into this block (navigate to it)
         yield* When.USER_PRESSES("{Meta>}.{/Meta}");

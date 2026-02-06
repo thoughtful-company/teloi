@@ -7,8 +7,8 @@ import { Effect, Option } from "effect";
  * Find the previous message in chat tuple order.
  */
 export const findPreviousNode = Effect.fn("View.chat.findPreviousNode")(
-  function* (nodeId: Id.Node, bufferId: Id.Buffer) {
-    return yield* resolveNeighbor(nodeId, bufferId, -1);
+  function* (nodeId: Id.Node, frameId: Id.Frame) {
+    return yield* resolveNeighbor(nodeId, frameId, -1);
   },
 );
 
@@ -17,24 +17,24 @@ export const findPreviousNode = Effect.fn("View.chat.findPreviousNode")(
  */
 export const findNextNode = Effect.fn("View.chat.findNextNode")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
-  return yield* resolveNeighbor(nodeId, bufferId, 1);
+  return yield* resolveNeighbor(nodeId, frameId, 1);
 });
 
 // ================================ Internal ==================================
 
 const resolveNeighbor = Effect.fn("View.chat.resolveNeighbor")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   direction: -1 | 1,
 ) {
   const Store = yield* StoreT;
   const Tuple = yield* TupleT;
 
-  const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-  const chatNodeId = Option.isSome(bufferDoc)
-    ? (bufferDoc.value.assignedNodeId as Id.Node | null)
+  const frameDoc = yield* Store.getDocument("frame", frameId);
+  const chatNodeId = Option.isSome(frameDoc)
+    ? (frameDoc.value.assignedNodeId as Id.Node | null)
     : null;
   if (!chatNodeId) return Option.none<Id.Node>();
 

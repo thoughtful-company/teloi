@@ -1,11 +1,11 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "outdent";
 const tag = `${scope}:${commandName}` as const;
 
@@ -14,30 +14,30 @@ export class Outdent extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Outdent) {
-    const Buffer = yield* BufferT;
-    const mode = yield* Buffer.getMode();
+    const Frame = yield* FrameT;
+    const mode = yield* Frame.getMode();
 
     if (mode.type === "block") {
       const ctx = yield* resolveActiveBlockContext();
       if (Option.isNone(ctx)) return;
 
-      const { bufferId, nodeId } = ctx.value;
-      yield* outdentNodes(bufferId, [nodeId]);
+      const { frameId, nodeId } = ctx.value;
+      yield* outdentNodes(frameId, [nodeId]);
 
       // Re-set selection to trigger ancestor expansion
-      const selection = yield* Buffer.getSelection(bufferId);
-      yield* Buffer.setSelection(bufferId, selection);
+      const selection = yield* Frame.getSelection(frameId);
+      yield* Frame.setSelection(frameId, selection);
     }
 
     if (mode.type === "blockSelection") {
-      const { bufferId } = mode;
-      const state = yield* Buffer.getBlockSelectionState(bufferId);
+      const { frameId } = mode;
+      const state = yield* Frame.getBlockSelectionState(frameId);
       if (state.selectedBlocks.length === 0 || state.anchor === null) return;
 
-      yield* outdentNodes(bufferId, state.selectedBlocks);
+      yield* outdentNodes(frameId, state.selectedBlocks);
 
-      yield* Buffer.setBlockSelection(
-        bufferId,
+      yield* Frame.setBlockSelection(
+        frameId,
         state.selectedBlocks,
         state.anchor,
         state.focus,
@@ -54,10 +54,10 @@ export class Outdent extends Data.TaggedClass(tag)<{}> {
  * Cannot outdent:
  * - Root nodes (no parent)
  * - Nodes whose parent has no parent (would become root)
- * - First-level blocks in buffer (parent is buffer's assignedNodeId)
+ * - First-level blocks in frame (parent is frame's assignedNodeId)
  */
 const outdentNodes = Effect.fn("outdentNodes")(function* (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   nodeIds: readonly Id.Node[],
 ) {
   const Node = yield* NodeT;
@@ -73,10 +73,10 @@ const outdentNodes = Effect.fn("outdentNodes")(function* (
   );
   if (!parentId) return false;
 
-  // Can't outdent first-level blocks (parent is buffer root)
-  const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-  const assignedNodeId = Option.isSome(bufferDoc)
-    ? bufferDoc.value.assignedNodeId
+  // Can't outdent first-level blocks (parent is frame root)
+  const frameDoc = yield* Store.getDocument("frame", frameId);
+  const assignedNodeId = Option.isSome(frameDoc)
+    ? frameDoc.value.assignedNodeId
     : null;
   if (assignedNodeId && parentId === assignedNodeId) return false;
 

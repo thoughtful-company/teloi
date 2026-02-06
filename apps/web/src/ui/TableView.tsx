@@ -15,7 +15,7 @@ import {
 import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 
 interface TableViewProps {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
 }
 

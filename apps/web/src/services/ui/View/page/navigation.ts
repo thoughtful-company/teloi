@@ -11,7 +11,7 @@ type NavResult = Effect.Effect<Option.Option<Id.Node>, never, NodeT | StoreT>;
  * Handles ghost blocks via ghostParentId fallback.
  */
 export const findPreviousNode = Effect.fn("View.page.findPreviousNode")(
-  function* (nodeId: Id.Node, bufferId: Id.Buffer) {
+  function* (nodeId: Id.Node, frameId: Id.Frame) {
     const Node = yield* NodeT;
     const parentId = yield* Node.getParent(nodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
@@ -21,7 +21,7 @@ export const findPreviousNode = Effect.fn("View.page.findPreviousNode")(
 
     // Ghost blocks have no parent_links — resolve via ghostParentId
     if (!parentId) {
-      const block = yield* getBlockDoc(bufferId, nodeId);
+      const block = yield* getBlockDoc(frameId, nodeId);
       if (block.ghostParentId) {
         return Option.some(block.ghostParentId);
       }
@@ -34,7 +34,7 @@ export const findPreviousNode = Effect.fn("View.page.findPreviousNode")(
 
     if (idx > 0) {
       const prevSiblingId = siblings[idx - 1]!;
-      const deepest = yield* findDeepestLastChild(prevSiblingId, bufferId);
+      const deepest = yield* findDeepestLastChild(prevSiblingId, frameId);
       return Option.some(deepest);
     }
 
@@ -49,10 +49,10 @@ export const findPreviousNode = Effect.fn("View.page.findPreviousNode")(
  */
 export const findNextNodeInDocumentOrder = Effect.fn(
   "View.page.findNextNodeInDocumentOrder",
-)(function* (nodeId: Id.Node, bufferId: Id.Buffer) {
+)(function* (nodeId: Id.Node, frameId: Id.Frame) {
   const Node = yield* NodeT;
 
-  const block = yield* getBlockDoc(bufferId, nodeId);
+  const block = yield* getBlockDoc(frameId, nodeId);
   if (block.isExpanded) {
     const children = yield* Node.getNodeChildren(nodeId);
     if (children.length > 0) {
@@ -63,7 +63,7 @@ export const findNextNodeInDocumentOrder = Effect.fn(
     }
   }
 
-  return yield* findNextNode(nodeId, bufferId);
+  return yield* findNextNode(nodeId, frameId);
 });
 
 /**
@@ -72,7 +72,7 @@ export const findNextNodeInDocumentOrder = Effect.fn(
  */
 export const findNextNode = (
   currentId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ): NavResult =>
   Effect.gen(function* () {
     const Node = yield* NodeT;
@@ -84,7 +84,7 @@ export const findNextNode = (
 
     // Ghost blocks have no parent_links — resolve via ghostParentId
     if (!parentId) {
-      const block = yield* getBlockDoc(bufferId, currentId);
+      const block = yield* getBlockDoc(frameId, currentId);
       if (block.ghostParentId) {
         parentId = block.ghostParentId;
       }
@@ -97,26 +97,26 @@ export const findNextNode = (
 
     // Ghost blocks aren't in siblings list. Treat as last child — recurse to parent.
     if (idx === -1) {
-      return yield* findNextNode(parentId, bufferId);
+      return yield* findNextNode(parentId, frameId);
     }
 
     if (idx < siblings.length - 1) {
       return Option.some(siblings[idx + 1]!);
     }
 
-    return yield* findNextNode(parentId, bufferId);
+    return yield* findNextNode(parentId, frameId);
   });
 
 /**
  * Find the deepest last child of a node (for navigation).
  */
 export const findDeepestLastChild = Effect.fn("View.page.findDeepestLastChild")(
-  function* (startNodeId: Id.Node, bufferId: Id.Buffer) {
+  function* (startNodeId: Id.Node, frameId: Id.Frame) {
     const Node = yield* NodeT;
 
     let current = startNodeId;
     while (true) {
-      const block = yield* getBlockDoc(bufferId, current);
+      const block = yield* getBlockDoc(frameId, current);
       if (!block.isExpanded) return current;
 
       const children = yield* Node.getNodeChildren(current);

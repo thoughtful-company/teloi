@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Effect, Option } from "effect";
 
 /** Selection info from editor (anchor, head, assoc) */
@@ -11,22 +11,22 @@ export interface EditorSelectionInfo {
 }
 
 /**
- * Update buffer selection from editor selection change.
+ * Update frame selection from editor selection change.
  * Always clears goalX/goalLine since this handles "regular" selection changes
  * (typing, clicking, horizontal navigation). Vertical navigation handlers
  * set goalX explicitly via makeCollapsedSelection.
  */
 export const updateEditorSelection = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   nodeId: Id.Node,
   selection: EditorSelectionInfo,
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
-    const elementId = IdT.makeBufferBlockId(bufferId, nodeId);
+    const Frame = yield* FrameT;
+    const elementId = IdT.makeFrameBlockId(frameId, nodeId);
 
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId },
         anchorOffset: selection.anchor,
@@ -39,7 +39,7 @@ export const updateEditorSelection = (
     );
   });
 
-/** Build a collapsed selection (anchor === focus) for Buffer.setSelection */
+/** Build a collapsed selection (anchor === focus) for Frame.setSelection */
 export const makeCollapsedSelection = (
   elementId: Id.Block,
   offset: number,

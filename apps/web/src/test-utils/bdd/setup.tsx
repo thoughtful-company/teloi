@@ -13,7 +13,7 @@ import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { BlockLive } from "@/services/ui/Block";
-import { BufferLive } from "@/services/ui/Buffer";
+import { FrameLive } from "@/services/ui/Frame";
 import { TitleLive } from "@/services/ui/Title";
 import { TypeColorLive } from "@/services/ui/TypeColor";
 import { PickerLive } from "@/services/ui/Picker";
@@ -99,7 +99,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     KeyEventBusLive,
     CommandBusLive,
   );
-  // Group Editor and View (both need BufferT, WindowT from below)
+  // Group Editor and View (both need FrameT, WindowT from below)
   const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
   const TestLayer = pipe(
@@ -112,7 +112,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(TypePickerGroup),
     Layer.provideMerge(TypeColorLive),
-    Layer.provideMerge(BufferLive),
+    Layer.provideMerge(FrameLive),
     Layer.provideMerge(PropertyChatLive),
     Layer.provideMerge(
       Layer.merge(

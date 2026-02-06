@@ -4,8 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
-import { WindowT } from "../Window";
-import { BufferNotFoundError } from "../errors";
+import { FrameNotFoundError } from "../errors";
 import { expandAncestors } from "./expandAncestors";
 
 /**
@@ -14,7 +13,7 @@ import { expandAncestors } from "./expandAncestors";
  * ancestor expansion, so we return null for them.
  */
 const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
-  if (ctx.type === "buffer") {
+  if (ctx.type === "frame") {
     return ctx.nodeId;
   }
   // Section blocks don't have tree hierarchy - skip ancestor expansion
@@ -22,27 +21,23 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
 };
 
 export const setSelection = (
-  bufferId: Id.Buffer,
-  selection: Option.Option<Model.BufferSelection>,
-): Effect.Effect<
-  void,
-  BufferNotFoundError,
-  StoreT | NodeT | WindowT | AutomergeT
-> =>
+  frameId: Id.Frame,
+  selection: Option.Option<Model.FrameSelection>,
+): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT | AutomergeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+    const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
       Effect.orDie,
     );
 
-    if (Option.isNone(bufferDoc)) {
-      return yield* Effect.fail(new BufferNotFoundError({ bufferId }));
+    if (Option.isNone(frameDoc)) {
+      return yield* Effect.fail(new FrameNotFoundError({ frameId }));
     }
 
-    const currentBuffer = bufferDoc.value;
-    const assignedNodeId = currentBuffer.assignedNodeId;
-    let clampedSelection: Option.Option<Model.BufferSelection> = selection;
+    const currentFrame = frameDoc.value;
+    const assignedNodeId = currentFrame.assignedNodeId;
+    let clampedSelection: Option.Option<Model.FrameSelection> = selection;
 
     if (Option.isSome(selection) && assignedNodeId) {
       const rootNodeId = Id.Node.make(assignedNodeId);
@@ -53,7 +48,7 @@ export const setSelection = (
       );
       const anchorNodeId = getNodeIdForExpansion(anchorContext);
       if (anchorNodeId) {
-        yield* expandAncestors(bufferId, rootNodeId, anchorNodeId);
+        yield* expandAncestors(frameId, rootNodeId, anchorNodeId);
       }
 
       const focusContext = yield* IdT.parseBlockContext(focus.elementId).pipe(
@@ -61,14 +56,14 @@ export const setSelection = (
       );
       const focusNodeId = getNodeIdForExpansion(focusContext);
       if (focusNodeId && focusNodeId !== anchorNodeId) {
-        yield* expandAncestors(bufferId, rootNodeId, focusNodeId);
+        yield* expandAncestors(frameId, rootNodeId, focusNodeId);
       }
 
       // Clamp offsets to text length — click position resolution can overshoot
       // when non-content DOM nodes (e.g. type badges) are inside the container
       const Automerge = yield* AutomergeT;
       const getNodeId = (ctx: Id.BlockContext): Id.Node =>
-        ctx.type === "buffer" ? ctx.nodeId : ctx.hostNodeId;
+        ctx.type === "frame" ? ctx.nodeId : ctx.hostNodeId;
 
       const anchorText = yield* Automerge.getText(getNodeId(anchorContext));
       const focusTextLen =
@@ -83,13 +78,25 @@ export const setSelection = (
       });
     }
 
+    // Write selection to window doc (colocated with activeElement)
+    const windowId = currentFrame.windowId;
+    const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+      Effect.orDie,
+    );
+
+    if (Option.isNone(windowDoc)) {
+      return yield* Effect.die(
+        new Error(`Window document not found: ${windowId}`),
+      );
+    }
+
     yield* Store.setDocument(
-      "buffer",
+      "window",
       {
-        ...currentBuffer,
+        ...windowDoc.value,
         selection: Option.getOrNull(clampedSelection),
       },
-      bufferId,
+      windowId,
     ).pipe(Effect.orDie);
 
     const logAnnotations = yield* Option.match(clampedSelection, {
@@ -102,7 +109,7 @@ export const setSelection = (
           ).pipe(Effect.orDie);
           const Automerge = yield* AutomergeT;
           const focusNodeId =
-            focusContext.type === "buffer"
+            focusContext.type === "frame"
               ? focusContext.nodeId
               : focusContext.hostNodeId;
           const focusText = yield* Automerge.getText(focusNodeId);
@@ -120,9 +127,9 @@ export const setSelection = (
         }),
     });
 
-    yield* Effect.logDebug("[Buffer.setSelection]").pipe(
+    yield* Effect.logDebug("[Frame.setSelection]").pipe(
       Effect.annotateLogs({
-        bufferId,
+        frameId,
         assignedNodeId,
         ...logAnnotations,
       }),

@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
@@ -16,15 +16,15 @@ export class TitleT extends Context.Tag("TitleT")<
   TitleT,
   {
     subscribe: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       nodeId: Id.Node,
     ) => Effect.Effect<Stream.Stream<TitleView>>;
     navigateToFirstChild: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       nodeId: Id.Node,
       goalX?: number,
     ) => Effect.Effect<void>;
-    blur: (bufferId: Id.Buffer, nodeId: Id.Node) => Effect.Effect<void>;
+    blur: (frameId: Id.Frame, nodeId: Id.Node) => Effect.Effect<void>;
   }
 >() {}
 
@@ -35,13 +35,13 @@ export const TitleLive = Layer.effect(
     const Node = yield* NodeT;
     const Window = yield* WindowT;
     const Automerge = yield* AutomergeT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(WindowT, Window),
       Context.add(AutomergeT, Automerge),
-      Context.add(BufferT, Buffer),
+      Context.add(FrameT, Frame),
     );
 
     return {

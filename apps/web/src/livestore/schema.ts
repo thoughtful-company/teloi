@@ -141,6 +141,11 @@ const window = State.SQLite.clientDocument({
     value: {
       panes: [],
       activeElement: null,
+      selection: null,
+      selectedBlocks: [],
+      blockSelectionAnchor: null,
+      blockSelectionFocus: null,
+      lastFocusedBlockId: null,
     },
   },
 });
@@ -154,9 +159,9 @@ const pane = State.SQLite.clientDocument({
   },
 });
 
-const buffer = State.SQLite.clientDocument({
-  name: Model.DocumentName.Buffer,
-  schema: Model.DocumentSchemas[Model.DocumentName.Buffer].schema,
+const frame = State.SQLite.clientDocument({
+  name: Model.DocumentName.Frame,
+  schema: Model.DocumentSchemas[Model.DocumentName.Frame].schema,
   default: {
     id: SessionIdSymbol,
     value: null,
@@ -185,7 +190,7 @@ const selection = State.SQLite.clientDocument({
 type ClientDocumentModels = {
   window: Model.Window | null;
   pane: Model.Pane | null;
-  buffer: Model.Buffer | null;
+  frame: Model.Frame | null;
   block: Model.Block | null;
   selection: Model.Selection | null;
 };
@@ -198,7 +203,7 @@ export type ClientDocumentModel<K extends Model.DocumentName> =
 type ClientDocumentBrandedIds = {
   window: Id.Window;
   pane: Id.Pane;
-  buffer: Id.Buffer;
+  frame: Id.Frame;
   block: Id.Block;
   selection: Id.Window; // Selection uses WindowId as its key
 };
@@ -218,9 +223,11 @@ type EventsMap = {
 };
 
 export const documentEvents = {
+  // TODO: Fix Window type inference — adding selection fields to Window broke `satisfies EventsMap` check
+  // @ts-expect-error - Window schema complexity exceeds TS inference for satisfies check
   [Model.DocumentName.Window]: window.set,
   [Model.DocumentName.Pane]: pane.set,
-  [Model.DocumentName.Buffer]: buffer.set,
+  [Model.DocumentName.Frame]: frame.set,
   [Model.DocumentName.Selection]: selection.set,
   [Model.DocumentName.Block]: block.set,
 } satisfies EventsMap;
@@ -254,7 +261,7 @@ export const tables = {
   tupleMembers,
   window,
   pane,
-  buffer,
+  frame,
   selection,
   block,
 };

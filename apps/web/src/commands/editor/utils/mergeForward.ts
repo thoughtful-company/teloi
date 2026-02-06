@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
@@ -11,7 +11,7 @@ import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
 export const mergeForward = Effect.fn("mergeForward")(function* () {
   const ctx = yield* resolveActiveBlockContext();
   if (Option.isNone(ctx)) return;
-  const { bufferId, nodeId, blockId } = ctx.value;
+  const { frameId, nodeId, blockId } = ctx.value;
 
   const View = yield* ViewT;
   const targetOpt = yield* View.resolveBlockBelow(blockId);
@@ -19,7 +19,7 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
 
   const targetBlockId = targetOpt.value;
   const targetCtx = Id.parseBlockContextSync(targetBlockId);
-  if (targetCtx.type !== "buffer") return;
+  if (targetCtx.type !== "frame") return;
   const targetNodeId = targetCtx.nodeId;
 
   const Node = yield* NodeT;
@@ -37,11 +37,11 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
   yield* Node.deleteNode(targetNodeId);
   yield* Automerge.deleteText(targetNodeId);
 
-  const Buffer = yield* BufferT;
+  const Frame = yield* FrameT;
   const Editor = yield* EditorT;
 
-  yield* Buffer.setSelection(
-    bufferId,
+  yield* Frame.setSelection(
+    frameId,
     makeCollapsedSelection(blockId, mergePoint),
   );
   yield* Editor.setCursor(mergePoint);

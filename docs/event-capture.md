@@ -82,7 +82,7 @@ Actions include context about where they originated:
 ```typescript
 type ActionSource =
   | { type: "editor"; blockId: Id.Block; cursor: CursorContext }  // From text editor
-  | { type: "document"; bufferId: Id.Buffer };                     // From document level (block selection mode)
+  | { type: "document"; frameId: Id.Frame };                     // From document level (block selection mode)
 ```
 
 ### Cursor Context
@@ -173,16 +173,16 @@ Receives callbacks from Editor:
 - Calls `ActionT.handle()` synchronously
 - Executes returned `DOMIntent`
 
-### Layer 3: Document (BufferView/App)
+### Layer 3: Document (FrameView/App)
 
-**Location:** `ui/BufferView.tsx`
+**Location:** `ui/FrameView.tsx`
 
 Handles document-level events:
 - Global keyboard shortcuts
 - Block selection mode navigation
 - Events when no editor is focused
 
-Uses `source: { type: "document", bufferId }` - no cursor context.
+Uses `source: { type: "document", frameId }` - no cursor context.
 
 ## CodeMirror Integration
 

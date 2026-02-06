@@ -1,9 +1,9 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,14 +34,14 @@ describe("Block selection", () => {
 
   it("selected block shows visual indicator", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with a block
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      // Given: A frame with a block
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Block content" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter text editing, then press Escape to select
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -68,15 +68,16 @@ describe("Block selection", () => {
 
   it("Shift+ArrowUp extends selection to block above", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with two blocks, second one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "First block" }, { text: "Second block" }],
-      );
+      // Given: A frame with two blocks, second one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "First block" },
+          { text: "Second block" },
+        ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -89,11 +90,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -108,14 +109,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toContain(childNodeIds[0]);
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]);
-            expect(buf.selectedBlocks).toHaveLength(2);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toContain(childNodeIds[0]);
+            expect(win.selectedBlocks).toContain(childNodeIds[1]);
+            expect(win.selectedBlocks).toHaveLength(2);
           },
           { timeout: 2000 },
         ),
@@ -147,14 +148,16 @@ describe("Block selection", () => {
 
   it("Shift+ArrowUp then Shift+ArrowDown returns to single selection", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with three blocks, middle one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }, { text: "C" }],
-      );
+      // Given: A frame with three blocks, middle one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+        ]);
 
-      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -167,11 +170,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -185,14 +188,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(2);
-            expect(buf.selectedBlocks).toContain(childNodeIds[0]); // A
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(2);
+            expect(win.selectedBlocks).toContain(childNodeIds[0]); // A
+            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
           },
           { timeout: 2000 },
         ),
@@ -204,12 +207,12 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]); // Only B
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([childNodeIds[1]]); // Only B
           },
           { timeout: 2000 },
         ),
@@ -219,15 +222,16 @@ describe("Block selection", () => {
 
   it("Shift+ArrowDown extends selection to block below", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with two blocks, first one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "First block" }, { text: "Second block" }],
-      );
+      // Given: A frame with two blocks, first one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "First block" },
+          { text: "Second block" },
+        ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -240,11 +244,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -259,14 +263,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toContain(childNodeIds[0]);
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]);
-            expect(buf.selectedBlocks).toHaveLength(2);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toContain(childNodeIds[0]);
+            expect(win.selectedBlocks).toContain(childNodeIds[1]);
+            expect(win.selectedBlocks).toHaveLength(2);
           },
           { timeout: 2000 },
         ),
@@ -298,14 +302,15 @@ describe("Block selection", () => {
 
   it("ArrowUp moves focus to block above (single block selection)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with two blocks, second one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "First block" }, { text: "Second block" }],
-      );
+      // Given: A frame with two blocks, second one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "First block" },
+          { text: "Second block" },
+        ]);
 
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -318,11 +323,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -337,13 +342,13 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[0]]);
-            expect(buf.selectedBlocks).toHaveLength(1);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([childNodeIds[0]]);
+            expect(win.selectedBlocks).toHaveLength(1);
           },
           { timeout: 2000 },
         ),
@@ -353,14 +358,15 @@ describe("Block selection", () => {
 
   it("ArrowDown moves focus to block below (single block selection)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with two blocks, first one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "First block" }, { text: "Second block" }],
-      );
+      // Given: A frame with two blocks, first one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "First block" },
+          { text: "Second block" },
+        ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -373,11 +379,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -392,13 +398,13 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]);
-            expect(buf.selectedBlocks).toHaveLength(1);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([childNodeIds[1]]);
+            expect(win.selectedBlocks).toHaveLength(1);
           },
           { timeout: 2000 },
         ),
@@ -408,14 +414,17 @@ describe("Block selection", () => {
 
   it("Shift+ArrowUp contracts 3-block selection to 2 blocks", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 4 blocks, B, C, D are selected (anchor=B, focus=D)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
-      );
+      // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+        ]);
 
-      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -432,15 +441,15 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(3);
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(buf.selectedBlocks).toContain(childNodeIds[2]); // C
-            expect(buf.selectedBlocks).toContain(childNodeIds[3]); // D
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(3);
+            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(win.selectedBlocks).toContain(childNodeIds[3]); // D
           },
           { timeout: 2000 },
         ),
@@ -453,14 +462,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(2);
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(buf.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(2);
+            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -470,14 +479,17 @@ describe("Block selection", () => {
 
   it("ArrowUp collapses 3-block selection to single block", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 4 blocks, B, C, D are selected (anchor=B, focus=D)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
-      );
+      // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+        ]);
 
-      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -494,12 +506,12 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(3);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(3);
           },
           { timeout: 2000 },
         ),
@@ -512,13 +524,13 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(1);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]); // B (topmost)
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(1);
+            expect(win.selectedBlocks).toEqual([childNodeIds[1]]); // B (topmost)
           },
           { timeout: 2000 },
         ),
@@ -528,14 +540,17 @@ describe("Block selection", () => {
 
   it("Shift+ArrowDown contracts 3-block selection to 2 blocks", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 4 blocks, A, B, C are selected (anchor=C, focus=A)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
-      );
+      // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+        ]);
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -552,15 +567,15 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(3);
-            expect(buf.selectedBlocks).toContain(childNodeIds[0]); // A
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(buf.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(3);
+            expect(win.selectedBlocks).toContain(childNodeIds[0]); // A
+            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -573,14 +588,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(2);
-            expect(buf.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(buf.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(2);
+            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -590,14 +605,17 @@ describe("Block selection", () => {
 
   it("ArrowDown collapses 3-block selection to single block", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 4 blocks, A, B, C are selected (anchor=C, focus=A)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "A" }, { text: "B" }, { text: "C" }, { text: "D" }],
-      );
+      // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "A" },
+          { text: "B" },
+          { text: "C" },
+          { text: "D" },
+        ]);
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -614,12 +632,12 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(3);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(3);
           },
           { timeout: 2000 },
         ),
@@ -632,13 +650,13 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(1);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[2]]); // C (bottommost)
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(1);
+            expect(win.selectedBlocks).toEqual([childNodeIds[2]]); // C (bottommost)
           },
           { timeout: 2000 },
         ),
@@ -648,15 +666,16 @@ describe("Block selection", () => {
 
   it("clicking another block clears selection", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with two blocks, first one is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "First block" }, { text: "Second block" }],
-      );
+      // Given: A frame with two blocks, first one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+          { text: "First block" },
+          { text: "Second block" },
+        ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -669,11 +688,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
               childNodeIds[0],
             );
           },
@@ -688,12 +707,12 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -718,15 +737,15 @@ describe("Block selection", () => {
   it("Enter starts editing focused block from end", async () => {
     await Effect.gen(function* () {
       // Given: Two blocks, navigate to second one
-      const { bufferId, childNodeIds, windowId } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -739,11 +758,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -754,17 +773,17 @@ describe("Block selection", () => {
       // Navigate down to second block
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      // Verify second block is now selected AND lastFocusedBlockId updated
+      // Verify second block is now selected AND blockSelectionAnchor updated
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[1]]);
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[1]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([childNodeIds[1]]);
+            expect(win.blockSelectionAnchor).toBe(childNodeIds[1]);
           },
           { timeout: 2000 },
         ),
@@ -792,35 +811,22 @@ describe("Block selection", () => {
       );
 
       // Cursor at end of second block's text ("Second block" = 12 chars)
-      const expectedBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const expectedBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selection).not.toBeNull();
-            expect(buf.selection?.anchor.elementId).toBe(expectedBlockId);
-            expect(buf.selection?.anchorOffset).toBe(12);
-            expect(buf.selection?.focus.elementId).toBe(expectedBlockId);
-            expect(buf.selection?.focusOffset).toBe(12);
-          },
-          { timeout: 2000 },
-        ),
-      );
-
-      // Block selection should be cleared
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selection).not.toBeNull();
+            expect(win.selection?.anchor.elementId).toBe(expectedBlockId);
+            expect(win.selection?.anchorOffset).toBe(12);
+            expect(win.selection?.focus.elementId).toBe(expectedBlockId);
+            expect(win.selection?.focusOffset).toBe(12);
+            // Block selection should be cleared
+            expect(win.selectedBlocks).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -830,16 +836,16 @@ describe("Block selection", () => {
 
   it("Delete removes selected blocks and stays in selection mode", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with three blocks, middle one is selected
-      const { bufferId, childNodeIds, windowId } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      // Given: A frame with three blocks, middle one is selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second" },
           { text: "Third" },
         ]);
 
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -852,11 +858,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toEqual([
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -885,10 +891,10 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlock = document.querySelector(
-              `[data-element-id="${Id.makeBufferBlockId(bufferId, childNodeIds[0])}"]`,
+              `[data-element-id="${Id.makeFrameBlockId(frameId, childNodeIds[0])}"]`,
             );
             const thirdBlock = document.querySelector(
-              `[data-element-id="${Id.makeBufferBlockId(bufferId, childNodeIds[2])}"]`,
+              `[data-element-id="${Id.makeFrameBlockId(frameId, childNodeIds[2])}"]`,
             );
             const secondBlock = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
@@ -910,7 +916,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const activeEl = Option.getOrThrow(windowDoc).activeElement;
-            expect(activeEl?.type).toBe("buffer"); // Still in selection mode!
+            expect(activeEl?.type).toBe("frame"); // Still in selection mode!
           },
           { timeout: 2000 },
         ),
@@ -920,13 +926,13 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([childNodeIds[2]]); // Third block (next sibling)
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[2]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([childNodeIds[2]]); // Third block (next sibling)
+            expect(win.blockSelectionAnchor).toBe(childNodeIds[2]);
           },
           { timeout: 2000 },
         ),
@@ -936,14 +942,12 @@ describe("Block selection", () => {
 
   it("clicking title clears block selection", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with a block selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Block content" }],
-      );
+      // Given: A frame with a block selected
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Block content" }]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -956,11 +960,11 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
               childNodeIds[0],
             );
           },
@@ -969,21 +973,25 @@ describe("Block selection", () => {
       );
 
       // When: User clicks the title
-      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_CLICKS_TITLE(frameId);
 
       // Then: selectedBlocks should be cleared and title should be active
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            // Selection should now be on the title
-            expect(buf.selection?.anchor.elementId).toBe(
-              `buffer:${bufferId}/node:${buf.assignedNodeId}`,
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            // Selection should now be on the title (need assignedNodeId from frame)
+            const frameDoc = await Store.getDocument("frame", frameId).pipe(
+              runtime.runPromise,
+            );
+            const frm = Option.getOrThrow(frameDoc);
+            expect(win.selection?.anchor.elementId).toBe(
+              `frame:${frameId}/node:${frm.assignedNodeId}`,
             );
           },
           { timeout: 2000 },
@@ -995,16 +1003,16 @@ describe("Block selection", () => {
   it("Enter with multi-block selection edits focus block (not anchor)", async () => {
     await Effect.gen(function* () {
       // Given: Three blocks, all selected (anchor = first, focus = third)
-      const { bufferId, childNodeIds, windowId } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Alpha" },
           { text: "Beta" },
           { text: "Gamma" },
         ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -1021,14 +1029,14 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toHaveLength(3);
-            expect(buf.blockSelectionAnchor).toBe(childNodeIds[0]); // First block is anchor
-            expect(buf.blockSelectionFocus).toBe(childNodeIds[2]); // Third block is focus
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toHaveLength(3);
+            expect(win.blockSelectionAnchor).toBe(childNodeIds[0]); // First block is anchor
+            expect(win.blockSelectionFocus).toBe(childNodeIds[2]); // Third block is focus
           },
           { timeout: 2000 },
         ),
@@ -1059,29 +1067,16 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selection).not.toBeNull();
-            expect(buf.selection?.anchor.elementId).toBe(thirdBlockId);
-            expect(buf.selection?.anchorOffset).toBe(5);
-          },
-          { timeout: 2000 },
-        ),
-      );
-
-      // All block selection should be cleared
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selection).not.toBeNull();
+            expect(win.selection?.anchor.elementId).toBe(thirdBlockId);
+            expect(win.selection?.anchorOffset).toBe(5);
+            // All block selection should be cleared
+            expect(win.selectedBlocks).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -1089,24 +1084,24 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowUp on first block scrolls to top of buffer", async () => {
+  it("ArrowUp on first block scrolls to top of frame", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
-          <BufferView bufferId={bufferId} />
+          <FrameView frameId={frameId} />
         </div>
       ));
 
       // Enter block selection mode on the first block
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       // Find the scroll container
       const scrollContainer =
@@ -1156,14 +1151,14 @@ describe("Block selection", () => {
         toJSON: () => ({}),
       });
 
-      // Ensure buffer container is focused for keyboard events
-      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+      // Ensure frame container is focused for keyboard events
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
       // When: User presses ArrowUp (while on first block)
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: Still on the first block (no previous block to go to)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       // Wait for potential scroll animation
       yield* Effect.promise(
@@ -1176,16 +1171,16 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowUp on first nested child does NOT scroll to top of buffer", async () => {
+  it("ArrowUp on first nested child does NOT scroll to top of frame", async () => {
     await Effect.gen(function* () {
       // Given: Root with one child (Parent), Parent has children A, B, C
       // Structure:
-      //   Root (buffer assigned)
+      //   Root (frame assigned)
       //     └── Parent (top-level block)
       //           ├── A  <-- first child of Parent, but NOT first child of Root
       //           ├── B
       //           └── C
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
@@ -1207,14 +1202,14 @@ describe("Block selection", () => {
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
-          <BufferView bufferId={bufferId} />
+          <FrameView frameId={frameId} />
         </div>
       ));
 
-      // Select A (first child of Parent, which is NOT the buffer root's first child)
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      // Select A (first child of Parent, which is NOT the frame root's first child)
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA]);
 
       // Set up scroll mocking
       const scrollContainer =
@@ -1259,14 +1254,14 @@ describe("Block selection", () => {
         toJSON: () => ({}),
       });
 
-      // Ensure buffer container is focused for keyboard events
-      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+      // Ensure frame container is focused for keyboard events
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
       // When: User presses ArrowUp (while on first nested child A)
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: Selection moves to Parent (previous in document order)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [parentNodeId]);
 
       // Wait for potential scroll animation
       yield* Effect.promise(
@@ -1284,45 +1279,43 @@ describe("Block selection", () => {
 
   it("ArrowDown after Escape restores to last focused block, not next block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block A" },
           { text: "Block B" },
           { text: "Block C" },
           { text: "Block D" },
-        ],
-      );
+        ]);
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
-      const Buffer = yield* BufferT;
+      const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
       // Set up block selection: A (anchor) -> B -> C (focus)
-      yield* Buffer.setBlockSelection(
-        bufferId,
+      yield* Frame.setBlockSelection(
+        frameId,
         [nodeA, nodeB, nodeC],
         nodeA,
         nodeC,
       );
       yield* Window.setActiveElement(
-        Option.some({ type: "buffer" as const, id: bufferId }),
+        Option.some({ type: "frame" as const, id: frameId }),
       );
-      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
       // Verify initial state: 3 blocks selected with focus on C
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
-          expect(buf.blockSelectionFocus).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
+          expect(win.blockSelectionFocus).toBe(nodeC);
         }),
       );
 
@@ -1332,13 +1325,13 @@ describe("Block selection", () => {
       // Verify selection cleared but lastFocusedBlockId preserved
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([]);
-          expect(buf.lastFocusedBlockId).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([]);
+          expect(win.lastFocusedBlockId).toBe(nodeC);
         }),
       );
 
@@ -1348,13 +1341,13 @@ describe("Block selection", () => {
       // Then: Selection should be restored to C (last focused), NOT D (next block)
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([nodeC]);
-          expect(buf.blockSelectionFocus).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([nodeC]);
+          expect(win.blockSelectionFocus).toBe(nodeC);
         }),
       );
     }).pipe(runtime.runPromise);
@@ -1362,45 +1355,43 @@ describe("Block selection", () => {
 
   it("ArrowUp after Escape restores to last focused block, not previous block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block A" },
           { text: "Block B" },
           { text: "Block C" },
           { text: "Block D" },
-        ],
-      );
+        ]);
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
-      const Buffer = yield* BufferT;
+      const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
       // Set up block selection: A (anchor) -> B -> C (focus)
-      yield* Buffer.setBlockSelection(
-        bufferId,
+      yield* Frame.setBlockSelection(
+        frameId,
         [nodeA, nodeB, nodeC],
         nodeA,
         nodeC,
       );
       yield* Window.setActiveElement(
-        Option.some({ type: "buffer" as const, id: bufferId }),
+        Option.some({ type: "frame" as const, id: frameId }),
       );
-      yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
       // Verify initial state
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
-          expect(buf.blockSelectionFocus).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
+          expect(win.blockSelectionFocus).toBe(nodeC);
         }),
       );
 
@@ -1410,13 +1401,13 @@ describe("Block selection", () => {
       // Verify selection cleared
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([]);
-          expect(buf.lastFocusedBlockId).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([]);
+          expect(win.lastFocusedBlockId).toBe(nodeC);
         }),
       );
 
@@ -1426,13 +1417,13 @@ describe("Block selection", () => {
       // Then: Selection should be restored to C (last focused), NOT B (previous block)
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+          const windowDoc = await Store.getDocument("window", windowId).pipe(
             runtime.runPromise,
           );
-          expect(Option.isSome(bufferDoc)).toBe(true);
-          const buf = Option.getOrThrow(bufferDoc);
-          expect(buf.selectedBlocks).toEqual([nodeC]);
-          expect(buf.blockSelectionFocus).toBe(nodeC);
+          expect(Option.isSome(windowDoc)).toBe(true);
+          const win = Option.getOrThrow(windowDoc);
+          expect(win.selectedBlocks).toEqual([nodeC]);
+          expect(win.blockSelectionFocus).toBe(nodeC);
         }),
       );
     }).pipe(runtime.runPromise);
@@ -1442,7 +1433,7 @@ describe("Block selection", () => {
   it.skip("Cmd+Up jumps to first sibling (skipping intermediate blocks)", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "A" },
@@ -1453,18 +1444,18 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+Up (Meta+ArrowUp)
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
       // Then: A becomes selected (first sibling, not B - proves it jumped)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
         anchor: childNodeIds[0],
         focus: childNodeIds[0],
       });
@@ -1475,7 +1466,7 @@ describe("Block selection", () => {
   it.skip("Cmd+Down jumps to last sibling (skipping intermediate blocks)", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "A" },
@@ -1486,18 +1477,18 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+Down (Meta+ArrowDown)
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       // Then: E becomes selected (last sibling, not D - proves it jumped)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[4]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[4]], {
         anchor: childNodeIds[4],
         focus: childNodeIds[4],
       });
@@ -1508,7 +1499,7 @@ describe("Block selection", () => {
   it.skip("Shift+Cmd+Up extends selection from anchor to first sibling", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "A" },
@@ -1519,12 +1510,12 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
         anchor: childNodeIds[2],
         focus: childNodeIds[2],
       });
@@ -1534,7 +1525,7 @@ describe("Block selection", () => {
 
       // Then: A, B, C selected with anchor=C, focus=A
       yield* Then.BLOCKS_ARE_SELECTED(
-        bufferId,
+        frameId,
         [childNodeIds[0], childNodeIds[1], childNodeIds[2]],
         {
           anchor: childNodeIds[2],
@@ -1548,7 +1539,7 @@ describe("Block selection", () => {
   it.skip("Shift+Cmd+Down extends selection from anchor to last sibling", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected (anchor=C)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "A" },
@@ -1559,12 +1550,12 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
         anchor: childNodeIds[2],
         focus: childNodeIds[2],
       });
@@ -1574,7 +1565,7 @@ describe("Block selection", () => {
 
       // Then: C, D, E selected with anchor=C, focus=E
       yield* Then.BLOCKS_ARE_SELECTED(
-        bufferId,
+        frameId,
         [childNodeIds[2], childNodeIds[3], childNodeIds[4]],
         {
           anchor: childNodeIds[2],
@@ -1588,12 +1579,12 @@ describe("Block selection", () => {
     await Effect.gen(function* () {
       // Given: Root with one child (Parent), Parent has children A, B, C
       // Structure:
-      //   Root (buffer assigned)
+      //   Root (frame assigned)
       //     └── Parent (top-level block)
       //           ├── A
       //           ├── B
       //           └── C
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
@@ -1619,29 +1610,29 @@ describe("Block selection", () => {
         text: "C",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select A (first child of Parent, which is at 2nd indentation level)
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA]);
 
       // When: Press ArrowDown
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: Selection moves to B
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeB]);
 
       // Press ArrowDown again - moves to C
       yield* When.USER_PRESSES("{ArrowDown}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeC]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeC]);
     }).pipe(runtime.runPromise);
   });
 
   it("Cmd+A selects all blocks", async () => {
     await Effect.gen(function* () {
       // Given: 5 blocks A, B, C, D, E - C is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "A" },
@@ -1652,19 +1643,19 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on C
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+A
       yield* When.USER_PRESSES("{Meta>}a{/Meta}");
 
       // Then: All blocks selected with anchor=first, focus=last
       yield* Then.BLOCKS_ARE_SELECTED(
-        bufferId,
+        frameId,
         [
           childNodeIds[0],
           childNodeIds[1],
@@ -1683,34 +1674,36 @@ describe("Block selection", () => {
   describe("block selection with empty selection and no lastFocusedBlockId", () => {
     it("ArrowDown selects the first block when there are blocks", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with 3 blocks
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root",
-          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
-        );
+        // Given: A frame with 3 blocks
+        const { frameId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+            { text: "First" },
+            { text: "Second" },
+            { text: "Third" },
+          ]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
 
-        // Set up block selection mode (activeElement.type = "buffer")
+        // Set up block selection mode (activeElement.type = "frame")
         // but with empty selection and no lastFocusedBlockId
         yield* Window.setActiveElement(
-          Option.some({ type: "buffer" as const, id: bufferId }),
+          Option.some({ type: "frame" as const, id: frameId }),
         );
-        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.lastFocusedBlockId).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1718,7 +1711,7 @@ describe("Block selection", () => {
         yield* When.USER_PRESSES("{ArrowDown}");
 
         // Then: First block should be selected
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
           anchor: childNodeIds[0],
           focus: childNodeIds[0],
         });
@@ -1727,34 +1720,36 @@ describe("Block selection", () => {
 
     it("ArrowUp selects the last block when there are blocks", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with 3 blocks
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-          "Root",
-          [{ text: "First" }, { text: "Second" }, { text: "Third" }],
-        );
+        // Given: A frame with 3 blocks
+        const { frameId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
+            { text: "First" },
+            { text: "Second" },
+            { text: "Third" },
+          ]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
 
-        // Set up block selection mode (activeElement.type = "buffer")
+        // Set up block selection mode (activeElement.type = "frame")
         // but with empty selection and no lastFocusedBlockId
         yield* Window.setActiveElement(
-          Option.some({ type: "buffer" as const, id: bufferId }),
+          Option.some({ type: "frame" as const, id: frameId }),
         );
-        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.lastFocusedBlockId).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1762,7 +1757,7 @@ describe("Block selection", () => {
         yield* When.USER_PRESSES("{ArrowUp}");
 
         // Then: Last block should be selected
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]], {
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
           anchor: childNodeIds[2],
           focus: childNodeIds[2],
         });
@@ -1771,30 +1766,33 @@ describe("Block selection", () => {
 
     it("ArrowDown does nothing when there are no blocks", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with no child blocks (only root)
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
+        // Given: A frame with no child blocks (only root)
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
+          "Root",
+          [],
+        );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode with empty selection
         yield* Window.setActiveElement(
-          Option.some({ type: "buffer" as const, id: bufferId }),
+          Option.some({ type: "frame" as const, id: frameId }),
         );
-        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.lastFocusedBlockId).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1804,13 +1802,13 @@ describe("Block selection", () => {
         // Then: Selection should still be empty (nothing happened)
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.blockSelectionAnchor).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.blockSelectionAnchor).toBeNull();
           }),
         );
       }).pipe(runtime.runPromise);
@@ -1818,30 +1816,33 @@ describe("Block selection", () => {
 
     it("ArrowUp does nothing when there are no blocks", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with no child blocks (only root)
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", []);
+        // Given: A frame with no child blocks (only root)
+        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
+          "Root",
+          [],
+        );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode with empty selection
         yield* Window.setActiveElement(
-          Option.some({ type: "buffer" as const, id: bufferId }),
+          Option.some({ type: "frame" as const, id: frameId }),
         );
-        yield* When.FOCUS_BUFFER_CONTAINER(bufferId);
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.lastFocusedBlockId).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1851,13 +1852,13 @@ describe("Block selection", () => {
         // Then: Selection should still be empty (nothing happened)
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
-            expect(buf.blockSelectionAnchor).toBeNull();
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
+            expect(win.blockSelectionAnchor).toBeNull();
           }),
         );
       }).pipe(runtime.runPromise);

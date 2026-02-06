@@ -16,14 +16,14 @@ import {
   useContext,
 } from "solid-js";
 import Block from "./Block";
-import { ActiveElementContext } from "./BufferView";
+import { ActiveElementContext } from "./FrameView";
 // TODO: Re-enable Editor import once blockId support is added
 // import Editor from "./Editor";
 
 interface PropertySectionProps {
   propertyId: Id.Node;
   pageId: Id.Node;
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
 }
 
 interface GhostBlockProps {
@@ -190,7 +190,7 @@ export default function PropertySection(props: PropertySectionProps) {
   // Create property block ID for a linked tuple
   const makePropertyBlockId = (tupleId: Id.Tuple) =>
     Id.makePropertyBlockId(
-      props.bufferId,
+      props.frameId,
       props.pageId,
       props.propertyId,
       tupleId,
@@ -242,7 +242,7 @@ export default function PropertySection(props: PropertySectionProps) {
     if (
       activeEl?.type === "property" &&
       activeEl.propertyId === props.propertyId &&
-      activeEl.bufferId === props.bufferId
+      activeEl.frameId === props.frameId
     ) {
       focusPropertyName();
     }
@@ -279,7 +279,7 @@ export default function PropertySection(props: PropertySectionProps) {
           Option.some({
             type: "property" as const,
             propertyId: props.propertyId,
-            bufferId: props.bufferId,
+            frameId: props.frameId,
           }),
         );
       }),

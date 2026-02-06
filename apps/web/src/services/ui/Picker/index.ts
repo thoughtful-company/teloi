@@ -15,7 +15,7 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect";
-import { BufferT } from "../Buffer";
+import { FrameT } from "../Frame";
 import { TypePickerT } from "../TypePicker";
 
 export interface PickerState {
@@ -94,14 +94,14 @@ const finishPickerAction = (
   ref: SubscriptionRef.SubscriptionRef<PickerState | null>,
 ) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
 
-    // Parse blockId to get bufferId and nodeId
+    // Parse blockId to get frameId and nodeId
     const blockContext = Id.parseBlockContextSync(state.elementId);
-    const bufferId = blockContext.bufferId;
+    const frameId = blockContext.frameId;
     const nodeId =
-      blockContext.type === "buffer"
+      blockContext.type === "frame"
         ? blockContext.nodeId
         : blockContext.hostNodeId;
 
@@ -117,8 +117,8 @@ const finishPickerAction = (
     }
 
     // Set selection back to where the trigger was
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: state.elementId },
         anchorOffset: state.from,
@@ -141,11 +141,11 @@ export const PickerLive = Layer.effect(
 
     // Capture dependencies for withContext pattern
     const TypePicker = yield* TypePickerT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
 
     const context = Context.make(TypePickerT, TypePicker).pipe(
-      Context.add(BufferT, Buffer),
+      Context.add(FrameT, Frame),
       Context.add(AutomergeT, Automerge),
     );
 
@@ -189,7 +189,7 @@ export const PickerLive = Layer.effect(
           // Parse blockId to get nodeId
           const blockContext = Id.parseBlockContextSync(state.elementId);
           const nodeId =
-            blockContext.type === "buffer"
+            blockContext.type === "frame"
               ? blockContext.nodeId
               : blockContext.hostNodeId;
 
@@ -213,7 +213,7 @@ export const PickerLive = Layer.effect(
           // Parse blockId to get nodeId
           const blockContext = Id.parseBlockContextSync(state.elementId);
           const nodeId =
-            blockContext.type === "buffer"
+            blockContext.type === "frame"
               ? blockContext.nodeId
               : blockContext.hostNodeId;
 

@@ -1,4 +1,4 @@
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
@@ -22,25 +22,25 @@ export class Right extends Data.TaggedClass(tag)<{}> {
     if (!isAtEnd) {
       yield* Editor.moveRight();
       const ctx = yield* resolveActiveBlockContext();
-      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
 
     const View = yield* ViewT;
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { bufferId, blockId } = ctx.value;
+    const { frameId, blockId } = ctx.value;
 
     const targetOpt = yield* View.resolveBlockRight(blockId);
     if (Option.isNone(targetOpt)) return;
 
     const targetBlockId = targetOpt.value;
 
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       makeCollapsedSelection(targetBlockId, 0),
     );
     yield* Window.setActiveElement(

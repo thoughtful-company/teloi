@@ -6,7 +6,7 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import PropertySection from "@/ui/PropertySection";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
@@ -111,7 +111,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -122,12 +122,12 @@ describe("PropertySection", () => {
         yield* Automerge.setText(propertyId, "My Property Name");
 
         // Render the PropertySection directly
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -150,7 +150,7 @@ describe("PropertySection", () => {
         const View = yield* ViewT;
 
         // Setup: create a page, view, and property with empty name
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -160,12 +160,12 @@ describe("PropertySection", () => {
         // Don't set any text - property name should be empty
 
         // Render the PropertySection
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -194,7 +194,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -215,12 +215,12 @@ describe("PropertySection", () => {
         yield* Tuple.create(tupleTypeId, [pageId, linkedNode2]);
 
         // Render the PropertySection
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -245,7 +245,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property (unbound)
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -256,12 +256,12 @@ describe("PropertySection", () => {
         // Don't bind to any tuple type
 
         // Render the PropertySection
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -286,7 +286,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -299,12 +299,12 @@ describe("PropertySection", () => {
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
         // Render the PropertySection
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -322,13 +322,13 @@ describe("PropertySection", () => {
     });
   });
 
-  describe("Buffer integration", () => {
+  describe("Frame integration", () => {
     it("shows nothing when view has no properties", async () => {
       await Effect.gen(function* () {
         const View = yield* ViewT;
 
-        // Setup: create a buffer with a root node
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: create a frame with a root node
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Page Without Properties",
           [{ text: "Some content" }],
         );
@@ -336,10 +336,10 @@ describe("PropertySection", () => {
         // Create view but don't add any properties
         yield* View.getOrCreateView(rootNodeId);
 
-        // Render Buffer
-        render(() => <BufferView bufferId={bufferId} />);
+        // Render Frame
+        render(() => <FrameView frameId={frameId} />);
 
-        // Assert: Buffer renders without property sections
+        // Assert: Frame renders without property sections
         yield* Effect.promise(() =>
           waitFor(
             () => {
@@ -369,7 +369,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a full hierarchy
-        const { rootNodeId: pageId, bufferId } =
+        const { rootNodeId: pageId, frameId } =
           yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Test Page", []);
         const viewId = yield* View.getOrCreateView(pageId);
         const propertyId = yield* Property.createProperty(viewId);
@@ -390,7 +390,7 @@ describe("PropertySection", () => {
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -421,7 +421,7 @@ describe("PropertySection", () => {
         const Automerge = yield* AutomergeT;
 
         // Setup: create a page, view, and property
-        const { rootNodeId: pageId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { rootNodeId: pageId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [],
         );
@@ -432,12 +432,12 @@ describe("PropertySection", () => {
         yield* Automerge.setText(propertyId, "Initial Name");
 
         // Render the PropertySection
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Buffer", []);
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Buffer", []);
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={pageId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 

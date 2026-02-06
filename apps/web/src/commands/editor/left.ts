@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
@@ -24,31 +24,31 @@ export class Left extends Data.TaggedClass(tag)<{}> {
     if (!isAtStart) {
       yield* Editor.moveLeft();
       const ctx = yield* resolveActiveBlockContext();
-      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
 
     const View = yield* ViewT;
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { bufferId, blockId } = ctx.value;
+    const { frameId, blockId } = ctx.value;
 
     const targetOpt = yield* View.resolveBlockLeft(blockId);
     if (Option.isNone(targetOpt)) return;
 
     const targetBlockId = targetOpt.value;
     const targetCtx = Id.parseBlockContextSync(targetBlockId);
-    if (targetCtx.type !== "buffer") return;
+    if (targetCtx.type !== "frame") return;
 
     const targetText = yield* Automerge.getText(targetCtx.nodeId);
     const endPos = targetText.length;
 
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       makeCollapsedSelection(targetBlockId, endPos),
     );
     yield* Window.setActiveElement(

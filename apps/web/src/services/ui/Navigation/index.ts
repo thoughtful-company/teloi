@@ -3,7 +3,7 @@ import * as IdT from "@/schema/id/id";
 import { URLServiceB } from "@/services/browser/URLService";
 import { NodeT } from "@/services/domain/Node";
 import { Context, Effect, Layer, Option, Stream } from "effect";
-import { BufferT } from "../Buffer";
+import { FrameT } from "../Frame";
 import { WindowT } from "../Window";
 
 const URL_SHORTCUTS: Record<string, Id.Node> = {
@@ -61,7 +61,7 @@ export const NavigationLive = Layer.effect(
   NavigationT,
   Effect.gen(function* () {
     const URL = yield* URLServiceB;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
 
@@ -84,10 +84,10 @@ export const NavigationLive = Layer.effect(
           nodeIdToUse = System.WORKSPACE;
         }
 
-        const maybeBufferId = yield* Window.getActiveBufferId();
-        if (Option.isNone(maybeBufferId)) return;
+        const maybeFrameId = yield* Window.getActiveFrameId();
+        if (Option.isNone(maybeFrameId)) return;
 
-        yield* Buffer.setAssignedNodeId(maybeBufferId.value, nodeIdToUse);
+        yield* Frame.setAssignedNodeId(maybeFrameId.value, nodeIdToUse);
 
         yield* Effect.logDebug("[Navigation.syncUrlToModel] Synced").pipe(
           Effect.annotateLogs({ path, nodeIdToUse }),
@@ -108,16 +108,16 @@ export const NavigationLive = Layer.effect(
                 onSome: validateNodeId,
               });
 
-              const maybeBufferId = yield* Window.getActiveBufferId();
-              if (Option.isNone(maybeBufferId)) return;
+              const maybeFrameId = yield* Window.getActiveFrameId();
+              if (Option.isNone(maybeFrameId)) return;
 
-              const bufferId = maybeBufferId.value;
+              const frameId = maybeFrameId.value;
 
-              yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
+              yield* Frame.setAssignedNodeId(frameId, validatedNodeId);
 
               // Restore activeElement based on current selection
-              const selection = yield* Buffer.getSelection(bufferId).pipe(
-                Effect.catchTag("BufferNotFoundError", () =>
+              const selection = yield* Frame.getSelection(frameId).pipe(
+                Effect.catchTag("FrameNotFoundError", () =>
                   Effect.succeed(Option.none<never>()),
                 ),
               );
@@ -129,20 +129,20 @@ export const NavigationLive = Layer.effect(
                 ).pipe(Effect.orDie);
 
                 if (
-                  selContext.type === "buffer" &&
+                  selContext.type === "frame" &&
                   selContext.nodeId === validatedNodeId
                 ) {
                   // Selection is on the title node (title is just a block)
-                  const titleBlockId = Id.makeBufferBlockId(
-                    bufferId,
+                  const titleBlockId = Id.makeFrameBlockId(
+                    frameId,
                     validatedNodeId,
                   );
                   yield* Window.setActiveElement(
                     Option.some({ type: "block" as const, id: titleBlockId }),
                   );
-                  // Title scrolls itself or Buffer handles it
+                  // Title scrolls itself or Frame handles it
                 } else {
-                  // Selection is on a block (buffer or section block)
+                  // Selection is on a block (frame or section block)
                   // Use the original blockId from selection
                   yield* Window.setActiveElement(
                     Option.some({ type: "block" as const, id: anchorBlockId }),
@@ -152,7 +152,7 @@ export const NavigationLive = Layer.effect(
               }
 
               yield* Effect.logDebug(
-                "[Navigation.popstate] Updated buffer from popstate",
+                "[Navigation.popstate] Updated frame from popstate",
               ).pipe(Effect.annotateLogs({ path, nodeId: validatedNodeId }));
             }).pipe(Effect.orDie),
           ),
@@ -164,18 +164,18 @@ export const NavigationLive = Layer.effect(
       options?: { focusTitle?: boolean },
     ) =>
       Effect.gen(function* () {
-        const maybeBufferId = yield* Window.getActiveBufferId();
-        if (Option.isNone(maybeBufferId)) return;
+        const maybeFrameId = yield* Window.getActiveFrameId();
+        if (Option.isNone(maybeFrameId)) return;
 
-        const bufferId = maybeBufferId.value;
+        const frameId = maybeFrameId.value;
         const validatedNodeId = nodeId ? yield* validateNodeId(nodeId) : null;
 
-        yield* Buffer.setAssignedNodeId(bufferId, validatedNodeId);
+        yield* Frame.setAssignedNodeId(frameId, validatedNodeId);
         yield* URL.setPath(makePathFromNodeId(validatedNodeId));
 
         if (options?.focusTitle && validatedNodeId) {
           // Title is just a block
-          const titleBlockId = Id.makeBufferBlockId(bufferId, validatedNodeId);
+          const titleBlockId = Id.makeFrameBlockId(frameId, validatedNodeId);
           yield* Window.setActiveElement(
             Option.some({ type: "block" as const, id: titleBlockId }),
           );

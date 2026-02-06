@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BlockT } from "@/services/ui/Block";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -32,16 +32,16 @@ describe("MergeBackward (Backspace at start of block)", () => {
       //   Root
       //     - A("Hello")
       //     - B(" World")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: " World" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
       yield* When.USER_PRESSES("{Backspace}");
@@ -59,14 +59,14 @@ describe("MergeBackward (Backspace at start of block)", () => {
       //     - A("Hello")
       //     - B("World")
       //       - B1("Nested")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: "World" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeB,
@@ -74,7 +74,7 @@ describe("MergeBackward (Backspace at start of block)", () => {
         text: "Nested",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
       yield* When.USER_PRESSES("{Backspace}");
@@ -91,13 +91,13 @@ describe("MergeBackward (Backspace at start of block)", () => {
       // Structure:
       //   Root("Title")
       //     - A("Only")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Title", [{ text: "Only" }]);
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Title", [{ text: "Only" }]);
 
       const [nodeA] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 0);
       yield* When.USER_PRESSES("{Backspace}");
@@ -115,15 +115,15 @@ describe("MergeBackward (Backspace at start of block)", () => {
       //     - A("Parent") [COLLAPSED]
       //       - A1("Child")
       //     - B("Sibling")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Parent" },
           { text: "Sibling" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -135,7 +135,7 @@ describe("MergeBackward (Backspace at start of block)", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, false);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
       yield* When.USER_PRESSES("{Backspace}");
@@ -154,14 +154,14 @@ describe("MergeBackward (Backspace at start of block)", () => {
       //     - A("Parent") [EXPANDED]
       //       - A1("Child")
       //     - B("Sibling")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Parent" },
           { text: "Sibling" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -169,7 +169,7 @@ describe("MergeBackward (Backspace at start of block)", () => {
         text: "Child",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // A is expanded by default, so the block above B is A1 (not A)
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
@@ -188,16 +188,16 @@ describe("MergeBackward (Backspace at start of block)", () => {
       //   Root
       //     - A("Hello")
       //     - B(" World")
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: " World" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
       yield* When.USER_PRESSES("{Backspace}");

@@ -15,6 +15,6 @@ export class MoveToLineEnd extends Data.TaggedClass(tag)<{}> {
     const Editor = yield* EditorT;
     yield* Editor.moveLineBoundaryRight();
     const ctx = yield* resolveActiveBlockContext();
-    if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+    if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
   });
 }

@@ -65,38 +65,38 @@ export class BlockT extends Context.Tag("BlockT")<
     attestExistence: (
       blockId: Id.Block,
     ) => Effect.Effect<void, BlockNotFoundError>;
-    get: (bufferId: Id.Buffer, nodeId: Id.Node) => Effect.Effect<Model.Block>;
+    get: (frameId: Id.Frame, nodeId: Id.Node) => Effect.Effect<Model.Block>;
     setExpanded: (
       blockId: Id.Block,
       isExpanded: boolean,
     ) => Effect.Effect<void, never>;
     isExpanded: (blockId: Id.Block) => Effect.Effect<boolean, never>;
     isBlockExpanded: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       nodeId: Id.Node,
     ) => Effect.Effect<boolean, never>;
 
     // Tree navigation
     findDeepestLastChild: (
       startNodeId: Id.Node,
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
     ) => Effect.Effect<Id.Node, never>;
     findNextNode: (
       currentId: Id.Node,
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     findNextNodeInDocumentOrder: (
       currentId: Id.Node,
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
     findPreviousNode: (
       currentId: Id.Node,
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
     ) => Effect.Effect<Option.Option<Id.Node>, never>;
 
     // Expand/collapse
     expandOneLevel: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       nodeId: Id.Node,
     ) => Effect.Effect<ExpandResult, never>;
 
@@ -107,9 +107,7 @@ export class BlockT extends Context.Tag("BlockT")<
       blockId: Id.Block,
       viewId: Id.Node | null,
     ) => Effect.Effect<void, never>;
-    getActiveView: (
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Option.Option<Id.Node>>;
+    getActiveView: (frameId: Id.Frame) => Effect.Effect<Option.Option<Id.Node>>;
     getViewsForNode: (nodeId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
     getOrCreateView: (nodeId: Id.Node) => Effect.Effect<Id.Node>;
     subscribeViewsForNode: (
@@ -158,9 +156,9 @@ export const BlockLive = Layer.effect(
             // When collapsing a block with a ghost, clean up the ghost
             if (!isExpanded && current.ghostChildId) {
               const ctx = Id.parseBlockContextSync(blockId);
-              if (ctx.type === "buffer") {
-                const ghostBlockId = Id.makeBufferBlockId(
-                  ctx.bufferId,
+              if (ctx.type === "frame") {
+                const ghostBlockId = Id.makeFrameBlockId(
+                  ctx.frameId,
                   current.ghostChildId,
                 );
                 return Effect.all([

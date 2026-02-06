@@ -1,5 +1,5 @@
 import "@/index.css";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -28,11 +28,11 @@ describe("Block whitespace rendering", () => {
   it("preserves newlines in unfocused blocks", async () => {
     await Effect.gen(function* () {
       const textContent = "first line\nsecond line";
-      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Root", [
         { text: textContent },
       ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -52,11 +52,11 @@ describe("Block whitespace rendering", () => {
   it("preserves multiple consecutive spaces in unfocused blocks", async () => {
     await Effect.gen(function* () {
       const textContent = "word  word"; // double space
-      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Root", [
         { text: textContent },
       ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(() =>
         waitFor(

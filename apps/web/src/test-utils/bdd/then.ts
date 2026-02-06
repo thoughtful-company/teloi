@@ -154,12 +154,12 @@ const getSelectionTitleId = (): string | null => {
 };
 
 /**
- * Asserts that the DOM selection IS in the title for the specified buffer.
+ * Asserts that the DOM selection IS in the title for the specified frame.
  */
-export const SELECTION_IS_ON_TITLE = (bufferId: Id.Buffer) =>
+export const SELECTION_IS_ON_TITLE = (frameId: Id.Frame) =>
   Effect.sync(() => {
     const currentTitleId = getSelectionTitleId();
-    expect(currentTitleId).toBe(bufferId);
+    expect(currentTitleId).toBe(frameId);
   }).pipe(Effect.withSpan("Then.SELECTION_IS_ON_TITLE"));
 
 /**
@@ -201,34 +201,36 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
 }> {}
 
 /**
- * Asserts that the buffer has exactly the specified blocks selected.
+ * Asserts that the frame has exactly the specified blocks selected.
  * Checks both the selectedBlocks array and optionally anchor/focus.
  * Uses Effect-native retry instead of waitFor for proper Effect composition.
  */
 export const BLOCKS_ARE_SELECTED = (
-  bufferId: Id.Buffer,
+  _frameId: Id.Frame,
   expectedNodeIds: Id.Node[],
   options?: { anchor?: Id.Node; focus?: Id.Node },
 ) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
+    const sessionId = yield* Store.getSessionId();
+    const windowId = Id.Window.make(sessionId);
+    const windowDoc = yield* Store.getDocument("window", windowId);
 
     yield* Effect.try({
       try: () => {
-        expect(Option.isSome(bufferDoc)).toBe(true);
-        const buf = Option.getOrThrow(bufferDoc);
+        expect(Option.isSome(windowDoc)).toBe(true);
+        const win = Option.getOrThrow(windowDoc);
 
-        expect(buf.selectedBlocks).toHaveLength(expectedNodeIds.length);
+        expect(win.selectedBlocks).toHaveLength(expectedNodeIds.length);
         for (const nodeId of expectedNodeIds) {
-          expect(buf.selectedBlocks).toContain(nodeId);
+          expect(win.selectedBlocks).toContain(nodeId);
         }
 
         if (options?.anchor !== undefined) {
-          expect(buf.blockSelectionAnchor).toBe(options.anchor);
+          expect(win.blockSelectionAnchor).toBe(options.anchor);
         }
         if (options?.focus !== undefined) {
-          expect(buf.blockSelectionFocus).toBe(options.focus);
+          expect(win.blockSelectionFocus).toBe(options.focus);
         }
       },
       catch: (cause) => new AssertionError({ cause }),

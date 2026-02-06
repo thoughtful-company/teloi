@@ -3,9 +3,8 @@ import { Id } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
-import { Effect, Option, Stream } from "effect";
+import { Effect, Stream } from "effect";
 
 export interface TitleSelection {
   anchor: number;
@@ -21,60 +20,49 @@ export interface TitleView {
   textContent: string;
 }
 
-export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
+export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
   Effect.gen(function* () {
-    const Window = yield* WindowT;
     const Store = yield* StoreT;
     const Automerge = yield* AutomergeT;
 
-    // Title is just the root block of a buffer
-    const titleBlockId = Id.makeBufferBlockId(bufferId, nodeId);
+    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
 
-    const unsettledActiveElement = yield* Window.subscribeActiveElement();
-    // Settle the stream: delay by 2 frames so selection state propagates first
-    const activeElementStream = settleActiveElement(unsettledActiveElement);
-
-    const isActiveStream = activeElementStream.pipe(
-      Stream.map((maybeActive) =>
-        Option.match(maybeActive, {
-          onNone: () => false,
-          onSome: (el) => el.type === "block" && el.id === titleBlockId,
-        }),
-      ),
-      Stream.changesWith((a, b) => a === b),
-    );
-
-    const query = queryDb(
-      tables.buffer
+    const sessionId = yield* Store.getSessionId();
+    const windowId = Id.Window.make(sessionId);
+    const windowQuery = queryDb(
+      tables.window
         .select("value")
-        .where("id", "=", bufferId)
+        .where("id", "=", windowId)
         .first({ fallback: () => null }),
     );
-    const bufferStream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+    const windowStream = yield* Store.subscribeStream(windowQuery).pipe(
+      Effect.orDie,
+    );
 
-    const selectionStream = bufferStream.pipe(
-      Stream.mapEffect((buffer): Effect.Effect<TitleSelection | null> => {
-        if (!buffer?.selection) return Effect.succeed(null);
+    const windowDerived$ = windowStream.pipe(
+      Stream.map((window) => {
+        const activeElement = window?.activeElement ?? null;
+        const isActive =
+          activeElement !== null &&
+          activeElement.type === "block" &&
+          activeElement.id === titleBlockId;
 
-        const sel = buffer.selection;
-        // Only return selection if anchor is on this node (the title's node)
-        // Section blocks can never be the title, so only check buffer blocks
-        return IdT.parseBlockContext(sel.anchor.elementId).pipe(
-          Effect.map((context) => {
-            // Only buffer blocks can be the title
-            if (context.type !== "buffer" || context.nodeId !== nodeId) {
-              return null;
-            }
-            return {
+        let selection: TitleSelection | null = null;
+        if (window?.selection) {
+          const sel = window.selection;
+          const context = IdT.parseBlockContextSync(sel.anchor.elementId);
+          if (context.type === "frame" && context.nodeId === nodeId) {
+            selection = {
               anchor: sel.anchorOffset,
               head: sel.focusOffset,
               goalX: sel.goalX ?? null,
               goalLine: sel.goalLine ?? null,
               assoc: sel.assoc,
             };
-          }),
-          Effect.orDie,
-        );
+          }
+        }
+
+        return { isActive, selection };
       }),
       Stream.changesWith(deepEqual),
     );
@@ -85,12 +73,8 @@ export const subscribe = (bufferId: Id.Buffer, nodeId: Id.Node) =>
       Stream.map((textData) => textData.content),
     );
 
-    return Stream.zipLatestAll(
-      isActiveStream,
-      selectionStream,
-      textContentStream,
-    ).pipe(
-      Stream.map(([isActive, selection, textContent]) => ({
+    return Stream.zipLatestAll(windowDerived$, textContentStream).pipe(
+      Stream.map(([{ isActive, selection }, textContent]) => ({
         isActive,
         selection,
         textContent,

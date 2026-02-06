@@ -1,10 +1,10 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "indent";
 const tag = `${scope}:${commandName}` as const;
 
@@ -13,30 +13,30 @@ export class Indent extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Indent) {
-    const Buffer = yield* BufferT;
-    const mode = yield* Buffer.getMode();
+    const Frame = yield* FrameT;
+    const mode = yield* Frame.getMode();
 
     if (mode.type === "block") {
       const ctx = yield* resolveActiveBlockContext();
       if (Option.isNone(ctx)) return;
 
-      const { bufferId, nodeId } = ctx.value;
+      const { frameId, nodeId } = ctx.value;
       yield* indentNodes([nodeId]);
 
       // Re-set selection to trigger ancestor expansion
-      const selection = yield* Buffer.getSelection(bufferId);
-      yield* Buffer.setSelection(bufferId, selection);
+      const selection = yield* Frame.getSelection(frameId);
+      yield* Frame.setSelection(frameId, selection);
     }
 
     if (mode.type === "blockSelection") {
-      const { bufferId } = mode;
-      const state = yield* Buffer.getBlockSelectionState(bufferId);
+      const { frameId } = mode;
+      const state = yield* Frame.getBlockSelectionState(frameId);
       if (state.selectedBlocks.length === 0 || state.anchor === null) return;
 
       yield* indentNodes(state.selectedBlocks);
 
-      yield* Buffer.setBlockSelection(
-        bufferId,
+      yield* Frame.setBlockSelection(
+        frameId,
         state.selectedBlocks,
         state.anchor,
         state.focus,

@@ -6,7 +6,7 @@ import { Effect, Option } from "effect";
 export interface MaterializeParams {
   readonly ghostNodeId: Id.Node;
   readonly parentNodeId: Id.Node;
-  readonly bufferId: Id.Buffer;
+  readonly frameId: Id.Frame;
 }
 
 /**
@@ -31,8 +31,8 @@ export const materialize = Effect.fn("Block.materialize")(function* (
     insert: "after",
   }).pipe(Effect.catchAll(() => Effect.void));
 
-  const parentBlockId = Id.makeBufferBlockId(
-    params.bufferId,
+  const parentBlockId = Id.makeFrameBlockId(
+    params.frameId,
     params.parentNodeId,
   );
   const parentDoc = yield* Store.getDocument("block", parentBlockId);
@@ -44,10 +44,7 @@ export const materialize = Effect.fn("Block.materialize")(function* (
     ).pipe(Effect.catchAll(() => Effect.void));
   }
 
-  const ghostBlockId = Id.makeBufferBlockId(
-    params.bufferId,
-    params.ghostNodeId,
-  );
+  const ghostBlockId = Id.makeFrameBlockId(params.frameId, params.ghostNodeId);
   const ghostDoc = yield* Store.getDocument("block", ghostBlockId);
   if (Option.isSome(ghostDoc)) {
     yield* Store.setDocument(

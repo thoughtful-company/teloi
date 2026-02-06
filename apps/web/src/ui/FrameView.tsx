@@ -1,7 +1,7 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Entity, Id, Model } from "@/schema";
 import { BlockT, type ViewInfo } from "@/services/ui/Block";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Option, Stream } from "effect";
@@ -27,7 +27,7 @@ export const ActiveElementContext = createContext<() => Entity.Element | null>(
 );
 
 /** Helper component to render properties for a page's view */
-function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
+function PropertyList(props: { pageId: Id.Node; frameId: Id.Frame }) {
   const runtime = useBrowserRuntime();
   const [properties, setProperties] = createSignal<PropertyInfo[]>([]);
 
@@ -74,7 +74,7 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
             <PropertySection
               propertyId={prop().id}
               pageId={props.pageId}
-              bufferId={props.bufferId}
+              frameId={props.frameId}
             />
           )}
         </Index>
@@ -83,28 +83,28 @@ function PropertyList(props: { pageId: Id.Node; bufferId: Id.Buffer }) {
   );
 }
 
-interface BufferViewProps {
-  bufferId: Id.Buffer;
+interface FrameViewProps {
+  frameId: Id.Frame;
 }
 
 /**
- * Render the editor UI for a single buffer.
+ * Render the editor UI for a single frame.
  *
- * Subscribes to the buffer identified by `bufferId`, binds its updates to local state, and renders
- * the buffer header (Title) and the active view when a root node is present.
+ * Subscribes to the frame identified by `frameId`, binds its updates to local state, and renders
+ * the frame header (Title) and the active view when a root node is present.
  */
-export default function BufferView({ bufferId }: BufferViewProps) {
+export default function FrameView({ frameId }: FrameViewProps) {
   const runtime = useBrowserRuntime();
 
-  const bufferStream = Stream.unwrap(
+  const frameStream = Stream.unwrap(
     Effect.gen(function* () {
-      const Buffer = yield* BufferT;
-      return yield* Buffer.subscribe(bufferId);
+      const Frame = yield* FrameT;
+      return yield* Frame.subscribe(frameId);
     }),
   );
 
   const { store, start } = bindStreamToStore({
-    stream: bufferStream,
+    stream: frameStream,
     project: (v) => ({
       nodeId: Id.Node.make(v.nodeData.id) as Id.Node | null,
       activeViewId: v.activeViewId,
@@ -119,7 +119,7 @@ export default function BufferView({ bufferId }: BufferViewProps) {
       activeViewType: "page" as const,
       availableViews: [] as ViewInfo[],
       activeElement: null as Entity.Element | null,
-      popup: null as Model.BufferPopup | null,
+      popup: null as Model.FramePopup | null,
     },
   });
 
@@ -127,10 +127,10 @@ export default function BufferView({ bufferId }: BufferViewProps) {
 
   let containerRef!: HTMLDivElement;
 
-  // Focus the buffer container when entering block-selection mode
+  // Focus the frame container when entering block-selection mode
   // or when popup closes (to restore keyboard event routing).
   createEffect(() => {
-    if (store.activeElement?.type === "buffer" && !store.popup) {
+    if (store.activeElement?.type === "frame" && !store.popup) {
       containerRef.focus();
     }
   });
@@ -147,8 +147,8 @@ export default function BufferView({ bufferId }: BufferViewProps) {
     <ActiveElementContext.Provider value={getActiveElement}>
       <div
         ref={containerRef}
-        data-testid="buffer"
-        data-buffer-id={bufferId}
+        data-testid="frame"
+        data-frame-id={frameId}
         tabIndex={0}
         class="h-full flex flex-col outline-none"
       >
@@ -158,8 +158,8 @@ export default function BufferView({ bufferId }: BufferViewProps) {
         >
           {(popup) => (
             <BlockTypePicker
-              bufferId={bufferId}
-              popup={popup as Model.BufferPopup & { type: "typePicker" }}
+              frameId={frameId}
+              popup={popup as Model.FramePopup & { type: "typePicker" }}
             />
           )}
         </Show>
@@ -167,7 +167,7 @@ export default function BufferView({ bufferId }: BufferViewProps) {
           {(nodeId) => (
             <>
               <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-                <Title bufferId={bufferId} nodeId={nodeId} />
+                <Title frameId={frameId} nodeId={nodeId} />
                 <TypeList nodeId={nodeId} />
               </header>
               <ViewTabs
@@ -176,17 +176,17 @@ export default function BufferView({ bufferId }: BufferViewProps) {
                 onTabClick={(viewId) => {
                   runtime.runPromise(
                     Effect.gen(function* () {
-                      const Buffer = yield* BufferT;
-                      yield* Buffer.setActiveView(bufferId, viewId);
+                      const Frame = yield* FrameT;
+                      yield* Frame.setActiveView(frameId, viewId);
                     }),
                   );
                 }}
               />
-              <PropertyList pageId={nodeId} bufferId={bufferId} />
+              <PropertyList pageId={nodeId} frameId={frameId} />
               <div class="flex-1 flex flex-col pt-4">
                 <ViewRenderer
                   viewType={store.activeViewType}
-                  bufferId={bufferId}
+                  frameId={frameId}
                   nodeId={nodeId}
                 />
               </div>

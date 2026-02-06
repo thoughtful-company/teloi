@@ -17,7 +17,7 @@ import {
   Outdent,
   ZoomIn,
   ZoomOut,
-} from "@/commands/buffer";
+} from "@/commands/frame";
 import { Send as ChatSend } from "@/commands/chat";
 import {
   Backspace,
@@ -39,7 +39,7 @@ import {
 } from "@/commands/editor";
 import { Id } from "@/schema";
 import { KeyboardT } from "@/services/browser/Keyboard";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 
@@ -215,7 +215,7 @@ export const KeyEventBusLive = Layer.effect(
   KeyEventBusT,
   Effect.gen(function* () {
     const CommandBus = yield* CommandBusT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Keyboard = yield* KeyboardT;
 
     const emit = Effect.fn("KeyEventBus.emit")(function* (event: KeyEvent) {
@@ -235,7 +235,7 @@ export const KeyEventBusLive = Layer.effect(
 
       const keymapMode: "blockSelection" | "editor" =
         event.source.type === "app"
-          ? yield* Buffer.getMode().pipe(
+          ? yield* Frame.getMode().pipe(
               Effect.map((m) =>
                 m.type === "blockSelection" ? "blockSelection" : "editor",
               ),
@@ -262,7 +262,7 @@ export const KeyEventBusLive = Layer.effect(
 
       yield* Stream.runForEach(stream, (event) =>
         Effect.gen(function* () {
-          const mode = yield* Buffer.getMode();
+          const mode = yield* Frame.getMode();
 
           // --- App shortcuts (global, always active) ---
           if (event.modifiers.meta && event.key === "k") {
@@ -279,7 +279,7 @@ export const KeyEventBusLive = Layer.effect(
           // --- Block selection mode ---
           if (mode.type === "blockSelection") {
             // When a popup is open, let the popup component handle all keys
-            const popupOpen = yield* Buffer.hasPopup(mode.bufferId).pipe(
+            const popupOpen = yield* Frame.hasPopup(mode.frameId).pipe(
               Effect.orDie,
             );
             if (popupOpen) return;

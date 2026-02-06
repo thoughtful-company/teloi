@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import { NavigationT } from "@/services/ui/Navigation";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -33,23 +33,23 @@ describe("Block Mod+. key", () => {
 
   it("zooms into focused block when Mod+. pressed", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "First child" },
           { text: "Second child" },
         ]);
 
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
 
       const Store = yield* StoreT;
-      const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-      const buffer = Option.getOrThrow(bufferDoc);
-      expect(buffer.assignedNodeId).toBe(childNodeIds[0]);
+      const frameDoc = yield* Store.getDocument("frame", frameId);
+      const frame = Option.getOrThrow(frameDoc);
+      expect(frame.assignedNodeId).toBe(childNodeIds[0]);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -65,14 +65,14 @@ describe("Block Mod+. key", () => {
 
   it("updates URL to /workspace/{nodeId} when Mod+. pressed", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "First child" },
         ]);
 
-      const firstChildBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}.{/Meta}");
@@ -83,17 +83,17 @@ describe("Block Mod+. key", () => {
 
   it("preserves cursor position in title when zooming into block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "Hello world" },
         ]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 5);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 5);
 
       yield* Effect.sleep("50 millis");
 
@@ -117,12 +117,12 @@ describe("Block Mod+. key", () => {
 
   it("restores selection to block when navigating back after zoom", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
+      const { frameId, rootNodeId, childNodeIds } =
         yield* Given.A_FULL_HIERARCHY_WITH_CHILDREN("Root node", [
           { text: "Hello world" },
         ]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
       history.replaceState({}, "", `/workspace/${rootNodeId}`);
 
@@ -130,10 +130,10 @@ describe("Block Mod+. key", () => {
       const popstateStream = yield* Navigation.startPopstateListener();
       runtime.runFork(Stream.runDrain(popstateStream));
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 5);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 5);
 
       yield* Effect.sleep("50 millis");
 

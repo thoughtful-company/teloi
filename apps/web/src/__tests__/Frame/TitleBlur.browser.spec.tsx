@@ -1,6 +1,6 @@
 import "@/index.css";
 import { WindowT } from "@/services/ui/Window";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -29,14 +29,14 @@ describe("Title blur clears activeElement", () => {
 
   it("clears activeElement when clicking outside focused title", async () => {
     await Effect.gen(function* () {
-      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "Some text" }],
       );
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
-      yield* When.USER_CLICKS_TITLE(bufferId);
+      yield* When.USER_CLICKS_TITLE(frameId);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -65,7 +65,7 @@ describe("Title blur clears activeElement", () => {
       expect(Option.isSome(element1)).toBe(true);
       const elementValue1 = Option.getOrNull(element1)!;
       expect(elementValue1.type).toBe("title");
-      expect((elementValue1 as { bufferId: string }).bufferId).toBe(bufferId);
+      expect((elementValue1 as { frameId: string }).frameId).toBe(frameId);
 
       yield* Effect.promise(async () => {
         const titleEl = document.querySelector(`[data-element-type="title"]`);

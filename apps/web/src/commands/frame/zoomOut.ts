@@ -7,7 +7,7 @@ import { WindowT } from "@/services/ui/Window";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "zoomOut";
 const tag = `${scope}:${commandName}` as const;
 
@@ -25,12 +25,12 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
 
-    const { bufferId, nodeId } = ctx.value;
+    const { frameId, nodeId } = ctx.value;
 
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-    if (Option.isNone(bufferDoc) || !bufferDoc.value.assignedNodeId) return;
+    const frameDoc = yield* Store.getDocument("frame", frameId);
+    if (Option.isNone(frameDoc) || !frameDoc.value.assignedNodeId) return;
 
-    const rootNodeId = Id.Node.make(bufferDoc.value.assignedNodeId);
+    const rootNodeId = Id.Node.make(frameDoc.value.assignedNodeId);
     const parentId = yield* Node.getParent(rootNodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
         Effect.succeed<Id.Node | null>(null),
@@ -42,12 +42,12 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     yield* Navigation.navigateTo(parentId);
 
     // Check if the previous root (now a block) is expanded
-    const rootBlockId = Id.makeBufferBlockId(bufferId, rootNodeId);
+    const rootBlockId = Id.makeFrameBlockId(frameId, rootNodeId);
     const isRootExpanded = yield* Block.isExpanded(rootBlockId);
 
     // If expanded, select the original node; if collapsed, select the root block
     const targetBlockId = isRootExpanded
-      ? Id.makeBufferBlockId(bufferId, nodeId)
+      ? Id.makeFrameBlockId(frameId, nodeId)
       : rootBlockId;
 
     yield* Window.setActiveElement(

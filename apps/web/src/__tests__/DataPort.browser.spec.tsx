@@ -47,7 +47,7 @@ describe("DataPort", () => {
 
     it("exports a single root node with text", async () => {
       await Effect.gen(function* () {
-        const { nodeId } = yield* Given.A_BUFFER_WITH_TEXT("Hello world");
+        const { nodeId } = yield* Given.A_FRAME_WITH_TEXT("Hello world");
 
         const DataPort = yield* DataPortT;
         const exported = yield* DataPort.exportData();
@@ -65,7 +65,7 @@ describe("DataPort", () => {
     it("exports parent-child relationships", async () => {
       await Effect.gen(function* () {
         const { rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "Child 1" },
             { text: "Child 2" },
           ]);
@@ -95,7 +95,7 @@ describe("DataPort", () => {
     it("exports fractional index positions correctly", async () => {
       await Effect.gen(function* () {
         const { rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
@@ -184,7 +184,7 @@ describe("DataPort", () => {
         const Automerge = yield* AutomergeT;
         const DataPort = yield* DataPortT;
 
-        const { nodeId: existingNodeId } = yield* Given.A_BUFFER_WITH_TEXT(
+        const { nodeId: existingNodeId } = yield* Given.A_FRAME_WITH_TEXT(
           "Original content - should be preserved",
         );
 
@@ -235,7 +235,7 @@ describe("DataPort", () => {
 
         // Create existing parent node
         const { nodeId: existingParentId } =
-          yield* Given.A_BUFFER_WITH_TEXT("Existing parent");
+          yield* Given.A_FRAME_WITH_TEXT("Existing parent");
 
         // Import: existing parent (skip) + new child under it (add)
         const importData: ExportData = {
@@ -285,7 +285,7 @@ describe("DataPort", () => {
       await Effect.gen(function* () {
         // Create a complex tree structure
         const { rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "Child 1" },
             { text: "Child 2" },
           ]);

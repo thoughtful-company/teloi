@@ -1,4 +1,4 @@
-import { Collapse, Expand } from "@/commands/buffer";
+import { Collapse, Expand } from "@/commands/frame";
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
@@ -36,11 +36,10 @@ export default function Block({ blockId }: BlockProps) {
   const blockContext = Id.parseBlockContextSync(blockId);
   // TODO: tuple case should be resolved in ViewModel, not here
   const nodeId =
-    blockContext.type === "buffer"
+    blockContext.type === "frame"
       ? blockContext.nodeId
       : blockContext.hostNodeId; // section or tuple case
-  const bufferId =
-    blockContext.type === "buffer" ? blockContext.bufferId : null;
+  const frameId = blockContext.type === "frame" ? blockContext.frameId : null;
 
   const Automerge = runtime.runSync(AutomergeT);
 
@@ -94,7 +93,7 @@ export default function Block({ blockId }: BlockProps) {
   // keystroke and convert it into a real LiveStore node.
   createEffect(() => {
     const ghostParentId = store.ghostParentId;
-    if (!ghostParentId || !bufferId) return;
+    if (!ghostParentId || !frameId) return;
 
     let materialized = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -113,7 +112,7 @@ export default function Block({ blockId }: BlockProps) {
                   yield* Block.materialize({
                     ghostNodeId: nodeId,
                     parentNodeId: ghostParentId,
-                    bufferId,
+                    frameId,
                   });
                 }),
               );
@@ -148,10 +147,10 @@ export default function Block({ blockId }: BlockProps) {
   const handleMouseDown = (e: MouseEvent) => {
     if (store.isActive) return;
 
-    // Resolve click position for buffer-type blocks
+    // Resolve click position for frame-type blocks
     let offset: number | undefined;
     let assoc: 1 | -1 | undefined;
-    if (pRef && blockContext.type === "buffer") {
+    if (pRef && blockContext.type === "frame") {
       const resolved = posAtCoordsInElement(pRef, e.clientX, e.clientY);
       offset = resolved?.offset;
       assoc = resolved?.assoc;
@@ -159,7 +158,7 @@ export default function Block({ blockId }: BlockProps) {
 
     runtime.runSync(
       focusBlock({
-        bufferId: blockContext.bufferId,
+        frameId: blockContext.frameId,
         nodeId,
         blockId,
         offset,
@@ -270,7 +269,7 @@ export default function Block({ blockId }: BlockProps) {
           />
           <ViewRenderer
             viewType={store.activeViewType}
-            bufferId={blockContext.bufferId}
+            frameId={blockContext.frameId}
             nodeId={nodeId}
             inline
           />

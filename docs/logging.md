@@ -10,12 +10,12 @@ Adhere to the following pattern for all service-level operations:
 ```typescript
 // REJECTED: Linear, text-based tracing
 yield* Effect.logDebug("Setting selection");
-yield* Effect.logDebug(`bufferId is ${bufferId}`);
+yield* Effect.logDebug(`frameId is ${frameId}`);
 
 // REQUIRED: Single event with attached context
-yield* Effect.logDebug("[Buffer.setSelection] Selection updated").pipe(
+yield* Effect.logDebug("[Frame.setSelection] Selection updated").pipe(
   Effect.annotateLogs({
-    bufferId,
+    frameId,
     "selection.anchor": selection.anchor.nodeId,
     "selection.anchorOffset": selection.anchorOffset,
     "seleciton.focus": selection.focus.nodeId,
@@ -27,7 +27,7 @@ yield* Effect.logDebug("[Buffer.setSelection] Selection updated").pipe(
 
 **4. Data Requirements**
 Ensure every log includes:
-*   **Identifiers:** Request IDs, User IDs, Entity IDs (e.g., `bufferId`).
+*   **Identifiers:** Request IDs, User IDs, Entity IDs (e.g., `frameId`).
 *   **State:** The relevant data snapshot at the moment of the event.
 *   **Outcome:** The final result of the operation.
 

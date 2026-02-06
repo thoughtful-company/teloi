@@ -4,7 +4,7 @@ import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -29,24 +29,24 @@ describe("TableView", () => {
   });
 
   describe("Basic rendering", () => {
-    it("renders a table when buffer has an active TableView", async () => {
+    it("renders a table when frame has an active TableView", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with children
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Projects", [
+        // Given: A frame with children
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Projects", [
             { text: "Project Alpha" },
             { text: "Project Beta" },
             { text: "Project Gamma" },
           ]);
 
-        // Given: A TableView node linked to the buffer's root node
+        // Given: A TableView node linked to the frame's root node
         const tableViewNodeId = yield* createTableViewForNode(rootNodeId);
 
-        // Given: The buffer has the TableView as its active view
-        yield* setBufferActiveView(bufferId, tableViewNodeId);
+        // Given: The frame has the TableView as its active view
+        yield* setFrameActiveView(frameId, tableViewNodeId);
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Then: A table element should be visible
         yield* Effect.promise(() =>
@@ -93,14 +93,14 @@ describe("TableView", () => {
 
     it("renders normal block view when no active TableView", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with children but NO active view
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Given: A frame with children but NO active view
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Tasks",
           [{ text: "Task One" }, { text: "Task Two" }],
         );
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Then: No table element should be rendered
         yield* Effect.promise(() =>
@@ -124,10 +124,7 @@ describe("TableView", () => {
         ).toBeFalsy();
 
         // Then: Normal blocks should be visible
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
-          childNodeIds[0],
-        );
+        const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
         const blockElement = document.querySelector(
           `[data-element-id="${firstChildBlockId}"]`,
         );
@@ -146,9 +143,9 @@ describe("TableView", () => {
         const Tuple = yield* TupleT;
         const Automerge = yield* AutomergeT;
 
-        // Given: A buffer with children
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Tasks", [
+        // Given: A frame with children
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Tasks", [
             { text: "Write tests" },
             { text: "Review PR" },
             { text: "Deploy feature" },
@@ -205,11 +202,11 @@ describe("TableView", () => {
         // Given: A TableView linked to the root node
         const tableViewNodeId = yield* createTableViewForNode(rootNodeId);
 
-        // Given: The buffer has the TableView as its active view
-        yield* setBufferActiveView(bufferId, tableViewNodeId);
+        // Given: The frame has the TableView as its active view
+        yield* setFrameActiveView(frameId, tableViewNodeId);
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Then: A table element should be visible
         yield* Effect.promise(() =>
@@ -268,8 +265,8 @@ describe("TableView", () => {
   describe("ViewTabs", () => {
     it("shows view tabs when node has 2+ views", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with children
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Given: A frame with children
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Projects",
           [{ text: "Project Alpha" }, { text: "Project Beta" }],
         );
@@ -278,11 +275,11 @@ describe("TableView", () => {
         const viewA = yield* createNamedTableViewForNode(rootNodeId, "View A");
         yield* createNamedTableViewForNode(rootNodeId, "View B");
 
-        // Given: The buffer has the first view as its active view
-        yield* setBufferActiveView(bufferId, viewA);
+        // Given: The frame has the first view as its active view
+        yield* setFrameActiveView(frameId, viewA);
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Then: A tab bar element should exist
         yield* Effect.promise(() =>
@@ -314,8 +311,8 @@ describe("TableView", () => {
 
     it("hides tabs when only one view exists", async () => {
       await Effect.gen(function* () {
-        // Given: A buffer with children
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Given: A frame with children
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Tasks",
           [{ text: "Task One" }, { text: "Task Two" }],
         );
@@ -323,11 +320,11 @@ describe("TableView", () => {
         // Given: Only ONE TableView node linked to the root node
         const singleView = yield* createTableViewForNode(rootNodeId);
 
-        // Given: The buffer has that view as its active view
-        yield* setBufferActiveView(bufferId, singleView);
+        // Given: The frame has that view as its active view
+        yield* setFrameActiveView(frameId, singleView);
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Then: The table should be rendered (view is active)
         yield* Effect.promise(() =>
@@ -356,8 +353,8 @@ describe("TableView", () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
 
-        // Given: A buffer with children
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Given: A frame with children
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Data",
           [{ text: "Item One" }, { text: "Item Two" }],
         );
@@ -366,11 +363,11 @@ describe("TableView", () => {
         const viewA = yield* createNamedTableViewForNode(rootNodeId, "View A");
         const viewB = yield* createNamedTableViewForNode(rootNodeId, "View B");
 
-        // Given: The buffer has the first view as its active view
-        yield* setBufferActiveView(bufferId, viewA);
+        // Given: The frame has the first view as its active view
+        yield* setFrameActiveView(frameId, viewA);
 
-        // When: The Buffer is rendered
-        render(() => <BufferView bufferId={bufferId} />);
+        // When: The Frame is rendered
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for tabs to render
         yield* Effect.promise(() =>
@@ -418,12 +415,12 @@ describe("TableView", () => {
         );
 
         // Additionally verify the model state changed
-        const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-        expect(Option.isSome(bufferDoc)).toBe(true);
-        const buf = Option.getOrThrow(bufferDoc) as {
+        const frameDoc = yield* Store.getDocument("frame", frameId);
+        expect(Option.isSome(frameDoc)).toBe(true);
+        const frm = Option.getOrThrow(frameDoc) as {
           activeViewId: Id.Node | null;
         };
-        expect(buf.activeViewId, "Expected activeViewId to be View B").toBe(
+        expect(frm.activeViewId, "Expected activeViewId to be View B").toBe(
           viewB,
         );
       }).pipe(runtime.runPromise);
@@ -463,28 +460,28 @@ const createTableViewForNode = (nodeId: Id.Node) =>
   }).pipe(Effect.withSpan("createTableViewForNode"));
 
 /**
- * Sets the buffer's activeViewId to the specified view node.
+ * Sets the frame's activeViewId to the specified view node.
  */
-const setBufferActiveView = (bufferId: Id.Buffer, viewNodeId: Id.Node) =>
+const setFrameActiveView = (frameId: Id.Frame, viewNodeId: Id.Node) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-    if (Option.isNone(bufferDoc)) {
-      throw new Error(`Buffer ${bufferId} not found`);
+    const frameDoc = yield* Store.getDocument("frame", frameId);
+    if (Option.isNone(frameDoc)) {
+      throw new Error(`Frame ${frameId} not found`);
     }
 
-    const currentBuffer = Option.getOrThrow(bufferDoc);
+    const currentFrame = Option.getOrThrow(frameDoc);
 
     yield* Store.setDocument(
-      "buffer",
+      "frame",
       {
-        ...currentBuffer,
+        ...currentFrame,
         activeViewId: viewNodeId,
       },
-      bufferId,
+      frameId,
     );
-  }).pipe(Effect.withSpan("setBufferActiveView"));
+  }).pipe(Effect.withSpan("setFrameActiveView"));
 
 /**
  * Creates a TableView node with a custom name and links it to the target node via HAS_VIEW tuple.

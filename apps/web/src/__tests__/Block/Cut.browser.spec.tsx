@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
 import {
@@ -41,15 +41,15 @@ describe("Cut selected blocks (Mod+X)", () => {
 
   it("Mod+X cuts single selected block (copies and deletes)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with a block selected
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
+      // Given: A frame with a block selected
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       // When: User presses Mod+X
       yield* When.USER_PRESSES("{Meta>}x{/Meta}");
@@ -65,23 +65,23 @@ describe("Cut selected blocks (Mod+X)", () => {
 
   it("Mod+X cuts multiple blocks with double newlines", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 3 blocks, first two selected
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      // Given: A frame with 3 blocks, first two selected
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
           { text: "Third block" },
         ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       // Extend selection to include second block
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[0],
         childNodeIds[1],
       ]);
@@ -101,26 +101,26 @@ describe("Cut selected blocks (Mod+X)", () => {
 
   it("Mod+X respects document order (not selection order)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 3 blocks, select from third going up
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      // Given: A frame with 3 blocks, select from third going up
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Alpha" },
           { text: "Beta" },
           { text: "Gamma" },
         ]);
 
-      const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[2]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // Extend selection upward to include all blocks (anchor = third, focus = first)
       yield* When.USER_PRESSES("{Shift>}{ArrowUp}{/Shift}");
       yield* When.USER_PRESSES("{Shift>}{ArrowUp}{/Shift}");
 
       yield* Then.BLOCKS_ARE_SELECTED(
-        bufferId,
+        frameId,
         [childNodeIds[0], childNodeIds[1], childNodeIds[2]],
         { anchor: childNodeIds[2], focus: childNodeIds[0] },
       );
@@ -140,24 +140,24 @@ describe("Cut selected blocks (Mod+X)", () => {
 
   it("Mod+X manages focus after deletion", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with 4 blocks, middle two selected
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      // Given: A frame with 4 blocks, middle two selected
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second" },
           { text: "Third" },
           { text: "Fourth" },
         ]);
 
-      const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[1]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[1]]);
 
       // Extend selection to include third block
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[1],
         childNodeIds[2],
       ]);
@@ -173,14 +173,14 @@ describe("Cut selected blocks (Mod+X)", () => {
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
 
       // And: Focus moves to block BEFORE selection (First block)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
     }).pipe(runtime.runPromise);
   });
 
   it("Mod+X cuts nested child block (copies and deletes)", async () => {
     await Effect.gen(function* () {
       // Given: Root → Parent → [ChildA, ChildB]
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
@@ -198,12 +198,12 @@ describe("Cut selected blocks (Mod+X)", () => {
         text: "Nested Child B",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select nested child A
-      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildA);
+      const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nestedChildA]);
 
       // When: User presses Mod+X
       yield* When.USER_PRESSES("{Meta>}x{/Meta}");
@@ -216,14 +216,14 @@ describe("Cut selected blocks (Mod+X)", () => {
       yield* Then.NODE_HAS_TEXT(nestedChildB, "Nested Child B");
 
       // And: Selection moves to sibling B
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nestedChildB]);
     }).pipe(runtime.runPromise);
   });
 
   it("Mod+X cuts multiple nested children", async () => {
     await Effect.gen(function* () {
       // Given: Root → Parent → [ChildA, ChildB, ChildC]
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
@@ -246,13 +246,13 @@ describe("Cut selected blocks (Mod+X)", () => {
         text: "Gamma",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select first two nested children
-      const nestedBlockA = Id.makeBufferBlockId(bufferId, nestedChildA);
+      const nestedBlockA = Id.makeFrameBlockId(frameId, nestedChildA);
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockA);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nestedChildA, nestedChildB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nestedChildA, nestedChildB]);
 
       // When: User presses Mod+X
       yield* When.USER_PRESSES("{Meta>}x{/Meta}");

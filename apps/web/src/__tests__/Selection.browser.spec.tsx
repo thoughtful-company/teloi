@@ -1,8 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { makeBufferBlockId } from "@/schema/id/id";
-import { BufferT } from "@/services/ui/Buffer";
-import BufferView from "@/ui/BufferView";
+import { makeFrameBlockId } from "@/schema/id/id";
+import { FrameT } from "@/services/ui/Frame";
+import FrameView from "@/ui/FrameView";
 import { EditorView } from "@codemirror/view";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
@@ -66,22 +66,22 @@ describe("Selection sync", () => {
 
   it("syncs selection from model to CodeMirror", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root node",
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Focus the block to mount CodeMirror
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       // Set selection via model (position 5 = "Hello| world")
-      const Buffer = yield* BufferT;
-      yield* Buffer.setSelection(
-        bufferId,
+      const Frame = yield* FrameT;
+      yield* Frame.setSelection(
+        frameId,
         Option.some({
           anchor: { elementId: blockId },
           anchorOffset: 5,
@@ -100,18 +100,15 @@ describe("Selection sync", () => {
 
   it("preserves selection when block remounts after structural change", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
           { text: "First child" },
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeBufferBlockId(
-        bufferId,
-        childNodeIds[1],
-      );
+      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Focus second child, move cursor to position 7
       yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 7);
@@ -142,26 +139,26 @@ describe("Selection sync", () => {
   // the cursor is hidden until content is ready.
   it("hides cursor until Yjs syncs when selection is pending", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with content
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      // Given: A frame with content
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Test Document",
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
       // First render: focus and set position at 6
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 6);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 6);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
 
       // Simulate page reload: unmount and remount
       cleanup();
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Set selection via model (simulates saved selection from before reload)
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 6);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 6);
 
       // Wait for CodeMirror to mount
       const cmContainer = yield* Effect.promise(() =>
@@ -198,20 +195,20 @@ describe("Selection sync", () => {
 
   it("arrow down from start of wrapped line maintains column 0", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with text long enough to wrap into 4 visual lines
+      // Given: A frame with text long enough to wrap into 4 visual lines
       const longText =
         "aaaa bbbb cccc dddd eeee ffff gggg hhhh iiii jjjj kkkk llll mmmm nnnn oooo pppp qqqq";
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: longText }],
       );
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BUFFER_HAS_WIDTH(200);
+      yield* Given.FRAME_HAS_WIDTH(200);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(
-        makeBufferBlockId(bufferId, childNodeIds[0]),
+        makeFrameBlockId(frameId, childNodeIds[0]),
         20,
         1,
       );
@@ -237,17 +234,17 @@ describe("Selection sync", () => {
   // at the end of that line (assoc = -1), not jump to the next line (assoc = 1).
   it("clicking at end of wrapped line keeps cursor on that line (assoc = -1)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with Ukrainian text that naturally wraps
+      // Given: A frame with Ukrainian text that naturally wraps
       const wrappingText =
         "Історія Рекі нагадує, що ми не острови, що самотньо дрейфують у темряві. Ми — пов'язані невидимими та таємничими мостами довіри та емпатії. Її порятунок здобувся через нагороду за роки самопожертви, а став даром, отриманим в єдиний момент, коли вона дозволила собі бути вразливою перед кимось. Ми рятуємося не поодинці, а лише разом, стаючи одне для одного тим світлом, яке здатне розвіяти найтемнішу ніч душі.";
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: wrappingText }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // First click to mount CodeMirror
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -294,17 +291,17 @@ describe("Selection sync", () => {
   // to the Automerge text length before writing to LiveStore.
   it("clamps out-of-bounds cursor offset to document end", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "hello" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Set cursor far beyond text length (simulates badge text node overshoot)
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 999);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 999);
       yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
 
       // Cursor should be clamped to end of "hello" (5), not 999
@@ -325,15 +322,15 @@ describe("Selection sync", () => {
   // focused (i.e., waiting for Yjs sync, not user actively typing).
   it("preserves typing order in empty block (first char not moved to end)", async () => {
     await Effect.gen(function* () {
-      // Given: A buffer with an empty block
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      // Given: A frame with an empty block
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Test Document",
         [{ text: "" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Click on the empty block to focus it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);

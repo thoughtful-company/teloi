@@ -19,7 +19,7 @@ export class DeleteToLineEnd extends Data.TaggedClass(tag)<{}> {
     if (!isAtEnd) {
       yield* Editor.deleteToLineEnd();
       const ctx = yield* resolveActiveBlockContext();
-      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
 

@@ -1,9 +1,9 @@
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "editBlock";
 const tag = `${scope}:${commandName}` as const;
 
@@ -12,23 +12,23 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: EditBlock) {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
-    const mode = yield* Buffer.getMode();
+    const mode = yield* Frame.getMode();
 
     if (mode.type !== "blockSelection") return;
 
-    const { bufferId } = mode;
-    const state = yield* Buffer.getBlockSelectionState(bufferId);
+    const { frameId } = mode;
+    const state = yield* Frame.getBlockSelectionState(frameId);
     const targetBlock = state.focus ?? state.anchor;
     if (!targetBlock) return;
 
     const text = yield* Automerge.getText(targetBlock);
     const textLength = text.length;
-    const blockId = Id.makeBufferBlockId(bufferId, targetBlock);
+    const blockId = Id.makeFrameBlockId(frameId, targetBlock);
 
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: blockId },
         anchorOffset: textLength,
@@ -39,7 +39,7 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
         assoc: 0,
       }),
     );
-    yield* Buffer.setBlockSelection(bufferId, [], targetBlock);
-    yield* Buffer.enterBlockEditing(blockId);
+    yield* Frame.setBlockSelection(frameId, [], targetBlock);
+    yield* Frame.enterBlockEditing(blockId);
   });
 }
