@@ -11,7 +11,7 @@ import { TypeLive } from "@/services/domain/Type";
 import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
-import { ActionLive, ActionT } from "@/services/ui/Action";
+import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { BlockLive } from "@/services/ui/Block";
 import { BufferLive } from "@/services/ui/Buffer";
 import { TitleLive } from "@/services/ui/Title";
@@ -48,7 +48,7 @@ export interface SetupClientTestOptions {
 }
 
 /**
- * Creates a fresh test environment with in-memory store and Yjs.
+ * Creates a fresh test environment with in-memory store and Automerge.
  * Each call creates isolated state - perfect for beforeEach.
  */
 export const setupClientTest = async (options?: SetupClientTestOptions) => {
@@ -83,7 +83,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     });
   });
 
-  // Build test layer - similar to BrowserLayer but with test store + in-memory Yjs
+  // Build test layer - similar to BrowserLayer but with test store + in-memory Automerge
   // Group layers to avoid pipe's argument limit (max 20)
   const PropertyChatLive = Layer.merge(PropertyLive, ChatLive);
   const TypePickerGroup = Layer.provideMerge(PickerLive, TypePickerLive);
@@ -103,8 +103,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
   const TestLayer = pipe(
-    ActionLive, // needs BlockT from below
-    Layer.provideMerge(DataPortBootstrapGroup),
+    DataPortBootstrapGroup,
     Layer.provideMerge(TitleLive),
     Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
     Layer.provideMerge(NavigationLive),
@@ -143,8 +142,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
   // Use no-op callbacks since tests don't need app-level shortcuts
   const keyboardFiber = testRuntime.runFork(
     Effect.gen(function* () {
-      const Action = yield* ActionT;
-      yield* Action.runKeyboardHandler({
+      const KeyEventBus = yield* KeyEventBusT;
+      yield* KeyEventBus.runAppKeyboardHandler({
         onToggleSidebar: () => {},
         onOpenCommandPalette: () => {},
       });

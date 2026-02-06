@@ -10,15 +10,11 @@ import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { WindowT } from "../Window";
 import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
-import { forceDelete, type MergeResult } from "./forceDelete";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
 import { BufferView, subscribe } from "./subscribe";
-import { moveToFirst, moveToLast, swap } from "./swap";
-
-export type { MergeResult };
 
 /**
  * Editor interaction mode - derived from Window.activeElement.
@@ -98,19 +94,10 @@ export class BufferT extends Context.Tag("BufferT")<
      */
     clearFocus: () => Effect.Effect<void>;
 
-    // Structural operations
-    forceDelete: (
-      bufferId: Id.Buffer,
-      nodeId: Id.Node,
-    ) => Effect.Effect<Option.Option<MergeResult>, never>;
-    swap: (
-      nodeId: Id.Node,
-      direction: "up" | "down",
-    ) => Effect.Effect<boolean, never>;
-    moveToFirst: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
-    moveToLast: (nodeId: Id.Node) => Effect.Effect<boolean, never>;
-
     // Popup operations
+    hasPopup: (
+      bufferId: Id.Buffer,
+    ) => Effect.Effect<boolean, BufferNotFoundError>;
     openPopup: (
       bufferId: Id.Buffer,
       popup: Model.BufferPopup,
@@ -217,17 +204,12 @@ export const BufferLive = Layer.effect(
       clearFocus: (): Effect.Effect<void> =>
         Window.setActiveElement(Option.none()),
 
-      // Structural operations
-      forceDelete: (bufferId: Id.Buffer, nodeId: Id.Node) =>
-        forceDelete(bufferId, nodeId).pipe(Effect.provide(context)),
-      swap: (nodeId: Id.Node, direction: "up" | "down") =>
-        swap(nodeId, direction).pipe(Effect.provideService(NodeT, Node)),
-      moveToFirst: (nodeId: Id.Node) =>
-        moveToFirst(nodeId).pipe(Effect.provideService(NodeT, Node)),
-      moveToLast: (nodeId: Id.Node) =>
-        moveToLast(nodeId).pipe(Effect.provideService(NodeT, Node)),
-
       // Popup operations
+      hasPopup: (bufferId: Id.Buffer) =>
+        get(bufferId).pipe(
+          Effect.map((buffer) => buffer.popup != null),
+          Effect.provideService(StoreT, Store),
+        ),
       openPopup: (bufferId: Id.Buffer, popup: Model.BufferPopup) =>
         get(bufferId).pipe(
           Effect.flatMap((buffer) =>

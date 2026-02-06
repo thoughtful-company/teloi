@@ -2,7 +2,7 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { StoreT } from "@/services/external/Store";
-import { ActionT } from "@/services/ui/Action";
+import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { NavigationT } from "@/services/ui/Navigation";
 import { Effect, Fiber, Option } from "effect";
 import {
@@ -35,8 +35,8 @@ const App: Component = () => {
     // Start unified keyboard handler
     const keyboardFiber = runtime.runFork(
       Effect.gen(function* () {
-        const Action = yield* ActionT;
-        yield* Action.runKeyboardHandler({
+        const KeyEventBus = yield* KeyEventBusT;
+        yield* KeyEventBus.runAppKeyboardHandler({
           onToggleSidebar: toggleSidebar,
           onOpenCommandPalette: openCommandPalette,
         });

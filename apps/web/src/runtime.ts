@@ -14,7 +14,6 @@ import { TupleLive } from "./services/domain/Tuple";
 import { TypeLive } from "./services/domain/Type";
 import { getStoreLayer } from "./services/external/Store";
 import { makeAutomergeLive } from "./services/external/Automerge";
-import { ActionLive } from "./services/ui/Action";
 import { BlockLive } from "./services/ui/Block";
 import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { BufferLive } from "./services/ui/Buffer";
@@ -83,8 +82,7 @@ const EventCommandBusGroup = Layer.provideMerge(
 const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
 const BrowserLayer = pipe(
-  ActionLive, // needs BlockT from below
-  Layer.provideMerge(DataPortBootstrapGroup),
+  DataPortBootstrapGroup,
   Layer.provideMerge(TitleLive),
   Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
   Layer.provideMerge(NavigationLive),

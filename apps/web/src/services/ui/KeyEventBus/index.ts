@@ -10,6 +10,7 @@
 
 import {
   Collapse,
+  EditBlock,
   Expand,
   Indent,
   OpenTypePicker,
@@ -37,9 +38,10 @@ import {
   SelectBlock,
 } from "@/commands/editor";
 import { Id } from "@/schema";
+import { KeyboardT } from "@/services/browser/Keyboard";
 import { BufferT } from "@/services/ui/Buffer";
 import { CommandBusT, type Command } from "@/services/ui/CommandBus";
-import { Context, Effect, Layer, Option } from "effect";
+import { Context, Effect, Layer, Option, Stream } from "effect";
 
 // ============================================================================
 // Event Types
@@ -54,7 +56,6 @@ export interface Modifiers {
 
 export type KeyEventSource =
   | { type: "editor"; blockId: Id.Block }
-  | { type: "document"; blockId: Id.Block }
   | { type: "app" };
 
 export interface KeyEvent {
@@ -105,6 +106,13 @@ const altKeymap: Record<string, () => Command> = {
 /** Keymap for block selection mode (app-level events). */
 const blockSelectionKeymap: Record<string, () => Command> = {
   "#": () => new OpenTypePicker(),
+  Enter: () => new EditBlock(),
+  Tab: () => new Indent(),
+};
+
+/** Shift+ keymap for block selection mode. */
+const blockSelectionShiftKeymap: Record<string, () => Command> = {
+  Tab: () => new Outdent(),
 };
 
 /** Cmd+ keymap for block selection mode. */
@@ -133,8 +141,14 @@ const lookupKeymap = (
       const factory = blockSelectionMetaKeymap[key];
       if (factory) return Option.some(factory());
     }
-    const factory = blockSelectionKeymap[key];
-    if (factory && !meta && !ctrl) return Option.some(factory());
+    if (shift && !meta && !ctrl && !alt) {
+      const factory = blockSelectionShiftKeymap[key];
+      if (factory) return Option.some(factory());
+    }
+    if (!meta && !ctrl && !alt && !shift) {
+      const factory = blockSelectionKeymap[key];
+      if (factory) return Option.some(factory());
+    }
     return Option.none();
   }
 
@@ -165,6 +179,15 @@ const lookupKeymap = (
 // Service Definition
 // ============================================================================
 
+/**
+ * Callbacks for app-level shortcuts.
+ * These are UI actions that KeyEventBus shouldn't own directly.
+ */
+export interface AppShortcutCallbacks {
+  onToggleSidebar: () => void;
+  onOpenCommandPalette: () => void;
+}
+
 export class KeyEventBusT extends Context.Tag("KeyEventBusT")<
   KeyEventBusT,
   {
@@ -173,6 +196,18 @@ export class KeyEventBusT extends Context.Tag("KeyEventBusT")<
      * Returns true if a command was dispatched, false otherwise.
      */
     emit: (event: KeyEvent) => Effect.Effect<boolean>;
+
+    /**
+     * Start the app-level keyboard handler.
+     * Consumes window keyboard events and routes them:
+     * - App shortcuts (Cmd+K, Cmd+\) → callbacks
+     * - Block selection mode → keymap lookup → command dispatch
+     *
+     * Returns a long-running Effect - run with runFork.
+     */
+    runAppKeyboardHandler: (
+      callbacks: AppShortcutCallbacks,
+    ) => Effect.Effect<void>;
   }
 >() {}
 
@@ -181,45 +216,87 @@ export const KeyEventBusLive = Layer.effect(
   Effect.gen(function* () {
     const CommandBus = yield* CommandBusT;
     const Buffer = yield* BufferT;
+    const Keyboard = yield* KeyboardT;
 
-    return {
-      emit: (event: KeyEvent): Effect.Effect<boolean> =>
+    const emit = Effect.fn("KeyEventBus.emit")(function* (event: KeyEvent) {
+      yield* Effect.logDebug("KeyEventBus received").pipe(
+        Effect.annotateLogs({
+          key: event.key,
+          meta: event.modifiers.meta,
+          ctrl: event.modifiers.ctrl,
+          alt: event.modifiers.alt,
+          shift: event.modifiers.shift,
+          sourceType: event.source.type,
+          ...(event.source.type !== "app"
+            ? { blockId: event.source.blockId }
+            : {}),
+        }),
+      );
+
+      const keymapMode: "blockSelection" | "editor" =
+        event.source.type === "app"
+          ? yield* Buffer.getMode().pipe(
+              Effect.map((m) =>
+                m.type === "blockSelection" ? "blockSelection" : "editor",
+              ),
+            )
+          : "editor";
+
+      const commandOpt = lookupKeymap(event, keymapMode);
+
+      if (Option.isSome(commandOpt)) {
+        yield* CommandBus.dispatch(commandOpt.value);
+        return true;
+      }
+
+      yield* Effect.logDebug("KeyEventBus: no command for key").pipe(
+        Effect.annotateLogs({ key: event.key }),
+      );
+      return false;
+    });
+
+    const runAppKeyboardHandler = Effect.fn(
+      "KeyEventBus.runAppKeyboardHandler",
+    )(function* (callbacks: AppShortcutCallbacks) {
+      const stream = yield* Keyboard.keydowns();
+
+      yield* Stream.runForEach(stream, (event) =>
         Effect.gen(function* () {
-          yield* Effect.logDebug("KeyEventBus received").pipe(
-            Effect.annotateLogs({
-              key: event.key,
-              meta: event.modifiers.meta,
-              ctrl: event.modifiers.ctrl,
-              alt: event.modifiers.alt,
-              shift: event.modifiers.shift,
-              sourceType: event.source.type,
-              ...(event.source.type !== "app"
-                ? { blockId: event.source.blockId }
-                : {}),
-            }),
-          );
+          const mode = yield* Buffer.getMode();
 
-          const keymapMode: "blockSelection" | "editor" =
-            event.source.type === "app"
-              ? yield* Buffer.getMode().pipe(
-                  Effect.map((m) =>
-                    m.type === "blockSelection" ? "blockSelection" : "editor",
-                  ),
-                )
-              : "editor";
-
-          const commandOpt = lookupKeymap(event, keymapMode);
-
-          if (Option.isSome(commandOpt)) {
-            yield* CommandBus.dispatch(commandOpt.value);
-            return true;
+          // --- App shortcuts (global, always active) ---
+          if (event.modifiers.meta && event.key === "k") {
+            event.preventDefault();
+            callbacks.onOpenCommandPalette();
+            return;
+          }
+          if (event.modifiers.meta && event.key === "\\") {
+            event.preventDefault();
+            callbacks.onToggleSidebar();
+            return;
           }
 
-          yield* Effect.logDebug("KeyEventBus: no command for key").pipe(
-            Effect.annotateLogs({ key: event.key }),
-          );
-          return false;
+          // --- Block selection mode ---
+          if (mode.type === "blockSelection") {
+            // When a popup is open, let the popup component handle all keys
+            const popupOpen = yield* Buffer.hasPopup(mode.bufferId).pipe(
+              Effect.orDie,
+            );
+            if (popupOpen) return;
+
+            const handled = yield* emit({
+              key: event.key,
+              modifiers: event.modifiers,
+              source: { type: "app" },
+            });
+            if (handled) {
+              event.preventDefault();
+            }
+          }
         }),
-    };
+      );
+    });
+
+    return { emit, runAppKeyboardHandler };
   }),
 );

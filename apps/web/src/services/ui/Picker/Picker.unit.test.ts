@@ -37,17 +37,21 @@ const createBasicMockLayer = () => {
     setSelection: () => Effect.void,
     setAssignedNodeId: () => Effect.void,
     setBlockSelection: () => Effect.void,
-    indent: () => Effect.succeed(Option.none()),
-    outdent: () => Effect.succeed(false),
-    forceDelete: () => Effect.succeed(Option.none()),
-    split: () => Effect.succeed({ newNodeId: TEST_NODE_ID, cursorOffset: 0 }),
-    swap: () => Effect.succeed(false),
-    moveToFirst: () => Effect.succeed(false),
-    moveToLast: () => Effect.succeed(false),
+    getBlockSelectionState: () =>
+      Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+    getMode: () => Effect.succeed({ type: "none" as const }),
+    enterBlockSelection: () => Effect.void,
+    enterBlockEditing: () => Effect.void,
+    clearFocus: () => Effect.void,
+    hasPopup: () => Effect.succeed(false),
+    openPopup: () => Effect.void,
+    closePopup: () => Effect.void,
+    updatePopupQuery: () => Effect.void,
+    setActiveView: () => Effect.void,
   } as unknown as Context.Tag.Service<BufferT>);
 
   const AutomergeLayer = makeAutomergeLive({
-    roomName: "test-picker-basic",
+    workspaceName: "test-picker-basic",
     persist: false,
   });
 
@@ -216,20 +220,21 @@ describe("PickerT", () => {
         setSelection: setSelectionMock,
         setAssignedNodeId: () => Effect.void,
         setBlockSelection: () => Effect.void,
-        indent: () => Effect.succeed(Option.none()),
-        outdent: () => Effect.succeed(false),
-        mergeBackward: () => Effect.succeed(Option.none()),
-        mergeForward: () => Effect.succeed(Option.none()),
-        forceDelete: () => Effect.succeed(Option.none()),
-        split: () =>
-          Effect.succeed({ newNodeId: TEST_NODE_ID, cursorOffset: 0 }),
-        swap: () => Effect.succeed(false),
-        moveToFirst: () => Effect.succeed(false),
-        moveToLast: () => Effect.succeed(false),
+        getBlockSelectionState: () =>
+          Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+        getMode: () => Effect.succeed({ type: "none" as const }),
+        enterBlockSelection: () => Effect.void,
+        enterBlockEditing: () => Effect.void,
+        clearFocus: () => Effect.void,
+        hasPopup: () => Effect.succeed(false),
+        openPopup: () => Effect.void,
+        closePopup: () => Effect.void,
+        updatePopupQuery: () => Effect.void,
+        setActiveView: () => Effect.void,
       } as unknown as Context.Tag.Service<BufferT>);
 
       const AutomergeLayer = makeAutomergeLive({
-        roomName: "test-picker-select",
+        workspaceName: "test-picker-select",
         persist: false,
       });
 
@@ -366,20 +371,21 @@ describe("PickerT", () => {
         setSelection: setSelectionMock,
         setAssignedNodeId: () => Effect.void,
         setBlockSelection: () => Effect.void,
-        indent: () => Effect.succeed(Option.none()),
-        outdent: () => Effect.succeed(false),
-        mergeBackward: () => Effect.succeed(Option.none()),
-        mergeForward: () => Effect.succeed(Option.none()),
-        forceDelete: () => Effect.succeed(Option.none()),
-        split: () =>
-          Effect.succeed({ newNodeId: TEST_NODE_ID, cursorOffset: 0 }),
-        swap: () => Effect.succeed(false),
-        moveToFirst: () => Effect.succeed(false),
-        moveToLast: () => Effect.succeed(false),
+        getBlockSelectionState: () =>
+          Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+        getMode: () => Effect.succeed({ type: "none" as const }),
+        enterBlockSelection: () => Effect.void,
+        enterBlockEditing: () => Effect.void,
+        clearFocus: () => Effect.void,
+        hasPopup: () => Effect.succeed(false),
+        openPopup: () => Effect.void,
+        closePopup: () => Effect.void,
+        updatePopupQuery: () => Effect.void,
+        setActiveView: () => Effect.void,
       } as unknown as Context.Tag.Service<BufferT>);
 
       const AutomergeLayer = makeAutomergeLive({
-        roomName: "test-picker-create",
+        workspaceName: "test-picker-create",
         persist: false,
       });
 

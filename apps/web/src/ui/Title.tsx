@@ -2,7 +2,6 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
-import { AppAction, createDispatch } from "@/services/ui/Action";
 import {
   TitleT,
   type TitleSelection,
@@ -10,6 +9,7 @@ import {
 } from "@/services/ui/Title";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
+import { focusBlock } from "./focusBlock";
 import { onCleanup, onMount, Show } from "solid-js";
 import Editor from "./Editor";
 
@@ -28,10 +28,8 @@ interface TitleProps {
 export default function Title({ bufferId, nodeId }: TitleProps) {
   const runtime = useBrowserRuntime();
 
-  // Get Automerge handle
   const Automerge = runtime.runSync(AutomergeT);
 
-  // Title state stream (includes isActive, selection, textContent)
   const titleStream = Stream.unwrap(
     Effect.gen(function* () {
       const Title = yield* TitleT;
@@ -49,12 +47,8 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
     } satisfies TitleView,
   });
 
-  // Ref to h1 element for click position resolution
   let h1Ref: HTMLHeadingElement | undefined;
 
-  const dispatch = createDispatch(runtime);
-
-  // Handle mousedown to activate title (mousedown enables drag-to-select)
   const handleMouseDown = (e: MouseEvent) => {
     if (store.isActive) return;
 
@@ -62,12 +56,22 @@ export default function Title({ bufferId, nodeId }: TitleProps) {
 
     // Resolve click position on the unfocused h1
     let offset: number | undefined;
+    let assoc: 1 | -1 | undefined;
     if (h1Ref) {
       const resolved = posAtCoordsInElement(h1Ref, e.clientX, e.clientY);
       offset = resolved?.offset;
+      assoc = resolved?.assoc;
     }
 
-    dispatch(AppAction.Focus(titleBlockId, offset));
+    runtime.runSync(
+      focusBlock({
+        bufferId,
+        nodeId,
+        blockId: titleBlockId,
+        offset,
+        assoc,
+      }),
+    );
   };
 
   onMount(() => {

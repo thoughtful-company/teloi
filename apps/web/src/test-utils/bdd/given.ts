@@ -195,7 +195,7 @@ export const BUFFER_HAS_WIDTH = (width: number) =>
 
 /**
  * Inserts a node with text content.
- * Wrapper around NodeT.insertNode that also populates Yjs.
+ * Wrapper around NodeT.insertNode that also populates Automerge.
  */
 export const INSERT_NODE_WITH_TEXT = (args: {
   parentId: Id.Node;
@@ -629,7 +629,7 @@ export const TITLE_IS_FOCUSED_AT = (
     );
 
     // Set active element as block (titles use type: "block" with the title's blockId,
-    // matching how the real UI activates via AppAction.Focus)
+    // matching how the real UI activates via focusBlock)
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -665,7 +665,7 @@ export const NODE_HAS_MARK = (
       `NODE_HAS_MARK(${mark}) called but Automerge stores plain strings. ` +
         `Formatting tests need to be updated for the new text storage approach.`,
     );
-    // No-op: Automerge doesn't support rich text formatting in the same way as Yjs
+    // No-op: Automerge doesn't support rich text formatting in the same way
   }).pipe(Effect.withSpan(`Given.NODE_HAS_MARK(${mark})`));
 
 /** Convenience wrapper for bold formatting */
