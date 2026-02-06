@@ -107,7 +107,7 @@ For example, with Property "Project" (`hostPosition: 1`, `displayPosition: 0`):
 
 ### Visual Layout
 
-Property sections span the full buffer width, split into two parts:
+Property sections span the full frame width, split into two parts:
 
 ```
 ┌─────────────────────────────────────────────────────────┐

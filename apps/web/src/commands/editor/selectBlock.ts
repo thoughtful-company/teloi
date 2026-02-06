@@ -1,4 +1,4 @@
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 
@@ -14,11 +14,11 @@ export class SelectBlock extends Data.TaggedClass(tag)<{}> {
     const ctxOpt = yield* resolveActiveBlockContext();
     if (Option.isNone(ctxOpt)) return;
 
-    const { bufferId, nodeId } = ctxOpt.value;
-    const Buffer = yield* BufferT;
+    const { frameId, nodeId } = ctxOpt.value;
+    const Frame = yield* FrameT;
 
-    yield* Buffer.enterBlockSelection(bufferId);
-    yield* Buffer.setSelection(bufferId, Option.none());
-    yield* Buffer.setBlockSelection(bufferId, [nodeId], nodeId);
+    yield* Frame.enterBlockSelection(frameId);
+    yield* Frame.setSelection(frameId, Option.none());
+    yield* Frame.setBlockSelection(frameId, [nodeId], nodeId);
   });
 }

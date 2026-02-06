@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -33,13 +33,13 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
     it("deletes current block and all its children", async () => {
       await Effect.gen(function* () {
         // Structure:
-        //   Root (buffer)
+        //   Root (frame)
         //     - Parent (will be focused)
         //       - ChildA
         //       - ChildB
         //     - Sibling
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "Parent" },
             { text: "Sibling" },
           ]);
@@ -59,9 +59,9 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "ChildB",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Focus the parent block (text editing mode)
         yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
@@ -86,17 +86,17 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - First
         //     - Second (will be deleted)
         //     - Third
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
           ]);
 
         const [firstNodeId, secondNodeId] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
+        const secondBlockId = Id.makeFrameBlockId(frameId, secondNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -106,7 +106,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
 
         // Focus should be on First (previous sibling)
         yield* Then.SELECTION_IS_ON_BLOCK(
-          Id.makeBufferBlockId(bufferId, firstNodeId),
+          Id.makeFrameBlockId(frameId, firstNodeId),
         );
       }).pipe(runtime.runPromise);
     });
@@ -117,7 +117,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //   Root
         //     - Parent
         //       - OnlyChild (will be deleted)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "Parent" }],
         );
@@ -130,10 +130,10 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "OnlyChild",
         });
 
-        const onlyChildBlockId = Id.makeBufferBlockId(bufferId, onlyChild);
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const onlyChildBlockId = Id.makeFrameBlockId(frameId, onlyChild);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(onlyChildBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -152,7 +152,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //   Root
         //     - Parent (will be deleted)
         //       - Child
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "Parent text" }],
         );
@@ -165,9 +165,9 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "Child text",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -192,8 +192,8 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //       - ChildA
         //       - ChildB
         //     - Sibling
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "Parent" },
             { text: "Sibling" },
           ]);
@@ -211,13 +211,13 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "ChildB",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Enter block selection mode on Parent
         yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [parentNodeId]);
 
         // Press Cmd+Shift+Backspace to force-delete
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -239,8 +239,8 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - Second (will be selected)
         //       - SecondChild
         //     - Third
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
@@ -259,14 +259,14 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "SecondChild",
         });
 
-        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+        const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Select First, extend selection to include Second
         yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
         yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId, secondNodeId]);
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId, secondNodeId]);
 
         // Press Cmd+Shift+Backspace to force-delete both
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -286,21 +286,21 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - First
         //     - Second (will be deleted)
         //     - Third
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "First" }, { text: "Second" }, { text: "Third" }],
         );
 
         const [firstNodeId, secondNodeId] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
+        const secondBlockId = Id.makeFrameBlockId(frameId, secondNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
 
         // Focus should move to First (previous sibling)
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId]);
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId]);
       }).pipe(runtime.runPromise);
     });
 
@@ -311,7 +311,7 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
         //     - Parent (will be selected and deleted)
         //       - Child
         //     - Sibling
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "Parent" }, { text: "Sibling" }],
         );
@@ -324,9 +324,9 @@ describe("Block Cmd+Shift+Backspace (Force Delete)", () => {
           text: "Child text",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
         yield* When.USER_PRESSES("{Meta>}{Shift>}{Backspace}{/Shift}{/Meta}");
@@ -361,19 +361,19 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
 
   it("Delete in block selection mode cleans up Automerge text", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "First block text" }, { text: "Second" }],
       );
 
       const [firstNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on First
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId]);
 
       // Press Delete to delete the block
       yield* When.USER_PRESSES("{Delete}");
@@ -387,19 +387,19 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
 
   it("Backspace in block selection mode cleans up Automerge text", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "First" }, { text: "Block to delete" }],
       );
 
       const [, secondNodeId] = childNodeIds;
-      const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
+      const secondBlockId = Id.makeFrameBlockId(frameId, secondNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on Second
       yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [secondNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [secondNodeId]);
 
       // Press Backspace to delete the block
       yield* When.USER_PRESSES("{Backspace}");
@@ -413,7 +413,7 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
 
   it("deleting multiple blocks cleans up Automerge text for all", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [
           { text: "First to delete" },
@@ -423,14 +423,14 @@ describe("Regular Delete Automerge cleanup (Bug fix)", () => {
       );
 
       const [firstNodeId, secondNodeId, thirdNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select first two blocks
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId, secondNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId, secondNodeId]);
 
       // Press Delete to delete both blocks
       yield* When.USER_PRESSES("{Delete}");

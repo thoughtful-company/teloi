@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -31,17 +31,17 @@ describe("Block Movement", () => {
   describe("Swap Up (Opt+Cmd+Up)", () => {
     it("swaps block with previous sibling and preserves selection", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
           ]);
 
         const [first, second, third] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+        const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -53,16 +53,16 @@ describe("Block Movement", () => {
 
     it("does nothing when block is first child", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
           ]);
 
         const [first, second] = childNodeIds;
-        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+        const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -75,17 +75,17 @@ describe("Block Movement", () => {
   describe("Swap Down (Opt+Cmd+Down)", () => {
     it("swaps block with next sibling and preserves selection", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
           ]);
 
         const [first, second, third] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+        const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -97,16 +97,16 @@ describe("Block Movement", () => {
 
     it("does nothing when block is last child", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
           ]);
 
         const [first, second] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+        const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -119,17 +119,17 @@ describe("Block Movement", () => {
   describe("Move to First (Shift+Opt+Cmd+Up)", () => {
     it("moves block to first position among siblings", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
           ]);
 
         const [first, second, third] = childNodeIds;
-        const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
+        const thirdBlockId = Id.makeFrameBlockId(frameId, third);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 0);
         yield* When.USER_PRESSES(
@@ -143,16 +143,16 @@ describe("Block Movement", () => {
 
     it("does nothing when block is already first child", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
           ]);
 
         const [first, second] = childNodeIds;
-        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+        const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES(
@@ -167,17 +167,17 @@ describe("Block Movement", () => {
   describe("Move to Last (Shift+Opt+Cmd+Down)", () => {
     it("moves block to last position among siblings", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
           ]);
 
         const [first, second, third] = childNodeIds;
-        const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+        const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
         yield* When.USER_PRESSES(
@@ -191,16 +191,16 @@ describe("Block Movement", () => {
 
     it("does nothing when block is already last child", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
           ]);
 
         const [first, second] = childNodeIds;
-        const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+        const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES(
@@ -216,30 +216,30 @@ describe("Block Movement", () => {
     describe("Swap Up (Opt+Cmd+Up)", () => {
       it("swaps single selected block with previous sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
             ]);
 
           const [first, second, third] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [second, first, third]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [second]);
         }).pipe(runtime.runPromise);
       });
 
       it("swaps multiple selected blocks with previous sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
@@ -247,9 +247,9 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Enter block selection on second, extend to third
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
@@ -263,28 +263,28 @@ describe("Block Movement", () => {
             first,
             fourth,
           ]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second, third]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [second, third]);
         }).pipe(runtime.runPromise);
       });
 
       it("does nothing when first block is selected", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
             ]);
 
           const [first, second] = childNodeIds;
-          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+          const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, second]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [first]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [first]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -292,30 +292,30 @@ describe("Block Movement", () => {
     describe("Swap Down (Opt+Cmd+Down)", () => {
       it("swaps single selected block with next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
             ]);
 
           const [first, second, third] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, third, second]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [second]);
         }).pipe(runtime.runPromise);
       });
 
       it("swaps multiple selected blocks with next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
@@ -323,9 +323,9 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Enter block selection on second, extend to third
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
@@ -339,28 +339,28 @@ describe("Block Movement", () => {
             second,
             third,
           ]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second, third]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [second, third]);
         }).pipe(runtime.runPromise);
       });
 
       it("does nothing when last block is selected", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
             ]);
 
           const [first, second] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(secondBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [first, second]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [second]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [second]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -368,17 +368,17 @@ describe("Block Movement", () => {
     describe("Move to First (Shift+Opt+Cmd+Up)", () => {
       it("moves single selected block to first position", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
             ]);
 
           const [first, second, third] = childNodeIds;
-          const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
+          const thirdBlockId = Id.makeFrameBlockId(frameId, third);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
           yield* When.USER_PRESSES(
@@ -386,14 +386,14 @@ describe("Block Movement", () => {
           );
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [third, first, second]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [third]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [third]);
         }).pipe(runtime.runPromise);
       });
 
       it("moves multiple selected blocks to first position", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
@@ -401,9 +401,9 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const thirdBlockId = Id.makeBufferBlockId(bufferId, third);
+          const thirdBlockId = Id.makeFrameBlockId(frameId, third);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Enter block selection on third, extend to fourth
           yield* When.USER_ENTERS_BLOCK_SELECTION(thirdBlockId);
@@ -419,7 +419,7 @@ describe("Block Movement", () => {
             first,
             second,
           ]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [third, fourth]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [third, fourth]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -427,17 +427,17 @@ describe("Block Movement", () => {
     describe("Move to Last (Shift+Opt+Cmd+Down)", () => {
       it("moves single selected block to last position", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
             ]);
 
           const [first, second, third] = childNodeIds;
-          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+          const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
           yield* When.USER_PRESSES(
@@ -445,14 +445,14 @@ describe("Block Movement", () => {
           );
 
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [second, third, first]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [first]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [first]);
         }).pipe(runtime.runPromise);
       });
 
       it("moves multiple selected blocks to last position", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
               { text: "Third" },
@@ -460,9 +460,9 @@ describe("Block Movement", () => {
             ]);
 
           const [first, second, third, fourth] = childNodeIds;
-          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+          const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Enter block selection on first, extend to second
           yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
@@ -478,7 +478,7 @@ describe("Block Movement", () => {
             first,
             second,
           ]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [first, second]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [first, second]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -503,11 +503,10 @@ describe("Block Movement", () => {
     describe("Move Down - Cross-Parent (Parent Has Next Sibling)", () => {
       it("last child crosses to become first child of parent's next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -524,9 +523,9 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on Child C (last child of Parent A)
           // Parent A has next sibling (Parent D), so cross-parent move
@@ -544,8 +543,8 @@ describe("Block Movement", () => {
     describe("Move Down - Outdent (Parent Has No Next Sibling)", () => {
       it("last child outdents to become sibling after parent when no next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -562,9 +561,9 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on Child C (last child of Parent A)
           // Parent A has no next sibling, so outdent
@@ -582,11 +581,10 @@ describe("Block Movement", () => {
     describe("Move Up - Cross-Parent (Parent Has Previous Sibling)", () => {
       it("first child crosses to become last child of parent's previous sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -597,9 +595,9 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on Child E (first child of Parent D)
           // Parent D has prev sibling (Parent A), so cross-parent move
@@ -617,8 +615,8 @@ describe("Block Movement", () => {
     describe("Move Up - Outdent (Parent Has No Previous Sibling)", () => {
       it("first child outdents to become sibling before parent when no prev sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -629,9 +627,9 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on Child E (first child of Parent D)
           // Parent D has no prev sibling, so outdent
@@ -649,11 +647,10 @@ describe("Block Movement", () => {
     describe("Block Selection Mode - Cross-Parent", () => {
       it("single block crosses to next sibling on move down", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -669,9 +666,9 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -679,17 +676,16 @@ describe("Block Movement", () => {
           // Child C crosses to Parent D
           yield* Then.CHILDREN_ORDER_IS(parentA, [childB]);
           yield* Then.CHILDREN_ORDER_IS(parentD, [childC]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childC]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childC]);
         }).pipe(runtime.runPromise);
       });
 
       it("single block crosses to prev sibling on move up", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -699,9 +695,9 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -709,17 +705,16 @@ describe("Block Movement", () => {
           // Child E crosses to Parent A
           yield* Then.CHILDREN_ORDER_IS(parentD, []);
           yield* Then.CHILDREN_ORDER_IS(parentA, [childE]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childE]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childE]);
         }).pipe(runtime.runPromise);
       });
 
       it("multiple blocks cross to next sibling on move down", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -741,9 +736,9 @@ describe("Block Movement", () => {
             text: "Child F",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Select C and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
@@ -753,17 +748,16 @@ describe("Block Movement", () => {
           // C and F cross to Parent D
           yield* Then.CHILDREN_ORDER_IS(parentA, [childB]);
           yield* Then.CHILDREN_ORDER_IS(parentD, [childC, childF]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childC, childF]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childC, childF]);
         }).pipe(runtime.runPromise);
       });
 
       it("multiple blocks cross to prev sibling on move up", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent D" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent D" }],
+          );
 
           const [parentA, parentD] = childNodeIds;
 
@@ -785,9 +779,9 @@ describe("Block Movement", () => {
             text: "Child G",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Select E and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
@@ -797,7 +791,7 @@ describe("Block Movement", () => {
           // E and F cross to Parent A
           yield* Then.CHILDREN_ORDER_IS(parentD, [childG]);
           yield* Then.CHILDREN_ORDER_IS(parentA, [childE, childF]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childE, childF]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childE, childF]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -805,8 +799,8 @@ describe("Block Movement", () => {
     describe("Block Selection Mode - Outdent Fallback", () => {
       it("single block outdents on move down when no next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -822,9 +816,9 @@ describe("Block Movement", () => {
             text: "Child C",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowDown}{/Meta}{/Alt}");
@@ -832,14 +826,14 @@ describe("Block Movement", () => {
           // Child C outdents to after Parent A
           yield* Then.CHILDREN_ORDER_IS(parentA, [childB]);
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [parentA, childC]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childC]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childC]);
         }).pipe(runtime.runPromise);
       });
 
       it("single block outdents on move up when no prev sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -849,9 +843,9 @@ describe("Block Movement", () => {
             text: "Child E",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
           yield* When.USER_PRESSES("{Alt>}{Meta>}{ArrowUp}{/Meta}{/Alt}");
@@ -859,14 +853,14 @@ describe("Block Movement", () => {
           // Child E outdents to before Parent D
           yield* Then.CHILDREN_ORDER_IS(parentD, []);
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [childE, parentD]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childE]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childE]);
         }).pipe(runtime.runPromise);
       });
 
       it("multiple blocks outdent on move down when no next sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent A" }]);
 
           const [parentA] = childNodeIds;
 
@@ -888,9 +882,9 @@ describe("Block Movement", () => {
             text: "Child F",
           });
 
-          const childCBlockId = Id.makeBufferBlockId(bufferId, childC);
+          const childCBlockId = Id.makeFrameBlockId(frameId, childC);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Select C and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childCBlockId);
@@ -900,14 +894,14 @@ describe("Block Movement", () => {
           // C and F outdent to after Parent A
           yield* Then.CHILDREN_ORDER_IS(parentA, [childB]);
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [parentA, childC, childF]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childC, childF]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childC, childF]);
         }).pipe(runtime.runPromise);
       });
 
       it("multiple blocks outdent on move up when no prev sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent D" }]);
 
           const [parentD] = childNodeIds;
 
@@ -929,9 +923,9 @@ describe("Block Movement", () => {
             text: "Child G",
           });
 
-          const childEBlockId = Id.makeBufferBlockId(bufferId, childE);
+          const childEBlockId = Id.makeFrameBlockId(frameId, childE);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Select E and F
           yield* When.USER_ENTERS_BLOCK_SELECTION(childEBlockId);
@@ -941,7 +935,7 @@ describe("Block Movement", () => {
           // E and F outdent to before Parent D
           yield* Then.CHILDREN_ORDER_IS(parentD, [childG]);
           yield* Then.CHILDREN_ORDER_IS(rootNodeId, [childE, childF, parentD]);
-          yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childE, childF]);
+          yield* Then.BLOCKS_ARE_SELECTED(frameId, [childE, childF]);
         }).pipe(runtime.runPromise);
       });
     });
@@ -953,14 +947,13 @@ describe("Block Movement", () => {
           // Parent A has child C
           // Parent B is collapsed and has child D
           // When C (last child of A) moves down, it crosses into B
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
-              { text: "Parent A" },
-              { text: "Parent B" },
-            ]);
+          const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+            "Root",
+            [{ text: "Parent A" }, { text: "Parent B" }],
+          );
 
           const [parentA, parentB] = childNodeIds;
-          const blockB = Id.makeBufferBlockId(bufferId, parentB);
+          const blockB = Id.makeFrameBlockId(frameId, parentB);
 
           // Add child C to Parent A
           const childC = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -968,7 +961,7 @@ describe("Block Movement", () => {
             insert: "after",
             text: "Child C",
           });
-          const blockC = Id.makeBufferBlockId(bufferId, childC);
+          const blockC = Id.makeFrameBlockId(frameId, childC);
 
           // Add child D to Parent B (so B can be collapsed)
           const childD = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -977,7 +970,7 @@ describe("Block Movement", () => {
             text: "Child D",
           });
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Wait for blocks to render
           yield* Then.TEXT_IS_VISIBLE("Child C");
@@ -1004,19 +997,19 @@ describe("Block Movement", () => {
       });
     });
 
-    describe("No-op at Buffer Root", () => {
+    describe("No-op at Frame Root", () => {
       it("move down does nothing when already at root level", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
             ]);
 
           const [first, second] = childNodeIds;
-          const secondBlockId = Id.makeBufferBlockId(bufferId, second);
+          const secondBlockId = Id.makeFrameBlockId(frameId, second);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on Second (last child of root) and try to move down
           // This should do nothing because root's children cannot cross-parent or outdent
@@ -1030,16 +1023,16 @@ describe("Block Movement", () => {
 
       it("move up does nothing when already at root level", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "First" },
               { text: "Second" },
             ]);
 
           const [first, second] = childNodeIds;
-          const firstBlockId = Id.makeBufferBlockId(bufferId, first);
+          const firstBlockId = Id.makeFrameBlockId(frameId, first);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Focus on First (first child of root) and try to move up
           // This should do nothing because root's children cannot cross-parent or outdent

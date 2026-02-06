@@ -1,5 +1,5 @@
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { waitFrames } from "@/utils/effect";
 import { Effect, Option } from "effect";
@@ -11,19 +11,19 @@ import { Effect, Option } from "effect";
  * selection update before CodeMirror mounts with view.focus().
  */
 export const focusBlock = Effect.fn("focusBlock")(function* (params: {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
   blockId: Id.Block;
   offset?: number | undefined;
   assoc?: 0 | 1 | -1 | undefined;
 }) {
-  const { bufferId, nodeId, blockId, offset, assoc } = params;
-  const Buffer = yield* BufferT;
+  const { frameId, nodeId, blockId, offset, assoc } = params;
+  const Frame = yield* FrameT;
   const Window = yield* WindowT;
 
-  yield* Buffer.setBlockSelection(bufferId, [], nodeId);
-  yield* Buffer.setSelection(
-    bufferId,
+  yield* Frame.setBlockSelection(frameId, [], nodeId);
+  yield* Frame.setSelection(
+    frameId,
     Option.some({
       anchor: { elementId: blockId },
       anchorOffset: offset ?? 0,

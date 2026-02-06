@@ -13,7 +13,7 @@ import { nanoid } from "nanoid";
  * Creates a child node of the chat + a CHAT_HAS_MESSAGE tuple with a
  * fractional index computed relative to existing messages.
  *
- * Title context (nodeId === buffer's assignedNodeId):
+ * Title context (nodeId === frame's assignedNodeId):
  * - No messages: assigns msg:user type, appends as first message
  * - Messages exist: prepends before first message, inherits first message's role type
  *
@@ -23,21 +23,21 @@ import { nanoid } from "nanoid";
  */
 export const createBlock = Effect.fn("View.chat.createBlock")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   position: "before" | "after",
 ) {
   const Store = yield* StoreT;
   const Tuple = yield* TupleT;
   const Type = yield* TypeT;
 
-  const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-  const chatNodeId = Option.isSome(bufferDoc)
-    ? (bufferDoc.value.assignedNodeId as Id.Node | null)
+  const frameDoc = yield* Store.getDocument("frame", frameId);
+  const chatNodeId = Option.isSome(frameDoc)
+    ? (frameDoc.value.assignedNodeId as Id.Node | null)
     : null;
 
   if (!chatNodeId) {
     return yield* Effect.die(
-      new Error(`Buffer ${bufferId} has no assigned node`),
+      new Error(`Frame ${frameId} has no assigned node`),
     );
   }
 

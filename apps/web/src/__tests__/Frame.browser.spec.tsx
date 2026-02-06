@@ -1,5 +1,5 @@
 import "@/index.css";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   type BrowserRuntime,
 } from "@/test-utils/bdd";
 
-describe("Buffer", () => {
+describe("Frame", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -28,9 +28,9 @@ describe("Buffer", () => {
   it("renders block with node text content", async () => {
     await Effect.gen(function* () {
       const textContent = "Hello, this is a test block";
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(textContent);
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT(textContent);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Then.TEXT_IS_VISIBLE(textContent);
     }).pipe(runtime.runPromise);
@@ -41,9 +41,9 @@ describe("Buffer", () => {
   it("isolation test part 1: creates unique data", async () => {
     await Effect.gen(function* () {
       const uniqueMarker = "ISOLATION_MARKER_XYZ_12345";
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(uniqueMarker);
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT(uniqueMarker);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Then.TEXT_IS_VISIBLE(uniqueMarker);
     }).pipe(runtime.runPromise);
@@ -52,11 +52,11 @@ describe("Buffer", () => {
   // This test should NOT see the data from the previous test
   it("isolation test part 2: previous test data should not exist", async () => {
     await Effect.gen(function* () {
-      // Create a different buffer with different content
-      const differentContent = "This is a completely different buffer";
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT(differentContent);
+      // Create a different frame with different content
+      const differentContent = "This is a completely different frame";
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT(differentContent);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // This should be visible (our own data)
       yield* Then.TEXT_IS_VISIBLE(differentContent);

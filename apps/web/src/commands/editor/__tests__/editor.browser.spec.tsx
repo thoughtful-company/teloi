@@ -10,7 +10,7 @@ import {
   setupClientTest,
   type BrowserRuntime,
 } from "@/test-utils/bdd";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { doubleRaf } from "@/utils/effect";
 import { Effect, Option } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -34,14 +34,14 @@ describe("editor navigation", () => {
     describe("ArrowLeft", () => {
       it("moves cursor left within text when not at start", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Hello" },
             ]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 3);
 
@@ -54,22 +54,22 @@ describe("editor navigation", () => {
 
       it("moves to previous sibling at end when at position 0", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
 
@@ -82,8 +82,8 @@ describe("editor navigation", () => {
 
       it("moves to deepest visible child of previous sibling when it has children", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -94,16 +94,16 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const nestedChildBlockId = Id.makeFrameBlockId(
+            frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
 
@@ -116,8 +116,8 @@ describe("editor navigation", () => {
 
       it("moves to parent when at first sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Parent" },
             ]);
 
@@ -127,10 +127,10 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const childBlockId = Id.makeBufferBlockId(bufferId, childId);
+          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameBlockId(frameId, childId);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
 
@@ -143,28 +143,28 @@ describe("editor navigation", () => {
 
       it("moves to title when at first block in document", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+          yield* Then.SELECTION_IS_ON_TITLE(frameId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(14);
         }).pipe(runtime.runPromise);
       });
 
       it("skips hidden children when previous sibling is collapsed", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, windowId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -175,40 +175,41 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
           const Block = yield* BlockT;
           yield* Block.setExpanded(firstBlockId, false);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
           const Store = yield* StoreT;
-          const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-          const buffer = Option.getOrThrow(bufferDoc);
+          const winDoc = Option.getOrThrow(
+            yield* Store.getDocument("window", windowId),
+          );
 
-          expect(buffer.selection).not.toBeNull();
-          const expectedBlockId = Id.makeBufferBlockId(
-            bufferId,
+          expect(winDoc.selection).not.toBeNull();
+          const expectedBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
+          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
           expect(
-            buffer.selection!.focus.elementId,
+            winDoc.selection!.focus.elementId,
             `Selection went to hidden Nested child instead of visible First block`,
           ).not.toBe(nestedBlockId);
 
           expect(
-            buffer.selection!.focus.elementId,
+            winDoc.selection!.focus.elementId,
             "Selection should be on First block (visible)",
           ).toBe(expectedBlockId);
 
-          expect(buffer.selection!.focusOffset).toBe(5);
+          expect(winDoc.selection!.focusOffset).toBe(5);
         }).pipe(runtime.runPromise);
       });
     });
@@ -216,14 +217,14 @@ describe("editor navigation", () => {
     describe("ArrowRight", () => {
       it("moves cursor right within text when not at end", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Hello" },
             ]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 2);
 
@@ -236,22 +237,22 @@ describe("editor navigation", () => {
 
       it("moves to next sibling at start when at end", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
           yield* When.USER_PRESSES("{End}");
@@ -264,8 +265,8 @@ describe("editor navigation", () => {
 
       it("moves to first child when block has children", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Parent" },
             ]);
 
@@ -275,10 +276,10 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const childBlockId = Id.makeBufferBlockId(bufferId, childId);
+          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameBlockId(frameId, childId);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
           yield* When.USER_PRESSES("{End}");
@@ -291,8 +292,8 @@ describe("editor navigation", () => {
 
       it("moves to parent's next sibling when last child", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -303,10 +304,10 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedId);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedId);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(nestedBlockId, 0);
           yield* When.USER_PRESSES("{End}");
@@ -319,16 +320,16 @@ describe("editor navigation", () => {
 
       it("moves from title to first block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* When.USER_CLICKS_TITLE(bufferId);
+          yield* When.USER_CLICKS_TITLE(frameId);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
@@ -339,8 +340,8 @@ describe("editor navigation", () => {
 
       it("skips hidden children when current block is collapsed", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, windowId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -351,31 +352,32 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
           const Block = yield* BlockT;
           yield* Block.setExpanded(firstBlockId, false);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
           const Store = yield* StoreT;
-          const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-          const buffer = Option.getOrThrow(bufferDoc);
+          const winDoc = Option.getOrThrow(
+            yield* Store.getDocument("window", windowId),
+          );
 
-          expect(buffer.selection).not.toBeNull();
-          const expectedBlockId = Id.makeBufferBlockId(
-            bufferId,
+          expect(winDoc.selection).not.toBeNull();
+          const expectedBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
-          const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
+          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
-          expect(buffer.selection!.focus.elementId).not.toBe(nestedBlockId);
-          expect(buffer.selection!.focus.elementId).toBe(expectedBlockId);
-          expect(buffer.selection!.focusOffset).toBe(0);
+          expect(winDoc.selection!.focus.elementId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.focus.elementId).toBe(expectedBlockId);
+          expect(winDoc.selection!.focusOffset).toBe(0);
         }).pipe(runtime.runPromise);
       });
     });
@@ -385,22 +387,22 @@ describe("editor navigation", () => {
     describe("basic sibling traversal", () => {
       it("ArrowUp moves to previous sibling when on first line", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
@@ -412,22 +414,22 @@ describe("editor navigation", () => {
 
       it("ArrowDown moves to next sibling when on last line", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 3);
 
@@ -441,35 +443,35 @@ describe("editor navigation", () => {
     describe("title navigation", () => {
       it("ArrowUp moves to title when at first block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+          yield* Then.SELECTION_IS_ON_TITLE(frameId);
         }).pipe(runtime.runPromise);
       });
 
       it("ArrowDown moves from title to first block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 5);
+          yield* Given.TITLE_IS_FOCUSED_AT(frameId, rootNodeId, 5);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
@@ -479,17 +481,17 @@ describe("editor navigation", () => {
 
       it("ArrowDown preserves goalX when navigating from wrapped title to block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Once upon a midnight dreary", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Once upon a midnight dreary", [
               { text: "While I nodded nearly napping" },
               { text: "Second block text here" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(350);
+          yield* Given.FRAME_HAS_WIDTH(350);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 29);
 
@@ -510,7 +512,7 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{ArrowUp}");
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_TITLE(bufferId);
+          yield* Then.SELECTION_IS_ON_TITLE(frameId);
 
           yield* When.USER_PRESSES("{ArrowDown}");
           yield* When.USER_PRESSES("{ArrowDown}");
@@ -540,22 +542,22 @@ describe("editor navigation", () => {
     describe("column & goalX preservation", () => {
       it("ArrowUp preserves column when target block's last line is long enough", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "LongFirstBlock" },
               { text: "Short" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 4);
 
@@ -568,22 +570,22 @@ describe("editor navigation", () => {
 
       it("ArrowDown preserves column when target block's first line is long enough", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Short" },
               { text: "LongSecondBlock" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 4);
 
@@ -596,22 +598,22 @@ describe("editor navigation", () => {
 
       it("ArrowUp clamps to end of line when target is shorter", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Hi" },
               { text: "LongerText" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 8);
 
@@ -624,22 +626,22 @@ describe("editor navigation", () => {
 
       it("ArrowDown clamps to end of line when target is shorter", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "LongerText" },
               { text: "Hi" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 8);
 
@@ -652,8 +654,8 @@ describe("editor navigation", () => {
 
       it("ArrowUp maintains goalX through nested navigation", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second block here" },
             ]);
@@ -664,12 +666,12 @@ describe("editor navigation", () => {
             text: "Nested child content",
           });
 
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 5);
 
@@ -714,8 +716,8 @@ describe("editor navigation", () => {
 
       it("ArrowDown maintains goalX through nested navigation", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second block here" },
             ]);
@@ -726,9 +728,9 @@ describe("editor navigation", () => {
             text: "Nested child content",
           });
 
-          const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedId);
+          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedId);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(nestedBlockId, 5);
 
@@ -771,18 +773,18 @@ describe("editor navigation", () => {
 
       it("ArrowUp maintains visual X with non-monospace fonts (iii vs WWW)", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "iiiiiiiiii" },
               { text: "WW" },
             ]);
 
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 2);
 
@@ -825,18 +827,18 @@ describe("editor navigation", () => {
 
       it("ArrowDown maintains visual X with non-monospace fonts (iii vs WWW)", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "WW" },
               { text: "iiiiiiiiii" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
 
@@ -879,17 +881,17 @@ describe("editor navigation", () => {
 
       it("ArrowUp preserves goalX across multiple presses through shorter blocks", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Long paragraph" },
               { text: "Short" },
               { text: "Long paragraph" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const thirdBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[2]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 14);
 
@@ -937,16 +939,16 @@ describe("editor navigation", () => {
 
       it("Cmd+ArrowLeft clears goalX", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Text" },
               { text: "Long text" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
 
@@ -966,16 +968,16 @@ describe("editor navigation", () => {
 
       it("Cmd+ArrowRight clears goalX", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Text here" },
               { text: "Long text here too" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 18);
 
@@ -1004,17 +1006,17 @@ describe("editor navigation", () => {
           const longText =
             "The quick brown fox jumps over the lazy dog and keeps on running";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: longText },
             ]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Constrain width to force wrapping
-          yield* Given.BUFFER_HAS_WIDTH(200);
+          yield* Given.FRAME_HAS_WIDTH(200);
 
           // Place cursor near the start of the first visual line (offset 5)
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
@@ -1066,16 +1068,16 @@ describe("editor navigation", () => {
 
       it("Alt+ArrowLeft clears goalX", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "some text" },
               { text: "longer text here" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
 
@@ -1091,16 +1093,16 @@ describe("editor navigation", () => {
 
       it("Alt+ArrowRight clears goalX", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "some text" },
               { text: "longer text here" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
 
@@ -1116,16 +1118,16 @@ describe("editor navigation", () => {
 
       it("plain ArrowLeft clears goalX", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Text" },
               { text: "Long text" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
 
@@ -1148,16 +1150,16 @@ describe("editor navigation", () => {
       it("plain ArrowRight clears goalX", async () => {
         await Effect.gen(function* () {
           // Matching prefix ensures pixel mapping is exact for shared offsets
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Some text here" },
               { text: "Some text here plus more" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           // Start deep in secondBlock (offset 20) — stale goalX would land here
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 20);
@@ -1184,15 +1186,15 @@ describe("editor navigation", () => {
           await Effect.gen(function* () {
             const longText =
               "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: longText },
               ]);
 
-            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-            render(() => <BufferView bufferId={bufferId} />);
-            yield* Given.BUFFER_HAS_WIDTH(400);
+            render(() => <FrameView frameId={frameId} />);
+            yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at end of visual line 2
             yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
@@ -1223,15 +1225,15 @@ describe("editor navigation", () => {
           await Effect.gen(function* () {
             const longText =
               "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: longText },
               ]);
 
-            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-            render(() => <BufferView bufferId={bufferId} />);
-            yield* Given.BUFFER_HAS_WIDTH(400);
+            render(() => <FrameView frameId={frameId} />);
+            yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at start of visual line 2 (the wrap point)
             yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
@@ -1262,15 +1264,15 @@ describe("editor navigation", () => {
           await Effect.gen(function* () {
             const longText =
               "Hmmm. A little boy went out to play. When he opened his door, he saw the world. As he passed through the doorway, he caused a reflection. Evil was born. Evil was born, and followed the boy.An old tale, and a variation. A little girl went out to play. Lost in the marketplace, as if half-born. Then, not through the marketplace - you see that, don't you? - but through the alley behind the marketplace. This is the way to the palace. But it isn't something you remember.";
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: longText },
               ]);
 
-            const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-            render(() => <BufferView bufferId={bufferId} />);
-            yield* Given.BUFFER_HAS_WIDTH(400);
+            render(() => <FrameView frameId={frameId} />);
+            yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at start of visual line 2
             yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
@@ -1315,22 +1317,22 @@ describe("editor navigation", () => {
 
         it("Cmd+Backspace (deleteToLineStart) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, windowId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const firstBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const secondBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[1],
             );
 
-            render(() => <BufferView bufferId={bufferId} />);
+            render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
             yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
@@ -1341,11 +1343,11 @@ describe("editor navigation", () => {
 
             // Verify goalX is set (non-null) after vertical nav
             const Store = yield* StoreT;
-            const bufBefore = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winBefore = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufBefore.selection!.goalX,
+              winBefore.selection!.goalX,
               "goalX should be set after ArrowUp",
             ).not.toBeNull();
 
@@ -1354,11 +1356,11 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // goalX should now be cleared
-            const bufAfter = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winAfter = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufAfter.selection!.goalX,
+              winAfter.selection!.goalX,
               "goalX should be null after Cmd+Backspace",
             ).toBeNull();
 
@@ -1371,22 +1373,22 @@ describe("editor navigation", () => {
 
         it("Cmd+Delete (deleteToLineEnd) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, windowId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const firstBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const secondBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[1],
             );
 
-            render(() => <BufferView bufferId={bufferId} />);
+            render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
             yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
@@ -1397,11 +1399,11 @@ describe("editor navigation", () => {
 
             // Verify goalX is set (non-null) after vertical nav
             const Store = yield* StoreT;
-            const bufBefore = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winBefore = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufBefore.selection!.goalX,
+              winBefore.selection!.goalX,
               "goalX should be set after ArrowUp",
             ).not.toBeNull();
 
@@ -1410,11 +1412,11 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // goalX should now be cleared
-            const bufAfter = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winAfter = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufAfter.selection!.goalX,
+              winAfter.selection!.goalX,
               "goalX should be null after Cmd+Delete",
             ).toBeNull();
           }).pipe(runtime.runPromise);
@@ -1422,22 +1424,22 @@ describe("editor navigation", () => {
 
         it("Alt+Backspace (deleteWordBackward) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, windowId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const firstBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const secondBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[1],
             );
 
-            render(() => <BufferView bufferId={bufferId} />);
+            render(() => <FrameView frameId={frameId} />);
 
             yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
 
@@ -1446,11 +1448,11 @@ describe("editor navigation", () => {
 
             // Verify goalX is set after vertical nav
             const Store = yield* StoreT;
-            const bufBefore = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winBefore = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufBefore.selection!.goalX,
+              winBefore.selection!.goalX,
               "goalX should be set after ArrowUp",
             ).not.toBeNull();
 
@@ -1458,11 +1460,11 @@ describe("editor navigation", () => {
             yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
 
             // goalX should be cleared
-            const bufAfter = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winAfter = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufAfter.selection!.goalX,
+              winAfter.selection!.goalX,
               "goalX should be null after Alt+Backspace",
             ).toBeNull();
           }).pipe(runtime.runPromise);
@@ -1470,22 +1472,22 @@ describe("editor navigation", () => {
 
         it("Alt+Delete (deleteWordForward) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { bufferId, childNodeIds } =
-              yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+            const { frameId, windowId, childNodeIds } =
+              yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const firstBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeBufferBlockId(
-              bufferId,
+            const secondBlockId = Id.makeFrameBlockId(
+              frameId,
               childNodeIds[1],
             );
 
-            render(() => <BufferView bufferId={bufferId} />);
+            render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
             yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
@@ -1496,11 +1498,11 @@ describe("editor navigation", () => {
 
             // Verify goalX is set (non-null) after vertical nav
             const Store = yield* StoreT;
-            const bufBefore = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winBefore = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufBefore.selection!.goalX,
+              winBefore.selection!.goalX,
               "goalX should be set after ArrowUp",
             ).not.toBeNull();
 
@@ -1509,11 +1511,11 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // goalX should now be cleared
-            const bufAfter = Option.getOrThrow(
-              yield* Store.getDocument("buffer", bufferId),
+            const winAfter = Option.getOrThrow(
+              yield* Store.getDocument("window", windowId),
             );
             expect(
-              bufAfter.selection!.goalX,
+              winAfter.selection!.goalX,
               "goalX should be null after Alt+Delete",
             ).toBeNull();
           }).pipe(runtime.runPromise);
@@ -1524,14 +1526,14 @@ describe("editor navigation", () => {
     describe("wrapped & multi-line content", () => {
       it("ArrowUp navigates within multi-line block (newlines) before jumping", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: "Line1\nLine2\nLine3" },
             ]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 14);
 
@@ -1546,12 +1548,12 @@ describe("editor navigation", () => {
           const longText =
             "This is a very long text that will definitely wrap to multiple visual lines in the editor because it exceeds the container width and needs to flow onto subsequent rows";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [{ text: longText }]);
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [{ text: longText }]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, longText.length - 10);
 
@@ -1565,17 +1567,17 @@ describe("editor navigation", () => {
         await Effect.gen(function* () {
           const wrappingText = "AAAA BBBB CCCC DDDD EEEE";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: wrappingText },
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(100);
+          yield* Given.FRAME_HAS_WIDTH(100);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
           yield* When.USER_PRESSES("{ArrowLeft}");
@@ -1592,17 +1594,17 @@ describe("editor navigation", () => {
         await Effect.gen(function* () {
           const wrappingText = "AAAA BBBB CCCC DDDD EEEE";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: wrappingText },
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(100);
+          yield* Given.FRAME_HAS_WIDTH(100);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
 
@@ -1616,18 +1618,18 @@ describe("editor navigation", () => {
         await Effect.gen(function* () {
           const wrappingText = "AAAA BBBB CCCC DDDD";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: "First block" },
               { text: wrappingText },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(100);
+          yield* Given.FRAME_HAS_WIDTH(100);
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 10, -1);
 
           yield* When.USER_PRESSES("{ArrowUp}");
@@ -1640,18 +1642,18 @@ describe("editor navigation", () => {
         await Effect.gen(function* () {
           const wrappingText = "AAAA BBBB CCCC DDDD";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: wrappingText },
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(100);
+          yield* Given.FRAME_HAS_WIDTH(100);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 10, 1);
 
@@ -1665,18 +1667,18 @@ describe("editor navigation", () => {
         await Effect.gen(function* () {
           const wrappingText = "AAAA BBBB CCCC DDDD";
 
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: wrappingText },
               { text: "Second" },
             ]);
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(800);
+          yield* Given.FRAME_HAS_WIDTH(800);
           yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
           yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
 
@@ -1688,22 +1690,22 @@ describe("editor navigation", () => {
 
       it("Down then Up within wrapped text returns to original position", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "Node A" },
               {
                 text: "Історія Рекі нагадує, що ми не острови, що самотньо дрейфують у темряві. Ми — пов'язані невидимими та таємничими мостами довіри та емпатії. Її порятунок здобувся через нагороду за роки самопожертви, а став даром, отриманим в єдиний момент, коли вона дозволила собі бути вразливою перед кимось. Ми рятуємося не поодинці, а лише разом, стаючи одне для одного тим світлом, яке здатне розвіяти найтемнішу ніч душі.",
               },
             ]);
 
-          const longTextBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const longTextBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BUFFER_HAS_WIDTH(800);
+          yield* Given.FRAME_HAS_WIDTH(800);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(longTextBlockId, 0);
           yield* When.USER_PRESSES("{Meta>}{ArrowRight}{/Meta}");
@@ -1722,8 +1724,8 @@ describe("editor navigation", () => {
     describe("nested block hierarchy", () => {
       it("ArrowUp moves to deepest last child of previous sibling", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -1734,16 +1736,16 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const nestedChildBlockId = Id.makeFrameBlockId(
+            frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
 
@@ -1755,8 +1757,8 @@ describe("editor navigation", () => {
 
       it("ArrowUp moves to parent when at first child", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Parent" },
             ]);
 
@@ -1766,10 +1768,10 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const childBlockId = Id.makeBufferBlockId(bufferId, childId);
+          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameBlockId(frameId, childId);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 3);
 
@@ -1781,8 +1783,8 @@ describe("editor navigation", () => {
 
       it("ArrowDown moves to first child when block has children", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "Parent" },
             ]);
 
@@ -1792,10 +1794,10 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          const childBlockId = Id.makeBufferBlockId(bufferId, childId);
+          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameBlockId(frameId, childId);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 3);
 
@@ -1807,8 +1809,8 @@ describe("editor navigation", () => {
 
       it("ArrowDown moves to parent's next sibling when at last child", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -1819,16 +1821,16 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const nestedChildBlockId = Id.makeFrameBlockId(
+            frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const secondChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(nestedChildBlockId, 3);
 
@@ -1842,15 +1844,15 @@ describe("editor navigation", () => {
     describe("boundary behavior", () => {
       it("ArrowDown at last block moves cursor to end of block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Title", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Title", [
               { text: "First block" },
               { text: "Last block" },
             ]);
 
-          const lastBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+          const lastBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(lastBlockId, 5);
 
@@ -1865,8 +1867,8 @@ describe("editor navigation", () => {
     describe.skip("collapsed block behavior", () => {
       it("ArrowDown skips hidden children when collapsed", async () => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, windowId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
             ]);
@@ -1877,29 +1879,30 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
           const Block = yield* BlockT;
           yield* Block.setExpanded(firstBlockId, false);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
           yield* When.USER_PRESSES("{ArrowDown}");
 
           const Store = yield* StoreT;
-          const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-          const buffer = Option.getOrThrow(bufferDoc);
+          const winDoc = Option.getOrThrow(
+            yield* Store.getDocument("window", windowId),
+          );
 
-          expect(buffer.selection).not.toBeNull();
-          const expectedBlockId = Id.makeBufferBlockId(
-            bufferId,
+          expect(winDoc.selection).not.toBeNull();
+          const expectedBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[1],
           );
-          const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChildId);
+          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
-          expect(buffer.selection!.focus.elementId).not.toBe(nestedBlockId);
-          expect(buffer.selection!.focus.elementId).toBe(expectedBlockId);
+          expect(winDoc.selection!.focus.elementId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.focus.elementId).toBe(expectedBlockId);
         }).pipe(runtime.runPromise);
       });
     });
@@ -1908,18 +1911,18 @@ describe("editor navigation", () => {
   describe("Backspace", () => {
     it("merges with previous sibling when Backspace pressed at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const secondChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[1],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
@@ -1936,22 +1939,22 @@ describe("editor navigation", () => {
 
     it("places cursor at merge point after clicking different positions before merge", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "123" },
             { text: "12" },
           ]);
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
-        const secondChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const secondChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[1],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
@@ -1980,8 +1983,8 @@ describe("editor navigation", () => {
      */
     it("merges with last descendant of previous sibling when it has children", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "A" },
             { text: "C" },
           ]);
@@ -1994,10 +1997,10 @@ describe("editor navigation", () => {
           text: "B",
         });
 
-        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-        const blockC = Id.makeBufferBlockId(bufferId, nodeC);
+        const blockA = Id.makeFrameBlockId(frameId, nodeA);
+        const blockC = Id.makeFrameBlockId(frameId, nodeC);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Block = yield* BlockT;
         yield* Block.setExpanded(blockA, true);
@@ -2023,15 +2026,15 @@ describe("editor navigation", () => {
      */
     it("merges first child into parent when Backspace pressed at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Parent", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Parent", [
             { text: "FirstChild" },
           ]);
 
         const [firstChildId] = childNodeIds;
-        const firstChildBlockId = Id.makeBufferBlockId(bufferId, firstChildId);
+        const firstChildBlockId = Id.makeFrameBlockId(frameId, firstChildId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
@@ -2045,17 +2048,17 @@ describe("editor navigation", () => {
 
     it("merges with previous sibling when Cmd+Backspace pressed at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const secondChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[1],
         );
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
@@ -2071,17 +2074,17 @@ describe("editor navigation", () => {
 
     it("merges with previous sibling when Alt+Backspace pressed at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const secondChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[1],
         );
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
@@ -2108,8 +2111,8 @@ describe("editor navigation", () => {
      */
     it("no-op when block has children (would orphan them)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
             { text: "Third" },
@@ -2123,9 +2126,9 @@ describe("editor navigation", () => {
           text: "Child",
         });
 
-        const secondBlockId = Id.makeBufferBlockId(bufferId, secondNodeId);
+        const secondBlockId = Id.makeFrameBlockId(frameId, secondNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
@@ -2144,15 +2147,15 @@ describe("editor navigation", () => {
 
     it("removes ghost block and focuses parent on Backspace at start", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Parent" }],
         );
 
         const parentNodeId = childNodeIds[0];
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Expand the childless block to create a ghost
         yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
@@ -2162,8 +2165,8 @@ describe("editor navigation", () => {
         const Store = yield* StoreT;
         const blockDoc = yield* Store.getDocument("block", parentBlockId);
         const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId!;
-        const ghostBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const ghostBlockId = Id.makeFrameBlockId(
+          frameId,
           ghostChildId as Id.Node,
         );
         yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
@@ -2191,18 +2194,18 @@ describe("editor navigation", () => {
      */
     it("merges with next sibling when Delete pressed at end", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Delete}");
@@ -2228,7 +2231,7 @@ describe("editor navigation", () => {
      */
     it("merges with first child when Delete pressed at end of parent", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "Parent" }],
         );
@@ -2241,9 +2244,9 @@ describe("editor navigation", () => {
           text: "FirstChild",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Block = yield* BlockT;
         yield* Block.setExpanded(parentBlockId, true);
@@ -2267,8 +2270,8 @@ describe("editor navigation", () => {
      */
     it("does nothing when Delete pressed at end of last child (no hierarchy crossing)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "A" },
             { text: "C" },
           ]);
@@ -2281,10 +2284,10 @@ describe("editor navigation", () => {
           text: "B",
         });
 
-        const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-        const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+        const blockA = Id.makeFrameBlockId(frameId, nodeA);
+        const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         const Block = yield* BlockT;
         yield* Block.setExpanded(blockA, true);
@@ -2304,17 +2307,17 @@ describe("editor navigation", () => {
 
     it("merges with next sibling when Cmd+Delete pressed at end", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
@@ -2330,17 +2333,17 @@ describe("editor navigation", () => {
 
     it("merges with next sibling when Alt+Delete pressed at end", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
@@ -2366,8 +2369,8 @@ describe("editor navigation", () => {
      */
     it("merges next sibling when collapsed with children", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
@@ -2380,12 +2383,12 @@ describe("editor navigation", () => {
           text: "Hidden",
         });
 
-        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+        const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
         const Block = yield* BlockT;
         yield* Block.setExpanded(firstBlockId, false);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
         yield* When.USER_PRESSES("{Delete}");
@@ -2410,8 +2413,8 @@ describe("editor navigation", () => {
      */
     it("no-op when first child has grandchildren (would orphan them)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "Parent" },
           ]);
 
@@ -2429,9 +2432,9 @@ describe("editor navigation", () => {
           text: "Grandchild",
         });
 
-        const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
         yield* When.USER_PRESSES("{Delete}");
@@ -2458,8 +2461,8 @@ describe("editor navigation", () => {
      */
     it("no-op when next sibling has children (would orphan nieces/nephews)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
             { text: "First" },
             { text: "Second" },
           ]);
@@ -2472,9 +2475,9 @@ describe("editor navigation", () => {
           text: "Nephew",
         });
 
-        const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+        const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
         yield* When.USER_PRESSES("{Delete}");
@@ -2493,17 +2496,17 @@ describe("editor navigation", () => {
     describe("block", () => {
       it("splits text when Enter pressed in middle of text", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First child" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
           yield* When.USER_PRESSES("{Enter}");
@@ -2523,17 +2526,17 @@ describe("editor navigation", () => {
 
       it("creates new empty sibling when Enter pressed at end of text", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First child" },
             ]);
 
-          const firstChildBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const firstChildBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 11);
           yield* When.USER_PRESSES("{Enter}");
@@ -2547,17 +2550,17 @@ describe("editor navigation", () => {
 
       it("creates new empty sibling above when Enter pressed at start of non-empty text", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First child" },
             ]);
 
-          const originalBlockId = Id.makeBufferBlockId(
-            bufferId,
+          const originalBlockId = Id.makeFrameBlockId(
+            frameId,
             childNodeIds[0],
           );
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
           yield* When.USER_PRESSES("{Enter}");
@@ -2579,12 +2582,12 @@ describe("editor navigation", () => {
 
       it("creates new empty sibling below when Enter pressed in empty block", async () => {
         await Effect.gen(function* () {
-          const { bufferId, rootNodeId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [{ text: "" }]);
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [{ text: "" }]);
 
-          const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+          const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(emptyBlockId, 0);
           yield* When.USER_PRESSES("{Enter}");
@@ -2608,12 +2611,12 @@ describe("editor navigation", () => {
     describe("title", () => {
       it("creates first child block when Enter pressed at end of title", async () => {
         await Effect.gen(function* () {
-          const { bufferId, nodeId: rootNodeId } =
-            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+          const { frameId, nodeId: rootNodeId } =
+            yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* When.USER_CLICKS_TITLE(bufferId);
+          yield* When.USER_CLICKS_TITLE(frameId);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(1);
@@ -2625,7 +2628,7 @@ describe("editor navigation", () => {
           expect(children.length).toBe(1);
           yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
-          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
           yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
@@ -2633,12 +2636,12 @@ describe("editor navigation", () => {
 
       it("moves all content to first block when Enter pressed at start of title", async () => {
         await Effect.gen(function* () {
-          const { bufferId, nodeId: rootNodeId } =
-            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+          const { frameId, nodeId: rootNodeId } =
+            yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 0);
+          yield* Given.TITLE_IS_FOCUSED_AT(frameId, rootNodeId, 0);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(1);
@@ -2649,7 +2652,7 @@ describe("editor navigation", () => {
           const children = yield* Node.getNodeChildren(rootNodeId);
           yield* Then.NODE_HAS_TEXT(children[0]!, "Document Title");
 
-          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
           yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
@@ -2657,12 +2660,12 @@ describe("editor navigation", () => {
 
       it("splits title text when Enter pressed in middle", async () => {
         await Effect.gen(function* () {
-          const { bufferId, nodeId: rootNodeId } =
-            yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+          const { frameId, nodeId: rootNodeId } =
+            yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-          render(() => <BufferView bufferId={bufferId} />);
+          render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.TITLE_IS_FOCUSED_AT(bufferId, rootNodeId, 8);
+          yield* Given.TITLE_IS_FOCUSED_AT(frameId, rootNodeId, 8);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(1);
@@ -2673,7 +2676,7 @@ describe("editor navigation", () => {
           const children = yield* Node.getNodeChildren(rootNodeId);
           yield* Then.NODE_HAS_TEXT(children[0]!, " Title");
 
-          const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
           yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);

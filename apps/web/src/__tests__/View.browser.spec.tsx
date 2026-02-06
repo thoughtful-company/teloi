@@ -15,7 +15,7 @@ import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
  * View Service Tests
  *
  * Views are shadow children of pages that define alternate rendering modes.
- * They are linked via HAS_VIEW tuples and tracked per-buffer via activeViewId.
+ * They are linked via HAS_VIEW tuples and tracked per-frame via activeViewId.
  */
 
 describe("ViewT", () => {
@@ -48,46 +48,41 @@ describe("ViewT", () => {
       return pageId;
     });
 
-  /** Creates a buffer document for testing */
-  const createBuffer = (windowId: Id.Window, paneId: Id.Pane) =>
+  /** Creates a frame document for testing */
+  const createFrame = (windowId: Id.Window, paneId: Id.Pane) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const bufferId = Id.Buffer.make(nanoid());
+      const frameId = Id.Frame.make(nanoid());
 
       yield* Store.commit(
-        events.buffer(
+        events.frame(
           {
             windowId,
             parent: { type: "pane", id: paneId },
             assignedNodeId: null,
-            selectedBlocks: [],
-            blockSelectionAnchor: null,
-            blockSelectionFocus: null,
-            lastFocusedBlockId: null,
             toggledNodes: [],
-            selection: null,
             activeViewId: null,
             popup: null,
           },
-          bufferId,
+          frameId,
         ),
       );
 
-      return bufferId;
+      return frameId;
     });
 
-  /** Sets activeViewId on a buffer */
-  const setBufferActiveView = (bufferId: Id.Buffer, viewId: Id.Node | null) =>
+  /** Sets activeViewId on a frame */
+  const setFrameActiveView = (frameId: Id.Frame, viewId: Id.Node | null) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
 
-      const bufferOpt = yield* Store.getDocument("buffer", bufferId);
+      const frameOpt = yield* Store.getDocument("frame", frameId);
 
-      if (Option.isSome(bufferOpt)) {
+      if (Option.isSome(frameOpt)) {
         yield* Store.setDocument(
-          "buffer",
-          { ...bufferOpt.value, activeViewId: viewId },
-          bufferId,
+          "frame",
+          { ...frameOpt.value, activeViewId: viewId },
+          frameId,
         );
       }
     });
@@ -256,14 +251,14 @@ describe("ViewT", () => {
   });
 
   describe("getActiveView", () => {
-    it("returns Option.none() when buffer has no activeViewId", async () => {
+    it("returns Option.none() when frame has no activeViewId", async () => {
       await Effect.gen(function* () {
         const View = yield* ViewT;
         const windowId = Id.Window.make(nanoid());
         const paneId = Id.Pane.make(nanoid());
-        const bufferId = yield* createBuffer(windowId, paneId);
+        const frameId = yield* createFrame(windowId, paneId);
 
-        const activeView = yield* View.getActiveView(bufferId);
+        const activeView = yield* View.getActiveView(frameId);
 
         expect(Option.isNone(activeView)).toBe(true);
       }).pipe(runtime.runPromise);
@@ -274,14 +269,14 @@ describe("ViewT", () => {
         const View = yield* ViewT;
         const windowId = Id.Window.make(nanoid());
         const paneId = Id.Pane.make(nanoid());
-        const bufferId = yield* createBuffer(windowId, paneId);
+        const frameId = yield* createFrame(windowId, paneId);
         const pageId = yield* createPage();
         const viewId = yield* View.getOrCreateView(pageId);
 
-        // Set active view on buffer
-        yield* setBufferActiveView(bufferId, viewId);
+        // Set active view on frame
+        yield* setFrameActiveView(frameId, viewId);
 
-        const activeView = yield* View.getActiveView(bufferId);
+        const activeView = yield* View.getActiveView(frameId);
 
         expect(Option.isSome(activeView)).toBe(true);
         if (Option.isSome(activeView)) {

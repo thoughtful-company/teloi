@@ -1,5 +1,5 @@
 import "@/index.css";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -28,9 +28,9 @@ describe("Title whitespace rendering", () => {
   it("preserves newlines in unfocused title", async () => {
     await Effect.gen(function* () {
       const titleText = "first line\nsecond line";
-      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(titleText, []);
+      const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN(titleText, []);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -50,9 +50,9 @@ describe("Title whitespace rendering", () => {
   it("preserves multiple consecutive spaces in unfocused title", async () => {
     await Effect.gen(function* () {
       const titleText = "word  word"; // double space
-      const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN(titleText, []);
+      const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN(titleText, []);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(() =>
         waitFor(

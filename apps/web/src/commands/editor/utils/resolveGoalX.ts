@@ -1,16 +1,16 @@
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { Effect, Option } from "effect";
 
 /** Uses preserved goalX from an ongoing vertical navigation, falling back to current cursor X. */
 export const resolveGoalX = Effect.fn("resolveGoalX")(function* (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
-  const Buffer = yield* BufferT;
+  const Frame = yield* FrameT;
   const Editor = yield* EditorT;
 
-  const existing = yield* Buffer.getSelection(bufferId);
+  const existing = yield* Frame.getSelection(frameId);
   if (Option.isSome(existing) && existing.value.goalX != null) {
     return existing.value.goalX;
   }

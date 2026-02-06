@@ -8,7 +8,7 @@ import Block from "./Block";
 import { validateMessages, type WrongPlace } from "./chat/validateMessages";
 
 interface ChatViewProps {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
 }
 
@@ -96,7 +96,7 @@ export default function ChatView(props: ChatViewProps) {
                     )}
                   </Show>
                   <Block
-                    blockId={Id.makeBufferBlockId(props.bufferId, msg.nodeId)}
+                    blockId={Id.makeFrameBlockId(props.frameId, msg.nodeId)}
                   />
                 </div>
               </div>

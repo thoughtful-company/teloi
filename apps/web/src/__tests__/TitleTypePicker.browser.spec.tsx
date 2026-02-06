@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -35,13 +35,13 @@ describe("TypePicker in Title", () => {
   describe("Opening the picker", () => {
     it("shows picker popup when # is typed in title", async () => {
       await Effect.gen(function* () {
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
           { text: "Child" },
         ]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_CLICKS_TITLE(bufferId);
+        yield* When.USER_CLICKS_TITLE(frameId);
         yield* When.USER_PRESSES("#");
 
         yield* Effect.promise(() =>
@@ -66,14 +66,14 @@ describe("TypePicker in Title", () => {
         const TypePicker = yield* TypePickerT;
         const typeId = yield* TypePicker.createType(uniqueTypeName);
 
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "My Title",
           [{ text: "Child" }],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_CLICKS_TITLE(bufferId);
+        yield* When.USER_CLICKS_TITLE(frameId);
 
         // Type # to open picker
         yield* When.USER_PRESSES("#");
@@ -158,14 +158,14 @@ describe("TypePicker in Title", () => {
 
     it("creates and applies new type from title", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "My Title",
           [{ text: "Child" }],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_CLICKS_TITLE(bufferId);
+        yield* When.USER_CLICKS_TITLE(frameId);
         yield* When.USER_PRESSES("#newtitletag");
 
         yield* Effect.promise(() =>
@@ -212,13 +212,13 @@ describe("TypePicker in Title", () => {
   describe("Closing the picker", () => {
     it("closes picker when Escape is pressed in title", async () => {
       await Effect.gen(function* () {
-        const { bufferId } = yield* Given.A_BUFFER_WITH_CHILDREN("My Title", [
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN("My Title", [
           { text: "Child" },
         ]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_CLICKS_TITLE(bufferId);
+        yield* When.USER_CLICKS_TITLE(frameId);
         yield* When.USER_PRESSES("#test");
 
         yield* Effect.promise(() =>
@@ -258,7 +258,7 @@ describe("TypePicker in Title", () => {
         const TypePicker = yield* TypePickerT;
         const typeId = yield* TypePicker.createType("TitleTag");
 
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "My Title",
           [{ text: "Child" }],
         );
@@ -266,7 +266,7 @@ describe("TypePicker in Title", () => {
         // Apply the type to the root node (title)
         yield* TypePicker.applyType(rootNodeId, typeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Type badge should be visible below title
         yield* Effect.promise(() =>

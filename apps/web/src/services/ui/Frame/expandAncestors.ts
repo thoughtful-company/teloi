@@ -6,15 +6,15 @@ import { StoreT } from "../../external/Store";
 /**
  * Expands all ancestor blocks between rootNodeId and targetNodeId.
  *
- * - rootNodeId is EXCLUDED (it's the buffer root, has no parent block to expand)
+ * - rootNodeId is EXCLUDED (it's the frame root, has no parent block to expand)
  * - targetNodeId is EXCLUDED (we expand ancestors, not the target itself)
  *
- * @param bufferId - The buffer ID (needed to construct block IDs)
- * @param rootNodeId - The buffer's assignedNodeId (stop here, don't expand)
+ * @param frameId - The frame ID (needed to construct block IDs)
+ * @param rootNodeId - The frame's assignedNodeId (stop here, don't expand)
  * @param targetNodeId - The node being selected (start traversal here)
  */
 export const expandAncestors = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   rootNodeId: Id.Node,
   targetNodeId: Id.Node,
 ): Effect.Effect<void, never, StoreT | NodeT> =>
@@ -45,7 +45,7 @@ export const expandAncestors = (
     yield* Effect.forEach(
       ancestorsToExpand,
       (nodeId) => {
-        const blockId = Id.makeBufferBlockId(bufferId, nodeId);
+        const blockId = Id.makeFrameBlockId(frameId, nodeId);
         return Store.setDocument(
           "block",
           {
@@ -61,11 +61,9 @@ export const expandAncestors = (
     );
 
     if (ancestorsToExpand.length > 0) {
-      yield* Effect.logDebug(
-        "[Buffer.expandAncestors] Expanded ancestors",
-      ).pipe(
+      yield* Effect.logDebug("[Frame.expandAncestors] Expanded ancestors").pipe(
         Effect.annotateLogs({
-          bufferId,
+          frameId,
           rootNodeId,
           targetNodeId,
           expandedCount: ancestorsToExpand.length,
@@ -80,7 +78,7 @@ export const expandAncestors = (
  * Deduplicates - if two nodes share an ancestor, it's only expanded once.
  */
 export const expandAncestorsForNodes = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   rootNodeId: Id.Node,
   targetNodeIds: readonly Id.Node[],
 ): Effect.Effect<void, never, StoreT | NodeT> =>
@@ -113,7 +111,7 @@ export const expandAncestorsForNodes = (
     yield* Effect.forEach(
       [...ancestorsToExpand],
       (nodeId) => {
-        const blockId = Id.makeBufferBlockId(bufferId, nodeId);
+        const blockId = Id.makeFrameBlockId(frameId, nodeId);
         return Store.setDocument(
           "block",
           {
@@ -130,10 +128,10 @@ export const expandAncestorsForNodes = (
 
     if (ancestorsToExpand.size > 0) {
       yield* Effect.logDebug(
-        "[Buffer.expandAncestors] Expanded ancestors for nodes",
+        "[Frame.expandAncestors] Expanded ancestors for nodes",
       ).pipe(
         Effect.annotateLogs({
-          bufferId,
+          frameId,
           rootNodeId,
           targetCount: targetNodeIds.length,
           expandedCount: ancestorsToExpand.size,

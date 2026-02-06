@@ -22,7 +22,7 @@ export { resolveActiveViewType } from "@/services/ui/Block";
 /**
  * ViewT — Ghost-aware structural operations for block navigation and mutation.
  *
- * All methods take Id.Block (which encapsulates bufferId + nodeId) and internally
+ * All methods take Id.Block (which encapsulates frameId + nodeId) and internally
  * dispatch to the appropriate view-specific implementation (page vs chat).
  *
  * Ghost handling:
@@ -118,24 +118,24 @@ export const ViewLive = Layer.effect(
     ): Option.Option<Id.Block> => {
       if (Option.isNone(nodeOpt)) return Option.none();
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return Option.none();
-      return Option.some(Id.makeBufferBlockId(ctx.bufferId, nodeOpt.value));
+      if (ctx.type !== "frame") return Option.none();
+      return Option.some(Id.makeFrameBlockId(ctx.frameId, nodeOpt.value));
     };
 
     const resolveBlockAbove = Effect.fn("View.resolveBlockAbove")(function* (
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return Option.none<Id.Block>();
+      if (ctx.type !== "frame") return Option.none<Id.Block>();
 
       const viewType = yield* getViewType(blockId);
 
       const nodeOpt: Option.Option<Id.Node> =
         viewType === "chat"
-          ? yield* ChatNav.findPreviousNode(ctx.nodeId, ctx.bufferId).pipe(
+          ? yield* ChatNav.findPreviousNode(ctx.nodeId, ctx.frameId).pipe(
               Effect.provide(chatContext),
             )
-          : yield* PageNav.findPreviousNode(ctx.nodeId, ctx.bufferId).pipe(
+          : yield* PageNav.findPreviousNode(ctx.nodeId, ctx.frameId).pipe(
               Effect.provide(pageContext),
             );
 
@@ -146,18 +146,18 @@ export const ViewLive = Layer.effect(
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return Option.none<Id.Block>();
+      if (ctx.type !== "frame") return Option.none<Id.Block>();
 
       const viewType = yield* getViewType(blockId);
 
       const nodeOpt: Option.Option<Id.Node> =
         viewType === "chat"
-          ? yield* ChatNav.findNextNode(ctx.nodeId, ctx.bufferId).pipe(
+          ? yield* ChatNav.findNextNode(ctx.nodeId, ctx.frameId).pipe(
               Effect.provide(chatContext),
             )
           : yield* PageNav.findNextNodeInDocumentOrder(
               ctx.nodeId,
-              ctx.bufferId,
+              ctx.frameId,
             ).pipe(Effect.provide(pageContext));
 
       return wrapNodeResult(blockId, nodeOpt);
@@ -192,9 +192,9 @@ export const ViewLive = Layer.effect(
       position: "before" | "after",
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") {
+      if (ctx.type !== "frame") {
         return yield* Effect.die(
-          new Error("createBlock requires a buffer block"),
+          new Error("createBlock requires a frame block"),
         );
       }
 
@@ -204,27 +204,27 @@ export const ViewLive = Layer.effect(
         viewType === "chat"
           ? yield* ChatCreate.createBlock(
               ctx.nodeId,
-              ctx.bufferId,
+              ctx.frameId,
               position,
             ).pipe(Effect.provide(chatContext), Effect.orDie)
           : yield* PageCreate.createBlock(
               ctx.nodeId,
-              ctx.bufferId,
+              ctx.frameId,
               position,
             ).pipe(Effect.provide(pageContext), Effect.orDie);
 
-      return Id.makeBufferBlockId(ctx.bufferId, newNodeId);
+      return Id.makeFrameBlockId(ctx.frameId, newNodeId);
     });
 
     const getParent = Effect.fn("View.getParent")(function* (
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return Option.none<Id.Block>();
+      if (ctx.type !== "frame") return Option.none<Id.Block>();
 
       const nodeOpt = yield* PageStructural.getParent(
         ctx.nodeId,
-        ctx.bufferId,
+        ctx.frameId,
       ).pipe(Effect.provide(pageContext));
 
       return wrapNodeResult(blockId, nodeOpt);
@@ -234,16 +234,14 @@ export const ViewLive = Layer.effect(
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return [] as readonly Id.Block[];
+      if (ctx.type !== "frame") return [] as readonly Id.Block[];
 
       const children = yield* PageStructural.getChildren(
         ctx.nodeId,
-        ctx.bufferId,
+        ctx.frameId,
       ).pipe(Effect.provide(pageContext));
 
-      return children.map((nodeId) =>
-        Id.makeBufferBlockId(ctx.bufferId, nodeId),
-      );
+      return children.map((nodeId) => Id.makeFrameBlockId(ctx.frameId, nodeId));
     });
 
     const swap = Effect.fn("View.swap")(function* (
@@ -251,11 +249,11 @@ export const ViewLive = Layer.effect(
       direction: "up" | "down",
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return false;
+      if (ctx.type !== "frame") return false;
 
       return yield* PageStructural.swap(
         ctx.nodeId,
-        ctx.bufferId,
+        ctx.frameId,
         direction,
       ).pipe(
         Effect.provide(pageStructuralContext),
@@ -267,9 +265,9 @@ export const ViewLive = Layer.effect(
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return false;
+      if (ctx.type !== "frame") return false;
 
-      return yield* PageStructural.moveToFirst(ctx.nodeId, ctx.bufferId).pipe(
+      return yield* PageStructural.moveToFirst(ctx.nodeId, ctx.frameId).pipe(
         Effect.provide(pageStructuralContext),
         Effect.catchAll(() => Effect.succeed(false)),
       );
@@ -279,9 +277,9 @@ export const ViewLive = Layer.effect(
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer") return false;
+      if (ctx.type !== "frame") return false;
 
-      return yield* PageStructural.moveToLast(ctx.nodeId, ctx.bufferId).pipe(
+      return yield* PageStructural.moveToLast(ctx.nodeId, ctx.frameId).pipe(
         Effect.provide(pageStructuralContext),
         Effect.catchAll(() => Effect.succeed(false)),
       );
@@ -291,10 +289,10 @@ export const ViewLive = Layer.effect(
       blockId: Id.Block,
     ) {
       const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "buffer")
+      if (ctx.type !== "frame")
         return Option.none<PageStructural.MergeResult>();
 
-      return yield* PageStructural.forceDelete(ctx.nodeId, ctx.bufferId).pipe(
+      return yield* PageStructural.forceDelete(ctx.nodeId, ctx.frameId).pipe(
         Effect.provide(pageStructuralContext),
       );
     });

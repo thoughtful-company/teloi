@@ -44,6 +44,7 @@
   Goal of the refactor is to reduce amount of code and complexity in this code.
 
 **Known Tech Debt**:
+- `@ts-expect-error` on Window document event in `livestore/schema.ts` — moving selection fields to the Window schema made it too complex for TS to infer through the `satisfies EventsMap` check. Options: remove `satisfies`, use explicit type annotation, or restructure the schema type.
 - `goalX` and `goalLine` in buffer selection can be independently null, but logically they should always come together (goalX without goalLine is meaningless). Current workaround uses `|| "last"` fallback. Fixing this requires schema migration.
 
 **Bugs**:

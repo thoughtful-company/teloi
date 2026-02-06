@@ -2,7 +2,7 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
 import { WindowT } from "@/services/ui/Window";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -60,16 +60,16 @@ function PageItem(props: PageItemProps) {
     runtime.runPromise(
       Effect.gen(function* () {
         const Window = yield* WindowT;
-        const Buffer = yield* BufferT;
+        const Frame = yield* FrameT;
         const Navigation = yield* NavigationT;
         const Node = yield* NodeT;
 
-        const maybeBufferId = yield* Window.getActiveBufferId();
-        if (Option.isSome(maybeBufferId)) {
-          const assignedNodeId = yield* Buffer.getAssignedNodeId(
-            maybeBufferId.value,
+        const maybeFrameId = yield* Window.getActiveFrameId();
+        if (Option.isSome(maybeFrameId)) {
+          const assignedNodeId = yield* Frame.getAssignedNodeId(
+            maybeFrameId.value,
           ).pipe(
-            Effect.catchTag("BufferNotFoundError", () => Effect.succeed(null)),
+            Effect.catchTag("FrameNotFoundError", () => Effect.succeed(null)),
           );
 
           if (assignedNodeId === props.nodeId) {

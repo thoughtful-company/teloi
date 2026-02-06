@@ -18,7 +18,7 @@ export {
   ZoomOut,
 };
 
-export const bufferCommands = [
+export const frameCommands = [
   Collapse,
   EditBlock,
   Expand,
@@ -29,4 +29,4 @@ export const bufferCommands = [
   ZoomOut,
 ] as const;
 
-export type BufferCommand = InstanceType<(typeof bufferCommands)[number]>;
+export type FrameCommand = InstanceType<(typeof frameCommands)[number]>;

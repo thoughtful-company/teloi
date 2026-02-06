@@ -1,7 +1,7 @@
 import { Id, System } from "@/schema";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { ChatT } from "@/services/ui/Chat";
 import { Data, Effect, Option } from "effect";
 
@@ -14,28 +14,28 @@ export class Send extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Send) {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Store = yield* StoreT;
     const Type = yield* TypeT;
     const Chat = yield* ChatT;
 
-    // Get current buffer — works from either block editing or block selection mode
-    const mode = yield* Buffer.getMode();
+    // Get current frame — works from either block editing or block selection mode
+    const mode = yield* Frame.getMode();
 
-    let bufferId: Id.Buffer;
+    let frameId: Id.Frame;
     if (mode.type === "blockSelection") {
-      bufferId = mode.bufferId;
+      frameId = mode.frameId;
     } else if (mode.type === "block") {
-      const [parsedBufferId] = yield* Id.parseBlockId(mode.blockId);
-      bufferId = parsedBufferId;
+      const [parsedFrameId] = yield* Id.parseBlockId(mode.blockId);
+      frameId = parsedFrameId;
     } else {
       return;
     }
 
-    const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-    if (Option.isNone(bufferDoc)) return;
+    const frameDoc = yield* Store.getDocument("frame", frameId);
+    if (Option.isNone(frameDoc)) return;
 
-    const nodeId = bufferDoc.value.assignedNodeId as Id.Node | null;
+    const nodeId = frameDoc.value.assignedNodeId as Id.Node | null;
     if (!nodeId) return;
 
     // Only send if page has #chat type

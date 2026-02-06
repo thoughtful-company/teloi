@@ -9,15 +9,15 @@ import { Id, Model } from "@/schema";
 import { makeAutomergeLive, AutomergeT } from "@/services/external/Automerge";
 import { Context, Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BufferT } from "../Buffer";
+import { FrameT } from "../Frame";
 import { TypePickerT } from "../TypePicker";
 import { PickerT, PickerLive } from "./index";
 
 // Test IDs
-const TEST_BUFFER_ID = Id.Buffer.make("test-buffer");
+const TEST_FRAME_ID = Id.Frame.make("test-frame");
 const TEST_NODE_ID = Id.Node.make("test-node");
 const TEST_BLOCK_ID = Id.Block.make(
-  `buffer:${TEST_BUFFER_ID}/node:${TEST_NODE_ID}`,
+  `frame:${TEST_FRAME_ID}/node:${TEST_NODE_ID}`,
 );
 const TEST_TYPE_ID = Id.Node.make("test-type");
 
@@ -30,7 +30,7 @@ const createBasicMockLayer = () => {
     applyType: () => Effect.succeed(null),
   });
 
-  const MockBufferT = Layer.succeed(BufferT, {
+  const MockFrameT = Layer.succeed(FrameT, {
     subscribe: () => Effect.fail(new Error("not implemented")),
     getSelection: () => Effect.succeed(Option.none()),
     getAssignedNodeId: () => Effect.succeed(null),
@@ -48,7 +48,7 @@ const createBasicMockLayer = () => {
     closePopup: () => Effect.void,
     updatePopupQuery: () => Effect.void,
     setActiveView: () => Effect.void,
-  } as unknown as Context.Tag.Service<BufferT>);
+  } as unknown as Context.Tag.Service<FrameT>);
 
   const AutomergeLayer = makeAutomergeLive({
     workspaceName: "test-picker-basic",
@@ -57,7 +57,7 @@ const createBasicMockLayer = () => {
 
   return PickerLive.pipe(
     Layer.provideMerge(MockTypePickerT),
-    Layer.provideMerge(MockBufferT),
+    Layer.provideMerge(MockFrameT),
     Layer.provideMerge(AutomergeLayer),
   );
 };
@@ -67,7 +67,7 @@ describe("PickerT", () => {
     let runtime: ManagedRuntime.ManagedRuntime<PickerT, never>;
 
     beforeEach(async () => {
-      // PickerLive requires TypePickerT, BufferT, AutomergeT dependencies
+      // PickerLive requires TypePickerT, FrameT, AutomergeT dependencies
       const layer = createBasicMockLayer();
       runtime = ManagedRuntime.make(layer);
     });
@@ -159,7 +159,7 @@ describe("PickerT", () => {
     let runtime: ManagedRuntime.ManagedRuntime<PickerT, never>;
 
     beforeEach(async () => {
-      // PickerLive requires TypePickerT, BufferT, AutomergeT dependencies
+      // PickerLive requires TypePickerT, FrameT, AutomergeT dependencies
       const layer = createBasicMockLayer();
       runtime = ManagedRuntime.make(layer);
     });
@@ -213,7 +213,7 @@ describe("PickerT", () => {
         applyType: applyTypeMock,
       });
 
-      const MockBufferT = Layer.succeed(BufferT, {
+      const MockFrameT = Layer.succeed(FrameT, {
         subscribe: () => Effect.fail(new Error("not implemented")),
         getSelection: () => Effect.succeed(Option.none()),
         getAssignedNodeId: () => Effect.succeed(null),
@@ -231,7 +231,7 @@ describe("PickerT", () => {
         closePopup: () => Effect.void,
         updatePopupQuery: () => Effect.void,
         setActiveView: () => Effect.void,
-      } as unknown as Context.Tag.Service<BufferT>);
+      } as unknown as Context.Tag.Service<FrameT>);
 
       const AutomergeLayer = makeAutomergeLive({
         workspaceName: "test-picker-select",
@@ -240,7 +240,7 @@ describe("PickerT", () => {
 
       const layer = PickerLive.pipe(
         Layer.provideMerge(MockTypePickerT),
-        Layer.provideMerge(MockBufferT),
+        Layer.provideMerge(MockFrameT),
         Layer.provideMerge(AutomergeLayer),
       );
 
@@ -294,7 +294,7 @@ describe("PickerT", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("sets selection back to `from` position via BufferT", async () => {
+    it("sets selection back to `from` position via FrameT", async () => {
       await Effect.gen(function* () {
         const Picker = yield* PickerT;
         const Automerge = yield* AutomergeT;
@@ -311,11 +311,11 @@ describe("PickerT", () => {
 
         // Verify setSelection was called with position 6
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
-        const [bufferId, selectionOption] = setSelectionMock.mock.calls[0] as [
-          Id.Buffer,
-          Option.Option<Model.BufferSelection>,
+        const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
+          Id.Frame,
+          Option.Option<Model.FrameSelection>,
         ];
-        expect(bufferId).toBe(TEST_BUFFER_ID);
+        expect(frameId).toBe(TEST_FRAME_ID);
 
         // Selection should be set to position 6
         const selection = Option.getOrThrow(selectionOption);
@@ -364,7 +364,7 @@ describe("PickerT", () => {
         applyType: applyTypeMock,
       });
 
-      const MockBufferT = Layer.succeed(BufferT, {
+      const MockFrameT = Layer.succeed(FrameT, {
         subscribe: () => Effect.fail(new Error("not implemented")),
         getSelection: () => Effect.succeed(Option.none()),
         getAssignedNodeId: () => Effect.succeed(null),
@@ -382,7 +382,7 @@ describe("PickerT", () => {
         closePopup: () => Effect.void,
         updatePopupQuery: () => Effect.void,
         setActiveView: () => Effect.void,
-      } as unknown as Context.Tag.Service<BufferT>);
+      } as unknown as Context.Tag.Service<FrameT>);
 
       const AutomergeLayer = makeAutomergeLive({
         workspaceName: "test-picker-create",
@@ -391,7 +391,7 @@ describe("PickerT", () => {
 
       const layer = PickerLive.pipe(
         Layer.provideMerge(MockTypePickerT),
-        Layer.provideMerge(MockBufferT),
+        Layer.provideMerge(MockFrameT),
         Layer.provideMerge(AutomergeLayer),
       );
 
@@ -480,11 +480,11 @@ describe("PickerT", () => {
 
         // Verify setSelection was called with position 6
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
-        const [bufferId, selectionOption] = setSelectionMock.mock.calls[0] as [
-          Id.Buffer,
-          Option.Option<Model.BufferSelection>,
+        const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
+          Id.Frame,
+          Option.Option<Model.FrameSelection>,
         ];
-        expect(bufferId).toBe(TEST_BUFFER_ID);
+        expect(frameId).toBe(TEST_FRAME_ID);
 
         const selection = Option.getOrThrow(selectionOption);
         expect(selection.anchorOffset).toBe(6);

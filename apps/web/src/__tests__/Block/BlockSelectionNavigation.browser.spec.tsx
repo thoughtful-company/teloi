@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -46,7 +46,7 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       //     A  <- selected
       //     B
       //     C
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
@@ -70,19 +70,19 @@ describe("Block selection document-order navigation - ArrowUp", () => {
         text: "C",
       });
 
-      const childABlockId = Id.makeBufferBlockId(bufferId, childA);
+      const childABlockId = Id.makeFrameBlockId(frameId, childA);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on child A (first child)
       yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childA]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childA]);
 
       // When: ArrowUp pressed
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: Parent should be selected (document order goes to parent)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [parentNodeId], {
         anchor: parentNodeId,
         focus: parentNodeId,
       });
@@ -96,13 +96,13 @@ describe("Block selection document-order navigation - ArrowUp", () => {
       //     A1
       //       A1a  <- deepest
       //   B  <- selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "B" }],
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
       // Add nested children to A: A -> A1 -> A1a
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -116,21 +116,21 @@ describe("Block selection document-order navigation - ArrowUp", () => {
         text: "A1a",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Verify A and A1 are expanded (default state)
-      yield* Then.BLOCK_IS_EXPANDED(Id.makeBufferBlockId(bufferId, nodeA));
-      yield* Then.BLOCK_IS_EXPANDED(Id.makeBufferBlockId(bufferId, nodeA1));
+      yield* Then.BLOCK_IS_EXPANDED(Id.makeFrameBlockId(frameId, nodeA));
+      yield* Then.BLOCK_IS_EXPANDED(Id.makeFrameBlockId(frameId, nodeA1));
 
       // Enter block selection mode on B
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeB]);
 
       // When: ArrowUp pressed
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: A1a (deepest last child of A) should be selected
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA1a], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA1a], {
         anchor: nodeA1a,
         focus: nodeA1a,
       });
@@ -139,27 +139,27 @@ describe("Block selection document-order navigation - ArrowUp", () => {
 
   it("ArrowUp at first block at root scrolls to top and keeps selection", async () => {
     await Effect.gen(function* () {
-      // Given: First block at buffer root is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      // Given: First block at frame root is selected
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "First block" }, { text: "Second block" }],
       );
 
       const firstNodeId = childNodeIds[0];
-      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on first block
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId]);
 
       // When: ArrowUp pressed
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: Selection should stay on first block
       // (scroll-to-top behavior is tested separately, here we verify selection persists)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [firstNodeId], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [firstNodeId], {
         anchor: firstNodeId,
         focus: firstNodeId,
       });
@@ -190,13 +190,13 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       //   Parent <- selected, expanded
       //     A
       //     B
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }],
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
       // Add children to parent
       const childA = yield* Given.INSERT_NODE_WITH_TEXT({
@@ -210,17 +210,17 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "B",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on parent
       yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [parentNodeId]);
 
       // When: ArrowDown pressed
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: First child (A) should be selected
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childA], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childA], {
         anchor: childA,
         focus: childA,
       });
@@ -235,13 +235,13 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       //     A (hidden)
       //     B (hidden)
       //   NextSibling
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Parent" }, { text: "NextSibling" }],
       );
 
       const [parentNodeId, nextSiblingId] = childNodeIds;
-      const parentBlockId = Id.makeBufferBlockId(bufferId, parentNodeId);
+      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
 
       // Add children to parent
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -255,7 +255,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "B",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Collapse the parent
       const Block = yield* BlockT;
@@ -264,13 +264,13 @@ describe("Block selection document-order navigation - ArrowDown", () => {
 
       // Enter block selection mode on parent
       yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [parentNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [parentNodeId]);
 
       // When: ArrowDown pressed
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: NextSibling should be selected (not the hidden children)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nextSiblingId], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nextSiblingId], {
         anchor: nextSiblingId,
         focus: nextSiblingId,
       });
@@ -284,7 +284,7 @@ describe("Block selection document-order navigation - ArrowDown", () => {
       //     A1
       //     A2  <- selected (last child)
       //   B     <- should be selected after ArrowDown
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "B" }],
       );
@@ -303,19 +303,19 @@ describe("Block selection document-order navigation - ArrowDown", () => {
         text: "A2",
       });
 
-      const blockA2 = Id.makeBufferBlockId(bufferId, nodeA2);
+      const blockA2 = Id.makeFrameBlockId(frameId, nodeA2);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on A2 (last child of A)
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA2);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA2]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA2]);
 
       // When: ArrowDown pressed
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: B (parent's next sibling) should be selected
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeB], {
         anchor: nodeB,
         focus: nodeB,
       });
@@ -324,26 +324,26 @@ describe("Block selection document-order navigation - ArrowDown", () => {
 
   it("ArrowDown at last block at root keeps selection", async () => {
     await Effect.gen(function* () {
-      // Given: Last block at buffer root is selected
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      // Given: Last block at frame root is selected
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "First block" }, { text: "Last block" }],
       );
 
       const lastNodeId = childNodeIds[1];
-      const lastBlockId = Id.makeBufferBlockId(bufferId, lastNodeId);
+      const lastBlockId = Id.makeFrameBlockId(frameId, lastNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on last block
       yield* When.USER_ENTERS_BLOCK_SELECTION(lastBlockId);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [lastNodeId]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [lastNodeId]);
 
       // When: ArrowDown pressed
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: Selection should stay on last block (nowhere to go)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [lastNodeId], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [lastNodeId], {
         anchor: lastNodeId,
         focus: lastNodeId,
       });
@@ -374,14 +374,14 @@ describe("Block selection document-order navigation - Edge cases", () => {
       //     A1 (hidden)
       //   B  <- selected
       // ArrowUp should go to A (not A1, because A is collapsed)
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "B" }],
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-      const blockB = Id.makeBufferBlockId(bufferId, nodeB);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
 
       // Add child to A
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -390,7 +390,7 @@ describe("Block selection document-order navigation - Edge cases", () => {
         text: "A1",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Collapse A
       const Block = yield* BlockT;
@@ -399,13 +399,13 @@ describe("Block selection document-order navigation - Edge cases", () => {
 
       // Enter block selection mode on B
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeB]);
 
       // When: ArrowUp pressed
       yield* When.USER_PRESSES("{ArrowUp}");
 
       // Then: A should be selected (not A1, because A is collapsed)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA], {
         anchor: nodeA,
         focus: nodeA,
       });
@@ -419,7 +419,7 @@ describe("Block selection document-order navigation - Edge cases", () => {
       //     A1
       //       A1a  <- selected (deeply nested, last child at every level)
       //   B        <- should be selected after ArrowDown
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "B" }],
       );
@@ -438,19 +438,19 @@ describe("Block selection document-order navigation - Edge cases", () => {
         text: "A1a",
       });
 
-      const blockA1a = Id.makeBufferBlockId(bufferId, nodeA1a);
+      const blockA1a = Id.makeFrameBlockId(frameId, nodeA1a);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Enter block selection mode on A1a (deeply nested)
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA1a);
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeA1a]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA1a]);
 
       // When: ArrowDown pressed
       yield* When.USER_PRESSES("{ArrowDown}");
 
       // Then: B should be selected (climbed up through A1 and A to find B)
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [nodeB], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeB], {
         anchor: nodeB,
         focus: nodeB,
       });

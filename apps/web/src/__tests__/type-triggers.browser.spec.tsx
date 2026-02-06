@@ -3,7 +3,7 @@ import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -36,18 +36,18 @@ describe("Type Trigger Replacement", () => {
       await Effect.gen(function* () {
         const Type = yield* TypeT;
 
-        // Setup: buffer with a child node that has list-element type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has list-element type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Buy groceries" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for list decoration to appear
         yield* Effect.promise(() =>
@@ -100,19 +100,19 @@ describe("Type Trigger Replacement", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a child node that has checkbox type (checked)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has checkbox type (checked)
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Task done" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
         yield* Tuple.create(System.IS_CHECKED, [childNodeId, System.TRUE]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for checkbox decoration to appear
         yield* Effect.promise(() =>
@@ -171,18 +171,18 @@ describe("Type Trigger Replacement", () => {
       await Effect.gen(function* () {
         const Type = yield* TypeT;
 
-        // Setup: buffer with a child node that has list-element type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has list-element type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -217,18 +217,18 @@ describe("Type Trigger Replacement", () => {
       await Effect.gen(function* () {
         const Type = yield* TypeT;
 
-        // Setup: buffer with a child node that has checkbox type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has checkbox type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add checkbox type to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -267,13 +267,13 @@ describe("Type Trigger Replacement", () => {
         const Type = yield* TypeT;
         const TypePicker = yield* TypePickerT;
 
-        // Setup: buffer with a child node that has list-element type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has list-element type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Important task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -282,7 +282,7 @@ describe("Type Trigger Replacement", () => {
         const projectTypeId = yield* TypePicker.createType("project");
         yield* TypePicker.applyType(childNodeId, projectTypeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -339,18 +339,18 @@ describe("Type Trigger Replacement", () => {
         const Type = yield* TypeT;
         const Tuple = yield* TupleT;
 
-        // Setup: buffer with a child node that has list-element type
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node that has list-element type
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Completed task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>

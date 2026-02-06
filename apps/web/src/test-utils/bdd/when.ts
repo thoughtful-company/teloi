@@ -1,5 +1,5 @@
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
@@ -28,14 +28,14 @@ export const USER_CLICKS_BLOCK = (blockId: Id.Block) =>
 /**
  * Waits for a title element to appear and clicks it.
  */
-export const USER_CLICKS_TITLE = (bufferId: Id.Buffer) =>
+export const USER_CLICKS_TITLE = (frameId: Id.Frame) =>
   Effect.gen(function* () {
-    const selector = `[data-element-type="title"][data-element-id="${bufferId}"]`;
+    const selector = `[data-element-type="title"][data-element-id="${frameId}"]`;
     const element = yield* Effect.promise(() =>
       waitFor(
         () => {
           const el = document.querySelector(selector);
-          if (!el) throw new Error(`Title for buffer ${bufferId} not found`);
+          if (!el) throw new Error(`Title for frame ${frameId} not found`);
           return el as HTMLElement;
         },
         { timeout: 2000 },
@@ -58,14 +58,14 @@ export const USER_PRESSES = (keys: string) =>
  */
 export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
   Effect.gen(function* () {
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Window = yield* WindowT;
 
-    const [bufferId] = yield* Id.parseBlockId(blockId);
+    const [frameId] = yield* Id.parseBlockId(blockId);
 
     // Set selection first, then activate — so CodeMirror mounts with cursor in place
-    yield* Buffer.setSelection(
-      bufferId,
+    yield* Frame.setSelection(
+      frameId,
       Option.some({
         anchor: { elementId: blockId },
         anchorOffset: 0,
@@ -105,15 +105,15 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
   }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));
 
 /**
- * Focuses the Buffer container for a buffer.
+ * Focuses the Frame container for a frame.
  * Use this after programmatically setting up block selection mode
  * so that keyboard events can be received.
  */
-export const FOCUS_BUFFER_CONTAINER = (bufferId: Id.Buffer) =>
+export const FOCUS_FRAME_CONTAINER = (frameId: Id.Frame) =>
   Effect.sync(() => {
     const container = document.querySelector(
-      `[data-buffer-id="${bufferId}"]`,
+      `[data-frame-id="${frameId}"]`,
     ) as HTMLElement | null;
-    if (!container) throw new Error(`Buffer container ${bufferId} not found`);
+    if (!container) throw new Error(`Frame container ${frameId} not found`);
     container.focus();
-  }).pipe(Effect.withSpan("When.FOCUS_BUFFER_CONTAINER"));
+  }).pipe(Effect.withSpan("When.FOCUS_FRAME_CONTAINER"));

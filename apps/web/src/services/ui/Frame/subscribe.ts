@@ -15,16 +15,16 @@ import { queryDb } from "@livestore/livestore";
 import { Context, Effect, Option, Stream } from "effect";
 import { NodeT } from "../../domain/Node";
 
-export interface BufferView {
+export interface FrameView {
   nodeData: TeloiNode;
   activeViewId: Id.Node | null;
   activeViewType: ViewType;
   availableViews: readonly ViewInfo[];
   activeElement: Option.Option<Entity.Element>;
-  popup: Model.BufferPopup | null;
+  popup: Model.FramePopup | null;
 }
 
-export const subscribe = (bufferId: Id.Buffer) =>
+export const subscribe = (frameId: Id.Frame) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
@@ -40,14 +40,14 @@ export const subscribe = (bufferId: Id.Buffer) =>
       Context.add(AutomergeT, Automerge),
     );
 
-    // Subscribe to buffer document to watch for assignedNodeId and activeViewId changes
-    const bufferQuery = queryDb(
-      tables.buffer
+    // Subscribe to frame document to watch for assignedNodeId and activeViewId changes
+    const frameQuery = queryDb(
+      tables.frame
         .select("value")
-        .where("id", "=", bufferId)
+        .where("id", "=", frameId)
         .first({ fallback: () => null }),
     );
-    const bufferStream = yield* Store.subscribeStream(bufferQuery).pipe(
+    const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
       Effect.orDie,
     );
 
@@ -59,17 +59,15 @@ export const subscribe = (bufferId: Id.Buffer) =>
       >;
 
     // Separate popup stream — changes to popup should NOT re-subscribe to node/views
-    const popupStream = bufferStream.pipe(
-      Stream.map(
-        (buffer) => (buffer?.popup as Model.BufferPopup | null) ?? null,
-      ),
+    const popupStream = frameStream.pipe(
+      Stream.map((frame) => (frame?.popup as Model.FramePopup | null) ?? null),
     );
 
     // Structural data stream — only nodeId/activeViewId (deduped to avoid unnecessary re-subscriptions)
-    const bufferDataStream = bufferStream.pipe(
-      Stream.map((buffer) => ({
-        nodeId: buffer?.assignedNodeId ?? null,
-        activeViewId: (buffer?.activeViewId as Id.Node | null) ?? null,
+    const frameDataStream = frameStream.pipe(
+      Stream.map((frame) => ({
+        nodeId: frame?.assignedNodeId ?? null,
+        activeViewId: (frame?.activeViewId as Id.Node | null) ?? null,
       })),
       Stream.filterMap(({ nodeId, activeViewId }) =>
         nodeId != null
@@ -81,10 +79,10 @@ export const subscribe = (bufferId: Id.Buffer) =>
       ),
     );
 
-    // For each buffer state, create streams for the node and its views
+    // For each frame state, create streams for the node and its views
     // switch: true ensures we cancel the old stream when assignedNodeId changes
-    const bufferContentStream = Stream.flatMap(
-      bufferDataStream,
+    const frameContentStream = Stream.flatMap(
+      frameDataStream,
       ({ nodeId, activeViewId }) =>
         Stream.unwrap(
           Effect.gen(function* () {
@@ -106,25 +104,25 @@ export const subscribe = (bufferId: Id.Buffer) =>
     );
 
     // Auto-detect: when activeViewId is null and there's a typed view, activate it
-    const autoDetectedStream = bufferContentStream.pipe(
+    const autoDetectedStream = frameContentStream.pipe(
       Stream.tap(({ activeViewId, availableViews }) => {
         if (activeViewId !== null) return Effect.void;
         const typedView = availableViews.find(
           (v) => v.type === "chat" || v.type === "table",
         );
         if (!typedView) return Effect.void;
-        const Buffer = Effect.gen(function* () {
-          const bufferDoc = yield* Store.getDocument("buffer", bufferId).pipe(
+        const Frame = Effect.gen(function* () {
+          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
-          if (Option.isNone(bufferDoc)) return;
+          if (Option.isNone(frameDoc)) return;
           yield* Store.setDocument(
-            "buffer",
-            { ...bufferDoc.value, activeViewId: typedView.id },
-            bufferId,
+            "frame",
+            { ...frameDoc.value, activeViewId: typedView.id },
+            frameId,
           ).pipe(Effect.orDie);
         });
-        return Buffer;
+        return Frame;
       }),
       Stream.map(({ nodeData, activeViewId, availableViews }) => ({
         nodeData,
@@ -134,7 +132,7 @@ export const subscribe = (bufferId: Id.Buffer) =>
       })),
     );
 
-    // Combine buffer content with active element and popup
+    // Combine frame content with active element and popup
     const contentWithElement = Stream.zipLatestWith(
       autoDetectedStream,
       activeElementStream,

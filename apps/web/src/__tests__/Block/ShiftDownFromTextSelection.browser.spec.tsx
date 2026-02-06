@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -31,13 +31,11 @@ describe("Shift+Down from in-block text selection", () => {
 
   it("enters block selection mode when focus offset is at document length", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Hello world" }],
-      );
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -53,8 +51,8 @@ describe("Shift+Down from in-block text selection", () => {
         ),
       );
 
-      yield* Given.BUFFER_HAS_SELECTION(
-        bufferId,
+      yield* Given.FRAME_HAS_SELECTION(
+        frameId,
         { nodeId: childNodeIds[0], offset: 5 },
         { nodeId: childNodeIds[0], offset: 11 },
       );
@@ -62,13 +60,13 @@ describe("Shift+Down from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selection?.anchorOffset).toBe(5);
-            expect(buf.selection?.focusOffset).toBe(11);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selection?.anchorOffset).toBe(5);
+            expect(win.selection?.focusOffset).toBe(11);
           },
           { timeout: 2000 },
         ),
@@ -76,7 +74,7 @@ describe("Shift+Down from in-block text selection", () => {
 
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
         anchor: childNodeIds[0],
         focus: childNodeIds[0],
       });
@@ -85,13 +83,11 @@ describe("Shift+Down from in-block text selection", () => {
 
   it("does NOT enter block selection mode when focus offset is not at document length", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Hello world" }],
-      );
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -107,8 +103,8 @@ describe("Shift+Down from in-block text selection", () => {
         ),
       );
 
-      yield* Given.BUFFER_HAS_SELECTION(
-        bufferId,
+      yield* Given.FRAME_HAS_SELECTION(
+        frameId,
         { nodeId: childNodeIds[0], offset: 11 },
         { nodeId: childNodeIds[0], offset: 5 },
       );
@@ -116,13 +112,13 @@ describe("Shift+Down from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selection?.anchorOffset).toBe(11);
-            expect(buf.selection?.focusOffset).toBe(5);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selection?.anchorOffset).toBe(11);
+            expect(win.selection?.focusOffset).toBe(5);
           },
           { timeout: 2000 },
         ),
@@ -133,12 +129,12 @@ describe("Shift+Down from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selectedBlocks).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -148,13 +144,11 @@ describe("Shift+Down from in-block text selection", () => {
 
   it("enters block selection from collapsed cursor at document length", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
-        "Root",
-        [{ text: "Hello world" }],
-      );
+      const { frameId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       const Store = yield* StoreT;
 
@@ -170,18 +164,18 @@ describe("Shift+Down from in-block text selection", () => {
         ),
       );
 
-      yield* Given.BUFFER_HAS_CURSOR(bufferId, childNodeIds[0], 11);
+      yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 11);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selection?.anchorOffset).toBe(11);
-            expect(buf.selection?.focusOffset).toBe(11);
+            expect(Option.isSome(windowDoc)).toBe(true);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.selection?.anchorOffset).toBe(11);
+            expect(win.selection?.focusOffset).toBe(11);
           },
           { timeout: 2000 },
         ),
@@ -189,7 +183,7 @@ describe("Shift+Down from in-block text selection", () => {
 
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
         anchor: childNodeIds[0],
         focus: childNodeIds[0],
       });

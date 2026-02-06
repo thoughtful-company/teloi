@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
@@ -10,14 +10,14 @@ import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
 export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const View = yield* ViewT;
   const Automerge = yield* AutomergeT;
-  const Buffer = yield* BufferT;
+  const Frame = yield* FrameT;
   const Window = yield* WindowT;
 
   const ctx = yield* resolveActiveBlockContext();
   if (Option.isNone(ctx)) return;
-  const { bufferId, nodeId, blockId, isTitle } = ctx.value;
+  const { frameId, nodeId, blockId, isTitle } = ctx.value;
 
-  const selection = yield* Buffer.getSelection(bufferId);
+  const selection = yield* Frame.getSelection(frameId);
   const cursorPos = Option.isSome(selection) ? selection.value.focusOffset : 0;
 
   const currentText = yield* Automerge.getText(nodeId);
@@ -28,7 +28,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
 
   const newBlockId = yield* View.createBlock(blockId, position);
   const newCtx = Id.parseBlockContextSync(newBlockId);
-  if (newCtx.type !== "buffer") return;
+  if (newCtx.type !== "frame") return;
   const newNodeId = newCtx.nodeId;
 
   if (isTitle || !isAtStartOfNonEmpty) {
@@ -36,7 +36,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
     yield* Automerge.setText(newNodeId, currentText.slice(clampedPos));
   }
 
-  yield* Buffer.setSelection(bufferId, makeCollapsedSelection(newBlockId, 0));
+  yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
   yield* Window.setActiveElement(
     Option.some({ type: "block" as const, id: newBlockId }),
   );
@@ -45,7 +45,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
     Effect.annotateLogs({
       nodeId,
       newNodeId,
-      bufferId,
+      frameId,
       isTitle,
       cursorPos: clampedPos,
       textLength: currentText.length,

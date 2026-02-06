@@ -5,7 +5,7 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -49,13 +49,13 @@ describe("Property Creation Trigger", () => {
         const View = yield* ViewT;
         const Property = yield* PropertyT;
 
-        // Setup: buffer with a child node (the trigger target)
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [{ text: "" }]);
+        // Setup: frame with a child node (the trigger target)
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Page Title", [{ text: "" }]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -104,15 +104,15 @@ describe("Property Creation Trigger", () => {
       await Effect.gen(function* () {
         const Store = yield* StoreT;
 
-        // Setup: buffer with a child node (the trigger target)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node (the trigger target)
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Page Title",
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -166,13 +166,13 @@ describe("Property Creation Trigger", () => {
         const View = yield* ViewT;
         const Property = yield* PropertyT;
 
-        // Setup: buffer with a child node (the trigger target)
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [{ text: "" }]);
+        // Setup: frame with a child node (the trigger target)
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Page Title", [{ text: "" }]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -215,15 +215,15 @@ describe("Property Creation Trigger", () => {
 
     it("focuses the property name field after creation", async () => {
       await Effect.gen(function* () {
-        // Setup: buffer with a child node (the trigger target)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node (the trigger target)
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Page Title",
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -278,15 +278,15 @@ describe("Property Creation Trigger", () => {
         const Property = yield* PropertyT;
         const Automerge = yield* AutomergeT;
 
-        // Setup: buffer with a child node that has existing text
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Page Title", [
+        // Setup: frame with a child node that has existing text
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Page Title", [
             { text: "some text" },
           ]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>
@@ -328,20 +328,20 @@ describe("Property Creation Trigger", () => {
         const Property = yield* PropertyT;
         const Automerge = yield* AutomergeT;
 
-        // Setup: buffer with root node
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with root node
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "",
           [{ text: "child" }],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for title to appear
         yield* Effect.promise(() =>
           waitFor(
             () => {
               const title = document.querySelector(
-                `[data-element-type="title"][data-element-id="${bufferId}"]`,
+                `[data-element-type="title"][data-element-id="${frameId}"]`,
               );
               expect(title).toBeTruthy();
             },
@@ -350,7 +350,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the title to focus it
-        yield* When.USER_CLICKS_TITLE(bufferId);
+        yield* When.USER_CLICKS_TITLE(frameId);
 
         // Type "> " in the title
         yield* When.USER_PRESSES(">");

@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { TypePickerT } from "@/services/ui/TypePicker";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -35,17 +35,17 @@ describe("TypePicker", () => {
   describe("Opening the picker", () => {
     it("shows picker popup when # is typed", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
@@ -66,17 +66,17 @@ describe("TypePicker", () => {
 
     it("shows picker popup when # is typed in empty block", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
@@ -104,17 +104,17 @@ describe("TypePicker", () => {
         yield* TypePicker.createType("Page");
         yield* TypePicker.createType("Project");
 
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#pa");
@@ -139,17 +139,17 @@ describe("TypePicker", () => {
 
     it("shows Create option when no exact match", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#newtype");
@@ -180,18 +180,18 @@ describe("TypePicker", () => {
         const TypePicker = yield* TypePickerT;
         const typeId = yield* TypePicker.createType(uniqueTypeName);
 
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
         const childNodeId = childNodeIds[0];
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
 
@@ -280,18 +280,18 @@ describe("TypePicker", () => {
 
     it("creates and applies new type when selecting Create option", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
         const childNodeId = childNodeIds[0];
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#mytag");
@@ -341,17 +341,17 @@ describe("TypePicker", () => {
   describe("Closing the picker", () => {
     it("closes picker when Escape is pressed", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeBufferBlockId(
-          bufferId,
+        const firstChildBlockId = Id.makeFrameBlockId(
+          frameId,
           childNodeIds[0],
         );
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#test");
@@ -395,7 +395,7 @@ describe("TypePicker", () => {
         const TypePicker = yield* TypePickerT;
         const typeId = yield* TypePicker.createType("Important");
 
-        const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root node",
           [{ text: "Child" }],
         );
@@ -403,7 +403,7 @@ describe("TypePicker", () => {
         // Apply the type to the root node
         yield* TypePicker.applyType(rootNodeId, typeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Type badge should be visible
         yield* Effect.promise(() =>
@@ -492,7 +492,7 @@ describe("TypePickerT Service", () => {
       const Type = yield* TypeT;
 
       // Create a node
-      const { childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN("Root", [
         { text: "Test" },
       ]);
 

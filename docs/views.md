@@ -6,9 +6,9 @@ Views control how a node's content is displayed. A node can have multiple views 
 
 A view is a node linked to a page via `HAS_VIEW(page, viewNode)` tuple. View nodes live as shadow children of the page by default. The view node stores configuration like column order, visibility settings, and which properties to display.
 
-The buffer tracks which view is active via `activeViewId`. When `activeViewId` is null, the default page/tree view is shown.
+The frame tracks which view is active via `activeViewId`. When `activeViewId` is null, the default page/tree view is shown.
 
-View tabs appear automatically when a node has 2+ views. Clicking a tab updates the buffer's `activeViewId`.
+View tabs appear automatically when a node has 2+ views. Clicking a tab updates the frame's `activeViewId`.
 
 ## View Types
 
@@ -35,7 +35,7 @@ The `HAS_VIEW` tuple links pages to views:
 - Position 0: The page node
 - Position 1: The view node
 
-Buffer documents store the active view:
+Frame documents store the active view:
 - `activeViewId: Id.Node | null`
 - null means default page view
 - Otherwise references a view node
@@ -46,7 +46,7 @@ Views are created through commands or UI actions. For example, the "Create Table
 1. Creates a view node as a shadow child of the current page
 2. Sets its type to `system:table-view`
 3. Creates `HAS_VIEW(currentPage, viewNode)` tuple
-4. Sets buffer's `activeViewId` to the new view
+4. Sets frame's `activeViewId` to the new view
 
 ## Service API
 
@@ -54,7 +54,7 @@ View entity management lives in `BlockT` (`services/ui/Block/`):
 
 - `Block.getViewsForNode(nodeId)` — returns all view node IDs linked via `HAS_VIEW`
 - `Block.getOrCreateView(nodeId)` — finds or creates a default view for a node
-- `Block.getActiveView(bufferId)` — returns the active view ID from buffer state
+- `Block.getActiveView(frameId)` — returns the active view ID from frame state
 - `Block.setActiveView(blockId, viewId)` — sets the active view on a block document
 - `Block.subscribeViewsForNode(nodeId)` — reactive stream of view node IDs
 - `Block.subscribeViewInfo(nodeId)` — reactive stream of `ViewInfo[]` (includes type resolution)

@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
@@ -32,11 +32,11 @@ describe("Space in block selection mode", () => {
 
   it("creates sibling block after focused block and enters editing mode", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds, windowId } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "First block" }]);
+      const { frameId, rootNodeId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "First block" }]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-      render(() => <BufferView bufferId={bufferId} />);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
 
@@ -45,11 +45,11 @@ describe("Space in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
               childNodeIds[0],
             );
           },
@@ -76,22 +76,9 @@ describe("Space in block selection mode", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            const activeEl = Option.getOrThrow(windowDoc).activeElement;
-            expect(activeEl?.type).toBe("block");
-          },
-          { timeout: 2000 },
-        ),
-      );
-
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            const buf = Option.getOrThrow(bufferDoc);
-            expect(buf.selectedBlocks).toEqual([]);
+            const win = Option.getOrThrow(windowDoc);
+            expect(win.activeElement?.type).toBe("block");
+            expect(win.selectedBlocks).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -101,8 +88,8 @@ describe("Space in block selection mode", () => {
 
   it("creates sibling at same level for nested blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent block" }]);
+      const { frameId, rootNodeId, childNodeIds, windowId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent block" }]);
 
       const parentNodeId = childNodeIds[0];
 
@@ -112,8 +99,8 @@ describe("Space in block selection mode", () => {
         text: "Nested child",
       });
 
-      const nestedBlockId = Id.makeBufferBlockId(bufferId, nestedChild);
-      render(() => <BufferView bufferId={bufferId} />);
+      const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChild);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
 
@@ -122,11 +109,11 @@ describe("Space in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const bufferDoc = await Store.getDocument("buffer", bufferId).pipe(
+            const windowDoc = await Store.getDocument("window", windowId).pipe(
               runtime.runPromise,
             );
-            expect(Option.isSome(bufferDoc)).toBe(true);
-            expect(Option.getOrThrow(bufferDoc).selectedBlocks).toContain(
+            expect(Option.isSome(windowDoc)).toBe(true);
+            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
               nestedChild,
             );
           },

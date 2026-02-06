@@ -7,7 +7,7 @@ import { Effect, Option } from "effect";
 export type { ViewType };
 
 /**
- * Resolve the view type for a block based on its buffer's activeViewId.
+ * Resolve the view type for a block based on its frame's activeViewId.
  * Returns "chat" if the active view has CHAT_VIEW type, otherwise "page".
  */
 export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
@@ -17,12 +17,12 @@ export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
   const Type = yield* TypeT;
 
   const ctx = Id.parseBlockContextSync(blockId);
-  if (ctx.type !== "buffer") return "page";
+  if (ctx.type !== "frame") return "page";
 
-  const bufferDoc = yield* Store.getDocument("buffer", ctx.bufferId);
-  if (Option.isNone(bufferDoc)) return "page";
+  const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
+  if (Option.isNone(frameDoc)) return "page";
 
-  const activeViewId = bufferDoc.value.activeViewId as Id.Node | null;
+  const activeViewId = frameDoc.value.activeViewId as Id.Node | null;
   if (!activeViewId) return "page";
 
   const isChatView = yield* Type.hasType(activeViewId, System.CHAT_VIEW);

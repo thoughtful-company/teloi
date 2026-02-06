@@ -1,7 +1,7 @@
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect } from "effect";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "openTypePicker";
 const tag = `${scope}:${commandName}` as const;
 
@@ -10,12 +10,12 @@ export class OpenTypePicker extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: OpenTypePicker) {
-    const Buffer = yield* BufferT;
-    const mode = yield* Buffer.getMode();
+    const Frame = yield* FrameT;
+    const mode = yield* Frame.getMode();
 
     if (mode.type !== "blockSelection") return;
 
-    yield* Buffer.openPopup(mode.bufferId, {
+    yield* Frame.openPopup(mode.frameId, {
       type: "typePicker",
       query: "",
     });

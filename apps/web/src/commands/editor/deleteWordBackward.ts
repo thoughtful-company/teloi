@@ -19,7 +19,7 @@ export class DeleteWordBackward extends Data.TaggedClass(tag)<{}> {
     if (!isAtStart) {
       yield* Editor.deleteWordBackward();
       const ctx = yield* resolveActiveBlockContext();
-      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
 

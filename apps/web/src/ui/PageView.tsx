@@ -10,7 +10,7 @@ import { For, onCleanup, onMount, Show } from "solid-js";
 import Block from "./Block";
 
 interface PageViewProps {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
   inline?: boolean;
 }
@@ -29,7 +29,7 @@ export default function PageView(props: PageViewProps) {
     stream: childrenStream,
     project: (childIds) => ({
       childBlockIds: childIds.map((id) =>
-        Id.makeBufferBlockId(props.bufferId, Id.Node.make(id)),
+        Id.makeFrameBlockId(props.frameId, Id.Node.make(id)),
       ),
     }),
     initial: { childBlockIds: [] as Id.Block[] },
@@ -38,7 +38,7 @@ export default function PageView(props: PageViewProps) {
   const blockDocStream = Stream.unwrap(
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const blockId = Id.makeBufferBlockId(props.bufferId, props.nodeId);
+      const blockId = Id.makeFrameBlockId(props.frameId, props.nodeId);
       return yield* Store.subscribeStream(
         queryDb(
           tables.block
@@ -62,7 +62,7 @@ export default function PageView(props: PageViewProps) {
     const children = store.childBlockIds;
     const ghostId = ghostStore.ghostChildId;
     if (children.length === 0 && ghostId) {
-      return [Id.makeBufferBlockId(props.bufferId, ghostId)];
+      return [Id.makeFrameBlockId(props.frameId, ghostId)];
     }
     return children;
   };

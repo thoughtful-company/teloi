@@ -8,7 +8,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -45,13 +45,13 @@ describe("Text Formatting", () => {
       "$mark: applies to selected text with Cmd shortcut",
       async ({ key, mark }) => {
         await Effect.gen(function* () {
-          const { bufferId, childNodeIds } =
-            yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+          const { frameId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root", [
               { text: "hello world" },
             ]);
 
-          const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-          render(() => <BufferView bufferId={bufferId} />);
+          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          render(() => <FrameView frameId={frameId} />);
 
           yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 6);
           yield* When.USER_PRESSES("{Shift>}{End}{/Shift}");
@@ -65,15 +65,15 @@ describe("Text Formatting", () => {
     // Toggle off - uses same code path, test once with bold
     it("removes formatting when applied to already-formatted text", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "hello world" }],
         );
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <BufferView bufferId={bufferId} />);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 6);
         yield* When.USER_PRESSES("{Shift>}{End}{/Shift}");
@@ -86,13 +86,13 @@ describe("Text Formatting", () => {
     // Pending mark at cursor - uses same code path, test once
     it("toggles pending format mode at cursor position", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "hello" }],
         );
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <BufferView bufferId={bufferId} />);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
         yield* When.USER_PRESSES("{Meta>}b{/Meta}");
@@ -108,15 +108,15 @@ describe("Text Formatting", () => {
     // Split uses getDeltasWithFormats - mark-agnostic, test once
     it("preserves formatting on both sides when splitting", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "hello BOLD world" },
           ]);
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <BufferView bufferId={bufferId} />);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 12);
         yield* When.USER_PRESSES("{Enter}");
@@ -134,13 +134,13 @@ describe("Text Formatting", () => {
 
     it("splits formatting when cursor is inside formatted text", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "hello BOLD" }]);
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "hello BOLD" }]);
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
-        render(() => <BufferView bufferId={bufferId} />);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 8); // "hello BO|LD"
         yield* When.USER_PRESSES("{Enter}");
@@ -160,8 +160,8 @@ describe("Text Formatting", () => {
     // Merge uses insertWithFormats - mark-agnostic, test once
     it("preserves formatting from both blocks on merge", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+        const { frameId, rootNodeId, childNodeIds } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "hello BOLD" },
             { text: "SECOND end" },
           ]);
@@ -169,8 +169,8 @@ describe("Text Formatting", () => {
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 4);
         yield* Given.NODE_HAS_BOLD(childNodeIds[1], 0, 6);
 
-        const secondBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
-        render(() => <BufferView bufferId={bufferId} />);
+        const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
@@ -191,15 +191,15 @@ describe("Text Formatting", () => {
     // Each mark renders differently - test each
     it("renders bold with font-bold class", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "hello world" }],
         );
 
         yield* Given.NODE_HAS_BOLD(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_BOLD_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);
@@ -207,15 +207,15 @@ describe("Text Formatting", () => {
 
     it("renders italic with italic class", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "hello world" }],
         );
 
         yield* Given.NODE_HAS_ITALIC(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_ITALIC_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);
@@ -223,15 +223,15 @@ describe("Text Formatting", () => {
 
     it("renders code with monospace styling", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "hello world" }],
         );
 
         yield* Given.NODE_HAS_CODE(childNodeIds[0], 6, 5);
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         yield* Then.UNFOCUSED_BLOCK_HAS_CODE_TEXT(blockId, "world");
       }).pipe(runtime.runPromise);

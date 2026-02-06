@@ -6,7 +6,7 @@ import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { BlockLive, BlockT } from "@/services/ui/Block";
-import { BufferLive } from "@/services/ui/Buffer";
+import { FrameLive } from "@/services/ui/Frame";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { ViewLive } from "@/services/ui/View";
@@ -34,7 +34,7 @@ const makeTestRuntime = async () => {
   const TestLayer = BlockLive.pipe(
     Layer.provideMerge(PickerLive),
     Layer.provideMerge(TypePickerLive),
-    Layer.provideMerge(BufferLive),
+    Layer.provideMerge(FrameLive),
     Layer.provideMerge(ViewLive),
     Layer.provideMerge(WindowLive),
     Layer.provideMerge(TypeLive),
@@ -98,7 +98,7 @@ describe("Block subscribe - view system", () => {
 
   it("auto-detects table view when activeViewId is null", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }],
       );
@@ -108,7 +108,7 @@ describe("Block subscribe - view system", () => {
 
       // Subscribe to the block stream for the root's block
       const Block = yield* BlockT;
-      const blockId = Id.makeBufferBlockId(bufferId, rootNodeId);
+      const blockId = Id.makeFrameBlockId(frameId, rootNodeId);
       const stream = yield* Block.subscribe(blockId);
       const firstEmission = yield* Stream.runHead(stream);
       const view = Option.getOrThrow(firstEmission);
@@ -122,13 +122,13 @@ describe("Block subscribe - view system", () => {
 
   it("defaults to page when no typed views exist", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }],
       );
 
       const Block = yield* BlockT;
-      const blockId = Id.makeBufferBlockId(bufferId, rootNodeId);
+      const blockId = Id.makeFrameBlockId(frameId, rootNodeId);
       const stream = yield* Block.subscribe(blockId);
       const firstEmission = yield* Stream.runHead(stream);
       const view = Option.getOrThrow(firstEmission);
@@ -142,7 +142,7 @@ describe("Block subscribe - view system", () => {
   it("explicit activeViewId overrides auto-detection", async () => {
     await Effect.gen(function* () {
       const Store = yield* StoreT;
-      const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }],
       );
@@ -158,7 +158,7 @@ describe("Block subscribe - view system", () => {
       );
 
       // Explicitly set activeViewId to the chat view via block document
-      const blockId = Id.makeBufferBlockId(bufferId, rootNodeId);
+      const blockId = Id.makeFrameBlockId(frameId, rootNodeId);
       yield* Store.setDocument(
         "block",
         {

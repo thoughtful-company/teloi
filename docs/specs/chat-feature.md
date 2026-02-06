@@ -83,7 +83,7 @@ const nextIdx = generateKeyBetween(lastIdx, null) // append after last
 - Action bar with **Send** button sits below the chat node title (above messages).
 - Each message group has a **role label** (system / user / aengel).
 - Messages are rendered as Block components (same editing as page view).
-- `ChatView` receives `childBlockIds` from `BufferView` but does **not** use it — messages are fetched independently via `ChatT.getMessages` (tuple-based, not tree-based). The prop exists for potential future use (e.g., showing orphan blocks that lack tuples).
+- `ChatView` receives `childBlockIds` from `FrameView` but does **not** use it — messages are fetched independently via `ChatT.getMessages` (tuple-based, not tree-based). The prop exists for potential future use (e.g., showing orphan blocks that lack tuples).
 
 ### Visual Grouping
 
@@ -175,11 +175,11 @@ This mirrors how `#table` could trigger table view creation.
 
 ### View Auto-Activation on Navigation
 
-When a buffer navigates to a node (`activeViewId` starts as null), `BufferView` checks if the node has a view typed with `CHAT_VIEW`. If found, it auto-activates that view via `Buffer.setActiveView`. This ensures navigating to a chat node shows the chat view without requiring the user to click the tab.
+When a frame navigates to a node (`activeViewId` starts as null), `FrameView` checks if the node has a view typed with `CHAT_VIEW`. If found, it auto-activates that view via `Frame.setActiveView`. This ensures navigating to a chat node shows the chat view without requiring the user to click the tab.
 
-Flow: `BufferView.createEffect` → query `View.getViewsForPage` → check each for `CHAT_VIEW` type → `Buffer.setActiveView`.
+Flow: `FrameView.createEffect` → query `View.getViewsForPage` → check each for `CHAT_VIEW` type → `Frame.setActiveView`.
 
-When a buffer changes to a different node (`setAssignedNodeId`), `activeViewId` is cleared to null, restarting the detection cycle.
+When a frame changes to a different node (`setAssignedNodeId`), `activeViewId` is cleared to null, restarting the detection cycle.
 
 ### Message List Reactivity
 
@@ -195,7 +195,7 @@ Chat Node (has type #chat)
 ├── CHAT_HAS_MESSAGE tuple → Message Node 3 (has type #msg:aengel)
 └── ... ordered by position-1 fractional index
 
-Buffer Document
+Frame Document
 └── activeViewId → Chat View Node ID
 ```
 

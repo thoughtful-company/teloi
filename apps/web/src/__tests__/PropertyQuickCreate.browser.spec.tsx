@@ -5,7 +5,7 @@ import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT } from "@/services/ui/Property";
 import { ViewT } from "@/services/ui/View";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import PropertySection from "@/ui/PropertySection";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
@@ -30,7 +30,7 @@ import {
  *
  * The first linked block is created when user types in the ghost block (ghost materialization).
  *
- * Tests render PropertySection directly since Buffer integration is a separate concern.
+ * Tests render PropertySection directly since Frame integration is a separate concern.
  */
 
 describe("Property Quick-Create", () => {
@@ -60,8 +60,8 @@ describe("Property Quick-Create", () => {
       const Automerge = yield* AutomergeT;
 
       // Create a page with a child node
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Test Page", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Test Page", [
           { text: "some content" },
         ]);
 
@@ -73,7 +73,7 @@ describe("Property Quick-Create", () => {
       yield* Automerge.setText(propertyId, propertyName);
 
       return {
-        bufferId,
+        frameId,
         rootNodeId,
         childNodeIds,
         viewId,
@@ -101,14 +101,14 @@ describe("Property Quick-Create", () => {
   describe("Arrow Right at end of unbound property creates tuple type", () => {
     it("creates a tuple type named '{propertyName}_Tuple'", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId, propertyId, propertyName, bufferId } =
+        const { rootNodeId, propertyId, propertyName, frameId } =
           yield* createUnboundProperty("Author");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -165,14 +165,14 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, propertyName, bufferId } =
+        const { rootNodeId, propertyId, propertyName, frameId } =
           yield* createUnboundProperty("Category");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -230,14 +230,14 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, propertyName, bufferId } =
+        const { rootNodeId, propertyId, propertyName, frameId } =
           yield* createUnboundProperty("Status");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -306,14 +306,14 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId, propertyId, viewId, bufferId } =
+        const { rootNodeId, propertyId, viewId, frameId } =
           yield* createUnboundProperty("Priority");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -351,14 +351,14 @@ describe("Property Quick-Create", () => {
       await Effect.gen(function* () {
         const Property = yield* PropertyT;
 
-        const { rootNodeId, propertyId, bufferId } =
+        const { rootNodeId, propertyId, frameId } =
           yield* createUnboundProperty("Tags");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -394,14 +394,14 @@ describe("Property Quick-Create", () => {
 
     it("focuses the ghost block after quick-create", async () => {
       await Effect.gen(function* () {
-        const { rootNodeId, propertyId, bufferId } =
+        const { rootNodeId, propertyId, frameId } =
           yield* createUnboundProperty("Assignee");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -441,7 +441,7 @@ describe("Property Quick-Create", () => {
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, bufferId } =
+        const { rootNodeId, propertyId, frameId } =
           yield* createUnboundProperty("BoundProp");
 
         // Create a tuple type and bind the property to it BEFORE testing
@@ -464,7 +464,7 @@ describe("Property Quick-Create", () => {
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -504,7 +504,7 @@ describe("Property Quick-Create", () => {
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, bufferId } =
+        const { rootNodeId, propertyId, frameId } =
           yield* createUnboundProperty("EmptyBoundProp");
 
         // Create a tuple type and bind the property to it
@@ -526,7 +526,7 @@ describe("Property Quick-Create", () => {
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -566,14 +566,14 @@ describe("Property Quick-Create", () => {
         const Store = yield* StoreT;
         const Yjs = yield* YjsT;
 
-        const { rootNodeId, propertyId, bufferId } =
+        const { rootNodeId, propertyId, frameId } =
           yield* createUnboundProperty("LongPropertyName");
 
         render(() => (
           <PropertySection
             propertyId={propertyId}
             pageId={rootNodeId}
-            bufferId={bufferId}
+            frameId={frameId}
           />
         ));
 
@@ -612,18 +612,18 @@ describe("Property Quick-Create", () => {
     });
   });
 
-  describe("End-to-end flow via Buffer", () => {
+  describe("End-to-end flow via Frame", () => {
     it("typing '> ' then property name then ArrowRight shows focused ghost block", async () => {
       await Effect.gen(function* () {
-        // Setup: buffer with a child node (the trigger target)
-        const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+        // Setup: frame with a child node (the trigger target)
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Test Page",
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeBufferBlockId(bufferId, childNodeId);
+        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
 
-        render(() => <BufferView bufferId={bufferId} />);
+        render(() => <FrameView frameId={frameId} />);
 
         // Wait for block to appear
         yield* Effect.promise(() =>

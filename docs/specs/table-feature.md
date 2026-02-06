@@ -21,7 +21,7 @@ Tables are an alternative **view** for displaying a node's children. Instead of 
 - **View type**: Node type (e.g., `system:table-view`)
 - **View config**: Stored on view node (columns, order, visibility)
   For example ViewShowsColumnsFor[Projects #table-view][ProjectHasTodo][ColumnSettingsNode]
-- **Active view**: Stored per-buffer (`activeViewId`)
+- **Active view**: Stored per-frame (`activeViewId`)
 - **Tabs**: Shown when 2+ views exist for a node
 
 ## Columns
@@ -178,7 +178,7 @@ Stored on the **view node**:
 │ View Node (linked via HAS_VIEW tuple)                   │
 │   └── View Config (columns, order, visibility)          │
 │                                                         │
-│ Buffer Document                                         │
+│ Frame Document                                          │
 │   └── activeViewId → which view is displayed            │
 └─────────────────────────────────────────────────────────┘
 ```

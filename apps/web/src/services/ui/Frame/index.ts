@@ -9,71 +9,68 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
 import { WindowT } from "../Window";
-import { BufferNodeNotAssignedError, BufferNotFoundError } from "../errors";
+import { FrameNodeNotAssignedError, FrameNotFoundError } from "../errors";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
 import { setSelection } from "./setSelection";
-import { BufferView, subscribe } from "./subscribe";
+import { FrameView, subscribe } from "./subscribe";
 
 /**
  * Editor interaction mode - derived from Window.activeElement.
  *
  * - "none": No element focused
  * - "block": A block is focused for text editing
- * - "blockSelection": A buffer has block selection mode active
+ * - "blockSelection": A frame has block selection mode active
  */
 export type EditorMode =
   | { type: "none" }
   | { type: "block"; blockId: Id.Block }
-  | { type: "blockSelection"; bufferId: Id.Buffer };
+  | { type: "blockSelection"; frameId: Id.Frame };
 
-export class BufferT extends Context.Tag("BufferT")<
-  BufferT,
+export class FrameT extends Context.Tag("FrameT")<
+  FrameT,
   {
     subscribe: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
     ) => Effect.Effect<
-      Stream.Stream<BufferView, NodeNotFoundError>,
-      | BufferNotFoundError
+      Stream.Stream<FrameView, NodeNotFoundError>,
+      | FrameNotFoundError
       | LiveStoreError
-      | BufferNodeNotAssignedError
+      | FrameNodeNotAssignedError
       | NodeNotFoundError
     >;
     getSelection: (
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<
-      Option.Option<Model.BufferSelection>,
-      BufferNotFoundError
-    >;
+      frameId: Id.Frame,
+    ) => Effect.Effect<Option.Option<Model.FrameSelection>, FrameNotFoundError>;
     getAssignedNodeId: (
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<Id.Node | null, BufferNotFoundError>;
+      frameId: Id.Frame,
+    ) => Effect.Effect<Id.Node | null, FrameNotFoundError>;
     setSelection: (
-      bufferId: Id.Buffer,
-      selection: Option.Option<Model.BufferSelection>,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+      frameId: Id.Frame,
+      selection: Option.Option<Model.FrameSelection>,
+    ) => Effect.Effect<void, FrameNotFoundError>;
     setAssignedNodeId: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       nodeId: Id.Node | null,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+    ) => Effect.Effect<void, FrameNotFoundError>;
     setBlockSelection: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       blocks: readonly Id.Node[],
       blockSelectionAnchor: Id.Node | null,
       blockSelectionFocus?: Id.Node | null,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+    ) => Effect.Effect<void, FrameNotFoundError>;
 
     /**
-     * Get block selection state for a buffer.
+     * Get block selection state for a frame.
      */
-    getBlockSelectionState: (bufferId: Id.Buffer) => Effect.Effect<
+    getBlockSelectionState: (frameId: Id.Frame) => Effect.Effect<
       {
         selectedBlocks: readonly Id.Node[];
         anchor: Id.Node | null;
         focus: Id.Node | null;
       },
-      BufferNotFoundError
+      FrameNotFoundError
     >;
 
     // Mode operations (derived from Window.activeElement)
@@ -82,9 +79,9 @@ export class BufferT extends Context.Tag("BufferT")<
      */
     getMode: () => Effect.Effect<EditorMode>;
     /**
-     * Enter block selection mode for a buffer.
+     * Enter block selection mode for a frame.
      */
-    enterBlockSelection: (bufferId: Id.Buffer) => Effect.Effect<void>;
+    enterBlockSelection: (frameId: Id.Frame) => Effect.Effect<void>;
     /**
      * Enter block editing mode for a specific block.
      */
@@ -95,29 +92,25 @@ export class BufferT extends Context.Tag("BufferT")<
     clearFocus: () => Effect.Effect<void>;
 
     // Popup operations
-    hasPopup: (
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<boolean, BufferNotFoundError>;
+    hasPopup: (frameId: Id.Frame) => Effect.Effect<boolean, FrameNotFoundError>;
     openPopup: (
-      bufferId: Id.Buffer,
-      popup: Model.BufferPopup,
-    ) => Effect.Effect<void, BufferNotFoundError>;
-    closePopup: (
-      bufferId: Id.Buffer,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+      frameId: Id.Frame,
+      popup: Model.FramePopup,
+    ) => Effect.Effect<void, FrameNotFoundError>;
+    closePopup: (frameId: Id.Frame) => Effect.Effect<void, FrameNotFoundError>;
     updatePopupQuery: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       query: string,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+    ) => Effect.Effect<void, FrameNotFoundError>;
     setActiveView: (
-      bufferId: Id.Buffer,
+      frameId: Id.Frame,
       viewId: Id.Node | null,
-    ) => Effect.Effect<void, BufferNotFoundError>;
+    ) => Effect.Effect<void, FrameNotFoundError>;
   }
 >() {}
 
-export const BufferLive = Layer.effect(
-  BufferT,
+export const FrameLive = Layer.effect(
+  FrameT,
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
@@ -136,43 +129,60 @@ export const BufferLive = Layer.effect(
 
     return {
       subscribe: withContext(subscribe)(context),
-      getSelection: (bufferId: Id.Buffer) =>
-        get(bufferId, "selection").pipe(
-          Effect.map(Option.fromNullable),
-          Effect.provideService(StoreT, Store),
-        ),
-      getAssignedNodeId: (bufferId: Id.Buffer) =>
-        get(bufferId, "assignedNodeId").pipe(
+      getSelection: (_frameId: Id.Frame) =>
+        Effect.gen(function* () {
+          const sessionId = yield* Store.getSessionId();
+          const windowId = Id.Window.make(sessionId);
+          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(windowDoc))
+            return Option.none<Model.FrameSelection>();
+          return Option.fromNullable(windowDoc.value.selection);
+        }),
+      getAssignedNodeId: (frameId: Id.Frame) =>
+        get(frameId, "assignedNodeId").pipe(
           Effect.map((id) => (id != null ? Id.Node.make(id) : null)),
           Effect.provideService(StoreT, Store),
         ),
       setSelection: withContext(setSelection)(context),
-      setAssignedNodeId: (bufferId: Id.Buffer, nodeId: Id.Node | null) =>
-        setAssignedNodeId(bufferId, nodeId).pipe(
+      setAssignedNodeId: (frameId: Id.Frame, nodeId: Id.Node | null) =>
+        setAssignedNodeId(frameId, nodeId).pipe(
           Effect.provideService(StoreT, Store),
         ),
       setBlockSelection: (
-        bufferId: Id.Buffer,
+        frameId: Id.Frame,
         blocks: readonly Id.Node[],
         blockSelectionAnchor: Id.Node | null,
         blockSelectionFocus?: Id.Node | null,
       ) =>
         setBlockSelection(
-          bufferId,
+          frameId,
           blocks,
           blockSelectionAnchor,
           blockSelectionFocus,
         ).pipe(Effect.provide(context)),
 
-      getBlockSelectionState: (bufferId: Id.Buffer) =>
-        get(bufferId).pipe(
-          Effect.map((doc) => ({
-            selectedBlocks: doc.selectedBlocks,
-            anchor: doc.blockSelectionAnchor,
-            focus: doc.blockSelectionFocus,
-          })),
-          Effect.provideService(StoreT, Store),
-        ),
+      getBlockSelectionState: (_frameId: Id.Frame) =>
+        Effect.gen(function* () {
+          const sessionId = yield* Store.getSessionId();
+          const windowId = Id.Window.make(sessionId);
+          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(windowDoc)) {
+            return {
+              selectedBlocks: [] as readonly Id.Node[],
+              anchor: null,
+              focus: null,
+            };
+          }
+          return {
+            selectedBlocks: windowDoc.value.selectedBlocks,
+            anchor: windowDoc.value.blockSelectionAnchor,
+            focus: windowDoc.value.blockSelectionFocus,
+          };
+        }),
 
       // Mode operations
       getMode: (): Effect.Effect<EditorMode> =>
@@ -182,20 +192,21 @@ export const BufferLive = Layer.effect(
             onNone: () => ({ type: "none" as const }),
             onSome: (el) => {
               switch (el.type) {
-                case "block":
-                  return { type: "block" as const, blockId: el.id };
-                case "buffer":
-                  return { type: "blockSelection" as const, bufferId: el.id };
+                case "frame":
+                  return { type: "blockSelection" as const, frameId: el.id };
                 default:
+                  if (el.type === "block") {
+                    return { type: "block" as const, blockId: el.id };
+                  }
                   // Other element types (title, property, etc.) don't map to EditorMode
                   return { type: "none" as const };
               }
             },
           });
         }),
-      enterBlockSelection: (bufferId: Id.Buffer): Effect.Effect<void> =>
+      enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
         Window.setActiveElement(
-          Option.some({ type: "buffer" as const, id: bufferId }),
+          Option.some({ type: "frame" as const, id: frameId }),
         ),
       enterBlockEditing: (blockId: Id.Block): Effect.Effect<void> =>
         Window.setActiveElement(
@@ -205,48 +216,48 @@ export const BufferLive = Layer.effect(
         Window.setActiveElement(Option.none()),
 
       // Popup operations
-      hasPopup: (bufferId: Id.Buffer) =>
-        get(bufferId).pipe(
-          Effect.map((buffer) => buffer.popup != null),
+      hasPopup: (frameId: Id.Frame) =>
+        get(frameId).pipe(
+          Effect.map((frame) => frame.popup != null),
           Effect.provideService(StoreT, Store),
         ),
-      openPopup: (bufferId: Id.Buffer, popup: Model.BufferPopup) =>
-        get(bufferId).pipe(
-          Effect.flatMap((buffer) =>
-            Store.setDocument("buffer", { ...buffer, popup }, bufferId),
+      openPopup: (frameId: Id.Frame, popup: Model.FramePopup) =>
+        get(frameId).pipe(
+          Effect.flatMap((frame) =>
+            Store.setDocument("frame", { ...frame, popup }, frameId),
           ),
           Effect.asVoid,
           Effect.orDie,
           Effect.provideService(StoreT, Store),
         ),
-      closePopup: (bufferId: Id.Buffer) =>
-        get(bufferId).pipe(
-          Effect.flatMap((buffer) =>
-            Store.setDocument("buffer", { ...buffer, popup: null }, bufferId),
+      closePopup: (frameId: Id.Frame) =>
+        get(frameId).pipe(
+          Effect.flatMap((frame) =>
+            Store.setDocument("frame", { ...frame, popup: null }, frameId),
           ),
           Effect.asVoid,
           Effect.orDie,
           Effect.provideService(StoreT, Store),
         ),
-      updatePopupQuery: (bufferId: Id.Buffer, query: string) =>
-        get(bufferId).pipe(
-          Effect.flatMap((buffer) => {
-            if (!buffer.popup) return Effect.void;
+      updatePopupQuery: (frameId: Id.Frame, query: string) =>
+        get(frameId).pipe(
+          Effect.flatMap((frame) => {
+            if (!frame.popup) return Effect.void;
             return Store.setDocument(
-              "buffer",
-              { ...buffer, popup: { ...buffer.popup, query } },
-              bufferId,
+              "frame",
+              { ...frame, popup: { ...frame.popup, query } },
+              frameId,
             ).pipe(Effect.asVoid, Effect.orDie);
           }),
           Effect.provideService(StoreT, Store),
         ),
-      setActiveView: (bufferId: Id.Buffer, viewId: Id.Node | null) =>
-        get(bufferId).pipe(
-          Effect.flatMap((buffer) =>
+      setActiveView: (frameId: Id.Frame, viewId: Id.Node | null) =>
+        get(frameId).pipe(
+          Effect.flatMap((frame) =>
             Store.setDocument(
-              "buffer",
-              { ...buffer, activeViewId: viewId },
-              bufferId,
+              "frame",
+              { ...frame, activeViewId: viewId },
+              frameId,
             ),
           ),
           Effect.asVoid,

@@ -19,7 +19,7 @@ export class DeleteWordForward extends Data.TaggedClass(tag)<{}> {
     if (!isAtEnd) {
       yield* Editor.deleteWordForward();
       const ctx = yield* resolveActiveBlockContext();
-      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+      if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
 

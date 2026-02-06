@@ -1,8 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { BufferT } from "@/services/ui/Buffer";
-import BufferView from "@/ui/BufferView";
+import { FrameT } from "@/services/ui/Frame";
+import FrameView from "@/ui/FrameView";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -32,10 +32,10 @@ describe("Body click creates block", () => {
 
   it("clicking on empty body creates first block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, nodeId: rootNodeId } =
-        yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+      const { frameId, nodeId: rootNodeId } =
+        yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -59,7 +59,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(1);
       yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
-      const newBlockId = Id.makeBufferBlockId(bufferId, children[0]!);
+      const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -86,12 +86,12 @@ describe("Body click creates block", () => {
 
   it("clicking below last block creates new block at end", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
           { text: "Existing block" },
         ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -117,7 +117,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(2);
       yield* Then.NODE_HAS_TEXT(children[1]!, "");
 
-      const newBlockId = Id.makeBufferBlockId(bufferId, children[1]!);
+      const newBlockId = Id.makeFrameBlockId(frameId, children[1]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -144,15 +144,15 @@ describe("Body click creates block", () => {
 
   it("focuses existing empty last block instead of creating new one", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
           { text: "First block" },
           { text: "" },
         ]);
 
-      const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(async () => {
         const clickZone = await waitFor(
@@ -199,14 +199,14 @@ describe("Body click creates block", () => {
 
   it("allows typing after clicking body when last block is empty", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "" }],
       );
 
-      const emptyBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(async () => {
         const blockContent = await waitFor(
@@ -257,14 +257,14 @@ describe("Body click creates block", () => {
 
   it("refocuses CodeMirror when clicking body after block was focused", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "some text" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Effect.promise(async () => {
         const blockContent = await waitFor(
@@ -329,12 +329,12 @@ describe("Body click creates block", () => {
 
   it("clicking beside a block does NOT create or focus last block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Document Title",
         [{ text: "some text" }],
       );
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       const blockElement = yield* Effect.promise(() =>
         waitFor(
@@ -392,8 +392,8 @@ describe("Body click creates block", () => {
       const cm = document.querySelector(".cm-content");
       expect(cm).toBeNull();
 
-      const Buffer = yield* BufferT;
-      const modelSelection = yield* Buffer.getSelection(bufferId);
+      const Frame = yield* FrameT;
+      const modelSelection = yield* Frame.getSelection(frameId);
       expect(Option.isNone(modelSelection)).toBe(true);
     }).pipe(runtime.runPromise);
   });

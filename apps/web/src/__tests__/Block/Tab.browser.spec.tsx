@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -32,22 +32,22 @@ describe("Block selection Tab key", () => {
   it("Tab indents all selected blocks under previous sibling (grouped)", async () => {
     await Effect.gen(function* () {
       // Given: root with 3 children A, B, C at same level
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
           { text: "C" },
         ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select B and extend selection to C
-      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
       // Verify B and C are selected
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[1],
         childNodeIds[2],
       ]);
@@ -66,7 +66,7 @@ describe("Block selection Tab key", () => {
       yield* Then.NODE_HAS_TEXT(aChildren[1]!, "C");
 
       // Selection should be preserved
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[1],
         childNodeIds[2],
       ]);
@@ -76,17 +76,17 @@ describe("Block selection Tab key", () => {
   it("Shift+Tab outdents all selected blocks to parent's level", async () => {
     await Effect.gen(function* () {
       // Given: root with 3 children A, B, C - we'll indent B,C first, then outdent
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
           { text: "C" },
         ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // First, indent B and C under A (setup for outdent test)
-      const blockB = Id.makeBufferBlockId(bufferId, childNodeIds[1]);
+      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockB);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
       yield* When.USER_PRESSES("{Tab}");
@@ -114,21 +114,21 @@ describe("Block selection Tab key", () => {
   it("Tab does nothing when first selected block has no previous sibling", async () => {
     await Effect.gen(function* () {
       // Given: root with 2 children A, B
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
         ]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Select A (first child) and extend to B
-      const blockA = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockA = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
       // Verify A and B are selected
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[0],
         childNodeIds[1],
       ]);
@@ -140,7 +140,7 @@ describe("Block selection Tab key", () => {
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
 
       // Selection should be preserved
-      yield* Then.BLOCKS_ARE_SELECTED(bufferId, [
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [
         childNodeIds[0],
         childNodeIds[1],
       ]);
@@ -159,7 +159,7 @@ describe("Block selection Tab key", () => {
    */
   it("auto-expands collapsed parent when indenting single block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "C" }],
       );
@@ -172,10 +172,10 @@ describe("Block selection Tab key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-      const blockC = Id.makeBufferBlockId(bufferId, nodeC);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockC = Id.makeFrameBlockId(frameId, nodeC);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, false);
@@ -202,7 +202,7 @@ describe("Block selection Tab key", () => {
    */
   it("auto-expands collapsed parent when indenting selected blocks", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "A" }, { text: "C" }, { text: "D" }],
       );
@@ -215,10 +215,10 @@ describe("Block selection Tab key", () => {
         text: "B",
       });
 
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
-      const blockC = Id.makeBufferBlockId(bufferId, nodeC);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockC = Id.makeFrameBlockId(frameId, nodeC);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, false);

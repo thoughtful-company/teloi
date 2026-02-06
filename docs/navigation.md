@@ -40,7 +40,7 @@ When editing text inside a block, arrow keys first move within the block's conte
 
 ## Block Selection Navigation
 
-Enter block selection mode by pressing `Escape` while editing text, or by using `Shift+Arrow` at text boundaries or by clicking somewhere on the buffer and pressing `ArrowUp/Down`.
+Enter block selection mode by pressing `Escape` while editing text, or by using `Shift+Arrow` at text boundaries or by clicking somewhere on the frame and pressing `ArrowUp/Down`.
 
 ### Plain Arrow Keys
 
@@ -73,10 +73,10 @@ Implementation in `services/ui/Block/navigation.ts`:
 
 | Function | Purpose |
 |----------|---------|
-| `findPreviousNode(nodeId, bufferId)` | Previous block in document order. Returns parent if first child, else prev sibling's deepest visible descendant. |
-| `findNextNodeInDocumentOrder(nodeId, bufferId)` | Next block in document order. Descends into first child if expanded, else finds next sibling or climbs up. |
+| `findPreviousNode(nodeId, frameId)` | Previous block in document order. Returns parent if first child, else prev sibling's deepest visible descendant. |
+| `findNextNodeInDocumentOrder(nodeId, frameId)` | Next block in document order. Descends into first child if expanded, else finds next sibling or climbs up. |
 | `findNextNode(nodeId)` | Next sibling or ancestor's next sibling (no child descent). Used for text cursor "ArrowRight at end". |
-| `findDeepestLastChild(nodeId, bufferId)` | Deepest visible descendant. Used when landing on previous sibling. |
-| `isBlockExpanded(bufferId, nodeId)` | Check if block shows children. Collapsed blocks skip child navigation. |
+| `findDeepestLastChild(nodeId, frameId)` | Deepest visible descendant. Used when landing on previous sibling. |
+| `isBlockExpanded(frameId, nodeId)` | Check if block shows children. Collapsed blocks skip child navigation. |
 
 All functions respect collapsed state - they never navigate into hidden children.

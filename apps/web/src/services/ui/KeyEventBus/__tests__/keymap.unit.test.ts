@@ -5,7 +5,7 @@ import { TypeLive } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { KeyboardT } from "@/services/browser/Keyboard";
-import { BufferLive, BufferT } from "@/services/ui/Buffer";
+import { FrameLive, FrameT } from "@/services/ui/Frame";
 import { WindowLive } from "@/services/ui/Window";
 import {
   KeyEventBusLive,
@@ -38,7 +38,7 @@ const StubKeyboardLive = Layer.succeed(KeyboardT, {
 });
 
 type TestRuntime = ManagedRuntime.ManagedRuntime<
-  KeyEventBusT | BufferT | StoreT | AutomergeT | NodeT,
+  KeyEventBusT | FrameT | StoreT | AutomergeT | NodeT,
   never
 >;
 
@@ -56,7 +56,7 @@ const setupTest = async () => {
   const TestLayer = KeyEventBusLive.pipe(
     Layer.provideMerge(RecordingCommandBusLive),
     Layer.provideMerge(StubKeyboardLive),
-    Layer.provideMerge(BufferLive),
+    Layer.provideMerge(FrameLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(WindowLive),
@@ -105,39 +105,39 @@ describe("KeyEventBus — blockSelection keymap", () => {
 
   it("dispatches EditBlock on Enter", async () => {
     await Effect.gen(function* () {
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT("hello");
-      const Buffer = yield* BufferT;
-      yield* Buffer.enterBlockSelection(bufferId);
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(makeAppKeyEvent("Enter"));
 
       expect(handled).toBe(true);
       expect(dispatched).toHaveLength(1);
-      expect(dispatched[0]!._tag).toBe("buffer:editBlock");
+      expect(dispatched[0]!._tag).toBe("frame:editBlock");
     }).pipe(runtime.runPromise);
   });
 
   it("dispatches Indent on Tab", async () => {
     await Effect.gen(function* () {
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT("hello");
-      const Buffer = yield* BufferT;
-      yield* Buffer.enterBlockSelection(bufferId);
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(makeAppKeyEvent("Tab"));
 
       expect(handled).toBe(true);
       expect(dispatched).toHaveLength(1);
-      expect(dispatched[0]!._tag).toBe("buffer:indent");
+      expect(dispatched[0]!._tag).toBe("frame:indent");
     }).pipe(runtime.runPromise);
   });
 
   it("dispatches Outdent on Shift+Tab", async () => {
     await Effect.gen(function* () {
-      const { bufferId } = yield* Given.A_BUFFER_WITH_TEXT("hello");
-      const Buffer = yield* BufferT;
-      yield* Buffer.enterBlockSelection(bufferId);
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(
@@ -146,7 +146,7 @@ describe("KeyEventBus — blockSelection keymap", () => {
 
       expect(handled).toBe(true);
       expect(dispatched).toHaveLength(1);
-      expect(dispatched[0]!._tag).toBe("buffer:outdent");
+      expect(dispatched[0]!._tag).toBe("frame:outdent");
     }).pipe(runtime.runPromise);
   });
 });

@@ -6,7 +6,7 @@
  * those services and provides them during execution.
  */
 
-import { bufferCommands, type BufferCommand } from "@/commands/buffer";
+import { frameCommands, type FrameCommand } from "@/commands/frame";
 import { chatCommands, type ChatCommand } from "@/commands/chat";
 import { editorCommands, type EditorCommand } from "@/commands/editor";
 import { NodeT } from "@/services/domain/Node";
@@ -15,7 +15,7 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
 import { NavigationT } from "@/services/ui/Navigation";
@@ -27,7 +27,7 @@ import { Context, Effect, Layer } from "effect";
 // Command Type
 // ============================================================================
 
-export type Command = EditorCommand | BufferCommand | ChatCommand;
+export type Command = EditorCommand | FrameCommand | ChatCommand;
 
 // ============================================================================
 // Handler Registry
@@ -39,7 +39,7 @@ type Handler<C extends Command> = (
 
 const handlers: Record<string, Handler<Command>> = Object.fromEntries([
   ...editorCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
-  ...bufferCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
+  ...frameCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
   ...chatCommands.map((C) => [C.tag, C.handle as Handler<Command>]),
 ]);
 
@@ -64,7 +64,7 @@ export const CommandBusLive = Layer.effect(
     // Capture services that commands need
     const Editor = yield* EditorT;
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
     const Store = yield* StoreT;
@@ -78,7 +78,7 @@ export const CommandBusLive = Layer.effect(
     const commandContext = Context.empty().pipe(
       Context.add(EditorT, Editor),
       Context.add(WindowT, Window),
-      Context.add(BufferT, Buffer),
+      Context.add(FrameT, Frame),
       Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),
       Context.add(StoreT, Store),

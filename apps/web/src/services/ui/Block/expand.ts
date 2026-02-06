@@ -25,7 +25,7 @@ export interface ExpandResult {
  * Used for keyboard shortcuts that progressively reveal a tree (Cmd+Down on a block).
  */
 export const expandOneLevel = (
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   nodeId: Id.Node,
 ): Effect.Effect<ExpandResult, never, StoreT | NodeT | AutomergeT> =>
   Effect.gen(function* () {
@@ -37,17 +37,17 @@ export const expandOneLevel = (
       nId: Id.Node,
     ): Effect.Effect<ExpandResult, never, StoreT | NodeT | AutomergeT> =>
       Effect.gen(function* () {
-        const blockDoc = yield* getBlockDoc(bufferId, nId);
+        const blockDoc = yield* getBlockDoc(frameId, nId);
 
         if (!blockDoc.isExpanded) {
-          const blockId = Id.makeBufferBlockId(bufferId, nId);
+          const blockId = Id.makeFrameBlockId(frameId, nId);
           const children = yield* Node.getNodeChildren(nId);
 
           if (children.length === 0) {
             const ghostNodeId = yield* createGhost(
               Store,
               Automerge,
-              bufferId,
+              frameId,
               nId,
               blockId,
             );
@@ -72,11 +72,11 @@ export const expandOneLevel = (
 
         // Expanded, no children, no ghost yet — create one
         if (children.length === 0 && !blockDoc.ghostChildId) {
-          const blockId = Id.makeBufferBlockId(bufferId, nId);
+          const blockId = Id.makeFrameBlockId(frameId, nId);
           const ghostNodeId = yield* createGhost(
             Store,
             Automerge,
-            bufferId,
+            frameId,
             nId,
             blockId,
           );
@@ -94,7 +94,7 @@ export const expandOneLevel = (
 const createGhost = (
   Store: StoreT["Type"],
   Automerge: AutomergeT["Type"],
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   parentNodeId: Id.Node,
   parentBlockId: Id.Block,
 ): Effect.Effect<Id.Node> =>
@@ -112,7 +112,7 @@ const createGhost = (
       parentBlockId,
     ).pipe(Effect.catchAll(() => Effect.void));
 
-    const ghostBlockId = Id.makeBufferBlockId(bufferId, ghostChildId);
+    const ghostBlockId = Id.makeFrameBlockId(frameId, ghostChildId);
     yield* Store.setDocument(
       "block",
       {

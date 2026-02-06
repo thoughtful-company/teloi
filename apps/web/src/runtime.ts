@@ -16,7 +16,7 @@ import { getStoreLayer } from "./services/external/Store";
 import { makeAutomergeLive } from "./services/external/Automerge";
 import { BlockLive } from "./services/ui/Block";
 import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
-import { BufferLive } from "./services/ui/Buffer";
+import { FrameLive } from "./services/ui/Frame";
 import { TitleLive } from "./services/ui/Title";
 import { NavigationLive } from "./services/ui/Navigation";
 import { PickerLive } from "./services/ui/Picker";
@@ -78,7 +78,7 @@ const EventCommandBusGroup = Layer.provideMerge(
   KeyEventBusLive,
   CommandBusLive,
 );
-// Group Editor and View (both need BufferT, WindowT from below)
+// Group Editor and View (both need FrameT, WindowT from below)
 const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
 const BrowserLayer = pipe(
@@ -91,7 +91,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(BlockLive),
   Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
-  Layer.provideMerge(BufferLive),
+  Layer.provideMerge(FrameLive),
   Layer.provideMerge(PropertyChatLive),
   Layer.provideMerge(Layer.merge(WindowLive, ChatProviderLive)),
   Layer.provideMerge(TupleLive),

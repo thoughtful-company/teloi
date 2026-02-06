@@ -9,14 +9,14 @@
 ### DON'T: Click to set selection
 ```typescript
 // BAD - clicking resets selection
-yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset);
+yield* Given.FRAME_HAS_CURSOR(frameId, nodeId, offset);
 yield* When.USER_CLICKS_BLOCK(blockId); // This RESETS the selection!
 ```
 
 ### DO: Set selection and active element separately
 ```typescript
 // GOOD - set selection via model, then set active element directly
-yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset);
+yield* Given.FRAME_HAS_CURSOR(frameId, nodeId, offset);
 yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
 ```
 
@@ -35,16 +35,16 @@ Use `Given.ACTIVE_ELEMENT_IS(element)` to set the active element without trigger
 yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
 
 // For a title:
-yield* Given.ACTIVE_ELEMENT_IS({ bufferId, type: "title" });
+yield* Given.ACTIVE_ELEMENT_IS({ frameId, type: "title" });
 ```
 
 ### Setting Selection
 
-Use `Given.BUFFER_HAS_CURSOR(bufferId, nodeId, offset)` to set cursor position directly:
+Use `Given.FRAME_HAS_CURSOR(frameId, nodeId, offset)` to set cursor position directly:
 
 ```typescript
 const cursorPosition = 42;
-yield* Given.BUFFER_HAS_CURSOR(bufferId, nodeId, cursorPosition);
+yield* Given.FRAME_HAS_CURSOR(frameId, nodeId, cursorPosition);
 ```
 
 **NEVER** navigate character-by-character to set cursor position:

@@ -116,7 +116,7 @@ This is a pnpm monorepo with:
 **Component Hierarchy**:
 - **App**
   - **Sidebar** (navigation, page list)
-  - **BufferView**: Renders a node. Subscribes to buffer, renders title, view tabs, properties, and content.
+  - **FrameView**: Renders a node. Subscribes to frame, renders title, view tabs, properties, and content.
     Conditionally renders **page view** (default outline) or an alternate view (e.g., **TableView**) based on `activeViewId`.
     See `docs/views.md` for the view system design.
     - **Title**
@@ -190,13 +190,13 @@ Local-first SQLite database with event sourcing:
 
 ### Schema System (`apps/web/src/schema/`)
 Typed domain models using Effect Schema:
-- `Model.DocumentName` enum defines document types (Window, Pane, Buffer, Block, Selection)
+- `Model.DocumentName` enum defines document types (Window, Pane, Frame, Block, Selection)
 - `Id` module provides branded ID types for type-safe entity references
 - `Entity` module defines reusable entity structures
 
 ### Runtime
 `apps/web/src/runtime.ts` - Creates a `ManagedRuntime` with full service layer composition:
-- BlockLive → BufferLive → WindowLive → NodeLive → StoreLive (via `Layer.provideMerge`)
+- BlockLive → FrameLive → WindowLive → NodeLive → StoreLive (via `Layer.provideMerge`)
 - LiveStore initialized from `livestore/store.ts`
 - Exported as `BrowserRuntime` and provided via SolidJS context
 
@@ -205,7 +205,7 @@ URL format: `/workspace/<nodeId>` (workspace name hardcoded for now)
 
 **Key services:**
 - `URLServiceB` (`services/browser/URLService.ts`) - Low-level URL access with `getPath()`, `setPath()`, and popstate stream
-- `NavigationT` (`services/ui/Navigation/`) - Orchestrates URL ↔ buffer sync
+- `NavigationT` (`services/ui/Navigation/`) - Orchestrates URL ↔ frame sync
 
 ## Coding Pattern
 
@@ -223,7 +223,7 @@ The separator is 80 characters wide (including `// ` prefix).
   Three-tier service organization:
   - **external/** - External integrations (LiveStore database wrapper via `StoreT`)
   - **domain/** - Business logic services (e.g., `NodeT` for node operations)
-  - **ui/** - UI-specific services (e.g., `BufferT` for editor buffer state)
+  - **ui/** - UI-specific services (e.g., `FrameT` for frame state)
 - **Layers** (`Layer.effect`) compose services with dependency injection. Currently there is one layer: `BrowserLayer` in `runtime.ts`.
 - **Errors** are typed with `Data.TaggedError` for discriminated unions
 - **Tracing**: Use `Effect.fn` for traceable functions instead of plain `Effect.gen`:

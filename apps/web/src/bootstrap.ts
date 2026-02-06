@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 
 /**
  * Bootstrap effect that ensures the app has required initial state.
- * Creates window → pane → buffer → node hierarchy if not present.
+ * Creates window → pane → frame → node hierarchy if not present.
  * Returns the fallback nodeId for URL sync (either newly created or existing).
  */
 export const bootstrap = Effect.gen(function* () {
@@ -18,23 +18,23 @@ export const bootstrap = Effect.gen(function* () {
 
   const windowDoc = yield* Store.getDocument("window", windowId);
 
-  // Already initialized - get existing buffer's assignedNodeId as fallback
+  // Already initialized - get existing frame's assignedNodeId as fallback
   if (Option.isSome(windowDoc) && windowDoc.value.panes.length > 0) {
     const paneDoc = yield* Store.getDocument("pane", windowDoc.value.panes[0]);
-    if (Option.isSome(paneDoc) && paneDoc.value.buffers.length > 0) {
-      const bufferDoc = yield* Store.getDocument(
-        "buffer",
-        paneDoc.value.buffers[0],
+    if (Option.isSome(paneDoc) && paneDoc.value.frames.length > 0) {
+      const frameDoc = yield* Store.getDocument(
+        "frame",
+        paneDoc.value.frames[0],
       );
-      if (Option.isSome(bufferDoc) && bufferDoc.value.assignedNodeId) {
-        return Id.Node.make(bufferDoc.value.assignedNodeId);
+      if (Option.isSome(frameDoc) && frameDoc.value.assignedNodeId) {
+        return Id.Node.make(frameDoc.value.assignedNodeId);
       }
     }
     return undefined;
   }
 
   const paneId = Id.Pane.make(nanoid());
-  const bufferId = Id.Buffer.make(nanoid());
+  const frameId = Id.Frame.make(nanoid());
   const nodeId = Id.Node.make(nanoid());
 
   const childId1 = Id.Node.make(nanoid());
@@ -107,6 +107,11 @@ export const bootstrap = Effect.gen(function* () {
     {
       panes: [paneId],
       activeElement: null,
+      selection: null,
+      selectedBlocks: [],
+      blockSelectionAnchor: null,
+      blockSelectionFocus: null,
+      lastFocusedBlockId: null,
     },
     windowId,
   );
@@ -116,31 +121,26 @@ export const bootstrap = Effect.gen(function* () {
     "pane",
     {
       parent: { id: windowId, type: "window" },
-      buffers: [bufferId],
+      frames: [frameId],
     },
     paneId,
   );
 
-  // Create buffer document - let navigation set assignedNodeId from URL
+  // Create frame document - let navigation set assignedNodeId from URL
   yield* Store.setDocument(
-    "buffer",
+    "frame",
     {
       windowId,
       parent: { id: paneId, type: "pane" },
       assignedNodeId: null,
-      selectedBlocks: [],
-      blockSelectionAnchor: null,
-      blockSelectionFocus: null,
-      lastFocusedBlockId: null,
       toggledNodes: [],
-      selection: null,
       activeViewId: null,
       popup: null,
     },
-    bufferId,
+    frameId,
   );
 
-  yield* Effect.log("Bootstrap complete: created window, pane, buffer, node");
+  yield* Effect.log("Bootstrap complete: created window, pane, frame, node");
 
   return Id.Node.make(nodeId);
 });

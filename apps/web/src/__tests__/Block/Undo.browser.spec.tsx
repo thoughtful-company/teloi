@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -35,15 +35,15 @@ describe("Block Undo (Cmd+Z)", () => {
    */
   it("restores deleted text after select-all and Backspace", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
         [{ text: "Hello" }],
       );
 
       const [nodeId] = childNodeIds;
-      const blockId = Id.makeBufferBlockId(bufferId, nodeId);
+      const blockId = Id.makeFrameBlockId(frameId, nodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Focus block
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -76,16 +76,16 @@ describe("Block Undo (Cmd+Z)", () => {
    */
   it.fails("undoes block merge after Delete", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second" },
         ]);
 
       const [firstNodeId] = childNodeIds;
-      const firstBlockId = Id.makeBufferBlockId(bufferId, firstNodeId);
+      const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Focus first block at end
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5); // "First" = 5 chars

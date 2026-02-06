@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { WindowT } from "@/services/ui/Window";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
 import { waitFor } from "solid-testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,17 +17,17 @@ import {
 } from "@/test-utils/bdd";
 
 /**
- * Enter/Space buffer activation tests.
+ * Enter/Space frame activation tests.
  *
- * When buffer is active but nothing is selected (no block selection, no text editing),
+ * When frame is active but nothing is selected (no block selection, no text editing),
  * pressing Enter or Space should:
- * - If buffer has no children: create new block and enter editing mode (cursor at pos 0)
+ * - If frame has no children: create new block and enter editing mode (cursor at pos 0)
  * - If last block is empty: focus it (enter editing mode, cursor at end = 0)
  * - If last block has content: create new block after it, focus new block (cursor at pos 0)
  *
  * Neither should trigger when CodeMirror is focused or in block selection mode.
  */
-describe("Enter/Space buffer activation", () => {
+describe("Enter/Space frame activation", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -44,21 +44,21 @@ describe("Enter/Space buffer activation", () => {
   });
 
   /**
-   * Sets up the pane/window hierarchy so getActiveBufferId() works.
-   * The Given.A_BUFFER_WITH_CHILDREN helper creates a buffer but doesn't
+   * Sets up the pane/window hierarchy so getActiveFrameId() works.
+   * The Given.A_FRAME_WITH_CHILDREN helper creates a frame but doesn't
    * register the pane in the window, so we need to do that here.
    */
-  const registerBufferInWindow = (bufferId: Id.Buffer, windowId: Id.Window) =>
+  const registerFrameInWindow = (frameId: Id.Frame, windowId: Id.Window) =>
     Effect.gen(function* () {
       const Store = yield* StoreT;
       const paneId = Id.Pane.make("test-pane");
 
-      // Create pane document with the buffer
+      // Create pane document with the frame
       yield* Store.setDocument(
         "pane",
         {
           parent: { id: windowId, type: "window" },
-          buffers: [bufferId],
+          frames: [frameId],
         },
         paneId,
       );
@@ -69,16 +69,21 @@ describe("Enter/Space buffer activation", () => {
         {
           panes: [paneId],
           activeElement: null,
+          selection: null,
+          selectedBlocks: [],
+          blockSelectionAnchor: null,
+          blockSelectionFocus: null,
+          lastFocusedBlockId: null,
         },
         windowId,
       );
     });
 
   /**
-   * Sets the buffer as the active element (no text editing, no block selection).
+   * Sets the frame as the active element (no text editing, no block selection).
    * This is the state where Enter/Space should trigger.
    */
-  const activateBufferWithoutSelection = (bufferId: Id.Buffer) =>
+  const activateFrameWithoutSelection = (frameId: Id.Frame) =>
     Effect.gen(function* () {
       // Blur any DOM-focused element
       if (document.activeElement instanceof HTMLElement) {
@@ -87,7 +92,7 @@ describe("Enter/Space buffer activation", () => {
 
       const Window = yield* WindowT;
       yield* Window.setActiveElement(
-        Option.some({ type: "buffer", id: bufferId }),
+        Option.some({ type: "frame", id: frameId }),
       );
 
       // Verify the state
@@ -97,7 +102,7 @@ describe("Enter/Space buffer activation", () => {
       const el = Option.getOrThrow(activeElement);
       expect(Option.isSome(el)).toBe(true);
       const element = Option.getOrThrow(el);
-      expect(element.type).toBe("buffer");
+      expect(element.type).toBe("frame");
     });
 
   /**
@@ -130,9 +135,9 @@ describe("Enter/Space buffer activation", () => {
     );
 
   /**
-   * Gets the children of the buffer's root node.
+   * Gets the children of the frame's root node.
    */
-  const getBufferChildren = (rootNodeId: Id.Node) =>
+  const getFrameChildren = (rootNodeId: Id.Node) =>
     Effect.gen(function* () {
       const Node = yield* NodeT;
       return yield* Node.getNodeChildren(rootNodeId);
@@ -147,20 +152,20 @@ describe("Enter/Space buffer activation", () => {
       return yield* Automerge.getText(nodeId);
     });
 
-  describe("Empty buffer behavior", () => {
-    it("Enter on empty buffer creates first block and enters editing mode", async () => {
+  describe("Empty frame behavior", () => {
+    it("Enter on empty frame creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
         const {
-          bufferId,
+          frameId,
           nodeId: rootNodeId,
           windowId,
-        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        } = yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(0);
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument("Enter");
 
@@ -172,7 +177,7 @@ describe("Enter/Space buffer activation", () => {
         yield* waitForCodeMirrorFocused();
 
         // New block should be empty
-        const children = yield* getBufferChildren(rootNodeId);
+        const children = yield* getFrameChildren(rootNodeId);
         const newBlockText = yield* getNodeText(children[0]!);
         expect(newBlockText).toBe("");
 
@@ -181,19 +186,19 @@ describe("Enter/Space buffer activation", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("Space on empty buffer creates first block and enters editing mode", async () => {
+    it("Space on empty frame creates first block and enters editing mode", async () => {
       await Effect.gen(function* () {
         const {
-          bufferId,
+          frameId,
           nodeId: rootNodeId,
           windowId,
-        } = yield* Given.A_BUFFER_WITH_TEXT("Document Title");
+        } = yield* Given.A_FRAME_WITH_TEXT("Document Title");
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(0);
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument(" ");
 
@@ -205,7 +210,7 @@ describe("Enter/Space buffer activation", () => {
         yield* waitForCodeMirrorFocused();
 
         // New block should be empty
-        const children = yield* getBufferChildren(rootNodeId);
+        const children = yield* getFrameChildren(rootNodeId);
         const newBlockText = yield* getNodeText(children[0]!);
         expect(newBlockText).toBe("");
 
@@ -218,16 +223,16 @@ describe("Enter/Space buffer activation", () => {
   describe("Last block empty behavior", () => {
     it("Enter when last block is empty focuses that block (cursor at end)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "First block" },
             { text: "" }, // Empty last block
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(2);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument("Enter");
 
@@ -252,7 +257,7 @@ describe("Enter/Space buffer activation", () => {
         expect(element.type).toBe("block");
         if (element.type === "block") {
           expect(element.id).toBe(
-            Id.makeBufferBlockId(bufferId, childNodeIds[1]),
+            Id.makeFrameBlockId(frameId, childNodeIds[1]),
           );
         }
       }).pipe(runtime.runPromise);
@@ -260,16 +265,16 @@ describe("Enter/Space buffer activation", () => {
 
     it("Space when last block is empty focuses that block (cursor at end)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "First block" },
             { text: "" }, // Empty last block
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(2);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument(" ");
 
@@ -294,7 +299,7 @@ describe("Enter/Space buffer activation", () => {
         expect(element.type).toBe("block");
         if (element.type === "block") {
           expect(element.id).toBe(
-            Id.makeBufferBlockId(bufferId, childNodeIds[1]),
+            Id.makeFrameBlockId(frameId, childNodeIds[1]),
           );
         }
       }).pipe(runtime.runPromise);
@@ -304,16 +309,16 @@ describe("Enter/Space buffer activation", () => {
   describe("Last block has content behavior", () => {
     it("Enter when last block has content creates new block after it", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "First block" },
             { text: "Last block with content" },
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(2);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument("Enter");
 
@@ -325,7 +330,7 @@ describe("Enter/Space buffer activation", () => {
         yield* waitForCodeMirrorFocused();
 
         // New block should be empty
-        const children = yield* getBufferChildren(rootNodeId);
+        const children = yield* getFrameChildren(rootNodeId);
         const newBlockText = yield* getNodeText(children[2]!);
         expect(newBlockText).toBe("");
 
@@ -336,16 +341,16 @@ describe("Enter/Space buffer activation", () => {
 
     it("Space when last block has content creates new block after it", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "First block" },
             { text: "Last block with content" },
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(2);
-        yield* activateBufferWithoutSelection(bufferId);
+        yield* activateFrameWithoutSelection(frameId);
 
         yield* pressKeyOnDocument(" ");
 
@@ -357,7 +362,7 @@ describe("Enter/Space buffer activation", () => {
         yield* waitForCodeMirrorFocused();
 
         // New block should be empty
-        const children = yield* getBufferChildren(rootNodeId);
+        const children = yield* getFrameChildren(rootNodeId);
         const newBlockText = yield* getNodeText(children[2]!);
         expect(newBlockText).toBe("");
 
@@ -370,23 +375,23 @@ describe("Enter/Space buffer activation", () => {
   describe("Should NOT trigger in certain modes", () => {
     it("Enter does not trigger when CodeMirror is focused (typing in a block)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "Block content" },
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
         // Click the block to enter editing mode
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
         yield* waitForCodeMirrorFocused();
 
         // Get initial block count
-        const initialChildren = yield* getBufferChildren(rootNodeId);
+        const initialChildren = yield* getFrameChildren(rootNodeId);
         expect(initialChildren.length).toBe(1);
 
         // Press Enter (should be handled by CodeMirror, not our activation handler)
@@ -403,16 +408,16 @@ describe("Enter/Space buffer activation", () => {
 
     it("Space does not trigger when CodeMirror is focused (typing in a block)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, childNodeIds, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "Block content" },
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
         // Click the block to enter editing mode
         yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -435,22 +440,22 @@ describe("Enter/Space buffer activation", () => {
 
     it("Enter does not trigger when in block selection mode (existing handler takes over)", async () => {
       await Effect.gen(function* () {
-        const { bufferId, rootNodeId, childNodeIds, windowId } =
-          yield* Given.A_BUFFER_WITH_CHILDREN("Document Title", [
+        const { frameId, rootNodeId, childNodeIds, windowId } =
+          yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
             { text: "Block content" },
           ]);
 
-        yield* registerBufferInWindow(bufferId, windowId);
-        render(() => <BufferView bufferId={bufferId} />);
+        yield* registerFrameInWindow(frameId, windowId);
+        render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
         // Enter block selection mode
         yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
 
         // Verify we're in block selection mode
-        yield* Then.BLOCKS_ARE_SELECTED(bufferId, [childNodeIds[0]], {
+        yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
           anchor: childNodeIds[0],
           focus: childNodeIds[0],
         });

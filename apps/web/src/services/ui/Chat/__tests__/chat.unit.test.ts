@@ -6,7 +6,7 @@ import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { BlockLive } from "@/services/ui/Block";
-import { BufferLive, BufferT } from "@/services/ui/Buffer";
+import { FrameLive, FrameT } from "@/services/ui/Frame";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { ChatProviderT } from "@/services/external/ChatProvider";
@@ -33,7 +33,7 @@ const pollUntil = (condition: () => void) =>
   );
 
 type TestRuntime = ManagedRuntime.ManagedRuntime<
-  ChatT | NodeT | TupleT | TypeT | BufferT | AutomergeT | StoreT,
+  ChatT | NodeT | TupleT | TypeT | FrameT | AutomergeT | StoreT,
   never
 >;
 
@@ -52,13 +52,13 @@ const setupTest = async () => {
     send: () => Effect.succeed("[test response]"),
   });
 
-  // Layer order: lower provides to higher; Picker needs Buffer, Block needs Picker
+  // Layer order: lower provides to higher; Picker needs Frame, Block needs Picker
   const TestLayer = ChatLive.pipe(
     Layer.provideMerge(ViewLive),
     Layer.provideMerge(BlockLive),
     Layer.provideMerge(PickerLive),
     Layer.provideMerge(TypePickerLive),
-    Layer.provideMerge(BufferLive),
+    Layer.provideMerge(FrameLive),
     Layer.provideMerge(TestChatProviderLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
@@ -96,7 +96,7 @@ describe("Chat.getMessages", () => {
 
   it("returns messages sorted by fractional index with correct role and content", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
       const Automerge = yield* AutomergeT;
 
       const idx1 = generateKeyBetween(null, null);
@@ -128,7 +128,7 @@ describe("Chat.getMessages", () => {
 
   it("includes untyped messages with inherited role from previous message", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
 
       const idx1 = generateKeyBetween(null, null);
       const idx2 = generateKeyBetween(idx1, null);
@@ -153,7 +153,7 @@ describe("Chat.getMessages", () => {
 
   it("defaults untyped first message to user", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
 
       const idx1 = generateKeyBetween(null, null);
       const idx2 = generateKeyBetween(idx1, null);
@@ -190,7 +190,7 @@ describe("Chat.subscribeMessages", () => {
 
   it("emits updated list when a new message tuple is created", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
 
       const Chat = yield* ChatT;
       const stream = yield* Chat.subscribeMessages(chatNodeId);
@@ -224,7 +224,7 @@ describe("Chat.subscribeMessages", () => {
 
   it("emits when a message's type is added", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
       const Type = yield* TypeT;
 
       const idx1 = generateKeyBetween(null, null);
@@ -263,7 +263,7 @@ describe("Chat.subscribeMessages", () => {
 
   it("emits when a message's type is removed", async () => {
     await Effect.gen(function* () {
-      const { chatNodeId } = yield* Given.A_CHAT_BUFFER();
+      const { chatNodeId } = yield* Given.A_CHAT_FRAME();
       const Type = yield* TypeT;
 
       const idx1 = generateKeyBetween(null, null);

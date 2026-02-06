@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BlockT } from "@/services/ui/Block";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -32,16 +32,16 @@ describe("MergeForward (Delete at end of block)", () => {
       //   Root
       //     - A("Hello")
       //     - B(" World")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: " World" },
         ]);
 
       const [nodeA] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 5);
       yield* When.USER_PRESSES("{Delete}");
@@ -58,11 +58,11 @@ describe("MergeForward (Delete at end of block)", () => {
       //   Root
       //     - A("Parent")
       //       - A1("Child")
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Parent" }]);
+      const { frameId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const [nodeA] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -70,7 +70,7 @@ describe("MergeForward (Delete at end of block)", () => {
         text: "Child",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // A is expanded by default, so the block below A is A1
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 6);
@@ -89,14 +89,14 @@ describe("MergeForward (Delete at end of block)", () => {
       //     - A("Hello")
       //     - B("World")
       //       - B1("Nested")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: "World" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeB,
@@ -104,7 +104,7 @@ describe("MergeForward (Delete at end of block)", () => {
         text: "Nested",
       });
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 5);
       yield* When.USER_PRESSES("{Delete}");
@@ -121,13 +121,13 @@ describe("MergeForward (Delete at end of block)", () => {
       // Structure:
       //   Root
       //     - A("Only")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [{ text: "Only" }]);
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Only" }]);
 
       const [nodeA] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 4);
       yield* When.USER_PRESSES("{Delete}");
@@ -145,14 +145,14 @@ describe("MergeForward (Delete at end of block)", () => {
       //     - A("Parent") [COLLAPSED]
       //       - A1("Child")
       //     - B("Sibling")
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Parent" },
           { text: "Sibling" },
         ]);
 
       const [nodeA] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -164,7 +164,7 @@ describe("MergeForward (Delete at end of block)", () => {
       const Block = yield* BlockT;
       yield* Block.setExpanded(blockA, false);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 6);
       yield* When.USER_PRESSES("{Delete}");
@@ -182,16 +182,16 @@ describe("MergeForward (Delete at end of block)", () => {
       //   Root
       //     - A("Hello")
       //     - B(" World")
-      const { bufferId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root", [
+      const { frameId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Hello" },
           { text: " World" },
         ]);
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeBufferBlockId(bufferId, nodeA);
+      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockA, 5);
       yield* When.USER_PRESSES("{Delete}");

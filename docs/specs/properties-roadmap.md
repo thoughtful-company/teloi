@@ -36,7 +36,7 @@ This document outlines the implementation phases for the Properties feature. See
 - PropertySection renders property name (editable via Editor) on left
 - Linked blocks display on right as full Block components
 - Ghost block shown when property bound but no linked blocks
-- Integrated into Buffer via PropertyList component
+- Integrated into Frame via PropertyList component
 - Tests: `apps/web/src/__tests__/PropertySection.browser.spec.tsx` (8 tests)
 
 ### Phase 4: Property Creation Flow ✅
@@ -74,11 +74,11 @@ section:{sectionId}/node:{nodeId}
 
 **New format:**
 ```
-buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
+frame:{frameId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
 ```
 
 **Key changes:**
-- `BlockContext.section` now includes `bufferId`, `hostNodeId`, `propertyId`, `tupleId`
+- `BlockContext.section` now includes `frameId`, `hostNodeId`, `propertyId`, `tupleId`
 - `displayNodeId` is derived from tuple lookup (not stored in ID)
 - Added `Id.makePropertyBlockId()` and `Id.VIRTUAL_TUPLE` sentinel
 - `PropertyT.getLinkedTuples()` returns `{ tupleId, displayNodeId }[]`
@@ -89,7 +89,7 @@ buffer:{bufferId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
 - The linked block represents a **tuple instance** (relationship), not just a node
 - Deleting a "linked block" means deleting the tuple, not the node
 - The same node could appear in multiple tuples
-- Proper UI anchor with bufferId + hostNodeId
+- Proper UI anchor with frameId + hostNodeId
 
 ---
 

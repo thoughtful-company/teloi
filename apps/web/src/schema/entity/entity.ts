@@ -13,11 +13,11 @@ export const Pane = Schema.Struct({
 });
 export type Pane = typeof Pane.Type;
 
-export const Buffer = Schema.Struct({
-  id: Id.Buffer,
-  type: Schema.Literal("buffer"),
+export const Frame = Schema.Struct({
+  id: Id.Frame,
+  type: Schema.Literal("frame"),
 });
-export type Buffer = typeof Buffer.Type;
+export type Frame = typeof Frame.Type;
 
 export const Block = Schema.Struct({
   id: Id.Block,
@@ -26,17 +26,24 @@ export const Block = Schema.Struct({
 export type Block = typeof Block.Type;
 
 export const Title = Schema.Struct({
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   type: Schema.Literal("title"),
 });
 export type Title = typeof Title.Type;
 
 export const Property = Schema.Struct({
   propertyId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   type: Schema.Literal("property"),
 });
 export type Property = typeof Property.Type;
 
-export const Element = Schema.Union(Window, Pane, Buffer, Block, Title, Property);
+export const Element = Schema.Union(
+  Window,
+  Pane,
+  Frame,
+  Block,
+  Title,
+  Property,
+);
 export type Element = typeof Element.Type;

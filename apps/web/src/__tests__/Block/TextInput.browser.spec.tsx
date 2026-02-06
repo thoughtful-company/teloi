@@ -9,7 +9,7 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import BufferView from "@/ui/BufferView";
+import FrameView from "@/ui/FrameView";
 import { Effect } from "effect";
 import { afterEach, beforeEach, describe, it } from "vitest";
 import {
@@ -40,7 +40,7 @@ describe("Text Input - Typing then Enter", () => {
    * Regression test: typing in a new block then pressing Enter should NOT truncate text.
    *
    * Steps to reproduce the bug:
-   * 1. Create a buffer with a block
+   * 1. Create a frame with a block
    * 2. Press Enter to create a new block
    * 3. Type some text (e.g., "hello world")
    * 4. Press Enter again
@@ -52,12 +52,12 @@ describe("Text Input - Typing then Enter", () => {
    */
   it("preserves all typed text when Enter is pressed after typing", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [{ text: "" }]);
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root node", [{ text: "" }]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Click the empty block
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -94,14 +94,14 @@ describe("Text Input - Typing then Enter", () => {
    */
   it("preserves text typed in a newly created block", async () => {
     await Effect.gen(function* () {
-      const { bufferId, rootNodeId, childNodeIds } =
-        yield* Given.A_BUFFER_WITH_CHILDREN("Root node", [
+      const { frameId, rootNodeId, childNodeIds } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
           { text: "First block" },
         ]);
 
-      const firstBlockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Focus the first block with cursor at end
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 11);
@@ -137,14 +137,14 @@ describe("Text Input - Typing then Enter", () => {
    */
   it("preserves all characters during rapid typing", async () => {
     await Effect.gen(function* () {
-      const { bufferId, childNodeIds } = yield* Given.A_BUFFER_WITH_CHILDREN(
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root node",
         [{ text: "" }],
       );
 
-      const blockId = Id.makeBufferBlockId(bufferId, childNodeIds[0]);
+      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
 
-      render(() => <BufferView bufferId={bufferId} />);
+      render(() => <FrameView frameId={frameId} />);
 
       // Click the empty block
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);

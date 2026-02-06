@@ -20,11 +20,11 @@ export interface MergeResult {
  */
 export const getParent = Effect.fn("View.page.getParent")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
   const Node = yield* NodeT;
 
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     return Option.some(blockDoc.ghostParentId);
   }
@@ -44,12 +44,12 @@ export const getParent = Effect.fn("View.page.getParent")(function* (
  */
 export const getChildren = Effect.fn("View.page.getChildren")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
   const Node = yield* NodeT;
 
   const children = yield* Node.getNodeChildren(nodeId);
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
 
   if (blockDoc.ghostChildId && children.length === 0) {
     return [blockDoc.ghostChildId] as readonly Id.Node[];
@@ -64,18 +64,18 @@ export const getChildren = Effect.fn("View.page.getChildren")(function* (
  */
 export const swap = Effect.fn("View.page.swap")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
   direction: "up" | "down",
 ) {
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
       parentNodeId: blockDoc.ghostParentId,
-      bufferId,
+      frameId,
     });
   }
 
@@ -124,17 +124,17 @@ export const swap = Effect.fn("View.page.swap")(function* (
  */
 export const moveToFirst = Effect.fn("View.page.moveToFirst")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
       parentNodeId: blockDoc.ghostParentId,
-      bufferId,
+      frameId,
     });
   }
 
@@ -166,17 +166,17 @@ export const moveToFirst = Effect.fn("View.page.moveToFirst")(function* (
  */
 export const moveToLast = Effect.fn("View.page.moveToLast")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
       parentNodeId: blockDoc.ghostParentId,
-      bufferId,
+      frameId,
     });
   }
 
@@ -208,24 +208,24 @@ export const moveToLast = Effect.fn("View.page.moveToLast")(function* (
  * For ghosts: just clean up block docs + Automerge text (no LiveStore node).
  * For real nodes: delete from LiveStore, clean up Automerge text.
  *
- * Returns focus target info (previous node, or buffer root if first node).
+ * Returns focus target info (previous node, or frame root if first node).
  */
 export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
   nodeId: Id.Node,
-  bufferId: Id.Buffer,
+  frameId: Id.Frame,
 ) {
   const Node = yield* NodeT;
   const Automerge = yield* AutomergeT;
   const Store = yield* StoreT;
 
-  const blockDoc = yield* getBlockDoc(bufferId, nodeId);
-  const bufferDoc = yield* Store.getDocument("buffer", bufferId);
-  const rootNodeId = Option.isSome(bufferDoc)
-    ? (bufferDoc.value.assignedNodeId as Id.Node | null)
+  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const frameDoc = yield* Store.getDocument("frame", frameId);
+  const rootNodeId = Option.isSome(frameDoc)
+    ? (frameDoc.value.assignedNodeId as Id.Node | null)
     : null;
 
   // Find focus target before deletion
-  const prevNodeOpt = yield* findPreviousNode(nodeId, bufferId);
+  const prevNodeOpt = yield* findPreviousNode(nodeId, frameId);
   const focusNodeId = Option.isSome(prevNodeOpt)
     ? prevNodeOpt.value
     : rootNodeId;
@@ -237,10 +237,7 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
     yield* Automerge.deleteText(nodeId);
 
     // Clear ghostChildId on parent
-    const parentBlockId = Id.makeBufferBlockId(
-      bufferId,
-      blockDoc.ghostParentId,
-    );
+    const parentBlockId = Id.makeFrameBlockId(frameId, blockDoc.ghostParentId);
     const parentDoc = yield* Store.getDocument("block", parentBlockId);
     if (Option.isSome(parentDoc)) {
       yield* Store.setDocument(
@@ -251,7 +248,7 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
     }
 
     // Clear own block doc
-    const ghostBlockId = Id.makeBufferBlockId(bufferId, nodeId);
+    const ghostBlockId = Id.makeFrameBlockId(frameId, nodeId);
     yield* Store.setDocument(
       "block",
       {

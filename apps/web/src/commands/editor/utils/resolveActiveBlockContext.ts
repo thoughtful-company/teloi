@@ -1,10 +1,10 @@
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { Effect, Option } from "effect";
 
 interface ActiveBlockContext {
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
   blockId: Id.Block;
   isTitle: boolean;
@@ -13,7 +13,7 @@ interface ActiveBlockContext {
 export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
   function* () {
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     const activeElement = yield* Window.getActiveElement();
     if (Option.isNone(activeElement)) {
@@ -28,17 +28,15 @@ export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
 
     const blockId = el.id;
     const blockContext = Id.parseBlockContextSync(blockId);
-    if (blockContext.type !== "buffer") {
+    if (blockContext.type !== "frame") {
       return Option.none<ActiveBlockContext>();
     }
 
-    const assignedNodeId = yield* Buffer.getAssignedNodeId(
-      blockContext.bufferId,
-    );
+    const assignedNodeId = yield* Frame.getAssignedNodeId(blockContext.frameId);
     const isTitle = blockContext.nodeId === assignedNodeId;
 
     return Option.some({
-      bufferId: blockContext.bufferId,
+      frameId: blockContext.frameId,
       nodeId: blockContext.nodeId,
       blockId,
       isTitle,

@@ -15,7 +15,6 @@ import {
   type ViewInfo,
   type ViewType,
 } from "./views";
-import { settleActiveElement, WindowT } from "@/services/ui/Window";
 import { deepEqual, queryDb } from "@livestore/livestore";
 import { Effect, Either, Option, Stream } from "effect";
 import { BlockGoneError, VirtualBlockError } from "./errors";
@@ -52,22 +51,18 @@ export const subscribe = (blockId: Id.Block) =>
   Effect.gen(function* () {
     const ctx = yield* Id.parseBlockContext(blockId);
     const Node = yield* NodeT;
-    const Window = yield* WindowT;
     const Tuple = yield* TupleT;
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
     const Automerge = yield* AutomergeT;
 
-    // Extract bufferId and nodeId based on block type
-    let bufferId: Id.Buffer;
+    // Extract nodeId based on block type
     let nodeId: Id.Node;
 
-    if (ctx.type === "buffer") {
-      bufferId = ctx.bufferId;
+    if (ctx.type === "frame") {
       nodeId = ctx.nodeId;
     } else {
       // Section block: derive nodeId from tuple lookup
-      bufferId = ctx.bufferId;
 
       // Virtual blocks cannot be subscribed to
       if (ctx.tupleId === Id.VIRTUAL_TUPLE) {
@@ -107,31 +102,15 @@ export const subscribe = (blockId: Id.Block) =>
       yield* Node.attestExistence(nodeId);
     }
 
+    // Resolve windowId once for selection/isSelected streams
+    const sessionId = yield* Store.getSessionId();
+    const windowId = Id.Window.make(sessionId);
+
     const block$ = yield* makeBlockStreamEither(blockId);
     const node$ = yield* makeNodeStreamEither(nodeId);
-    const selection$ = yield* makeSelectionStream(bufferId, nodeId, blockId);
-    const isSelected$ = yield* makeIsSelectedStream(bufferId, nodeId);
+    const window$ = yield* makeWindowDerivedStream(windowId, nodeId, blockId);
 
     const viewInfo$ = yield* subscribeViewInfo(nodeId);
-
-    const unsettledActiveElement = yield* Window.subscribeActiveElement();
-    // Settle the stream: delay by 2 frames so selection state propagates first
-    const activeElementStream = settleActiveElement(unsettledActiveElement);
-    const isActiveStream = activeElementStream.pipe(
-      Stream.map((maybeActiveElement) =>
-        Option.match(maybeActiveElement, {
-          onNone: () => false,
-          onSome: (activeElement) =>
-            activeElement.type === "block" && activeElement.id === blockId,
-        }),
-      ),
-      Stream.changesWith((a, b) => a === b),
-      Stream.tap((isActive) =>
-        Effect.logDebug("[Block.Subscribe] isActive stream emitted").pipe(
-          Effect.annotateLogs({ blockId, isActive }),
-        ),
-      ),
-    );
 
     const typesStream = yield* Type.subscribeTypes(nodeId);
 
@@ -160,9 +139,7 @@ export const subscribe = (blockId: Id.Block) =>
       block$,
       node$,
       viewInfo$,
-      isActiveStream,
-      selection$,
-      isSelected$,
+      window$,
       typesStream,
       filteredPickerStream,
       textContentStream,
@@ -173,9 +150,7 @@ export const subscribe = (blockId: Id.Block) =>
           blockEither,
           nodeEither,
           availableViews,
-          isActive,
-          selection,
-          isSelected,
+          { isActive, selection, isSelected },
           activeTypes,
           picker,
           textContent,
@@ -312,12 +287,12 @@ const makeNodeStreamEither = (nodeId: Id.Node) =>
 
 /**
  * Extract display nodeId from a BlockContext.
- * For buffer blocks, returns the nodeId directly.
+ * For frame blocks, returns the nodeId directly.
  * For section blocks, this would need tuple lookup, but for selection comparison
  * we compare blockIds directly instead.
  */
 const getDisplayNodeIdFromContext = (ctx: Id.BlockContext): Id.Node | null => {
-  if (ctx.type === "buffer") {
+  if (ctx.type === "frame") {
     return ctx.nodeId;
   }
   // Section blocks don't have nodeId directly - we can't derive it without
@@ -325,97 +300,85 @@ const getDisplayNodeIdFromContext = (ctx: Id.BlockContext): Id.Node | null => {
   return null;
 };
 
-const makeSelectionStream = (
-  bufferId: Id.Buffer,
+interface WindowDerived {
+  isActive: boolean;
+  isSelected: boolean;
+  selection: BlockSelection | null;
+}
+
+const makeWindowDerivedStream = (
+  windowId: Id.Window,
   nodeId: Id.Node,
   blockId: Id.Block,
 ) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const query = queryDb(
-      tables.buffer
+      tables.window
         .select("value")
-        .where("id", "=", bufferId)
+        .where("id", "=", windowId)
         .first({ fallback: () => null }),
     );
     const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
 
     return stream.pipe(
-      Stream.mapEffect((buffer): Effect.Effect<BlockSelection | null> => {
-        if (!buffer?.selection) return Effect.succeed(null);
+      Stream.map((window): WindowDerived => {
+        const activeElement = window?.activeElement ?? null;
+        const isActive =
+          activeElement !== null &&
+          activeElement.type === "block" &&
+          activeElement.id === blockId;
 
-        const sel = buffer.selection;
-        // Only return selection if both anchor and focus are on this block
-        // Use blockId comparison for section blocks (since they don't have nodeId in context)
-        return Effect.all({
-          anchorContext: IdT.parseBlockContext(sel.anchor.elementId),
-          focusContext: IdT.parseBlockContext(sel.focus.elementId),
-        }).pipe(
-          Effect.map(({ anchorContext, focusContext }) => {
-            // For buffer blocks, compare nodeId directly
-            // For section blocks, compare the full blockId
-            const anchorNodeId = getDisplayNodeIdFromContext(anchorContext);
-            const focusNodeId = getDisplayNodeIdFromContext(focusContext);
+        const isSelected = window?.selectedBlocks
+          ? window.selectedBlocks.includes(nodeId)
+          : false;
 
-            // If we can extract nodeIds, compare them (buffer blocks)
-            if (anchorNodeId !== null && focusNodeId !== null) {
-              if (anchorNodeId !== nodeId || focusNodeId !== nodeId) {
-                return null;
-              }
-            } else {
-              // Section blocks: compare full block IDs
-              if (
-                sel.anchor.elementId !== blockId ||
-                sel.focus.elementId !== blockId
-              ) {
-                return null;
-              }
+        let selection: BlockSelection | null = null;
+        if (window?.selection) {
+          const sel = window.selection;
+          const anchorContext = IdT.parseBlockContextSync(sel.anchor.elementId);
+          const focusContext = IdT.parseBlockContextSync(sel.focus.elementId);
+
+          const anchorNodeId = getDisplayNodeIdFromContext(anchorContext);
+          const focusNodeId = getDisplayNodeIdFromContext(focusContext);
+
+          if (anchorNodeId !== null && focusNodeId !== null) {
+            if (anchorNodeId === nodeId && focusNodeId === nodeId) {
+              selection = {
+                anchor: sel.anchorOffset,
+                head: sel.focusOffset,
+                goalX: sel.goalX ?? null,
+                goalLine: sel.goalLine ?? null,
+                assoc: sel.assoc,
+              };
             }
+          } else {
+            if (
+              sel.anchor.elementId === blockId &&
+              sel.focus.elementId === blockId
+            ) {
+              selection = {
+                anchor: sel.anchorOffset,
+                head: sel.focusOffset,
+                goalX: sel.goalX ?? null,
+                goalLine: sel.goalLine ?? null,
+                assoc: sel.assoc,
+              };
+            }
+          }
+        }
 
-            return {
-              anchor: sel.anchorOffset,
-              head: sel.focusOffset,
-              goalX: sel.goalX ?? null,
-              goalLine: sel.goalLine ?? null,
-              assoc: sel.assoc,
-            };
-          }),
-          Effect.orDie,
-        );
+        return { isActive, isSelected, selection };
       }),
       Stream.changesWith(deepEqual),
-      Stream.tap((sel) =>
-        Effect.logDebug("[Block.Subscribe] Selection stream emitted").pipe(
+      Stream.tap(({ isActive, selection }) =>
+        Effect.logDebug("[Block.Subscribe] Window-derived stream emitted").pipe(
           Effect.annotateLogs({
-            nodeId,
-            selection: sel,
-            isNull: sel === null,
+            blockId,
+            isActive,
+            selection,
+            isNull: selection === null,
           }),
-        ),
-      ),
-    );
-  });
-
-const makeIsSelectedStream = (bufferId: Id.Buffer, nodeId: Id.Node) =>
-  Effect.gen(function* () {
-    const Store = yield* StoreT;
-    const query = queryDb(
-      tables.buffer
-        .select("value")
-        .where("id", "=", bufferId)
-        .first({ fallback: () => null }),
-    );
-    const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
-
-    return stream.pipe(
-      Stream.map((buffer): boolean => {
-        if (!buffer?.selectedBlocks) return false;
-        return buffer.selectedBlocks.includes(nodeId);
-      }),
-      Stream.changesWith((a, b) => a === b),
-      Stream.tap((isSelected) =>
-        Effect.logTrace("[Block.Subscribe] isSelected emitted").pipe(
-          Effect.annotateLogs({ nodeId, isSelected }),
         ),
       ),
     );

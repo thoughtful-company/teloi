@@ -10,7 +10,7 @@
  */
 
 import { Id } from "@/schema";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import {
   cursorCharLeft,
@@ -98,9 +98,9 @@ export const EditorLive = Layer.effect(
     const viewRef = yield* Ref.make<Option.Option<EditorView>>(Option.none());
 
     // Capture dependencies for use in extension callbacks
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
     const Window = yield* WindowT;
-    const context = Context.make(BufferT, Buffer).pipe(
+    const context = Context.make(FrameT, Frame).pipe(
       Context.add(WindowT, Window),
     );
 
@@ -124,11 +124,11 @@ export const EditorLive = Layer.effect(
     ): Effect.Effect<void> =>
       Effect.gen(function* () {
         const blockContext = Id.parseBlockContextSync(blockId);
-        const bufferId = blockContext.bufferId;
+        const frameId = blockContext.frameId;
 
         // Preserve goalX/goalLine if they exist in the current selection.
         // Allows goalX to survive across multiple arrow key presses through shorter blocks.
-        const existingSelection = yield* Buffer.getSelection(bufferId);
+        const existingSelection = yield* Frame.getSelection(frameId);
         const existingGoalX =
           Option.isSome(existingSelection) &&
           existingSelection.value.goalX != null
@@ -139,8 +139,8 @@ export const EditorLive = Layer.effect(
             ? existingSelection.value.goalLine
             : null;
 
-        yield* Buffer.setSelection(
-          bufferId,
+        yield* Frame.setSelection(
+          frameId,
           Option.some({
             anchor: { elementId: blockId },
             anchorOffset: selection.anchor,
@@ -156,15 +156,15 @@ export const EditorLive = Layer.effect(
     const makeHandleBlurEffect = (blockId: Id.Block): Effect.Effect<void> =>
       Effect.gen(function* () {
         const blockContext = Id.parseBlockContextSync(blockId);
-        const bufferId = blockContext.bufferId;
+        const frameId = blockContext.frameId;
 
         // Only clear selection and activeElement if still pointing to this block
-        const selectionOpt = yield* Buffer.getSelection(bufferId);
+        const selectionOpt = yield* Frame.getSelection(frameId);
         const sel = Option.getOrNull(selectionOpt);
         const selBlockId = sel ? sel.anchor.elementId : null;
 
         if (sel && selBlockId === blockId) {
-          yield* Buffer.setSelection(bufferId, Option.none());
+          yield* Frame.setSelection(frameId, Option.none());
           yield* Window.setActiveElement(Option.none());
         }
       }).pipe(Effect.provide(context), Effect.orDie);

@@ -1,12 +1,12 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
-import { BufferT } from "@/services/ui/Buffer";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 
-const scope = "buffer";
+const scope = "frame";
 const commandName = "collapse";
 const tag = `${scope}:${commandName}` as const;
 
@@ -15,7 +15,7 @@ const tag = `${scope}:${commandName}` as const;
  *
  * - Expanded block with children → collapse it, stay on it
  * - Collapsed/childless block → navigate to parent (preserving mode)
- * - Root block (parent is buffer title) → focus title
+ * - Root block (parent is frame title) → focus title
  */
 export class Collapse extends Data.TaggedClass(tag)<{}> {
   static readonly scope = scope;
@@ -25,7 +25,7 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
     const Block = yield* BlockT;
     const Node = yield* NodeT;
     const Window = yield* WindowT;
-    const Buffer = yield* BufferT;
+    const Frame = yield* FrameT;
 
     const activeElement = yield* Window.getActiveElement();
     if (Option.isNone(activeElement)) return;
@@ -33,9 +33,9 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
     const el = activeElement.value;
 
     if (el.type === "block") {
-      yield* handleEditorMode(el.id, { Block, Node, Window, Buffer });
-    } else if (el.type === "buffer") {
-      yield* handleBlockSelectionMode(el.id, { Block, Node, Window, Buffer });
+      yield* handleEditorMode(el.id, { Block, Node, Window, Frame });
+    } else if (el.type === "frame") {
+      yield* handleBlockSelectionMode(el.id, { Block, Node, Window, Frame });
     }
   });
 }
@@ -46,7 +46,7 @@ interface Deps {
   Block: BlockT["Type"];
   Node: NodeT["Type"];
   Window: WindowT["Type"];
-  Buffer: BufferT["Type"];
+  Frame: FrameT["Type"];
 }
 
 const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
@@ -54,10 +54,10 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   deps: Deps,
 ) {
   const ctx = Id.parseBlockContextSync(blockId);
-  if (ctx.type !== "buffer") return;
+  if (ctx.type !== "frame") return;
 
-  const { bufferId, nodeId } = ctx;
-  const blockDoc = yield* deps.Block.get(bufferId, nodeId);
+  const { frameId, nodeId } = ctx;
+  const blockDoc = yield* deps.Block.get(frameId, nodeId);
   const children = yield* deps.Node.getNodeChildren(nodeId);
 
   if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
@@ -74,11 +74,11 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 
   if (!parentId) return;
 
-  const assignedNodeId = yield* deps.Buffer.getAssignedNodeId(bufferId);
+  const assignedNodeId = yield* deps.Frame.getAssignedNodeId(frameId);
 
   if (parentId === assignedNodeId) {
     // Parent is title → focus title
-    const titleBlockId = Id.makeBufferBlockId(bufferId, parentId);
+    const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
     yield* deps.Window.setActiveElement(
       Option.some({ type: "block" as const, id: titleBlockId }),
     );
@@ -86,15 +86,15 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   }
 
   // Navigate to parent block, preserving goalX
-  const parentBlockId = Id.makeBufferBlockId(bufferId, parentId);
-  const currentSelection = yield* deps.Buffer.getSelection(bufferId);
+  const parentBlockId = Id.makeFrameBlockId(frameId, parentId);
+  const currentSelection = yield* deps.Frame.getSelection(frameId);
   const goalX = Option.isSome(currentSelection)
     ? currentSelection.value.goalX
     : null;
 
   yield* deps.Block.setExpanded(parentBlockId, false);
-  yield* deps.Buffer.setSelection(
-    bufferId,
+  yield* deps.Frame.setSelection(
+    frameId,
     makeCollapsedSelection(parentBlockId, 0, { goalX }),
   );
   yield* deps.Window.setActiveElement(
@@ -103,15 +103,15 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 });
 
 const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
-  function* (bufferId: Id.Buffer, deps: Deps) {
+  function* (frameId: Id.Frame, deps: Deps) {
     const { selectedBlocks } =
-      yield* deps.Buffer.getBlockSelectionState(bufferId);
+      yield* deps.Frame.getBlockSelectionState(frameId);
     if (selectedBlocks.length === 0) return;
 
     // Use the first selected block for progressive collapse
     const nodeId = selectedBlocks[0]!;
-    const blockId = Id.makeBufferBlockId(bufferId, nodeId);
-    const blockDoc = yield* deps.Block.get(bufferId, nodeId);
+    const blockId = Id.makeFrameBlockId(frameId, nodeId);
+    const blockDoc = yield* deps.Block.get(frameId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);
 
     if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
@@ -126,12 +126,12 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
 
     if (!parentId) return;
 
-    const assignedNodeId = yield* deps.Buffer.getAssignedNodeId(bufferId);
+    const assignedNodeId = yield* deps.Frame.getAssignedNodeId(frameId);
 
     if (parentId === assignedNodeId) {
       // Parent is title → focus title
-      const titleBlockId = Id.makeBufferBlockId(bufferId, parentId);
-      yield* deps.Buffer.setBlockSelection(bufferId, [], nodeId);
+      const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
+      yield* deps.Frame.setBlockSelection(frameId, [], nodeId);
       yield* deps.Window.setActiveElement(
         Option.some({ type: "block" as const, id: titleBlockId }),
       );
@@ -139,10 +139,10 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
     }
 
     // Navigate to parent in block selection mode
-    const parentBlockId = Id.makeBufferBlockId(bufferId, parentId);
+    const parentBlockId = Id.makeFrameBlockId(frameId, parentId);
     yield* deps.Block.setExpanded(parentBlockId, false);
-    yield* deps.Buffer.setBlockSelection(
-      bufferId,
+    yield* deps.Frame.setBlockSelection(
+      frameId,
       [parentId],
       parentId,
       parentId,

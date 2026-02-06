@@ -8,26 +8,26 @@ import TableView from "./TableView";
 
 interface ViewRendererProps {
   viewType: ViewType;
-  bufferId: Id.Buffer;
+  frameId: Id.Frame;
   nodeId: Id.Node;
   inline?: boolean;
 }
 
 const viewComponents: Record<
   ViewType,
-  Component<{ bufferId: Id.Buffer; nodeId: Id.Node; inline?: boolean }>
+  Component<{ frameId: Id.Frame; nodeId: Id.Node; inline?: boolean }>
 > = {
   page: PageView,
   chat: ChatView,
   table: TableView,
 };
 
-/** Used by both BufferView (top-level) and Block (inline views). */
+/** Used by both FrameView (top-level) and Block (inline views). */
 export default function ViewRenderer(props: ViewRendererProps) {
   return (
     <Dynamic
       component={viewComponents[props.viewType]}
-      bufferId={props.bufferId}
+      frameId={props.frameId}
       nodeId={props.nodeId}
       {...(props.inline ? { inline: true } : {})}
     />

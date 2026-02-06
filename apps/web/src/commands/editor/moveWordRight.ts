@@ -15,6 +15,6 @@ export class MoveWordRight extends Data.TaggedClass(tag)<{}> {
     const Editor = yield* EditorT;
     yield* Editor.moveWordRight();
     const ctx = yield* resolveActiveBlockContext();
-    if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.bufferId);
+    if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
   });
 }
