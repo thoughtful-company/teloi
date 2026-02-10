@@ -358,7 +358,7 @@ const makeWindowDerivedStream = (
     ).pipe(
       Stream.changesWith(deepEqual),
       Stream.tap(({ isActive }) =>
-        Effect.logDebug("[Block.Subscribe] Window-derived stream emitted").pipe(
+        Effect.logDebug("[Block.Subscribe] World-derived stream emitted").pipe(
           Effect.annotateLogs({
             blockId,
             isActive,

@@ -12,7 +12,7 @@ import { TypePickerLive } from "@/services/ui/TypePicker";
 import { ChatProviderT } from "@/services/external/ChatProvider";
 import { ChatLive, ChatT, type ChatMessageEntry } from "@/services/ui/Chat";
 import { ViewLive } from "@/services/ui/View";
-import { WindowLive } from "@/services/ui/Window";
+import { WorldLive } from "@/services/ui/World";
 import * as Given from "@/test-utils/bdd/given";
 import { validateMessages } from "@/ui/chat/validateMessages";
 import { makeAdapter } from "@livestore/adapter-node";
@@ -62,7 +62,7 @@ const setupTest = async () => {
     Layer.provideMerge(TestChatProviderLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
-    Layer.provideMerge(WindowLive),
+    Layer.provideMerge(WorldLive),
     Layer.provideMerge(NodeLive),
     Layer.provideMerge(
       makeAutomergeLive({ workspaceName: storeId, persist: false }),

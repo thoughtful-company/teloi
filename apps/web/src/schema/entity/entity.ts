@@ -6,13 +6,6 @@ export const World = Schema.Struct({
   type: Schema.Literal("world"),
 });
 export type World = typeof World.Type;
-/** @deprecated Use World */
-export const Window = Schema.Struct({
-  id: Id.World,
-  type: Schema.Literal("window"),
-});
-/** @deprecated Use World */
-export type Window = typeof Window.Type;
 
 export const Pane = Schema.Struct({
   id: Id.Pane,
@@ -47,7 +40,6 @@ export type Property = typeof Property.Type;
 
 export const Element = Schema.Union(
   World,
-  Window,
   Pane,
   Frame,
   Block,

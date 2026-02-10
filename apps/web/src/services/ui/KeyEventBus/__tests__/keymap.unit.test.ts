@@ -6,7 +6,7 @@ import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { KeyboardT } from "@/services/browser/Keyboard";
 import { FrameLive, FrameT } from "@/services/ui/Frame";
-import { WindowLive } from "@/services/ui/Window";
+import { WorldLive } from "@/services/ui/World";
 import {
   KeyEventBusLive,
   KeyEventBusT,
@@ -59,7 +59,7 @@ const setupTest = async () => {
     Layer.provideMerge(FrameLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(TypeLive),
-    Layer.provideMerge(WindowLive),
+    Layer.provideMerge(WorldLive),
     Layer.provideMerge(NodeLive),
     Layer.provideMerge(
       makeAutomergeLive({ workspaceName: storeId, persist: false }),

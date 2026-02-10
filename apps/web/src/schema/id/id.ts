@@ -9,8 +9,6 @@ const SystemIdString = Schema.String.pipe(
 );
 
 export const World = SafeIdString.pipe(Schema.brand("WorldId"));
-/** @deprecated Use World */
-export const Window = World;
 export const Pane = SafeIdString.pipe(Schema.brand("PaneId"));
 export const Frame = SafeIdString.pipe(Schema.brand("FrameId"));
 export const Node = Schema.Union(SafeIdString, SystemIdString).pipe(
@@ -23,8 +21,6 @@ export const Block = Schema.String.pipe(Schema.brand("BlockId"));
 export const Section = Schema.String.pipe(Schema.brand("SectionId"));
 
 export type World = typeof World.Type;
-/** @deprecated Use World */
-export type Window = World;
 export type Pane = typeof Pane.Type;
 export type Frame = typeof Frame.Type;
 export type Block = typeof Block.Type;

@@ -19,8 +19,6 @@ export interface FrameWithNodeResult {
   frameId: Id.Frame;
   nodeId: Id.Node;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
   textContent: string;
 }
 
@@ -75,7 +73,6 @@ export const A_FRAME_WITH_TEXT = (textContent: string) =>
       frameId,
       nodeId,
       worldId,
-      windowId: worldId,
       textContent,
     } satisfies FrameWithNodeResult;
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_TEXT"));
@@ -94,8 +91,6 @@ export interface FrameWithChildrenResult<
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
 }
 
 /**
@@ -166,7 +161,6 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       worldId,
-      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_CHILDREN"));
 
@@ -216,8 +210,6 @@ export interface FullHierarchyResult {
   nodeId: Id.Node;
   paneId: Id.Pane;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
   textContent: string;
 }
 
@@ -284,7 +276,6 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       nodeId,
       paneId,
       worldId,
-      windowId: worldId,
       textContent,
     } satisfies FullHierarchyResult;
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_TEXT"));
@@ -297,8 +288,6 @@ export interface FullHierarchyWithChildrenResult<
   childNodeIds: ToNodeIds<T>;
   paneId: Id.Pane;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
 }
 
 /**
@@ -383,7 +372,6 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       childNodeIds: childNodeIds as ToNodeIds<T>,
       paneId,
       worldId,
-      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_CHILDREN"));
 
@@ -685,8 +673,6 @@ export interface FrameWithParentAndChildrenResult<
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
 }
 
 /**
@@ -781,7 +767,6 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       worldId,
-      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_PARENT_AND_CHILDREN"));
 
@@ -948,8 +933,6 @@ export interface ChatFrameResult {
   frameId: Id.Frame;
   chatNodeId: Id.Node;
   worldId: Id.World;
-  /** @deprecated Use worldId */
-  windowId: Id.World;
 }
 
 export const A_CHAT_FRAME = () =>
@@ -963,7 +946,6 @@ export const A_CHAT_FRAME = () =>
       frameId,
       chatNodeId: rootNodeId,
       worldId,
-      windowId: worldId,
     } satisfies ChatFrameResult;
   }).pipe(Effect.withSpan("Given.A_CHAT_FRAME"));
 

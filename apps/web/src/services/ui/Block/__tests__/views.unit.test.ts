@@ -10,7 +10,7 @@ import { FrameLive } from "@/services/ui/Frame";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
 import { ViewLive } from "@/services/ui/View";
-import { WindowLive } from "@/services/ui/Window";
+import { WorldLive } from "@/services/ui/World";
 import * as Given from "@/test-utils/bdd/given";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
@@ -36,7 +36,7 @@ const makeTestRuntime = async () => {
     Layer.provideMerge(TypePickerLive),
     Layer.provideMerge(FrameLive),
     Layer.provideMerge(ViewLive),
-    Layer.provideMerge(WindowLive),
+    Layer.provideMerge(WorldLive),
     Layer.provideMerge(TypeLive),
     Layer.provideMerge(TupleLive),
     Layer.provideMerge(NodeLive),

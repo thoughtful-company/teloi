@@ -104,10 +104,3 @@ export const WorldLive = Layer.effect(
     };
   }),
 );
-
-/** @deprecated Use WorldNotFoundError */
-export const WindowNotFoundError = WorldNotFoundError;
-/** @deprecated Use WorldT */
-export const WindowT = WorldT;
-/** @deprecated Use WorldLive */
-export const WindowLive = WorldLive;
