@@ -11,14 +11,13 @@
 
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import {
   cursorCharLeft,
   cursorCharRight,
-  cursorLineUp,
-  cursorLineDown,
   cursorGroupLeft,
   cursorGroupRight,
+  cursorLineDown,
+  cursorLineUp,
   deleteCharBackward,
   deleteCharForward,
   deleteGroupBackward,
@@ -99,10 +98,7 @@ export const EditorLive = Layer.effect(
 
     // Capture dependencies for use in extension callbacks
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
-    const context = Context.make(FrameT, Frame).pipe(
-      Context.add(WindowT, Window),
-    );
+    const context = Context.make(FrameT, Frame);
 
     // Helper to access view or fail with NoActiveEditorError
     const withView = <A>(
@@ -165,7 +161,7 @@ export const EditorLive = Layer.effect(
 
         if (sel && selBlockId === blockId) {
           yield* Frame.setSelection(frameId, Option.none());
-          yield* Window.setActiveElement(Option.none());
+          yield* Frame.clearFocus();
         }
       }).pipe(Effect.provide(context), Effect.orDie);
 

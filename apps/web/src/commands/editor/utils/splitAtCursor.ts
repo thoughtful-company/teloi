@@ -2,7 +2,6 @@ import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
-import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
@@ -11,7 +10,6 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const View = yield* ViewT;
   const Automerge = yield* AutomergeT;
   const Frame = yield* FrameT;
-  const Window = yield* WindowT;
 
   const ctx = yield* resolveActiveBlockContext();
   if (Option.isNone(ctx)) return;
@@ -37,9 +35,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   }
 
   yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
-  yield* Window.setActiveElement(
-    Option.some({ type: "block" as const, id: newBlockId }),
-  );
+  yield* Frame.enterBlockEditing(newBlockId);
 
   yield* Effect.logDebug("[splitAtCursor] Split completed").pipe(
     Effect.annotateLogs({

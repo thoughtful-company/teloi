@@ -3,7 +3,6 @@ import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { doubleRaf } from "@/utils/effect";
 import { EditorView } from "@codemirror/view";
 import { Data, Effect, Option, Schedule } from "effect";
@@ -216,13 +215,13 @@ const normalizeSelectedBlocks = (
     anchor: Id.Node | null;
     focus: Id.Node | null;
   },
-  activeElement: Entity.Element | null,
+  mode: { type: "none" } | { type: "block"; blockId: Id.Block } | { type: "blockSelection"; frameId: Id.Frame },
 ): readonly Id.Node[] => {
   if (state.selectedBlocks.length > 0) {
     return state.selectedBlocks;
   }
 
-  if (activeElement?.type === "frame" && state.focus != null) {
+  if (mode.type === "blockSelection" && state.focus != null) {
     return [state.focus];
   }
 
@@ -236,13 +235,17 @@ const normalizeSelectedBlocks = (
 export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
 
     const blockSelection = yield* Frame.getBlockSelectionState(frameId);
     const selection = yield* Frame.getSelection(frameId);
-    const activeElement = yield* Window.getActiveElement();
-    const active = Option.getOrNull(activeElement);
-    const normalizedSelected = normalizeSelectedBlocks(blockSelection, active);
+    const mode = yield* Frame.getMode();
+    const active: Entity.Element | null =
+      mode.type === "block"
+        ? { type: "block", id: mode.blockId }
+        : mode.type === "blockSelection"
+          ? { type: "frame", id: mode.frameId }
+          : null;
+    const normalizedSelected = normalizeSelectedBlocks(blockSelection, mode);
 
     return Option.some<WindowCompatDoc>({
       activeElement: active,
@@ -265,10 +268,9 @@ export const BLOCKS_ARE_SELECTED = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
     const state = yield* Frame.getBlockSelectionState(frameId);
-    const activeElement = Option.getOrNull(yield* Window.getActiveElement());
-    const selectedBlocks = normalizeSelectedBlocks(state, activeElement);
+    const mode = yield* Frame.getMode();
+    const selectedBlocks = normalizeSelectedBlocks(state, mode);
 
     yield* Effect.sync(() => {
       expect(selectedBlocks).toHaveLength(expectedNodeIds.length);

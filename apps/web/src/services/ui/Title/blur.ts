@@ -1,22 +1,17 @@
 import { Id } from "@/schema";
-import { WindowT } from "@/services/ui/Window";
-import { Effect, Option } from "effect";
+import { FrameT } from "@/services/ui/Frame";
+import { Effect } from "effect";
 
 export const blur = (frameId: Id.Frame, nodeId: Id.Node) =>
   Effect.gen(function* () {
-    const Window = yield* WindowT;
+    const Frame = yield* FrameT;
 
     // Title is just the root block of a frame
     const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
 
-    // Only clear if activeElement still points to this title.
-    // If navigating to a block, activeElement already points there - don't clear.
-    const active = yield* Window.getActiveElement();
-    if (
-      Option.isSome(active) &&
-      active.value.type === "block" &&
-      active.value.id === titleBlockId
-    ) {
-      yield* Window.setActiveElement(Option.none());
+    // Only clear if focus still points to this title block.
+    const mode = yield* Frame.getMode();
+    if (mode.type === "block" && mode.blockId === titleBlockId) {
+      yield* Frame.clearFocus();
     }
   });

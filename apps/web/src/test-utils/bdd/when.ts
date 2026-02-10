@@ -1,6 +1,5 @@
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { userEvent } from "@vitest/browser/context";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -59,7 +58,6 @@ export const USER_PRESSES = (keys: string) =>
 export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
 
     const [frameId] = yield* Id.parseBlockId(blockId);
 
@@ -80,11 +78,7 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(
-            Window.setActiveElement(
-              Option.some({ type: "block", id: blockId }),
-            ),
-          );
+          resume(Frame.enterBlockEditing(blockId));
         }),
       );
       return Effect.sync(() => clearTimeout(timeout));

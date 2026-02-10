@@ -135,8 +135,6 @@ export const bootstrap = Effect.gen(function* () {
       activePart: "body",
       activeBlockId: null,
       selectedBlocks: [],
-      blockSelectionAnchor: null,
-      blockSelectionFocus: null,
       goalX: null,
       goalLine: null,
       assoc: 0,

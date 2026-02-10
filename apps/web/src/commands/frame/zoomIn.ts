@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
+import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
-import { WindowT } from "@/services/ui/Window";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
@@ -14,7 +14,7 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: ZoomIn) {
     const Navigation = yield* NavigationT;
-    const Window = yield* WindowT;
+    const Frame = yield* FrameT;
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
@@ -25,8 +25,6 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
 
     // After navigation, nodeId is the new title
     const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
-    yield* Window.setActiveElement(
-      Option.some({ type: "block" as const, id: titleBlockId }),
-    );
+    yield* Frame.enterBlockEditing(titleBlockId);
   });
 }

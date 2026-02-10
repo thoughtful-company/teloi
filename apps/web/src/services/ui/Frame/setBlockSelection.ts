@@ -51,8 +51,6 @@ export const setBlockSelection = (
     const nextFrame = {
       ...currentFrame,
       selectedBlocks: [...blocks],
-      blockSelectionAnchor,
-      blockSelectionFocus: blocks.length > 0 ? focus : null,
       activeBlockId: focusedBlockId,
       activePart: "body" as const,
     };

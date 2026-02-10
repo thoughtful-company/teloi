@@ -1,7 +1,6 @@
 import { tables, TeloiNode } from "@/livestore/schema";
 import { Entity, Id, Model } from "@/schema";
 import { StoreT } from "@/services/external/Store";
-import { WindowT } from "@/services/ui/Window";
 import {
   resolveActiveViewType,
   subscribeViewInfo,
@@ -31,7 +30,6 @@ export const subscribe = (frameId: Id.Frame) =>
     const Tuple = yield* TupleT;
     const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
-    const Window = yield* WindowT;
 
     // Context for subscribeViewInfo (called inside Stream.unwrap where
     // the outer generator's resolved services aren't automatically available)
@@ -51,12 +49,71 @@ export const subscribe = (frameId: Id.Frame) =>
       Effect.orDie,
     );
 
-    // Subscribe to window's active element (for scroll-to-element on navigation)
-    // No settling needed here - we're not mounting UI based on this timing
-    const activeElementStream =
-      (yield* Window.subscribeActiveElement()) as Stream.Stream<
-        Option.Option<Entity.Element>
-      >;
+    const sessionId = yield* Store.getSessionId();
+    const windowId = Id.Window.make(sessionId);
+    const windowQuery = queryDb(
+      tables.window
+        .select("value")
+        .where("id", "=", windowId)
+        .first({ fallback: () => null }),
+    );
+    const windowStream = yield* Store.subscribeStream(windowQuery).pipe(
+      Effect.orDie,
+    );
+
+    const activeBlockSelectionStream = Stream.flatMap(
+      frameStream.pipe(
+        Stream.map((frame) => frame?.activeBlockId ?? null),
+        Stream.changesWith((a, b) => a === b),
+      ),
+      (activeBlockId) => {
+        if (activeBlockId == null) {
+          return Stream.succeed(null as Model.BlockSelection | null);
+        }
+
+        return Stream.unwrap(
+          Effect.gen(function* () {
+            const blockQuery = queryDb(
+              tables.block
+                .select("value")
+                .where("id", "=", activeBlockId)
+                .first({ fallback: () => null }),
+            );
+            const blockStream = yield* Store.subscribeStream(blockQuery).pipe(
+              Effect.orDie,
+            );
+            return blockStream.pipe(Stream.map((block) => block?.selection ?? null));
+          }),
+        );
+      },
+      { switch: true },
+    );
+
+    const activeElementStream = Stream.zipLatestAll(
+      windowStream,
+      frameStream,
+      activeBlockSelectionStream,
+    ).pipe(
+      Stream.map(([window, frame, activeBlockSelection]) => {
+        const isStageActiveFrame =
+          (window?.activeRegion ?? "stage") === "stage" &&
+          window?.activeFrameId === frameId;
+        if (!isStageActiveFrame) return Option.none<Entity.Element>();
+
+        const selectedBlocks = frame?.selectedBlocks ?? [];
+        if (selectedBlocks.length > 0) {
+          return Option.some<Entity.Element>({ type: "frame", id: frameId });
+        }
+
+        const activeBlockId = frame?.activeBlockId ?? null;
+        if (activeBlockId != null && activeBlockSelection != null) {
+          return Option.some<Entity.Element>({ type: "block", id: activeBlockId });
+        }
+
+        return Option.some<Entity.Element>({ type: "frame", id: frameId });
+      }),
+      Stream.changesWith((a, b) => activeElementKey(a) === activeElementKey(b)),
+    );
 
     // Separate popup stream — changes to popup should NOT re-subscribe to node/views
     const popupStream = frameStream.pipe(
@@ -150,4 +207,22 @@ export const subscribe = (frameId: Id.Frame) =>
         popup,
       }),
     );
+  });
+
+const activeElementKey = (value: Option.Option<Entity.Element>): string =>
+  Option.match(value, {
+    onNone: () => "none",
+    onSome: (el) => {
+      switch (el.type) {
+        case "window":
+        case "pane":
+        case "frame":
+        case "block":
+          return `${el.type}:${el.id}`;
+        case "title":
+          return `title:${el.frameId}`;
+        case "property":
+          return `property:${el.frameId}:${el.propertyId}`;
+      }
+    },
   });

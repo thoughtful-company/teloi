@@ -3,8 +3,7 @@ import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
 import { PropertyT, type LinkedTuple } from "@/services/ui/Property";
-import { WindowT } from "@/services/ui/Window";
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import {
   createEffect,
@@ -272,18 +271,6 @@ export default function PropertySection(props: PropertySectionProps) {
 
   const handleFocus = (_e: MouseEvent) => {
     setIsActive(true);
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Window = yield* WindowT;
-        yield* Window.setActiveElement(
-          Option.some({
-            type: "property" as const,
-            propertyId: props.propertyId,
-            frameId: props.frameId,
-          }),
-        );
-      }),
-    );
   };
 
   // TODO: handleBlur/handleSelectionChange needs blockId support.

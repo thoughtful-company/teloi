@@ -8,7 +8,6 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { doubleRaf } from "@/utils/effect";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
@@ -438,8 +437,25 @@ export const FRAME_HAS_SELECTION = (
  */
 export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
   Effect.gen(function* () {
-    const Window = yield* WindowT;
-    yield* Window.setActiveElement(Option.some(element));
+    const Frame = yield* FrameT;
+
+    switch (element.type) {
+      case "block":
+        yield* Frame.enterBlockEditing(element.id);
+        return;
+      case "frame":
+        yield* Frame.enterBlockSelection(element.id);
+        return;
+      case "title": {
+        const assignedNodeId = yield* Frame.getAssignedNodeId(element.frameId);
+        if (assignedNodeId == null) return;
+        const titleBlockId = Id.makeFrameBlockId(element.frameId, assignedNodeId);
+        yield* Frame.enterBlockEditing(titleBlockId);
+        return;
+      }
+      default:
+        return;
+    }
   }).pipe(Effect.withSpan("Given.ACTIVE_ELEMENT_IS"));
 
 /**
@@ -455,7 +471,6 @@ export const BLOCK_IS_FOCUSED_AT = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
 
     const [frameId] = yield* Id.parseBlockId(blockId);
 
@@ -477,11 +492,7 @@ export const BLOCK_IS_FOCUSED_AT = (
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(
-            Window.setActiveElement(
-              Option.some({ type: "block", id: blockId }),
-            ),
-          );
+          resume(Frame.enterBlockEditing(blockId));
         }),
       );
 
@@ -586,7 +597,6 @@ export const TITLE_IS_FOCUSED_AT = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
 
     const elementId = Id.makeFrameBlockId(frameId, rootNodeId);
 
@@ -609,11 +619,7 @@ export const TITLE_IS_FOCUSED_AT = (
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(
-            Window.setActiveElement(
-              Option.some({ type: "block" as const, id: elementId }),
-            ),
-          );
+          resume(Frame.enterBlockEditing(elementId));
         }),
       );
 

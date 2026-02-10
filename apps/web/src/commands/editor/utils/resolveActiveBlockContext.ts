@@ -1,6 +1,5 @@
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { Effect, Option } from "effect";
 
 interface ActiveBlockContext {
@@ -12,21 +11,18 @@ interface ActiveBlockContext {
 
 export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
   function* () {
-    const Window = yield* WindowT;
     const Frame = yield* FrameT;
-
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement)) {
+    const mode = yield* Frame.getMode();
+    if (mode.type === "none") {
+      return Option.none<ActiveBlockContext>();
+    }
+    const frameId = mode.type === "block" ? Id.parseBlockContextSync(mode.blockId).frameId : mode.frameId;
+    const selection = yield* Frame.getSelection(frameId);
+    if (Option.isNone(selection)) {
       return Option.none<ActiveBlockContext>();
     }
 
-    const el = activeElement.value;
-
-    if (el.type !== "block") {
-      return Option.none<ActiveBlockContext>();
-    }
-
-    const blockId = el.id;
+    const blockId = selection.value.focus.elementId;
     const blockContext = Id.parseBlockContextSync(blockId);
     if (blockContext.type !== "frame") {
       return Option.none<ActiveBlockContext>();

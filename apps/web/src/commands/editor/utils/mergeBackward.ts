@@ -5,7 +5,6 @@ import { BlockT } from "@/services/ui/Block";
 import { getBlockDoc } from "@/services/ui/Block/getBlockDoc";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
-import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
@@ -48,15 +47,12 @@ export const mergeBackward = Effect.fn("mergeBackward")(function* () {
   yield* Automerge.deleteText(nodeId);
 
   const Frame = yield* FrameT;
-  const Window = yield* WindowT;
 
   yield* Frame.setSelection(
     frameId,
     makeCollapsedSelection(targetBlockId, mergePoint),
   );
-  yield* Window.setActiveElement(
-    Option.some({ type: "block" as const, id: targetBlockId }),
-  );
+  yield* Frame.enterBlockEditing(targetBlockId);
 });
 
 // ================================ Internal ==================================
@@ -67,7 +63,6 @@ const removeGhost = Effect.fn("mergeBackward:removeGhost")(function* (
 ) {
   const Block = yield* BlockT;
   const Frame = yield* FrameT;
-  const Window = yield* WindowT;
   const Automerge = yield* AutomergeT;
 
   const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
@@ -79,7 +74,5 @@ const removeGhost = Effect.fn("mergeBackward:removeGhost")(function* (
     frameId,
     makeCollapsedSelection(parentBlockId, parentText.length),
   );
-  yield* Window.setActiveElement(
-    Option.some({ type: "block" as const, id: parentBlockId }),
-  );
+  yield* Frame.enterBlockEditing(parentBlockId);
 });

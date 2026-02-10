@@ -1,7 +1,6 @@
 import { Id } from "@/schema";
 import { BlockT } from "@/services/ui/Block";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { Data, Effect, Option } from "effect";
 
 const scope = "frame";
@@ -14,10 +13,9 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Expand) {
     const Block = yield* BlockT;
-    const Window = yield* WindowT;
     const Frame = yield* FrameT;
 
-    const target = yield* resolveExpandTargets(Window, Frame);
+    const target = yield* resolveExpandTargets(Frame);
     if (Option.isNone(target)) return;
 
     const { frameId, nodeIds } = target.value;
@@ -25,9 +23,7 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
       const { ghostNodeId } = yield* Block.expandOneLevel(frameId, nodeId);
       if (ghostNodeId) {
         const ghostBlockId = Id.makeFrameBlockId(frameId, ghostNodeId);
-        yield* Window.setActiveElement(
-          Option.some({ id: ghostBlockId, type: "block" as const }),
-        );
+        yield* Frame.enterBlockEditing(ghostBlockId);
       }
     }
   });
@@ -36,26 +32,23 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
 // ================================ Internal ==================================
 
 const resolveExpandTargets = (
-  Window: WindowT["Type"],
   Frame: FrameT["Type"],
 ): Effect.Effect<
   Option.Option<{ frameId: Id.Frame; nodeIds: readonly Id.Node[] }>
 > =>
   Effect.gen(function* () {
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement)) return Option.none();
+    const mode = yield* Frame.getMode();
+    if (mode.type === "none") return Option.none();
 
-    const el = activeElement.value;
-
-    if (el.type === "block") {
-      const ctx = Id.parseBlockContextSync(el.id);
+    if (mode.type === "block") {
+      const ctx = Id.parseBlockContextSync(mode.blockId);
       if (ctx.type !== "frame") return Option.none();
       return Option.some({ frameId: ctx.frameId, nodeIds: [ctx.nodeId] });
     }
 
-    if (el.type === "frame") {
+    if (mode.type === "blockSelection") {
       const { selectedBlocks } = yield* Frame.getBlockSelectionState(
-        el.id,
+        mode.frameId,
       ).pipe(
         Effect.catchAll(() =>
           Effect.succeed({
@@ -66,7 +59,7 @@ const resolveExpandTargets = (
         ),
       );
       if (selectedBlocks.length === 0) return Option.none();
-      return Option.some({ frameId: el.id, nodeIds: selectedBlocks });
+      return Option.some({ frameId: mode.frameId, nodeIds: selectedBlocks });
     }
 
     return Option.none();

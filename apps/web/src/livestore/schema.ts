@@ -173,22 +173,12 @@ const block = State.SQLite.clientDocument({
   },
 });
 
-const selection = State.SQLite.clientDocument({
-  name: Model.DocumentName.Selection,
-  schema: Model.DocumentSchemas[Model.DocumentName.Selection].schema,
-  default: {
-    id: SessionIdSymbol,
-    value: null,
-  },
-});
-
 // Create a mapping dictionary for the models with branded types
 type ClientDocumentModels = {
   window: Model.Window | null;
   pane: Model.Pane | null;
   frame: Model.Frame | null;
   block: Model.Block | null;
-  selection: Model.Selection | null;
 };
 
 // Use the mapping
@@ -201,7 +191,6 @@ type ClientDocumentBrandedIds = {
   pane: Id.Pane;
   frame: Id.Frame;
   block: Id.Block;
-  selection: Id.Window; // Selection uses WindowId as its key
 };
 
 export type BrandedId<K extends Model.DocumentName> =
@@ -222,7 +211,6 @@ export const documentEvents = {
   [Model.DocumentName.Window]: window.set,
   [Model.DocumentName.Pane]: pane.set,
   [Model.DocumentName.Frame]: frame.set,
-  [Model.DocumentName.Selection]: selection.set,
   [Model.DocumentName.Block]: block.set,
 } satisfies EventsMap;
 
@@ -256,7 +244,6 @@ export const tables = {
   window,
   pane,
   frame,
-  selection,
   block,
 };
 

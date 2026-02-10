@@ -147,8 +147,6 @@ export const setSelection = (
             ? ("head" as const)
             : ("body" as const),
         selectedBlocks: [],
-        blockSelectionAnchor: null,
-        blockSelectionFocus: null,
         goalX: s.goalX ?? null,
         goalLine: s.goalLine ?? null,
         assoc: s.assoc,
@@ -171,8 +169,6 @@ export const setSelection = (
       nextFrame = {
         ...currentFrame,
         selectedBlocks: [],
-        blockSelectionAnchor: null,
-        blockSelectionFocus: null,
         goalX: null,
         goalLine: null,
       };

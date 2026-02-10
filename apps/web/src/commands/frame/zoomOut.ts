@@ -2,8 +2,8 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { BlockT } from "@/services/ui/Block";
+import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
-import { WindowT } from "@/services/ui/Window";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
 
@@ -19,7 +19,7 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Navigation = yield* NavigationT;
-    const Window = yield* WindowT;
+    const Frame = yield* FrameT;
     const Block = yield* BlockT;
 
     const ctx = yield* resolveActiveBlockContext();
@@ -50,8 +50,6 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
       ? Id.makeFrameBlockId(frameId, nodeId)
       : rootBlockId;
 
-    yield* Window.setActiveElement(
-      Option.some({ type: "block" as const, id: targetBlockId }),
-    );
+    yield* Frame.enterBlockEditing(targetBlockId);
   });
 }

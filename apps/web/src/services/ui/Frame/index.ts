@@ -184,11 +184,7 @@ export const FrameLive = Layer.effect(
             Effect.orDie,
           );
           if (Option.isSome(frameDoc)) {
-            return {
-              selectedBlocks: frameDoc.value.selectedBlocks ?? [],
-              anchor: frameDoc.value.blockSelectionAnchor ?? null,
-              focus: frameDoc.value.blockSelectionFocus ?? null,
-            };
+            return deriveBlockSelectionState(frameDoc.value);
           }
 
           return {
@@ -201,33 +197,99 @@ export const FrameLive = Layer.effect(
       // Mode operations
       getMode: (): Effect.Effect<EditorMode> =>
         Effect.gen(function* () {
-          const activeElement = yield* Window.getActiveElement();
-          return Option.match(activeElement, {
-            onNone: () => ({ type: "none" as const }),
-            onSome: (el) => {
-              switch (el.type) {
-                case "frame":
-                  return { type: "blockSelection" as const, frameId: el.id };
-                default:
-                  if (el.type === "block") {
-                    return { type: "block" as const, blockId: el.id };
-                  }
-                  // Other element types (title, property, etc.) don't map to EditorMode
-                  return { type: "none" as const };
-              }
-            },
-          });
+          const sessionId = yield* Store.getSessionId();
+          const windowId = Id.Window.make(sessionId);
+          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(windowDoc)) return { type: "none" as const };
+
+          const isStageActive = (windowDoc.value.activeRegion ?? "stage") === "stage";
+          const activeFrameId = windowDoc.value.activeFrameId ?? null;
+          if (!isStageActive || activeFrameId == null) return { type: "none" as const };
+
+          const frameDoc = yield* Store.getDocument("frame", activeFrameId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(frameDoc)) return { type: "none" as const };
+
+          const frame = frameDoc.value;
+          if ((frame.selectedBlocks ?? []).length > 0) {
+            return { type: "blockSelection" as const, frameId: activeFrameId };
+          }
+
+          if (frame.activeBlockId == null) {
+            return { type: "blockSelection" as const, frameId: activeFrameId };
+          }
+
+          const blockDoc = yield* Store.getDocument("block", frame.activeBlockId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isSome(blockDoc) && blockDoc.value.selection != null) {
+            return { type: "block" as const, blockId: frame.activeBlockId };
+          }
+
+          return { type: "blockSelection" as const, frameId: activeFrameId };
         }),
       enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
-        Window.setActiveElement(
-          Option.some({ type: "frame" as const, id: frameId }),
-        ),
+        Effect.gen(function* () {
+          yield* Window.setActiveFrameId(frameId);
+
+          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(frameDoc)) return;
+
+          const state = deriveBlockSelectionState(frameDoc.value);
+          const focusedBlockId =
+            state.focus != null
+              ? Id.makeFrameBlockId(frameId, state.focus)
+              : frameDoc.value.activeBlockId;
+
+          yield* Store.setDocument(
+            "frame",
+            {
+              ...frameDoc.value,
+              activePart: "body",
+              activeBlockId: focusedBlockId,
+            },
+            frameId,
+          ).pipe(Effect.orDie);
+        }),
       enterBlockEditing: (blockId: Id.Block): Effect.Effect<void> =>
-        Window.setActiveElement(
-          Option.some({ type: "block" as const, id: blockId }),
-        ),
-      clearFocus: (): Effect.Effect<void> =>
-        Window.setActiveElement(Option.none()),
+        Effect.gen(function* () {
+          const blockCtx = Id.parseBlockContextSync(blockId);
+          if (blockCtx.type !== "frame") return;
+
+          const frameId = blockCtx.frameId;
+          yield* Window.setActiveFrameId(frameId);
+
+          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
+            Effect.orDie,
+          );
+          if (Option.isNone(frameDoc)) return;
+
+          const rootNodeId = frameDoc.value.rootBlockId ?? frameDoc.value.assignedNodeId;
+          const rootBlockId =
+            rootNodeId != null
+              ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
+              : null;
+
+          yield* Store.setDocument(
+            "frame",
+            {
+              ...frameDoc.value,
+              activeBlockId: blockId,
+              activePart:
+                rootBlockId != null && blockId === rootBlockId
+                  ? ("head" as const)
+                  : ("body" as const),
+              selectedBlocks: [],
+            },
+            frameId,
+          ).pipe(Effect.orDie);
+        }),
+      clearFocus: (): Effect.Effect<void> => Window.setActiveFrameId(null),
 
       // Popup operations
       hasPopup: (frameId: Id.Frame) =>
@@ -281,3 +343,44 @@ export const FrameLive = Layer.effect(
     };
   }),
 );
+
+// ================================ Internal ==================================
+
+const resolveFocusedNodeId = (frame: Model.Frame): Id.Node | null => {
+  if (frame.activeBlockId == null) return null;
+  try {
+    const ctx = Id.parseBlockContextSync(frame.activeBlockId);
+    if (ctx.type !== "frame") return null;
+    return ctx.nodeId;
+  } catch {
+    return null;
+  }
+};
+
+const deriveBlockSelectionState = (frame: Model.Frame) => {
+  const selectedBlocks = frame.selectedBlocks ?? [];
+  if (selectedBlocks.length === 0) {
+    return {
+      selectedBlocks: [] as readonly Id.Node[],
+      anchor: null as Id.Node | null,
+      focus: null as Id.Node | null,
+    };
+  }
+
+  const first = selectedBlocks[0]!;
+  const last = selectedBlocks[selectedBlocks.length - 1]!;
+  const focusedNodeId = resolveFocusedNodeId(frame);
+  const focus =
+    focusedNodeId != null && selectedBlocks.includes(focusedNodeId)
+      ? focusedNodeId
+      : last;
+
+  const anchor =
+    selectedBlocks.length === 1 ? focus : focus === first ? last : first;
+
+  return {
+    selectedBlocks,
+    anchor,
+    focus,
+  };
+};

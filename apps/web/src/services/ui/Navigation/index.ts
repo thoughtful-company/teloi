@@ -137,16 +137,12 @@ export const NavigationLive = Layer.effect(
                     frameId,
                     validatedNodeId,
                   );
-                  yield* Window.setActiveElement(
-                    Option.some({ type: "block" as const, id: titleBlockId }),
-                  );
+                  yield* Frame.enterBlockEditing(titleBlockId);
                   // Title scrolls itself or Frame handles it
                 } else {
                   // Selection is on a block (frame or section block)
                   // Use the original blockId from selection
-                  yield* Window.setActiveElement(
-                    Option.some({ type: "block" as const, id: anchorBlockId }),
-                  );
+                  yield* Frame.enterBlockEditing(anchorBlockId);
                   // Block scrolls itself on mount via ActiveElementContext
                 }
               }
@@ -176,9 +172,7 @@ export const NavigationLive = Layer.effect(
         if (options?.focusTitle && validatedNodeId) {
           // Title is just a block
           const titleBlockId = Id.makeFrameBlockId(frameId, validatedNodeId);
-          yield* Window.setActiveElement(
-            Option.some({ type: "block" as const, id: titleBlockId }),
-          );
+          yield* Frame.enterBlockEditing(titleBlockId);
         }
 
         yield* Effect.logDebug("[Navigation.navigateTo] Navigated").pipe(

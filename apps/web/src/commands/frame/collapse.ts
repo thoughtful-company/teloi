@@ -2,7 +2,6 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 
@@ -24,18 +23,15 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
   static handle = Effect.fn(tag)(function* (_cmd: Collapse) {
     const Block = yield* BlockT;
     const Node = yield* NodeT;
-    const Window = yield* WindowT;
     const Frame = yield* FrameT;
 
-    const activeElement = yield* Window.getActiveElement();
-    if (Option.isNone(activeElement)) return;
+    const mode = yield* Frame.getMode();
+    if (mode.type === "none") return;
 
-    const el = activeElement.value;
-
-    if (el.type === "block") {
-      yield* handleEditorMode(el.id, { Block, Node, Window, Frame });
-    } else if (el.type === "frame") {
-      yield* handleBlockSelectionMode(el.id, { Block, Node, Window, Frame });
+    if (mode.type === "block") {
+      yield* handleEditorMode(mode.blockId, { Block, Node, Frame });
+    } else if (mode.type === "blockSelection") {
+      yield* handleBlockSelectionMode(mode.frameId, { Block, Node, Frame });
     }
   });
 }
@@ -45,7 +41,6 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
 interface Deps {
   Block: BlockT["Type"];
   Node: NodeT["Type"];
-  Window: WindowT["Type"];
   Frame: FrameT["Type"];
 }
 
@@ -79,9 +74,11 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   if (parentId === assignedNodeId) {
     // Parent is title → focus title
     const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
-    yield* deps.Window.setActiveElement(
-      Option.some({ type: "block" as const, id: titleBlockId }),
+    yield* deps.Frame.setSelection(
+      frameId,
+      makeCollapsedSelection(titleBlockId, 0),
     );
+    yield* deps.Frame.enterBlockEditing(titleBlockId);
     return;
   }
 
@@ -97,9 +94,7 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
     frameId,
     makeCollapsedSelection(parentBlockId, 0, { goalX }),
   );
-  yield* deps.Window.setActiveElement(
-    Option.some({ type: "block" as const, id: parentBlockId }),
-  );
+  yield* deps.Frame.enterBlockEditing(parentBlockId);
 });
 
 const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
@@ -132,9 +127,11 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
       // Parent is title → focus title
       const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
       yield* deps.Frame.setBlockSelection(frameId, [], nodeId);
-      yield* deps.Window.setActiveElement(
-        Option.some({ type: "block" as const, id: titleBlockId }),
+      yield* deps.Frame.setSelection(
+        frameId,
+        makeCollapsedSelection(titleBlockId, 0),
       );
+      yield* deps.Frame.enterBlockEditing(titleBlockId);
       return;
     }
 

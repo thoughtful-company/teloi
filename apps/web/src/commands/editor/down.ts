@@ -1,7 +1,6 @@
 import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
-import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
@@ -25,7 +24,6 @@ export class Down extends Data.TaggedClass(tag)<{}> {
     }
 
     const View = yield* ViewT;
-    const Window = yield* WindowT;
     const Frame = yield* FrameT;
 
     const ctx = yield* resolveActiveBlockContext();
@@ -45,8 +43,6 @@ export class Down extends Data.TaggedClass(tag)<{}> {
       frameId,
       makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
     );
-    yield* Window.setActiveElement(
-      Option.some({ type: "block" as const, id: targetBlockId }),
-    );
+    yield* Frame.enterBlockEditing(targetBlockId);
   });
 }

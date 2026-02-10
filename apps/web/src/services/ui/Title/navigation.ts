@@ -1,7 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
 import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 
@@ -13,7 +12,6 @@ export const navigateToFirstChild = (
   Effect.gen(function* () {
     const Node = yield* NodeT;
     const Frame = yield* FrameT;
-    const Window = yield* WindowT;
 
     const children = yield* Node.getNodeChildren(nodeId);
     if (children.length === 0) return;
@@ -38,7 +36,5 @@ export const navigateToFirstChild = (
           : undefined,
       ),
     );
-    yield* Window.setActiveElement(
-      Option.some({ type: "block" as const, id: targetBlockId }),
-    );
+    yield* Frame.enterBlockEditing(targetBlockId);
   }).pipe(Effect.catchTag("FrameNotFoundError", () => Effect.void));

@@ -7,7 +7,6 @@ export const DocumentName = {
   Pane: "pane",
   Frame: "frame",
   Block: "block",
-  Selection: "selection",
 } as const;
 
 export type DocumentName = (typeof DocumentName)[keyof typeof DocumentName];
@@ -81,10 +80,6 @@ export const Frame = Schema.mutable(
     activePart: Schema.optional(Schema.Literal("head", "body")),
     activeBlockId: Schema.optional(Schema.NullOr(Id.Block)),
     selectedBlocks: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
-    /** Anchor of block selection - fixed endpoint where block selection started */
-    blockSelectionAnchor: Schema.optional(Schema.NullOr(Id.Node)),
-    /** Focus of block selection - moving endpoint where block selection currently ends */
-    blockSelectionFocus: Schema.optional(Schema.NullOr(Id.Node)),
     goalX: Schema.optional(Schema.NullOr(Schema.Number)),
     goalLine: Schema.optional(Schema.NullOr(Schema.Literal("first", "last"))),
     assoc: Schema.optional(Schema.Literal(-1, 0, 1)),
@@ -103,14 +98,6 @@ export const Block = Schema.Struct({
 });
 export type Block = typeof Block.Type;
 
-export const Selection = Schema.Struct({
-  anchorElement: Entity.Element,
-  anchorOffset: Schema.Number,
-  focusElement: Entity.Element,
-  focusOffset: Schema.Number,
-});
-export type Selection = typeof Selection.Type;
-
 export const DocumentSchemas = {
   [DocumentName.Window]: {
     schema: Schema.NullOr(Window),
@@ -123,8 +110,5 @@ export const DocumentSchemas = {
   },
   [DocumentName.Block]: {
     schema: Schema.NullOr(Block),
-  },
-  [DocumentName.Selection]: {
-    schema: Schema.NullOr(Selection),
   },
 } as const;
