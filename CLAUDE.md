@@ -143,12 +143,12 @@ This is a pnpm monorepo with:
 
 **Focus Architecture** (reactive, not imperative):
 Focus is driven by state propagation, never by direct DOM `.focus()` calls:
-1. Handler calls `Window.setActiveElement(blockId)`
+1. Handler calls `Frame.enterBlockEditing(blockId)` (or `Frame.enterBlockSelection(frameId)`)
 2. `BlockT.subscribe` emits updated view with `isActive: true`
 3. Block component renders `<Editor>` when active
 4. Editor calls `view.focus()` on mount
 
-This means: to focus a block, set `activeElement` state. The UI reacts and focus happens as a consequence.
+This means: to focus a block, update frame/world focus state. The UI reacts and focus happens as a consequence.
 
 Key services:
 - `KeyEventBusT` — Routes keyboard events to commands via keymaps
