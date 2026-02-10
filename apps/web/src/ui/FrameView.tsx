@@ -1,12 +1,11 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Entity, Id, Model } from "@/schema";
+import { Id, Model } from "@/schema";
 import { BlockT, type ViewInfo } from "@/services/ui/Block";
 import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
-import { Effect, Fiber, Option, Stream } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import {
-  createContext,
   createEffect,
   createSignal,
   Index,
@@ -20,11 +19,6 @@ import { BlockTypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
 import ViewRenderer from "./ViewRenderer";
 import ViewTabs from "./ViewTabs";
-
-/** Context to expose activeElement to child components for scroll-on-mount behavior */
-export const ActiveElementContext = createContext<() => Entity.Element | null>(
-  () => null,
-);
 
 /** Helper component to render properties for a page's view */
 function PropertyList(props: { pageId: Id.Node; frameId: Id.Frame }) {
@@ -110,7 +104,7 @@ export default function FrameView({ frameId }: FrameViewProps) {
       activeViewId: v.activeViewId,
       activeViewType: v.activeViewType,
       availableViews: v.availableViews as ViewInfo[],
-      activeElement: Option.getOrNull(v.activeElement),
+      isBlockSelectionMode: v.isBlockSelectionMode,
       popup: v.popup,
     }),
     initial: {
@@ -118,19 +112,17 @@ export default function FrameView({ frameId }: FrameViewProps) {
       activeViewId: null as Id.Node | null,
       activeViewType: "page" as const,
       availableViews: [] as ViewInfo[],
-      activeElement: null as Entity.Element | null,
+      isBlockSelectionMode: false,
       popup: null as Model.FramePopup | null,
     },
   });
-
-  const getActiveElement = () => store.activeElement;
 
   let containerRef!: HTMLDivElement;
 
   // Focus the frame container when entering block-selection mode
   // or when popup closes (to restore keyboard event routing).
   createEffect(() => {
-    if (store.activeElement?.type === "frame" && !store.popup) {
+    if (store.isBlockSelectionMode && !store.popup) {
       containerRef.focus();
     }
   });
@@ -144,56 +136,54 @@ export default function FrameView({ frameId }: FrameViewProps) {
   });
 
   return (
-    <ActiveElementContext.Provider value={getActiveElement}>
-      <div
-        ref={containerRef}
-        data-testid="frame"
-        data-frame-id={frameId}
-        tabIndex={0}
-        class="h-full flex flex-col outline-none"
+    <div
+      ref={containerRef}
+      data-testid="frame"
+      data-frame-id={frameId}
+      tabIndex={0}
+      class="h-full flex flex-col outline-none"
+    >
+      <Show
+        when={store.popup?.type === "typePicker" ? store.popup : null}
+        keyed
       >
-        <Show
-          when={store.popup?.type === "typePicker" ? store.popup : null}
-          keyed
-        >
-          {(popup) => (
-            <BlockTypePicker
-              frameId={frameId}
-              popup={popup as Model.FramePopup & { type: "typePicker" }}
+        {(popup) => (
+          <BlockTypePicker
+            frameId={frameId}
+            popup={popup as Model.FramePopup & { type: "typePicker" }}
+          />
+        )}
+      </Show>
+      <Show when={store.nodeId} keyed>
+        {(nodeId) => (
+          <>
+            <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+              <Title frameId={frameId} nodeId={nodeId} />
+              <TypeList nodeId={nodeId} />
+            </header>
+            <ViewTabs
+              availableViews={store.availableViews}
+              activeViewId={store.activeViewId}
+              onTabClick={(viewId) => {
+                runtime.runPromise(
+                  Effect.gen(function* () {
+                    const Frame = yield* FrameT;
+                    yield* Frame.setActiveView(frameId, viewId);
+                  }),
+                );
+              }}
             />
-          )}
-        </Show>
-        <Show when={store.nodeId} keyed>
-          {(nodeId) => (
-            <>
-              <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
-                <Title frameId={frameId} nodeId={nodeId} />
-                <TypeList nodeId={nodeId} />
-              </header>
-              <ViewTabs
-                availableViews={store.availableViews}
-                activeViewId={store.activeViewId}
-                onTabClick={(viewId) => {
-                  runtime.runPromise(
-                    Effect.gen(function* () {
-                      const Frame = yield* FrameT;
-                      yield* Frame.setActiveView(frameId, viewId);
-                    }),
-                  );
-                }}
+            <PropertyList pageId={nodeId} frameId={frameId} />
+            <div class="flex-1 flex flex-col pt-4">
+              <ViewRenderer
+                viewType={store.activeViewType}
+                frameId={frameId}
+                nodeId={nodeId}
               />
-              <PropertyList pageId={nodeId} frameId={frameId} />
-              <div class="flex-1 flex flex-col pt-4">
-                <ViewRenderer
-                  viewType={store.activeViewType}
-                  frameId={frameId}
-                  nodeId={nodeId}
-                />
-              </div>
-            </>
-          )}
-        </Show>
-      </div>
-    </ActiveElementContext.Provider>
+            </div>
+          </>
+        )}
+      </Show>
+    </div>
   );
 }

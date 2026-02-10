@@ -81,7 +81,7 @@ export function useFocusBlur({
   };
 
   const handleBlur = () => {
-    // Don't clear activeElement when window loses focus (alt-tab, tab switch).
+    // Don't clear model focus when window loses focus (alt-tab, tab switch).
     // Only clear when user clicks elsewhere within the document.
     if (!document.hasFocus()) {
       return;

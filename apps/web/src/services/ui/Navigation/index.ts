@@ -115,7 +115,7 @@ export const NavigationLive = Layer.effect(
 
               yield* Frame.setAssignedNodeId(frameId, validatedNodeId);
 
-              // Restore activeElement based on current selection
+              // Restore frame/block focus based on current selection
               const selection = yield* Frame.getSelection(frameId).pipe(
                 Effect.catchTag("FrameNotFoundError", () =>
                   Effect.succeed(Option.none<never>()),
@@ -143,7 +143,7 @@ export const NavigationLive = Layer.effect(
                   // Selection is on a block (frame or section block)
                   // Use the original blockId from selection
                   yield* Frame.enterBlockEditing(anchorBlockId);
-                  // Block scrolls itself on mount via ActiveElementContext
+                  // Block scrolls itself on mount when editor mode becomes active
                 }
               }
 

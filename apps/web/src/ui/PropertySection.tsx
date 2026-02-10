@@ -6,16 +6,13 @@ import { PropertyT, type LinkedTuple } from "@/services/ui/Property";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import {
-  createEffect,
   createSignal,
   For,
   onCleanup,
   onMount,
   Show,
-  useContext,
 } from "solid-js";
 import Block from "./Block";
-import { ActiveElementContext } from "./FrameView";
 // TODO: Re-enable Editor import once blockId support is added
 // import Editor from "./Editor";
 
@@ -121,7 +118,7 @@ function GhostBlock(props: GhostBlockProps) {
   // Derive "should show editor" from both local state and requestFocus prop
   const shouldShowEditor = () => isActive() || props.requestFocus;
 
-  const handleFocus = (_e: MouseEvent) => {
+  const handleFocus = () => {
     setIsActive(true);
   };
 
@@ -165,9 +162,6 @@ function GhostBlock(props: GhostBlockProps) {
 export default function PropertySection(props: PropertySectionProps) {
   const runtime = useBrowserRuntime();
   const Automerge = runtime.runSync(AutomergeT);
-
-  // Subscribe to activeElement for auto-focus
-  const getActiveElement = useContext(ActiveElementContext);
 
   // Property name from Automerge
   const [propertyName, setPropertyName] = createSignal("");
@@ -232,21 +226,6 @@ export default function PropertySection(props: PropertySectionProps) {
     // Selection is handled by CodeMirror internally now
   };
 
-  // Auto-focus when activeElement matches this property
-  createEffect(() => {
-    const activeEl = getActiveElement();
-    // Don't steal focus when ghost block is being focused
-    if (ghostFocusRequested()) return;
-
-    if (
-      activeEl?.type === "property" &&
-      activeEl.propertyId === props.propertyId &&
-      activeEl.frameId === props.frameId
-    ) {
-      focusPropertyName();
-    }
-  });
-
   onMount(() => {
     // Load initial property name from Automerge
     runtime
@@ -269,7 +248,7 @@ export default function PropertySection(props: PropertySectionProps) {
     });
   });
 
-  const handleFocus = (_e: MouseEvent) => {
+  const handleFocus = () => {
     setIsActive(true);
   };
 

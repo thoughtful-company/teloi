@@ -154,7 +154,7 @@ export const EditorLive = Layer.effect(
         const blockContext = Id.parseBlockContextSync(blockId);
         const frameId = blockContext.frameId;
 
-        // Only clear selection and activeElement if still pointing to this block
+        // Only clear selection/focus if still pointing to this block
         const selectionOpt = yield* Frame.getSelection(frameId);
         const sel = Option.getOrNull(selectionOpt);
         const selBlockId = sel ? sel.anchor.elementId : null;

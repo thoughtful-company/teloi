@@ -1,5 +1,5 @@
 import { tables, TeloiNode } from "@/livestore/schema";
-import { Entity, Id, Model } from "@/schema";
+import { Id, Model } from "@/schema";
 import { StoreT } from "@/services/external/Store";
 import {
   resolveActiveViewType,
@@ -19,7 +19,7 @@ export interface FrameView {
   activeViewId: Id.Node | null;
   activeViewType: ViewType;
   availableViews: readonly ViewInfo[];
-  activeElement: Option.Option<Entity.Element>;
+  isBlockSelectionMode: boolean;
   popup: Model.FramePopup | null;
 }
 
@@ -89,7 +89,7 @@ export const subscribe = (frameId: Id.Frame) =>
       { switch: true },
     );
 
-    const activeElementStream = Stream.zipLatestAll(
+    const focusModeStream = Stream.zipLatestAll(
       windowStream,
       frameStream,
       activeBlockSelectionStream,
@@ -98,21 +98,23 @@ export const subscribe = (frameId: Id.Frame) =>
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
-        if (!isStageActiveFrame) return Option.none<Entity.Element>();
+        if (!isStageActiveFrame) return { isBlockSelectionMode: false };
 
         const selectedBlocks = frame?.selectedBlocks ?? [];
         if (selectedBlocks.length > 0) {
-          return Option.some<Entity.Element>({ type: "frame", id: frameId });
+          return { isBlockSelectionMode: true };
         }
 
         const activeBlockId = frame?.activeBlockId ?? null;
         if (activeBlockId != null && activeBlockSelection != null) {
-          return Option.some<Entity.Element>({ type: "block", id: activeBlockId });
+          return { isBlockSelectionMode: false };
         }
 
-        return Option.some<Entity.Element>({ type: "frame", id: frameId });
+        return { isBlockSelectionMode: true };
       }),
-      Stream.changesWith((a, b) => activeElementKey(a) === activeElementKey(b)),
+      Stream.changesWith(
+        (a, b) => a.isBlockSelectionMode === b.isBlockSelectionMode,
+      ),
     );
 
     // Separate popup stream — changes to popup should NOT re-subscribe to node/views
@@ -189,40 +191,22 @@ export const subscribe = (frameId: Id.Frame) =>
       })),
     );
 
-    // Combine frame content with active element and popup
-    const contentWithElement = Stream.zipLatestWith(
+    // Combine frame content with focus mode and popup
+    const contentWithMode = Stream.zipLatestWith(
       autoDetectedStream,
-      activeElementStream,
-      (content, activeElement) => ({
+      focusModeStream,
+      (content, focusMode) => ({
         ...content,
-        activeElement,
+        isBlockSelectionMode: focusMode.isBlockSelectionMode,
       }),
     );
 
     return Stream.zipLatestWith(
-      contentWithElement,
+      contentWithMode,
       popupStream,
       (content, popup) => ({
         ...content,
         popup,
       }),
     );
-  });
-
-const activeElementKey = (value: Option.Option<Entity.Element>): string =>
-  Option.match(value, {
-    onNone: () => "none",
-    onSome: (el) => {
-      switch (el.type) {
-        case "window":
-        case "pane":
-        case "frame":
-        case "block":
-          return `${el.type}:${el.id}`;
-        case "title":
-          return `title:${el.frameId}`;
-        case "property":
-          return `property:${el.frameId}:${el.propertyId}`;
-      }
-    },
   });
