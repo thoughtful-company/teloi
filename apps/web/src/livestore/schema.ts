@@ -133,9 +133,9 @@ const tupleMembers = State.SQLite.table({
   ],
 });
 
-const window = State.SQLite.clientDocument({
-  name: Model.DocumentName.Window,
-  schema: Model.DocumentSchemas[Model.DocumentName.Window].schema,
+const world = State.SQLite.clientDocument({
+  name: Model.DocumentName.World,
+  schema: Model.DocumentSchemas[Model.DocumentName.World].schema,
   default: {
     id: SessionIdSymbol,
     value: {
@@ -175,7 +175,9 @@ const block = State.SQLite.clientDocument({
 
 // Create a mapping dictionary for the models with branded types
 type ClientDocumentModels = {
-  window: Model.Window | null;
+  world: Model.World | null;
+  /** @deprecated Use `world` */
+  window: Model.World | null;
   pane: Model.Pane | null;
   frame: Model.Frame | null;
   block: Model.Block | null;
@@ -187,7 +189,9 @@ export type ClientDocumentModel<K extends Model.DocumentName> =
 
 // Similarly for branded IDs
 type ClientDocumentBrandedIds = {
-  window: Id.Window;
+  world: Id.World;
+  /** @deprecated Use `world` */
+  window: Id.World;
   pane: Id.Pane;
   frame: Id.Frame;
   block: Id.Block;
@@ -208,7 +212,9 @@ type EventsMap = {
 };
 
 export const documentEvents = {
-  [Model.DocumentName.Window]: window.set,
+  [Model.DocumentName.World]: world.set,
+  /** @deprecated Use DocumentName.World */
+  [Model.DocumentName.Window]: world.set,
   [Model.DocumentName.Pane]: pane.set,
   [Model.DocumentName.Frame]: frame.set,
   [Model.DocumentName.Block]: block.set,
@@ -241,7 +247,9 @@ export const tables = {
   tupleTypeRoleAllowedTypes,
   tuples,
   tupleMembers,
-  window,
+  world,
+  /** @deprecated Use `world` */
+  window: world,
   pane,
   frame,
   block,

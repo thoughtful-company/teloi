@@ -3,6 +3,8 @@ import { Entity } from "../entity";
 import { Id } from "../id";
 
 export const DocumentName = {
+  World: "world",
+  /** @deprecated Use World */
   Window: "window",
   Pane: "pane",
   Frame: "frame",
@@ -47,15 +49,23 @@ export const BlockSelection = Schema.Struct({
 });
 export type BlockSelection = typeof BlockSelection.Type;
 
-export const Window = Schema.Struct({
+export const World = Schema.Struct({
   panes: Schema.Array(Id.Pane),
   activeRegion: Schema.optional(ActiveRegion),
   activeFrameId: Schema.optional(Schema.NullOr(Id.Frame)),
 });
-export type Window = typeof Window.Type;
+export type World = typeof World.Type;
+/** @deprecated Use World */
+export const Window = World;
+/** @deprecated Use World */
+export type Window = World;
 
 export const Pane = Schema.Struct({
-  parent: Entity.Window,
+  parent: Schema.Struct({
+    id: Id.World,
+    /** @deprecated "window" is legacy compatibility */
+    type: Schema.Literal("world", "window"),
+  }),
   frames: Schema.Array(Id.Frame),
 });
 export type Pane = typeof Pane.Type;
@@ -70,7 +80,9 @@ export type FramePopup = typeof FramePopup.Type;
 
 export const Frame = Schema.mutable(
   Schema.Struct({
-    windowId: Id.Window,
+    worldId: Schema.optional(Schema.NullOr(Id.World)),
+    /** @deprecated Use worldId */
+    windowId: Schema.optional(Schema.NullOr(Id.World)),
     parent: Entity.Pane,
     assignedNodeId: Schema.NullOr(Schema.String),
     rootBlockId: Schema.optional(Schema.NullOr(Schema.String)),
@@ -99,8 +111,12 @@ export const Block = Schema.Struct({
 export type Block = typeof Block.Type;
 
 export const DocumentSchemas = {
+  [DocumentName.World]: {
+    schema: Schema.NullOr(World),
+  },
+  /** @deprecated Use DocumentName.World */
   [DocumentName.Window]: {
-    schema: Schema.NullOr(Window),
+    schema: Schema.NullOr(World),
   },
   [DocumentName.Pane]: {
     schema: Schema.NullOr(Pane),

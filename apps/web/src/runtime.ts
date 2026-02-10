@@ -29,7 +29,7 @@ import { ViewLive } from "./services/ui/View";
 import { CommandBusLive } from "./services/ui/CommandBus";
 import { KeyEventBusLive } from "./services/ui/KeyEventBus";
 import { EditorLive } from "./services/ui/Editor";
-import { WindowLive } from "./services/ui/Window";
+import { WorldLive } from "./services/ui/World";
 
 registerBuiltInTypes();
 
@@ -78,7 +78,7 @@ const EventCommandBusGroup = Layer.provideMerge(
   KeyEventBusLive,
   CommandBusLive,
 );
-// Group Editor and View (both need FrameT, WindowT from below)
+// Group Editor and View (both need FrameT, WorldT from below)
 const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
 const BrowserLayer = pipe(
@@ -93,7 +93,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(TypeColorLive),
   Layer.provideMerge(FrameLive),
   Layer.provideMerge(PropertyChatLive),
-  Layer.provideMerge(Layer.merge(WindowLive, ChatProviderLive)),
+  Layer.provideMerge(Layer.merge(WorldLive, ChatProviderLive)),
   Layer.provideMerge(TupleLive),
   Layer.provideMerge(TypeLive),
   Layer.provideMerge(NodeLive),

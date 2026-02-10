@@ -18,20 +18,22 @@ import { nanoid } from "nanoid";
 export interface FrameWithNodeResult {
   frameId: Id.Frame;
   nodeId: Id.Node;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
   textContent: string;
 }
 
 /**
  * Creates a frame with an assigned node containing the given text.
- * Sets up the minimal required documents: window, frame, node.
+ * Sets up the minimal required documents: world, frame, node.
  */
 export const A_FRAME_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Automerge = yield* AutomergeT;
 
-    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const worldId = Id.World.make(yield* Store.getSessionId());
     const frameId = Id.Frame.make(nanoid());
     const nodeId = Id.Node.make(nanoid());
 
@@ -46,20 +48,20 @@ export const A_FRAME_WITH_TEXT = (textContent: string) =>
     // Set text content in Automerge
     yield* Automerge.setText(nodeId, textContent);
 
-    // Create window document (required for active element tracking)
+    // Create world document (required for active element tracking)
     yield* Store.setDocument(
-      "window",
+      "world",
       {
         panes: [],
       },
-      windowId,
+      worldId,
     );
 
     // Create frame document
     yield* Store.setDocument(
       "frame",
       {
-        windowId,
+        worldId,
         parent: { id: Id.Pane.make("test-pane"), type: "pane" },
         assignedNodeId: nodeId,
         toggledNodes: [],
@@ -72,7 +74,8 @@ export const A_FRAME_WITH_TEXT = (textContent: string) =>
     return {
       frameId,
       nodeId,
-      windowId,
+      worldId,
+      windowId: worldId,
       textContent,
     } satisfies FrameWithNodeResult;
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_TEXT"));
@@ -90,7 +93,9 @@ export interface FrameWithChildrenResult<
   frameId: Id.Frame;
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
 }
 
 /**
@@ -106,7 +111,7 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     const Node = yield* NodeT;
     const Automerge = yield* AutomergeT;
 
-    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const worldId = Id.World.make(yield* Store.getSessionId());
     const frameId = Id.Frame.make(nanoid());
     const rootNodeId = Id.Node.make(nanoid());
 
@@ -121,20 +126,20 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
     // Set root text in Automerge
     yield* Automerge.setText(rootNodeId, rootText);
 
-    // Create window document
+    // Create world document
     yield* Store.setDocument(
-      "window",
+      "world",
       {
         panes: [],
       },
-      windowId,
+      worldId,
     );
 
     // Create frame document
     yield* Store.setDocument(
       "frame",
       {
-        windowId,
+        worldId,
         parent: { id: Id.Pane.make("test-pane"), type: "pane" },
         assignedNodeId: rootNodeId,
         toggledNodes: [],
@@ -160,7 +165,8 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       frameId,
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
-      windowId,
+      worldId,
+      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_CHILDREN"));
 
@@ -209,20 +215,22 @@ export interface FullHierarchyResult {
   frameId: Id.Frame;
   nodeId: Id.Node;
   paneId: Id.Pane;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
   textContent: string;
 }
 
 /**
- * Creates the full window → pane → frame → node hierarchy.
- * Required for NavigationT tests which look up frame via window.panes[0].
+ * Creates the full world → pane → frame → node hierarchy.
+ * Required for NavigationT tests which look up frame via world.panes[0].
  */
 export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Automerge = yield* AutomergeT;
 
-    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const worldId = Id.World.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
     const frameId = Id.Frame.make(nanoid());
     const nodeId = Id.Node.make(nanoid());
@@ -238,20 +246,20 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
     // Set text in Automerge
     yield* Automerge.setText(nodeId, textContent);
 
-    // Create window document with pane reference
+    // Create world document with pane reference
     yield* Store.setDocument(
-      "window",
+      "world",
       {
         panes: [paneId],
       },
-      windowId,
+      worldId,
     );
 
     // Create pane document with frame reference
     yield* Store.setDocument(
       "pane",
       {
-        parent: { id: windowId, type: "window" },
+        parent: { id: worldId, type: "world" },
         frames: [frameId],
       },
       paneId,
@@ -261,7 +269,7 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
     yield* Store.setDocument(
       "frame",
       {
-        windowId,
+        worldId,
         parent: { id: paneId, type: "pane" },
         assignedNodeId: null,
         toggledNodes: [],
@@ -275,7 +283,8 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       frameId,
       nodeId,
       paneId,
-      windowId,
+      worldId,
+      windowId: worldId,
       textContent,
     } satisfies FullHierarchyResult;
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_TEXT"));
@@ -287,12 +296,14 @@ export interface FullHierarchyWithChildrenResult<
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
   paneId: Id.Pane;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
 }
 
 /**
- * Creates the full window → pane → frame → node hierarchy with child nodes.
- * Required for NavigationT tests which look up frame via window.panes[0].
+ * Creates the full world → pane → frame → node hierarchy with child nodes.
+ * Required for NavigationT tests which look up frame via world.panes[0].
  */
 export const A_FULL_HIERARCHY_WITH_CHILDREN = <
   const T extends readonly ChildSpec[],
@@ -305,7 +316,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
     const Node = yield* NodeT;
     const Automerge = yield* AutomergeT;
 
-    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const worldId = Id.World.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
     const frameId = Id.Frame.make(nanoid());
     const rootNodeId = Id.Node.make(nanoid());
@@ -321,20 +332,20 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
     // Set root text in Automerge
     yield* Automerge.setText(rootNodeId, rootText);
 
-    // Create window document with pane reference
+    // Create world document with pane reference
     yield* Store.setDocument(
-      "window",
+      "world",
       {
         panes: [paneId],
       },
-      windowId,
+      worldId,
     );
 
     // Create pane document with frame reference
     yield* Store.setDocument(
       "pane",
       {
-        parent: { id: windowId, type: "window" },
+        parent: { id: worldId, type: "world" },
         frames: [frameId],
       },
       paneId,
@@ -344,7 +355,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
     yield* Store.setDocument(
       "frame",
       {
-        windowId,
+        worldId,
         parent: { id: paneId, type: "pane" },
         assignedNodeId: rootNodeId,
         toggledNodes: [],
@@ -371,7 +382,8 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
       paneId,
-      windowId,
+      worldId,
+      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FULL_HIERARCHY_WITH_CHILDREN"));
 
@@ -672,7 +684,9 @@ export interface FrameWithParentAndChildrenResult<
   parentNodeId: Id.Node;
   rootNodeId: Id.Node;
   childNodeIds: ToNodeIds<T>;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
 }
 
 /**
@@ -696,7 +710,7 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
     const Node = yield* NodeT;
     const Automerge = yield* AutomergeT;
 
-    const windowId = Id.Window.make(yield* Store.getSessionId());
+    const worldId = Id.World.make(yield* Store.getSessionId());
     const paneId = Id.Pane.make(nanoid());
     const frameId = Id.Frame.make(nanoid());
     const parentNodeId = Id.Node.make(nanoid());
@@ -717,20 +731,20 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
     });
     yield* Automerge.setText(rootNodeId, rootText);
 
-    // Create window document with pane reference
+    // Create world document with pane reference
     yield* Store.setDocument(
-      "window",
+      "world",
       {
         panes: [paneId],
       },
-      windowId,
+      worldId,
     );
 
     // Create pane document with frame reference
     yield* Store.setDocument(
       "pane",
       {
-        parent: { id: windowId, type: "window" },
+        parent: { id: worldId, type: "world" },
         frames: [frameId],
       },
       paneId,
@@ -740,7 +754,7 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
     yield* Store.setDocument(
       "frame",
       {
-        windowId,
+        worldId,
         parent: { id: paneId, type: "pane" },
         assignedNodeId: rootNodeId,
         toggledNodes: [],
@@ -766,7 +780,8 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
       parentNodeId,
       rootNodeId,
       childNodeIds: childNodeIds as ToNodeIds<T>,
-      windowId,
+      worldId,
+      windowId: worldId,
     };
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_PARENT_AND_CHILDREN"));
 
@@ -932,12 +947,14 @@ export const A_TYPE_WITH_DIRECT_COLOR = (bgColor: string) =>
 export interface ChatFrameResult {
   frameId: Id.Frame;
   chatNodeId: Id.Node;
-  windowId: Id.Window;
+  worldId: Id.World;
+  /** @deprecated Use worldId */
+  windowId: Id.World;
 }
 
 export const A_CHAT_FRAME = () =>
   Effect.gen(function* () {
-    const { frameId, rootNodeId, windowId } = yield* A_FRAME_WITH_CHILDREN(
+    const { frameId, rootNodeId, worldId } = yield* A_FRAME_WITH_CHILDREN(
       "Chat",
       [],
     );
@@ -945,7 +962,8 @@ export const A_CHAT_FRAME = () =>
     return {
       frameId,
       chatNodeId: rootNodeId,
-      windowId,
+      worldId,
+      windowId: worldId,
     } satisfies ChatFrameResult;
   }).pipe(Effect.withSpan("Given.A_CHAT_FRAME"));
 

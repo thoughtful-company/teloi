@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
-import { WindowT } from "@/services/ui/Window";
+import { WorldT } from "@/services/ui/World";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Option, Stream } from "effect";
 import { createSignal, For, onCleanup, onMount } from "solid-js";
@@ -59,12 +59,12 @@ function PageItem(props: PageItemProps) {
     e.stopPropagation();
     runtime.runPromise(
       Effect.gen(function* () {
-        const Window = yield* WindowT;
+        const World = yield* WorldT;
         const Frame = yield* FrameT;
         const Navigation = yield* NavigationT;
         const Node = yield* NodeT;
 
-        const maybeFrameId = yield* Window.getActiveFrameId();
+        const maybeFrameId = yield* World.getActiveFrameId();
         if (Option.isSome(maybeFrameId)) {
           const assignedNodeId = yield* Frame.getAssignedNodeId(
             maybeFrameId.value,

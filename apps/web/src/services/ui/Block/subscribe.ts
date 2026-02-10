@@ -101,15 +101,15 @@ export const subscribe = (blockId: Id.Block) =>
       yield* Node.attestExistence(nodeId);
     }
 
-    // Resolve windowId once for selection/isSelected streams
+    // Resolve worldId once for selection/isSelected streams
     const sessionId = yield* Store.getSessionId();
-    const windowId = Id.Window.make(sessionId);
+    const worldId = Id.World.make(sessionId);
     const frameId = ctx.frameId;
 
     const block$ = yield* makeBlockStreamEither(blockId);
     const node$ = yield* makeNodeStreamEither(nodeId);
     const window$ = yield* makeWindowDerivedStream(
-      windowId,
+      worldId,
       frameId,
       nodeId,
       blockId,
@@ -314,7 +314,7 @@ interface WindowDerived {
 }
 
 const makeWindowDerivedStream = (
-  windowId: Id.Window,
+  worldId: Id.World,
   frameId: Id.Frame,
   nodeId: Id.Node,
   blockId: Id.Block,
@@ -322,9 +322,9 @@ const makeWindowDerivedStream = (
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const query = queryDb(
-      tables.window
+      tables.world
         .select("value")
-        .where("id", "=", windowId)
+        .where("id", "=", worldId)
         .first({ fallback: () => null }),
     );
     const windowStream = yield* Store.subscribeStream(query).pipe(Effect.orDie);

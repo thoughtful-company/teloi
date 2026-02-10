@@ -196,7 +196,7 @@ Typed domain models using Effect Schema:
 
 ### Runtime
 `apps/web/src/runtime.ts` - Creates a `ManagedRuntime` with full service layer composition:
-- BlockLive → FrameLive → WindowLive → NodeLive → StoreLive (via `Layer.provideMerge`)
+- BlockLive → FrameLive → WorldLive → NodeLive → StoreLive (via `Layer.provideMerge`)
 - LiveStore initialized from `livestore/store.ts`
 - Exported as `BrowserRuntime` and provided via SolidJS context
 

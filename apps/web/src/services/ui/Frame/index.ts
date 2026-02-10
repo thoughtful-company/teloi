@@ -8,7 +8,7 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
-import { WindowT } from "../Window";
+import { WorldT } from "../World";
 import { FrameNodeNotAssignedError, FrameNotFoundError } from "../errors";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
@@ -117,14 +117,14 @@ export const FrameLive = Layer.effect(
     const Tuple = yield* TupleT;
     const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
-    const Window = yield* WindowT;
+    const World = yield* WorldT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(TupleT, Tuple),
       Context.add(TypeT, Type),
       Context.add(AutomergeT, Automerge),
-      Context.add(WindowT, Window),
+      Context.add(WorldT, World),
     );
 
     return {
@@ -198,14 +198,14 @@ export const FrameLive = Layer.effect(
       getMode: (): Effect.Effect<EditorMode> =>
         Effect.gen(function* () {
           const sessionId = yield* Store.getSessionId();
-          const windowId = Id.Window.make(sessionId);
-          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+          const worldId = Id.World.make(sessionId);
+          const worldDoc = yield* Store.getDocument("world", worldId).pipe(
             Effect.orDie,
           );
-          if (Option.isNone(windowDoc)) return { type: "none" as const };
+          if (Option.isNone(worldDoc)) return { type: "none" as const };
 
-          const isStageActive = (windowDoc.value.activeRegion ?? "stage") === "stage";
-          const activeFrameId = windowDoc.value.activeFrameId ?? null;
+          const isStageActive = (worldDoc.value.activeRegion ?? "stage") === "stage";
+          const activeFrameId = worldDoc.value.activeFrameId ?? null;
           if (!isStageActive || activeFrameId == null) return { type: "none" as const };
 
           const frameDoc = yield* Store.getDocument("frame", activeFrameId).pipe(
@@ -233,7 +233,7 @@ export const FrameLive = Layer.effect(
         }),
       enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
         Effect.gen(function* () {
-          yield* Window.setActiveFrameId(frameId);
+          yield* World.setActiveFrameId(frameId);
 
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
@@ -262,7 +262,7 @@ export const FrameLive = Layer.effect(
           if (blockCtx.type !== "frame") return;
 
           const frameId = blockCtx.frameId;
-          yield* Window.setActiveFrameId(frameId);
+          yield* World.setActiveFrameId(frameId);
 
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
@@ -289,7 +289,7 @@ export const FrameLive = Layer.effect(
             frameId,
           ).pipe(Effect.orDie);
         }),
-      clearFocus: (): Effect.Effect<void> => Window.setActiveFrameId(null),
+      clearFocus: (): Effect.Effect<void> => World.setActiveFrameId(null),
 
       // Popup operations
       hasPopup: (frameId: Id.Frame) =>

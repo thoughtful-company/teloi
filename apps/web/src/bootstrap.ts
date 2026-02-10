@@ -7,20 +7,20 @@ import { nanoid } from "nanoid";
 
 /**
  * Bootstrap effect that ensures the app has required initial state.
- * Creates window → pane → frame → node hierarchy if not present.
+ * Creates world → pane → frame → node hierarchy if not present.
  * Returns the fallback nodeId for URL sync (either newly created or existing).
  */
 export const bootstrap = Effect.gen(function* () {
   const Store = yield* StoreT;
   const Automerge = yield* AutomergeT;
   const sessionId = yield* Store.getSessionId();
-  const windowId = Id.Window.make(sessionId);
+  const worldId = Id.World.make(sessionId);
 
-  const windowDoc = yield* Store.getDocument("window", windowId);
+  const worldDoc = yield* Store.getDocument("world", worldId);
 
   // Already initialized - get existing frame's assignedNodeId as fallback
-  if (Option.isSome(windowDoc) && windowDoc.value.panes.length > 0) {
-    const paneDoc = yield* Store.getDocument("pane", windowDoc.value.panes[0]);
+  if (Option.isSome(worldDoc) && worldDoc.value.panes.length > 0) {
+    const paneDoc = yield* Store.getDocument("pane", worldDoc.value.panes[0]);
     if (Option.isSome(paneDoc) && paneDoc.value.frames.length > 0) {
       const frameDoc = yield* Store.getDocument(
         "frame",
@@ -101,22 +101,22 @@ export const bootstrap = Effect.gen(function* () {
     "And what is the use of a book without pictures or conversations?",
   );
 
-  // Create window document
+  // Create world document
   yield* Store.setDocument(
-    "window",
+    "world",
     {
       panes: [paneId],
       activeRegion: "stage",
       activeFrameId: frameId,
     },
-    windowId,
+    worldId,
   );
 
   // Create pane document
   yield* Store.setDocument(
     "pane",
     {
-      parent: { id: windowId, type: "window" },
+      parent: { id: worldId, type: "world" },
       frames: [frameId],
     },
     paneId,
@@ -126,7 +126,7 @@ export const bootstrap = Effect.gen(function* () {
   yield* Store.setDocument(
     "frame",
     {
-      windowId,
+      worldId,
       parent: { id: paneId, type: "pane" },
       assignedNodeId: null,
       rootBlockId: null,
@@ -143,7 +143,7 @@ export const bootstrap = Effect.gen(function* () {
     frameId,
   );
 
-  yield* Effect.log("Bootstrap complete: created window, pane, frame, node");
+  yield* Effect.log("Bootstrap complete: created world, pane, frame, node");
 
   return Id.Node.make(nodeId);
 });

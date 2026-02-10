@@ -4,7 +4,7 @@ import { URLServiceB } from "@/services/browser/URLService";
 import { NodeT } from "@/services/domain/Node";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { FrameT } from "../Frame";
-import { WindowT } from "../Window";
+import { WorldT } from "../World";
 
 const URL_SHORTCUTS: Record<string, Id.Node> = {
   "/inbox": System.INBOX,
@@ -63,7 +63,7 @@ export const NavigationLive = Layer.effect(
     const URL = yield* URLServiceB;
     const Frame = yield* FrameT;
     const Node = yield* NodeT;
-    const Window = yield* WindowT;
+    const World = yield* WorldT;
 
     const validateNodeId = (nodeId: Id.Node) =>
       Node.attestExistence(nodeId).pipe(
@@ -84,7 +84,7 @@ export const NavigationLive = Layer.effect(
           nodeIdToUse = System.WORKSPACE;
         }
 
-        const maybeFrameId = yield* Window.getActiveFrameId();
+        const maybeFrameId = yield* World.getActiveFrameId();
         if (Option.isNone(maybeFrameId)) return;
 
         yield* Frame.setAssignedNodeId(maybeFrameId.value, nodeIdToUse);
@@ -108,7 +108,7 @@ export const NavigationLive = Layer.effect(
                 onSome: validateNodeId,
               });
 
-              const maybeFrameId = yield* Window.getActiveFrameId();
+              const maybeFrameId = yield* World.getActiveFrameId();
               if (Option.isNone(maybeFrameId)) return;
 
               const frameId = maybeFrameId.value;
@@ -160,7 +160,7 @@ export const NavigationLive = Layer.effect(
       options?: { focusTitle?: boolean },
     ) =>
       Effect.gen(function* () {
-        const maybeFrameId = yield* Window.getActiveFrameId();
+        const maybeFrameId = yield* World.getActiveFrameId();
         if (Option.isNone(maybeFrameId)) return;
 
         const frameId = maybeFrameId.value;

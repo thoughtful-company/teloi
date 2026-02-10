@@ -27,11 +27,11 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
     const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
 
     const sessionId = yield* Store.getSessionId();
-    const windowId = Id.Window.make(sessionId);
+    const worldId = Id.World.make(sessionId);
     const windowQuery = queryDb(
-      tables.window
+      tables.world
         .select("value")
-        .where("id", "=", windowId)
+        .where("id", "=", worldId)
         .first({ fallback: () => null }),
     );
     const windowStream = yield* Store.subscribeStream(windowQuery).pipe(

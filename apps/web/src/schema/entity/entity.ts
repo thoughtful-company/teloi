@@ -1,10 +1,17 @@
 import { Schema } from "effect";
 import { Id } from "../id";
 
+export const World = Schema.Struct({
+  id: Id.World,
+  type: Schema.Literal("world"),
+});
+export type World = typeof World.Type;
+/** @deprecated Use World */
 export const Window = Schema.Struct({
-  id: Id.Window,
+  id: Id.World,
   type: Schema.Literal("window"),
 });
+/** @deprecated Use World */
 export type Window = typeof Window.Type;
 
 export const Pane = Schema.Struct({
@@ -39,6 +46,7 @@ export const Property = Schema.Struct({
 export type Property = typeof Property.Type;
 
 export const Element = Schema.Union(
+  World,
   Window,
   Pane,
   Frame,

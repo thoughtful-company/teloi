@@ -3,7 +3,7 @@ import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { FrameT } from "@/services/ui/Frame";
-import { WindowT } from "@/services/ui/Window";
+import { WorldT } from "@/services/ui/World";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Stream } from "effect";
 import { blur } from "./blur";
@@ -33,13 +33,13 @@ export const TitleLive = Layer.effect(
   Effect.gen(function* () {
     const Store = yield* StoreT;
     const Node = yield* NodeT;
-    const Window = yield* WindowT;
+    const World = yield* WorldT;
     const Automerge = yield* AutomergeT;
     const Frame = yield* FrameT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
-      Context.add(WindowT, Window),
+      Context.add(WorldT, World),
       Context.add(AutomergeT, Automerge),
       Context.add(FrameT, Frame),
     );

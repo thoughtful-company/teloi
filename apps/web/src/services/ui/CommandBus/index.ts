@@ -20,7 +20,7 @@ import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
 import { NavigationT } from "@/services/ui/Navigation";
 import { ViewT } from "@/services/ui/View";
-import { WindowT } from "@/services/ui/Window";
+import { WorldT } from "@/services/ui/World";
 import { Context, Effect, Layer } from "effect";
 
 // ============================================================================
@@ -63,7 +63,7 @@ export const CommandBusLive = Layer.effect(
   Effect.gen(function* () {
     // Capture services that commands need
     const Editor = yield* EditorT;
-    const Window = yield* WindowT;
+    const World = yield* WorldT;
     const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
@@ -77,7 +77,7 @@ export const CommandBusLive = Layer.effect(
 
     const commandContext = Context.empty().pipe(
       Context.add(EditorT, Editor),
-      Context.add(WindowT, Window),
+      Context.add(WorldT, World),
       Context.add(FrameT, Frame),
       Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),

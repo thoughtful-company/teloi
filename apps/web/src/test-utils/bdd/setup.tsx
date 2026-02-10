@@ -25,7 +25,7 @@ import { ViewLive } from "@/services/ui/View";
 import { CommandBusLive } from "@/services/ui/CommandBus";
 import { KeyEventBusLive } from "@/services/ui/KeyEventBus";
 import { EditorLive } from "@/services/ui/Editor";
-import { WindowLive } from "@/services/ui/Window";
+import { WorldLive } from "@/services/ui/World";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { Store } from "@livestore/livestore";
 import { getStore } from "@livestore/solid";
@@ -99,7 +99,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     KeyEventBusLive,
     CommandBusLive,
   );
-  // Group Editor and View (both need FrameT, WindowT from below)
+  // Group Editor and View (both need FrameT, WorldT from below)
   const EditorViewGroup = Layer.merge(EditorLive, ViewLive);
 
   const TestLayer = pipe(
@@ -116,7 +116,7 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(PropertyChatLive),
     Layer.provideMerge(
       Layer.merge(
-        WindowLive,
+        WorldLive,
         Layer.succeed(ChatProviderT, {
           send: () => Effect.succeed("[test response]"),
         }),

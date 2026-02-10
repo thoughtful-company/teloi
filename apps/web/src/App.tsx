@@ -54,12 +54,12 @@ const App: Component = () => {
       Effect.gen(function* () {
         const Store = yield* StoreT;
         const sessionId = yield* Store.getSessionId();
-        const windowId = Id.Window.make(sessionId);
+        const worldId = Id.World.make(sessionId);
 
-        const windowDoc = yield* Store.getDocument("window", windowId);
-        if (Option.isNone(windowDoc)) return;
+        const worldDoc = yield* Store.getDocument("world", worldId);
+        if (Option.isNone(worldDoc)) return;
 
-        const firstPaneId = windowDoc.value.panes[0];
+        const firstPaneId = worldDoc.value.panes[0];
         if (!firstPaneId) return;
 
         const paneDoc = yield* Store.getDocument("pane", firstPaneId);
@@ -106,10 +106,10 @@ const App: Component = () => {
 
       const Store = yield* StoreT;
       const sessionId = yield* Store.getSessionId();
-      const windowId = Id.Window.make(sessionId);
+      const worldId = Id.World.make(sessionId);
 
-      const windowDoc = yield* Store.getDocument("window", windowId);
-      const paneIds = Option.isSome(windowDoc) ? windowDoc.value.panes : [];
+      const worldDoc = yield* Store.getDocument("world", worldId);
+      const paneIds = Option.isSome(worldDoc) ? worldDoc.value.panes : [];
 
       const framesByPane = new Map<Id.Pane, readonly Id.Frame[]>();
       for (const paneId of paneIds) {

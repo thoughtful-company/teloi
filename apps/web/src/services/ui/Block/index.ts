@@ -6,7 +6,7 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { PickerT } from "@/services/ui/Picker";
-import { WindowT } from "@/services/ui/Window";
+import { WorldT } from "@/services/ui/World";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option, Stream } from "effect";
 import { attestExistence } from "./attestExistence";
@@ -125,7 +125,7 @@ export const BlockLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Tuple = yield* TupleT;
-    const Window = yield* WindowT;
+    const World = yield* WorldT;
     const Automerge = yield* AutomergeT;
     const Type = yield* TypeT;
     const Picker = yield* PickerT;
@@ -133,7 +133,7 @@ export const BlockLive = Layer.effect(
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(TupleT, Tuple),
-      Context.add(WindowT, Window),
+      Context.add(WorldT, World),
       Context.add(AutomergeT, Automerge),
       Context.add(TypeT, Type),
       Context.add(PickerT, Picker),

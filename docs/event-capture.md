@@ -10,7 +10,7 @@ The app follows an MVVM-inspired pattern for event handling:
 2. **ViewModel (ActionT)** interprets the event based on model state
 3. **Model** executes the action and updates state
 
-The View never passes context like "which block" - it just reports "event happened". The ViewModel queries the model to determine context (via `WindowT.activeElement`, etc.).
+The View never passes context like "which block" - it just reports "event happened". The ViewModel queries the model to determine context (via `FrameT.getMode()`, etc.).
 
 ## Event Flow
 
@@ -112,7 +112,7 @@ Use `getCursorContext(view: EditorView)` from `utils/cursorContext.ts` to extrac
 // ActionT queries model state:
 const mode = yield* EditorModeT.get();           // Text editing vs block selection
 const pickerOpen = yield* PickerT.isOpen();      // Is type picker open
-const activeElement = yield* WindowT.activeElement; // What's focused
+const mode = yield* FrameT.getMode(); // What's focused / active
 
 // Then interprets:
 if (action.key === "Enter" && pickerOpen) {
