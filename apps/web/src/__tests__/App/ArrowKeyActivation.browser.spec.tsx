@@ -64,9 +64,6 @@ describe("Arrow key frame activation", () => {
         "window",
         {
           panes: [paneId],
-          blockSelectionAnchor: null,
-          blockSelectionFocus: null,
-          lastFocusedBlockId: null,
         },
         windowId,
       );

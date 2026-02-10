@@ -3,6 +3,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
+import { FrameT } from "@/services/ui/Frame";
 import { WindowT } from "@/services/ui/Window";
 import FrameView from "@/ui/FrameView";
 import { Effect, Option, Stream } from "effect";
@@ -68,9 +69,6 @@ describe("Enter/Space frame activation", () => {
         "window",
         {
           panes: [paneId],
-          blockSelectionAnchor: null,
-          blockSelectionFocus: null,
-          lastFocusedBlockId: null,
         },
         windowId,
       );
@@ -446,10 +444,18 @@ describe("Enter/Space frame activation", () => {
         render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-
-        // Enter block selection mode
-        yield* When.USER_ENTERS_BLOCK_SELECTION(blockId);
+        const Frame = yield* FrameT;
+        const Window = yield* WindowT;
+        yield* Frame.setBlockSelection(
+          frameId,
+          [childNodeIds[0]],
+          childNodeIds[0],
+          childNodeIds[0],
+        );
+        yield* Window.setActiveElement(
+          Option.some({ type: "frame", id: frameId }),
+        );
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Verify we're in block selection mode
         yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {

@@ -108,9 +108,6 @@ export const bootstrap = Effect.gen(function* () {
       panes: [paneId],
       activeRegion: "stage",
       activeFrameId: frameId,
-      blockSelectionAnchor: null,
-      blockSelectionFocus: null,
-      lastFocusedBlockId: null,
     },
     windowId,
   );

@@ -163,7 +163,7 @@ describe("editor navigation", () => {
 
       it("skips hidden children when previous sibling is collapsed", async () => {
         await Effect.gen(function* () {
-          const { frameId, windowId, childNodeIds } =
+          const { frameId, childNodeIds } =
             yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
@@ -187,9 +187,8 @@ describe("editor navigation", () => {
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          const Store = yield* StoreT;
           const winDoc = Option.getOrThrow(
-            yield* Store.getDocument("window", windowId),
+            yield* Then.WINDOW_DOC_COMPAT(frameId),
           );
 
           expect(winDoc.selection).not.toBeNull();
@@ -340,7 +339,7 @@ describe("editor navigation", () => {
 
       it("skips hidden children when current block is collapsed", async () => {
         await Effect.gen(function* () {
-          const { frameId, windowId, childNodeIds } =
+          const { frameId, childNodeIds } =
             yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
@@ -363,9 +362,8 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          const Store = yield* StoreT;
           const winDoc = Option.getOrThrow(
-            yield* Store.getDocument("window", windowId),
+            yield* Then.WINDOW_DOC_COMPAT(frameId),
           );
 
           expect(winDoc.selection).not.toBeNull();
@@ -1317,7 +1315,7 @@ describe("editor navigation", () => {
 
         it("Cmd+Backspace (deleteToLineStart) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { frameId, windowId, childNodeIds } =
+            const { frameId, childNodeIds } =
               yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
@@ -1342,9 +1340,8 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // Verify goalX is set (non-null) after vertical nav
-            const Store = yield* StoreT;
             const winBefore = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winBefore.selection!.goalX,
@@ -1357,7 +1354,7 @@ describe("editor navigation", () => {
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winAfter.selection!.goalX,
@@ -1373,7 +1370,7 @@ describe("editor navigation", () => {
 
         it("Cmd+Delete (deleteToLineEnd) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { frameId, windowId, childNodeIds } =
+            const { frameId, childNodeIds } =
               yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
@@ -1398,9 +1395,8 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // Verify goalX is set (non-null) after vertical nav
-            const Store = yield* StoreT;
             const winBefore = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winBefore.selection!.goalX,
@@ -1413,7 +1409,7 @@ describe("editor navigation", () => {
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winAfter.selection!.goalX,
@@ -1424,7 +1420,7 @@ describe("editor navigation", () => {
 
         it("Alt+Backspace (deleteWordBackward) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { frameId, windowId, childNodeIds } =
+            const { frameId, childNodeIds } =
               yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
@@ -1447,9 +1443,8 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // Verify goalX is set after vertical nav
-            const Store = yield* StoreT;
             const winBefore = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winBefore.selection!.goalX,
@@ -1461,7 +1456,7 @@ describe("editor navigation", () => {
 
             // goalX should be cleared
             const winAfter = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winAfter.selection!.goalX,
@@ -1472,7 +1467,7 @@ describe("editor navigation", () => {
 
         it("Alt+Delete (deleteWordForward) clears goalX", async () => {
           await Effect.gen(function* () {
-            const { frameId, windowId, childNodeIds } =
+            const { frameId, childNodeIds } =
               yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
                 { text: "hello world test" },
                 { text: "ab" },
@@ -1497,9 +1492,8 @@ describe("editor navigation", () => {
             yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
 
             // Verify goalX is set (non-null) after vertical nav
-            const Store = yield* StoreT;
             const winBefore = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winBefore.selection!.goalX,
@@ -1512,7 +1506,7 @@ describe("editor navigation", () => {
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
-              yield* Store.getDocument("window", windowId),
+              yield* Then.WINDOW_DOC_COMPAT(frameId),
             );
             expect(
               winAfter.selection!.goalX,
@@ -1867,7 +1861,7 @@ describe("editor navigation", () => {
     describe.skip("collapsed block behavior", () => {
       it("ArrowDown skips hidden children when collapsed", async () => {
         await Effect.gen(function* () {
-          const { frameId, windowId, childNodeIds } =
+          const { frameId, childNodeIds } =
             yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
               { text: "First" },
               { text: "Second" },
@@ -1889,9 +1883,8 @@ describe("editor navigation", () => {
           yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          const Store = yield* StoreT;
           const winDoc = Option.getOrThrow(
-            yield* Store.getDocument("window", windowId),
+            yield* Then.WINDOW_DOC_COMPAT(frameId),
           );
 
           expect(winDoc.selection).not.toBeNull();

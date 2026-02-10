@@ -52,12 +52,6 @@ export const Window = Schema.Struct({
   panes: Schema.Array(Id.Pane),
   activeRegion: Schema.optional(ActiveRegion),
   activeFrameId: Schema.optional(Schema.NullOr(Id.Frame)),
-  /** Anchor of block selection - fixed endpoint where Escape was pressed */
-  blockSelectionAnchor: Schema.NullOr(Id.Node),
-  /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
-  blockSelectionFocus: Schema.NullOr(Id.Node),
-  /** Last focused block - preserved across selection clear for arrow key restoration */
-  lastFocusedBlockId: Schema.NullOr(Id.Node),
 });
 export type Window = typeof Window.Type;
 

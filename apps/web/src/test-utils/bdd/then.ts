@@ -1,7 +1,9 @@
-import { Id } from "@/schema";
+import { Entity, Id, Model } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
+import { FrameT } from "@/services/ui/Frame";
+import { WindowT } from "@/services/ui/Window";
 import { doubleRaf } from "@/utils/effect";
 import { EditorView } from "@codemirror/view";
 import { Data, Effect, Option, Schedule } from "effect";
@@ -200,40 +202,86 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
   cause: unknown;
 }> {}
 
+interface WindowCompatDoc {
+  activeElement: Entity.Element | null;
+  selection: Model.FrameSelection | null;
+  selectedBlocks: readonly Id.Node[];
+  blockSelectionAnchor: Id.Node | null;
+  blockSelectionFocus: Id.Node | null;
+}
+
+const normalizeSelectedBlocks = (
+  state: {
+    selectedBlocks: readonly Id.Node[];
+    anchor: Id.Node | null;
+    focus: Id.Node | null;
+  },
+  activeElement: Entity.Element | null,
+): readonly Id.Node[] => {
+  if (state.selectedBlocks.length > 0) {
+    return state.selectedBlocks;
+  }
+
+  if (activeElement?.type === "frame" && state.focus != null) {
+    return [state.focus];
+  }
+
+  return state.selectedBlocks;
+};
+
+/**
+ * Compatibility reader for old "window doc" assertions.
+ * Values are sourced from FrameT/WindowT (not from window mirror fields).
+ */
+export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
+  Effect.gen(function* () {
+    const Frame = yield* FrameT;
+    const Window = yield* WindowT;
+
+    const blockSelection = yield* Frame.getBlockSelectionState(frameId);
+    const selection = yield* Frame.getSelection(frameId);
+    const activeElement = yield* Window.getActiveElement();
+    const active = Option.getOrNull(activeElement);
+    const normalizedSelected = normalizeSelectedBlocks(blockSelection, active);
+
+    return Option.some<WindowCompatDoc>({
+      activeElement: active,
+      selection: Option.getOrNull(selection),
+      selectedBlocks: normalizedSelected,
+      blockSelectionAnchor: blockSelection.anchor,
+      blockSelectionFocus: blockSelection.focus,
+    });
+  });
+
 /**
  * Asserts that the frame has exactly the specified blocks selected.
  * Checks both the selectedBlocks array and optionally anchor/focus.
  * Uses Effect-native retry instead of waitFor for proper Effect composition.
  */
 export const BLOCKS_ARE_SELECTED = (
-  _frameId: Id.Frame,
+  frameId: Id.Frame,
   expectedNodeIds: Id.Node[],
   options?: { anchor?: Id.Node; focus?: Id.Node },
 ) =>
   Effect.gen(function* () {
-    const Store = yield* StoreT;
-    const sessionId = yield* Store.getSessionId();
-    const windowId = Id.Window.make(sessionId);
-    const windowDoc = yield* Store.getDocument("window", windowId);
+    const Frame = yield* FrameT;
+    const Window = yield* WindowT;
+    const state = yield* Frame.getBlockSelectionState(frameId);
+    const activeElement = Option.getOrNull(yield* Window.getActiveElement());
+    const selectedBlocks = normalizeSelectedBlocks(state, activeElement);
 
-    yield* Effect.try({
-      try: () => {
-        expect(Option.isSome(windowDoc)).toBe(true);
-        const win = Option.getOrThrow(windowDoc);
+    yield* Effect.sync(() => {
+      expect(selectedBlocks).toHaveLength(expectedNodeIds.length);
+      for (const nodeId of expectedNodeIds) {
+        expect(selectedBlocks).toContain(nodeId);
+      }
 
-        expect(win.selectedBlocks).toHaveLength(expectedNodeIds.length);
-        for (const nodeId of expectedNodeIds) {
-          expect(win.selectedBlocks).toContain(nodeId);
-        }
-
-        if (options?.anchor !== undefined) {
-          expect(win.blockSelectionAnchor).toBe(options.anchor);
-        }
-        if (options?.focus !== undefined) {
-          expect(win.blockSelectionFocus).toBe(options.focus);
-        }
-      },
-      catch: (cause) => new AssertionError({ cause }),
+      if (options?.anchor !== undefined) {
+        expect(state.anchor).toBe(options.anchor);
+      }
+      if (options?.focus !== undefined) {
+        expect(state.focus).toBe(options.focus);
+      }
     });
   }).pipe(
     Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),

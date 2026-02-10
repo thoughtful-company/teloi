@@ -69,7 +69,7 @@ describe("Block selection", () => {
   it("Shift+ArrowUp extends selection to block above", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, second one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
@@ -78,8 +78,6 @@ describe("Block selection", () => {
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
@@ -90,7 +88,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -109,7 +107,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -149,7 +147,7 @@ describe("Block selection", () => {
   it("Shift+ArrowUp then Shift+ArrowDown returns to single selection", async () => {
     await Effect.gen(function* () {
       // Given: A frame with three blocks, middle one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -158,8 +156,6 @@ describe("Block selection", () => {
 
       const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
@@ -170,7 +166,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -188,7 +184,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -207,7 +203,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -223,7 +219,7 @@ describe("Block selection", () => {
   it("Shift+ArrowDown extends selection to block below", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, first one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
@@ -232,8 +228,6 @@ describe("Block selection", () => {
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -244,7 +238,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -263,7 +257,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -303,7 +297,7 @@ describe("Block selection", () => {
   it("ArrowUp moves focus to block above (single block selection)", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, second one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
@@ -311,8 +305,6 @@ describe("Block selection", () => {
 
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
@@ -323,7 +315,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -342,7 +334,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -359,7 +351,7 @@ describe("Block selection", () => {
   it("ArrowDown moves focus to block below (single block selection)", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, first one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
@@ -367,8 +359,6 @@ describe("Block selection", () => {
 
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -379,7 +369,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -398,7 +388,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -415,7 +405,7 @@ describe("Block selection", () => {
   it("Shift+ArrowUp contracts 3-block selection to 2 blocks", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -425,8 +415,6 @@ describe("Block selection", () => {
 
       const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
@@ -441,7 +429,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -462,7 +450,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -480,7 +468,7 @@ describe("Block selection", () => {
   it("ArrowUp collapses 3-block selection to single block", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -490,8 +478,6 @@ describe("Block selection", () => {
 
       const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block B and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
@@ -506,7 +492,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -524,7 +510,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -541,7 +527,7 @@ describe("Block selection", () => {
   it("Shift+ArrowDown contracts 3-block selection to 2 blocks", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -551,8 +537,6 @@ describe("Block selection", () => {
 
       const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block C and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
@@ -567,7 +551,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -588,7 +572,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -606,7 +590,7 @@ describe("Block selection", () => {
   it("ArrowDown collapses 3-block selection to single block", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -616,8 +600,6 @@ describe("Block selection", () => {
 
       const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block C and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
@@ -632,7 +614,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -650,7 +632,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -667,7 +649,7 @@ describe("Block selection", () => {
   it("clicking another block clears selection", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, first one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First block" },
           { text: "Second block" },
@@ -676,8 +658,6 @@ describe("Block selection", () => {
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -688,7 +668,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -707,7 +687,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -737,7 +717,7 @@ describe("Block selection", () => {
   it("Enter starts editing focused block from end", async () => {
     await Effect.gen(function* () {
       // Given: Two blocks, navigate to second one
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second block" },
@@ -746,8 +726,6 @@ describe("Block selection", () => {
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click first block and press Escape to enter block selection mode
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -758,7 +736,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -777,7 +755,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -796,7 +774,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -815,7 +793,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -837,7 +815,7 @@ describe("Block selection", () => {
   it("Delete removes selected blocks and stays in selection mode", async () => {
     await Effect.gen(function* () {
       // Given: A frame with three blocks, middle one is selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "First" },
           { text: "Second" },
@@ -846,8 +824,6 @@ describe("Block selection", () => {
 
       const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click second block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
@@ -858,7 +834,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -911,7 +887,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -926,7 +902,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -943,13 +919,11 @@ describe("Block selection", () => {
   it("clicking title clears block selection", async () => {
     await Effect.gen(function* () {
       // Given: A frame with a block selected
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Block content" }]);
 
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
@@ -960,7 +934,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -976,10 +950,11 @@ describe("Block selection", () => {
       yield* When.USER_CLICKS_TITLE(frameId);
 
       // Then: selectedBlocks should be cleared and title should be active
+      const Store = yield* StoreT;
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -1003,7 +978,7 @@ describe("Block selection", () => {
   it("Enter with multi-block selection edits focus block (not anchor)", async () => {
     await Effect.gen(function* () {
       // Given: Three blocks, all selected (anchor = first, focus = third)
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Alpha" },
           { text: "Beta" },
@@ -1013,8 +988,6 @@ describe("Block selection", () => {
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       // Click first block and press Escape to select it
       yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
@@ -1029,7 +1002,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -1049,7 +1022,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -1067,7 +1040,7 @@ describe("Block selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -1279,7 +1252,7 @@ describe("Block selection", () => {
 
   it("ArrowDown after Escape restores to last focused block, not next block", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block A" },
           { text: "Block B" },
@@ -1289,8 +1262,6 @@ describe("Block selection", () => {
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
       const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
@@ -1309,7 +1280,7 @@ describe("Block selection", () => {
       // Verify initial state: 3 blocks selected with focus on C
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
@@ -1325,13 +1296,12 @@ describe("Block selection", () => {
       // Verify selection cleared but lastFocusedBlockId preserved
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
           expect(win.selectedBlocks).toEqual([]);
-          expect(win.lastFocusedBlockId).toBe(nodeC);
         }),
       );
 
@@ -1341,7 +1311,7 @@ describe("Block selection", () => {
       // Then: Selection should be restored to C (last focused), NOT D (next block)
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
@@ -1355,7 +1325,7 @@ describe("Block selection", () => {
 
   it("ArrowUp after Escape restores to last focused block, not previous block", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block A" },
           { text: "Block B" },
@@ -1365,8 +1335,6 @@ describe("Block selection", () => {
 
       const [nodeA, nodeB, nodeC] = childNodeIds;
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
       const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
@@ -1385,7 +1353,7 @@ describe("Block selection", () => {
       // Verify initial state
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
@@ -1401,13 +1369,12 @@ describe("Block selection", () => {
       // Verify selection cleared
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
           expect(win.selectedBlocks).toEqual([]);
-          expect(win.lastFocusedBlockId).toBe(nodeC);
         }),
       );
 
@@ -1417,7 +1384,7 @@ describe("Block selection", () => {
       // Then: Selection should be restored to C (last focused), NOT B (previous block)
       yield* Effect.promise(() =>
         waitFor(async () => {
-          const windowDoc = await Store.getDocument("window", windowId).pipe(
+          const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
             runtime.runPromise,
           );
           expect(Option.isSome(windowDoc)).toBe(true);
@@ -1675,7 +1642,7 @@ describe("Block selection", () => {
     it("ArrowDown selects the first block when there are blocks", async () => {
       await Effect.gen(function* () {
         // Given: A frame with 3 blocks
-        const { frameId, childNodeIds, windowId } =
+        const { frameId, childNodeIds } =
           yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
@@ -1683,8 +1650,6 @@ describe("Block selection", () => {
           ]);
 
         render(() => <FrameView frameId={frameId} />);
-
-        const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode (activeElement.type = "frame")
@@ -1697,13 +1662,12 @@ describe("Block selection", () => {
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
             expect(win.selectedBlocks).toEqual([]);
-            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1721,7 +1685,7 @@ describe("Block selection", () => {
     it("ArrowUp selects the last block when there are blocks", async () => {
       await Effect.gen(function* () {
         // Given: A frame with 3 blocks
-        const { frameId, childNodeIds, windowId } =
+        const { frameId, childNodeIds } =
           yield* Given.A_FRAME_WITH_CHILDREN("Root", [
             { text: "First" },
             { text: "Second" },
@@ -1729,8 +1693,6 @@ describe("Block selection", () => {
           ]);
 
         render(() => <FrameView frameId={frameId} />);
-
-        const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode (activeElement.type = "frame")
@@ -1743,13 +1705,12 @@ describe("Block selection", () => {
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
             expect(win.selectedBlocks).toEqual([]);
-            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1767,14 +1728,12 @@ describe("Block selection", () => {
     it("ArrowDown does nothing when there are no blocks", async () => {
       await Effect.gen(function* () {
         // Given: A frame with no child blocks (only root)
-        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [],
         );
 
         render(() => <FrameView frameId={frameId} />);
-
-        const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode with empty selection
@@ -1786,13 +1745,12 @@ describe("Block selection", () => {
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
             expect(win.selectedBlocks).toEqual([]);
-            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1802,7 +1760,7 @@ describe("Block selection", () => {
         // Then: Selection should still be empty (nothing happened)
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -1817,14 +1775,12 @@ describe("Block selection", () => {
     it("ArrowUp does nothing when there are no blocks", async () => {
       await Effect.gen(function* () {
         // Given: A frame with no child blocks (only root)
-        const { frameId, windowId } = yield* Given.A_FRAME_WITH_CHILDREN(
+        const { frameId } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [],
         );
 
         render(() => <FrameView frameId={frameId} />);
-
-        const Store = yield* StoreT;
         const Window = yield* WindowT;
 
         // Set up block selection mode with empty selection
@@ -1836,13 +1792,12 @@ describe("Block selection", () => {
         // Verify we're in block selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
             expect(win.selectedBlocks).toEqual([]);
-            expect(win.lastFocusedBlockId).toBeNull();
           }),
         );
 
@@ -1852,7 +1807,7 @@ describe("Block selection", () => {
         // Then: Selection should still be empty (nothing happened)
         yield* Effect.promise(() =>
           waitFor(async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);

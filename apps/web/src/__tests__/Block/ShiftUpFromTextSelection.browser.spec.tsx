@@ -1,6 +1,5 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { StoreT } from "@/services/external/Store";
 import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { waitFor } from "solid-testing-library";
@@ -31,13 +30,11 @@ describe("Shift+Up from in-block text selection", () => {
 
   it("enters block selection mode when focus offset is 0", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
@@ -60,7 +57,7 @@ describe("Shift+Up from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -83,13 +80,11 @@ describe("Shift+Up from in-block text selection", () => {
 
   it("does NOT enter block selection mode when focus offset is not 0", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
@@ -112,7 +107,7 @@ describe("Shift+Up from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -126,31 +121,17 @@ describe("Shift+Up from in-block text selection", () => {
 
       yield* When.USER_PRESSES("{Shift>}{ArrowUp}{/Shift}");
 
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(windowDoc)).toBe(true);
-            const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
-          },
-          { timeout: 2000 },
-        ),
-      );
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, []);
     }).pipe(runtime.runPromise);
   });
 
   it("enters block selection from collapsed cursor at offset 0", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
-
-      const Store = yield* StoreT;
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
@@ -169,7 +150,7 @@ describe("Shift+Up from in-block text selection", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);

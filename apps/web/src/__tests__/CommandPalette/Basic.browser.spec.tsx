@@ -66,9 +66,6 @@ describe("CommandPalette", () => {
         "window",
         {
           panes: [paneId],
-          blockSelectionAnchor: null,
-          blockSelectionFocus: null,
-          lastFocusedBlockId: null,
         },
         windowId,
       );

@@ -149,4 +149,19 @@ describe("KeyEventBus — blockSelection keymap", () => {
       expect(dispatched[0]!._tag).toBe("frame:outdent");
     }).pipe(runtime.runPromise);
   });
+
+  it("dispatches Space on Space key", async () => {
+    await Effect.gen(function* () {
+      const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+
+      const KeyEventBus = yield* KeyEventBusT;
+      const handled = yield* KeyEventBus.emit(makeAppKeyEvent(" "));
+
+      expect(handled).toBe(true);
+      expect(dispatched).toHaveLength(1);
+      expect(dispatched[0]!._tag).toBe("frame:space");
+    }).pipe(runtime.runPromise);
+  });
 });

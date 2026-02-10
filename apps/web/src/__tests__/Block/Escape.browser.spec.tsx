@@ -1,6 +1,5 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { StoreT } from "@/services/external/Store";
 import { FrameT } from "@/services/ui/Frame";
 import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
@@ -8,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { waitFor } from "solid-testing-library";
 import {
   Given,
+  Then,
   When,
   setupClientTest,
   type BrowserRuntime,
@@ -31,7 +31,7 @@ describe("Block Escape key", () => {
 
   it("Escape in text editing mode selects the block", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block content" },
         ]);
@@ -41,12 +41,10 @@ describe("Block Escape key", () => {
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
-      const Store = yield* StoreT;
-
-      yield* Effect.promise(() =>
+            yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -72,7 +70,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -89,7 +87,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -105,7 +103,7 @@ describe("Block Escape key", () => {
 
   it("Escape when block selected clears selection but keeps frame active", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "Block content" },
         ]);
@@ -113,9 +111,7 @@ describe("Block Escape key", () => {
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+            yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
       yield* Effect.promise(() =>
         waitFor(
@@ -132,7 +128,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -148,7 +144,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -162,13 +158,12 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
             expect(win.selectedBlocks).toEqual([]);
-            expect(win.lastFocusedBlockId).toBe(childNodeIds[0]);
           },
           { timeout: 2000 },
         ),
@@ -178,7 +173,7 @@ describe("Block Escape key", () => {
 
   it("ArrowLeft from nested block selects parent block", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -203,14 +198,12 @@ describe("Block Escape key", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -226,7 +219,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -242,7 +235,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -257,7 +250,7 @@ describe("Block Escape key", () => {
 
   it("ArrowRight from block with children selects first child", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -282,14 +275,12 @@ describe("Block Escape key", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(parentBlockId);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -305,7 +296,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -321,7 +312,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -336,7 +327,7 @@ describe("Block Escape key", () => {
 
   it("Escape from top-level block clears selection", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [
           { text: "A" },
           { text: "B" },
@@ -347,14 +338,12 @@ describe("Block Escape key", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockAId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(blockAId);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -370,7 +359,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -384,7 +373,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -399,7 +388,7 @@ describe("Block Escape key", () => {
 
   it("Enter after Escape places cursor at end of block, not at old selection position", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Hello world" }]);
 
       const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
@@ -407,7 +396,6 @@ describe("Block Escape key", () => {
 
       yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
 
-      const Store = yield* StoreT;
       const Frame = yield* FrameT;
 
       yield* Effect.promise(() =>
@@ -438,7 +426,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -454,7 +442,7 @@ describe("Block Escape key", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -488,7 +476,7 @@ describe("Block deletion in block selection mode", () => {
 
   it("deleting nested child selects next sibling", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -513,14 +501,12 @@ describe("Block deletion in block selection mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -536,7 +522,7 @@ describe("Block deletion in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -552,7 +538,7 @@ describe("Block deletion in block selection mode", () => {
 
   it("deleting last nested child selects parent", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -567,14 +553,12 @@ describe("Block deletion in block selection mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(onlyChildBlockId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(onlyChildBlockId);
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -590,7 +574,7 @@ describe("Block deletion in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -606,7 +590,7 @@ describe("Block deletion in block selection mode", () => {
 
   it("deleting all nested children selects parent", async () => {
     await Effect.gen(function* () {
-      const { frameId, childNodeIds, windowId } =
+      const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -631,16 +615,14 @@ describe("Block deletion in block selection mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Store = yield* StoreT;
-
-      yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
+            yield* When.USER_ENTERS_BLOCK_SELECTION(childABlockId);
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
       yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
 
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -658,7 +640,7 @@ describe("Block deletion in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);

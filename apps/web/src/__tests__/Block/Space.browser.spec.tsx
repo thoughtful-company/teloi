@@ -1,7 +1,8 @@
 import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { StoreT } from "@/services/external/Store";
+import { FrameT } from "@/services/ui/Frame";
+import { WindowT } from "@/services/ui/Window";
 import FrameView from "@/ui/FrameView";
 import { Effect, Option } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -32,30 +33,26 @@ describe("Space in block selection mode", () => {
 
   it("creates sibling block after focused block and enters editing mode", async () => {
     await Effect.gen(function* () {
-      const { frameId, rootNodeId, childNodeIds, windowId } =
+      const { frameId, rootNodeId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "First block" }]);
 
       const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
 
-      yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-
-      const Store = yield* StoreT;
-
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
-              childNodeIds[0],
-            );
-          },
-          { timeout: 2000 },
-        ),
+      const Frame = yield* FrameT;
+      const Window = yield* WindowT;
+      yield* Frame.setBlockSelection(
+        frameId,
+        [childNodeIds[0]],
+        childNodeIds[0],
+        childNodeIds[0],
       );
+      yield* Window.setActiveElement(
+        Option.some({ type: "frame" as const, id: frameId }),
+      );
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
+
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       yield* When.USER_PRESSES(" ");
 
@@ -72,7 +69,7 @@ describe("Space in block selection mode", () => {
       yield* Effect.promise(() =>
         waitFor(
           async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
+            const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
@@ -88,7 +85,7 @@ describe("Space in block selection mode", () => {
 
   it("creates sibling at same level for nested blocks", async () => {
     await Effect.gen(function* () {
-      const { frameId, rootNodeId, childNodeIds, windowId } =
+      const { frameId, rootNodeId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Parent block" }]);
 
       const parentNodeId = childNodeIds[0];
@@ -102,24 +99,20 @@ describe("Space in block selection mode", () => {
       const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChild);
       render(() => <FrameView frameId={frameId} />);
 
-      yield* When.USER_ENTERS_BLOCK_SELECTION(nestedBlockId);
-
-      const Store = yield* StoreT;
-
-      yield* Effect.promise(() =>
-        waitFor(
-          async () => {
-            const windowDoc = await Store.getDocument("window", windowId).pipe(
-              runtime.runPromise,
-            );
-            expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
-              nestedChild,
-            );
-          },
-          { timeout: 2000 },
-        ),
+      const Frame = yield* FrameT;
+      const Window = yield* WindowT;
+      yield* Frame.setBlockSelection(
+        frameId,
+        [nestedChild],
+        nestedChild,
+        nestedChild,
       );
+      yield* Window.setActiveElement(
+        Option.some({ type: "frame" as const, id: frameId }),
+      );
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
+
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nestedChild]);
 
       yield* When.USER_PRESSES(" ");
 

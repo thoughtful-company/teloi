@@ -142,9 +142,6 @@ const window = State.SQLite.clientDocument({
       panes: [],
       activeRegion: "stage",
       activeFrameId: null,
-      blockSelectionAnchor: null,
-      blockSelectionFocus: null,
-      lastFocusedBlockId: null,
     },
   },
 });

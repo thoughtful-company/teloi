@@ -15,6 +15,7 @@ import {
   Indent,
   OpenTypePicker,
   Outdent,
+  Space,
   ZoomIn,
   ZoomOut,
 } from "@/commands/frame";
@@ -107,6 +108,7 @@ const altKeymap: Record<string, () => Command> = {
 const blockSelectionKeymap: Record<string, () => Command> = {
   "#": () => new OpenTypePicker(),
   Enter: () => new EditBlock(),
+  " ": () => new Space(),
   Tab: () => new Indent(),
 };
 
