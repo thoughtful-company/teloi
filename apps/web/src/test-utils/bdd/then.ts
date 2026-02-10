@@ -1,4 +1,4 @@
-import { Entity, Id, Model } from "@/schema";
+import { Id, Model } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
 import { AutomergeT } from "@/services/external/Automerge";
@@ -202,7 +202,6 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
 }> {}
 
 interface WindowCompatDoc {
-  activeElement: Entity.Element | null;
   selection: Model.FrameSelection | null;
   selectedBlocks: readonly Id.Node[];
   blockSelectionAnchor: Id.Node | null;
@@ -230,7 +229,7 @@ const normalizeSelectedBlocks = (
 
 /**
  * Compatibility reader for old "window doc" assertions.
- * Values are sourced from FrameT/WindowT (not from window mirror fields).
+ * Values are sourced from FrameT (not from window mirror fields).
  */
 export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
   Effect.gen(function* () {
@@ -239,16 +238,9 @@ export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
     const blockSelection = yield* Frame.getBlockSelectionState(frameId);
     const selection = yield* Frame.getSelection(frameId);
     const mode = yield* Frame.getMode();
-    const active: Entity.Element | null =
-      mode.type === "block"
-        ? { type: "block", id: mode.blockId }
-        : mode.type === "blockSelection"
-          ? { type: "frame", id: mode.frameId }
-          : null;
     const normalizedSelected = normalizeSelectedBlocks(blockSelection, mode);
 
     return Option.some<WindowCompatDoc>({
-      activeElement: active,
       selection: Option.getOrNull(selection),
       selectedBlocks: normalizedSelected,
       blockSelectionAnchor: blockSelection.anchor,
