@@ -9,9 +9,9 @@ import {
 } from "@/services/ui/Title";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
-import { focusBlock } from "./focusBlock";
 import { onCleanup, onMount, Show } from "solid-js";
 import Editor from "./Editor";
+import { focusBlock } from "./focusBlock";
 
 interface TitleProps {
   frameId: Id.Frame;
@@ -91,7 +91,7 @@ export default function Title({ frameId, nodeId }: TitleProps) {
         fallback={
           <h1
             ref={h1Ref}
-            class="text-title leading-[var(--text-title--line-height)] font-semibold whitespace-break-spaces wrap-anywhere"
+            class="text-title leading-[var(--text-title--line-height)] font-semibold whitespace-break-spaces wrap-anywhere pl-[var(--block-padding-left)]"
           >
             {store.textContent}
           </h1>

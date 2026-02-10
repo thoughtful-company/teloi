@@ -1,6 +1,5 @@
 import { tables, TeloiNode } from "@/livestore/schema";
 import { Id, System } from "@/schema";
-import * as IdT from "@/schema/id/id";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { NodeT } from "@/services/domain/Node";
 import { TupleT } from "@/services/domain/Tuple";
@@ -105,10 +104,16 @@ export const subscribe = (blockId: Id.Block) =>
     // Resolve windowId once for selection/isSelected streams
     const sessionId = yield* Store.getSessionId();
     const windowId = Id.Window.make(sessionId);
+    const frameId = ctx.frameId;
 
     const block$ = yield* makeBlockStreamEither(blockId);
     const node$ = yield* makeNodeStreamEither(nodeId);
-    const window$ = yield* makeWindowDerivedStream(windowId, nodeId, blockId);
+    const window$ = yield* makeWindowDerivedStream(
+      windowId,
+      frameId,
+      nodeId,
+      blockId,
+    );
 
     const viewInfo$ = yield* subscribeViewInfo(nodeId);
 
@@ -150,7 +155,7 @@ export const subscribe = (blockId: Id.Block) =>
           blockEither,
           nodeEither,
           availableViews,
-          { isActive, selection, isSelected },
+          { isActive, isSelected, goalX, goalLine },
           activeTypes,
           picker,
           textContent,
@@ -175,6 +180,16 @@ export const subscribe = (blockId: Id.Block) =>
             activeViewId,
             availableViews,
           );
+          const selection =
+            block.selection != null
+              ? {
+                  anchor: block.selection.anchor,
+                  head: block.selection.head,
+                  goalX,
+                  goalLine,
+                  assoc: block.selection.assoc,
+                }
+              : null;
 
           return Either.right({
             nodeData,
@@ -225,6 +240,11 @@ type BlockDoc = {
   activeViewId: Id.Node | null;
   ghostChildId: Id.Node | null;
   ghostParentId: Id.Node | null;
+  selection?: {
+    anchor: number;
+    head: number;
+    assoc: -1 | 0 | 1;
+  } | null | undefined;
 };
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
@@ -250,12 +270,13 @@ const makeBlockStreamEither = (blockId: Id.Block) =>
       Stream.map(
         (b): Either.Either<BlockDoc, never> =>
           Either.right(
-            b ?? {
-              isExpanded: true,
-              activeViewId: null,
-              ghostChildId: null,
-              ghostParentId: null,
-            },
+              b ?? {
+                isExpanded: true,
+                activeViewId: null,
+                ghostChildId: null,
+                ghostParentId: null,
+                selection: null,
+              },
           ),
       ),
     );
@@ -285,29 +306,16 @@ const makeNodeStreamEither = (nodeId: Id.Node) =>
     );
   });
 
-/**
- * Extract display nodeId from a BlockContext.
- * For frame blocks, returns the nodeId directly.
- * For section blocks, this would need tuple lookup, but for selection comparison
- * we compare blockIds directly instead.
- */
-const getDisplayNodeIdFromContext = (ctx: Id.BlockContext): Id.Node | null => {
-  if (ctx.type === "frame") {
-    return ctx.nodeId;
-  }
-  // Section blocks don't have nodeId directly - we can't derive it without
-  // async tuple lookup, so selection comparison uses blockId instead
-  return null;
-};
-
 interface WindowDerived {
   isActive: boolean;
   isSelected: boolean;
-  selection: BlockSelection | null;
+  goalX: number | null;
+  goalLine: "first" | "last" | null;
 }
 
 const makeWindowDerivedStream = (
   windowId: Id.Window,
+  frameId: Id.Frame,
   nodeId: Id.Node,
   blockId: Id.Block,
 ) =>
@@ -319,65 +327,41 @@ const makeWindowDerivedStream = (
         .where("id", "=", windowId)
         .first({ fallback: () => null }),
     );
-    const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+    const windowStream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+    const frameQuery = queryDb(
+      tables.frame
+        .select("value")
+        .where("id", "=", frameId)
+        .first({ fallback: () => null }),
+    );
+    const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
+      Effect.orDie,
+    );
 
-    return stream.pipe(
-      Stream.map((window): WindowDerived => {
-        const activeElement = window?.activeElement ?? null;
-        const isActive =
-          activeElement !== null &&
-          activeElement.type === "block" &&
-          activeElement.id === blockId;
+    return Stream.zipLatestWith(
+      windowStream,
+      frameStream,
+      (window, frame): WindowDerived => {
+        const isStageActiveFrame =
+          (window?.activeRegion ?? "stage") === "stage" &&
+          window?.activeFrameId === frameId;
+        const isActive = isStageActiveFrame && frame?.activeBlockId === blockId;
 
-        const isSelected = window?.selectedBlocks
-          ? window.selectedBlocks.includes(nodeId)
-          : false;
+        const selectedBlocks = frame?.selectedBlocks ?? [];
+        const isSelected = selectedBlocks.includes(nodeId);
 
-        let selection: BlockSelection | null = null;
-        if (window?.selection) {
-          const sel = window.selection;
-          const anchorContext = IdT.parseBlockContextSync(sel.anchor.elementId);
-          const focusContext = IdT.parseBlockContextSync(sel.focus.elementId);
+        const goalX = frame?.goalX ?? null;
+        const goalLine = frame?.goalLine ?? null;
 
-          const anchorNodeId = getDisplayNodeIdFromContext(anchorContext);
-          const focusNodeId = getDisplayNodeIdFromContext(focusContext);
-
-          if (anchorNodeId !== null && focusNodeId !== null) {
-            if (anchorNodeId === nodeId && focusNodeId === nodeId) {
-              selection = {
-                anchor: sel.anchorOffset,
-                head: sel.focusOffset,
-                goalX: sel.goalX ?? null,
-                goalLine: sel.goalLine ?? null,
-                assoc: sel.assoc,
-              };
-            }
-          } else {
-            if (
-              sel.anchor.elementId === blockId &&
-              sel.focus.elementId === blockId
-            ) {
-              selection = {
-                anchor: sel.anchorOffset,
-                head: sel.focusOffset,
-                goalX: sel.goalX ?? null,
-                goalLine: sel.goalLine ?? null,
-                assoc: sel.assoc,
-              };
-            }
-          }
-        }
-
-        return { isActive, isSelected, selection };
-      }),
+        return { isActive, isSelected, goalX, goalLine };
+      },
+    ).pipe(
       Stream.changesWith(deepEqual),
-      Stream.tap(({ isActive, selection }) =>
+      Stream.tap(({ isActive }) =>
         Effect.logDebug("[Block.Subscribe] Window-derived stream emitted").pipe(
           Effect.annotateLogs({
             blockId,
             isActive,
-            selection,
-            isNull: selection === null,
           }),
         ),
       ),

@@ -20,6 +20,14 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
   return null;
 };
 
+const BLOCK_DOC_DEFAULTS: Model.Block = {
+  isExpanded: true,
+  activeViewId: null,
+  ghostChildId: null,
+  ghostParentId: null,
+  selection: null,
+};
+
 export const setSelection = (
   frameId: Id.Frame,
   selection: Option.Option<Model.FrameSelection>,
@@ -37,6 +45,7 @@ export const setSelection = (
 
     const currentFrame = frameDoc.value;
     const assignedNodeId = currentFrame.assignedNodeId;
+    const previousActiveBlockId = currentFrame.activeBlockId;
     let clampedSelection: Option.Option<Model.FrameSelection> = selection;
 
     if (Option.isSome(selection) && assignedNodeId) {
@@ -78,26 +87,98 @@ export const setSelection = (
       });
     }
 
-    // Write selection to window doc (colocated with activeElement)
-    const windowId = currentFrame.windowId;
-    const windowDoc = yield* Store.getDocument("window", windowId).pipe(
-      Effect.orDie,
-    );
+    // Keep block-level persisted selection as the primary source of text ranges.
+    // Selection transition clears the previous active block.
+    let nextFrame = currentFrame;
+    if (Option.isSome(clampedSelection)) {
+      const s = clampedSelection.value;
+      const targetBlockId = s.focus.elementId;
 
-    if (Option.isNone(windowDoc)) {
-      return yield* Effect.die(
-        new Error(`Window document not found: ${windowId}`),
+      if (
+        previousActiveBlockId != null &&
+        previousActiveBlockId !== targetBlockId
+      ) {
+        const previousBlockDoc = yield* Store.getDocument(
+          "block",
+          previousActiveBlockId,
+        ).pipe(Effect.orDie);
+        if (Option.isSome(previousBlockDoc)) {
+          yield* Store.setDocument(
+            "block",
+            { ...previousBlockDoc.value, selection: null },
+            previousActiveBlockId,
+          ).pipe(Effect.orDie);
+        }
+      }
+
+      const targetBlockDoc = yield* Store.getDocument("block", targetBlockId).pipe(
+        Effect.orDie,
       );
+      const targetBlock = Option.getOrElse(
+        targetBlockDoc,
+        () => BLOCK_DOC_DEFAULTS,
+      );
+      const isSingleBlockRange = s.anchor.elementId === s.focus.elementId;
+      const nextBlockSelection: Model.BlockSelection = {
+        anchor: isSingleBlockRange ? s.anchorOffset : s.focusOffset,
+        head: s.focusOffset,
+        assoc: s.assoc,
+      };
+      yield* Store.setDocument(
+        "block",
+        {
+          ...targetBlock,
+          selection: nextBlockSelection,
+        },
+        targetBlockId,
+      ).pipe(Effect.orDie);
+
+      const rootNodeId = currentFrame.rootBlockId ?? assignedNodeId;
+      const rootBlockId =
+        rootNodeId != null
+          ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
+          : null;
+
+      nextFrame = {
+        ...currentFrame,
+        activeBlockId: targetBlockId,
+        activePart:
+          rootBlockId != null && targetBlockId === rootBlockId
+            ? ("head" as const)
+            : ("body" as const),
+        selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
+        goalX: s.goalX ?? null,
+        goalLine: s.goalLine ?? null,
+        assoc: s.assoc,
+      };
+    } else {
+      if (previousActiveBlockId != null) {
+        const previousBlockDoc = yield* Store.getDocument(
+          "block",
+          previousActiveBlockId,
+        ).pipe(Effect.orDie);
+        if (Option.isSome(previousBlockDoc) && previousBlockDoc.value.selection) {
+          yield* Store.setDocument(
+            "block",
+            { ...previousBlockDoc.value, selection: null },
+            previousActiveBlockId,
+          ).pipe(Effect.orDie);
+        }
+      }
+
+      nextFrame = {
+        ...currentFrame,
+        selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
+        goalX: null,
+        goalLine: null,
+      };
     }
 
-    yield* Store.setDocument(
-      "window",
-      {
-        ...windowDoc.value,
-        selection: Option.getOrNull(clampedSelection),
-      },
-      windowId,
-    ).pipe(Effect.orDie);
+    yield* Store.setDocument("frame", nextFrame, frameId).pipe(Effect.orDie);
 
     const logAnnotations = yield* Option.match(clampedSelection, {
       onNone: () =>

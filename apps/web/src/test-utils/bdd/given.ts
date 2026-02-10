@@ -52,9 +52,6 @@ export const A_FRAME_WITH_TEXT = (textContent: string) =>
       "window",
       {
         panes: [],
-        activeElement: null,
-        selection: null,
-        selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
@@ -133,9 +130,6 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       "window",
       {
         panes: [],
-        activeElement: null,
-        selection: null,
-        selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
@@ -256,9 +250,6 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       "window",
       {
         panes: [paneId],
-        activeElement: null,
-        selection: null,
-        selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
@@ -345,9 +336,6 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       "window",
       {
         panes: [paneId],
-        activeElement: null,
-        selection: null,
-        selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,
@@ -740,9 +728,6 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
       "window",
       {
         panes: [paneId],
-        activeElement: null,
-        selection: null,
-        selectedBlocks: [],
         blockSelectionAnchor: null,
         blockSelectionFocus: null,
         lastFocusedBlockId: null,

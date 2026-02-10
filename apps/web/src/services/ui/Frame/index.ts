@@ -17,7 +17,7 @@ import { setSelection } from "./setSelection";
 import { FrameView, subscribe } from "./subscribe";
 
 /**
- * Editor interaction mode - derived from Window.activeElement.
+ * Editor interaction mode derived from world/frame focus state.
  *
  * - "none": No element focused
  * - "block": A block is focused for text editing
@@ -73,9 +73,9 @@ export class FrameT extends Context.Tag("FrameT")<
       FrameNotFoundError
     >;
 
-    // Mode operations (derived from Window.activeElement)
+    // Mode operations (derived from world/frame focus state)
     /**
-     * Get current editor mode - derived from Window.activeElement.
+     * Get current editor mode from focused stage element.
      */
     getMode: () => Effect.Effect<EditorMode>;
     /**
@@ -129,16 +129,31 @@ export const FrameLive = Layer.effect(
 
     return {
       subscribe: withContext(subscribe)(context),
-      getSelection: (_frameId: Id.Frame) =>
+      getSelection: (frameId: Id.Frame) =>
         Effect.gen(function* () {
-          const sessionId = yield* Store.getSessionId();
-          const windowId = Id.Window.make(sessionId);
-          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
-          if (Option.isNone(windowDoc))
-            return Option.none<Model.FrameSelection>();
-          return Option.fromNullable(windowDoc.value.selection);
+          if (Option.isSome(frameDoc) && frameDoc.value.activeBlockId != null) {
+            const blockId = frameDoc.value.activeBlockId;
+            const blockDoc = yield* Store.getDocument("block", blockId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isSome(blockDoc) && blockDoc.value.selection != null) {
+              const blockSelection = blockDoc.value.selection;
+              return Option.some<Model.FrameSelection>({
+                anchor: { elementId: blockId },
+                anchorOffset: blockSelection.anchor,
+                focus: { elementId: blockId },
+                focusOffset: blockSelection.head,
+                goalX: frameDoc.value.goalX ?? null,
+                goalLine: frameDoc.value.goalLine ?? null,
+                assoc: blockSelection.assoc ?? frameDoc.value.assoc ?? 0,
+              });
+            }
+          }
+
+          return Option.none<Model.FrameSelection>();
         }),
       getAssignedNodeId: (frameId: Id.Frame) =>
         get(frameId, "assignedNodeId").pipe(
@@ -163,24 +178,23 @@ export const FrameLive = Layer.effect(
           blockSelectionFocus,
         ).pipe(Effect.provide(context)),
 
-      getBlockSelectionState: (_frameId: Id.Frame) =>
+      getBlockSelectionState: (frameId: Id.Frame) =>
         Effect.gen(function* () {
-          const sessionId = yield* Store.getSessionId();
-          const windowId = Id.Window.make(sessionId);
-          const windowDoc = yield* Store.getDocument("window", windowId).pipe(
+          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
-          if (Option.isNone(windowDoc)) {
+          if (Option.isSome(frameDoc)) {
             return {
-              selectedBlocks: [] as readonly Id.Node[],
-              anchor: null,
-              focus: null,
+              selectedBlocks: frameDoc.value.selectedBlocks ?? [],
+              anchor: frameDoc.value.blockSelectionAnchor ?? null,
+              focus: frameDoc.value.blockSelectionFocus ?? null,
             };
           }
+
           return {
-            selectedBlocks: windowDoc.value.selectedBlocks,
-            anchor: windowDoc.value.blockSelectionAnchor,
-            focus: windowDoc.value.blockSelectionFocus,
+            selectedBlocks: [] as readonly Id.Node[],
+            anchor: null,
+            focus: null,
           };
         }),
 

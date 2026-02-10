@@ -140,9 +140,8 @@ const window = State.SQLite.clientDocument({
     id: SessionIdSymbol,
     value: {
       panes: [],
-      activeElement: null,
-      selection: null,
-      selectedBlocks: [],
+      activeRegion: "stage",
+      activeFrameId: null,
       blockSelectionAnchor: null,
       blockSelectionFocus: null,
       lastFocusedBlockId: null,
@@ -223,8 +222,6 @@ type EventsMap = {
 };
 
 export const documentEvents = {
-  // TODO: Fix Window type inference — adding selection fields to Window broke `satisfies EventsMap` check
-  // @ts-expect-error - Window schema complexity exceeds TS inference for satisfies check
   [Model.DocumentName.Window]: window.set,
   [Model.DocumentName.Pane]: pane.set,
   [Model.DocumentName.Frame]: frame.set,

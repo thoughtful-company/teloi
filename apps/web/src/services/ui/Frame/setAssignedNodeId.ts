@@ -25,6 +25,7 @@ export const setAssignedNodeId = (
       {
         ...currentFrame,
         assignedNodeId: nodeId,
+        rootBlockId: nodeId,
         activeViewId: null,
       },
       frameId,

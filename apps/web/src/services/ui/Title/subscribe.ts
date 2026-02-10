@@ -1,6 +1,5 @@
 import { tables } from "@/livestore/schema";
 import { Id } from "@/schema";
-import * as IdT from "@/schema/id/id";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { deepEqual, queryDb } from "@livestore/livestore";
@@ -38,28 +37,48 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
     const windowStream = yield* Store.subscribeStream(windowQuery).pipe(
       Effect.orDie,
     );
+    const frameQuery = queryDb(
+      tables.frame
+        .select("value")
+        .where("id", "=", frameId)
+        .first({ fallback: () => null }),
+    );
+    const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
+      Effect.orDie,
+    );
+    const titleBlockQuery = queryDb(
+      tables.block
+        .select("value")
+        .where("id", "=", titleBlockId)
+        .first({ fallback: () => null }),
+    );
+    const titleBlockStream = yield* Store.subscribeStream(titleBlockQuery).pipe(
+      Effect.orDie,
+    );
 
-    const windowDerived$ = windowStream.pipe(
-      Stream.map((window) => {
-        const activeElement = window?.activeElement ?? null;
+    const windowDerived$ = Stream.zipLatestAll(
+      windowStream,
+      frameStream,
+      titleBlockStream,
+    ).pipe(
+      Stream.map(([window, frame, titleBlock]) => {
+        const isStageActiveFrame =
+          (window?.activeRegion ?? "stage") === "stage" &&
+          window?.activeFrameId === frameId;
         const isActive =
-          activeElement !== null &&
-          activeElement.type === "block" &&
-          activeElement.id === titleBlockId;
+          (isStageActiveFrame &&
+            frame?.activePart === "head" &&
+            frame?.activeBlockId === titleBlockId);
 
         let selection: TitleSelection | null = null;
-        if (window?.selection) {
-          const sel = window.selection;
-          const context = IdT.parseBlockContextSync(sel.anchor.elementId);
-          if (context.type === "frame" && context.nodeId === nodeId) {
-            selection = {
-              anchor: sel.anchorOffset,
-              head: sel.focusOffset,
-              goalX: sel.goalX ?? null,
-              goalLine: sel.goalLine ?? null,
-              assoc: sel.assoc,
-            };
-          }
+        if (titleBlock?.selection) {
+          selection = {
+            anchor: titleBlock.selection.anchor,
+            head: titleBlock.selection.head,
+            goalX: frame?.goalX ?? null,
+            goalLine: frame?.goalLine ?? null,
+            assoc: titleBlock.selection.assoc,
+          };
         }
 
         return { isActive, selection };

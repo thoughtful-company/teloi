@@ -30,11 +30,28 @@ export const FrameSelection = Schema.Struct({
 });
 export type FrameSelection = typeof FrameSelection.Type;
 
+export const ActiveRegion = Schema.Literal(
+  "heavenbar",
+  "stage",
+  "dock-left",
+  "dock-right",
+  "dock-bottom",
+  "floorbar",
+);
+export type ActiveRegion = typeof ActiveRegion.Type;
+
+export const BlockSelection = Schema.Struct({
+  anchor: Schema.Number,
+  head: Schema.Number,
+  /** Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line */
+  assoc: Schema.optionalWith(Schema.Literal(-1, 0, 1), { default: () => 0 }),
+});
+export type BlockSelection = typeof BlockSelection.Type;
+
 export const Window = Schema.Struct({
   panes: Schema.Array(Id.Pane),
-  activeElement: Schema.NullOr(Entity.Element),
-  selection: Schema.NullOr(FrameSelection),
-  selectedBlocks: Schema.mutable(Schema.Array(Id.Node)),
+  activeRegion: Schema.optional(ActiveRegion),
+  activeFrameId: Schema.optional(Schema.NullOr(Id.Frame)),
   /** Anchor of block selection - fixed endpoint where Escape was pressed */
   blockSelectionAnchor: Schema.NullOr(Id.Node),
   /** Focus of block selection - moves with arrow keys, selection is range from anchor to focus */
@@ -63,9 +80,20 @@ export const Frame = Schema.mutable(
     windowId: Id.Window,
     parent: Entity.Pane,
     assignedNodeId: Schema.NullOr(Schema.String),
+    rootBlockId: Schema.optional(Schema.NullOr(Schema.String)),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     /** Active view node ID - null means default page/tree view */
     activeViewId: Schema.NullOr(Id.Node),
+    activePart: Schema.optional(Schema.Literal("head", "body")),
+    activeBlockId: Schema.optional(Schema.NullOr(Id.Block)),
+    selectedBlocks: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
+    /** Anchor of block selection - fixed endpoint where block selection started */
+    blockSelectionAnchor: Schema.optional(Schema.NullOr(Id.Node)),
+    /** Focus of block selection - moving endpoint where block selection currently ends */
+    blockSelectionFocus: Schema.optional(Schema.NullOr(Id.Node)),
+    goalX: Schema.optional(Schema.NullOr(Schema.Number)),
+    goalLine: Schema.optional(Schema.NullOr(Schema.Literal("first", "last"))),
+    assoc: Schema.optional(Schema.Literal(-1, 0, 1)),
     /** Active popup state - null means no popup open */
     popup: Schema.NullOr(FramePopup),
   }),
@@ -77,6 +105,7 @@ export const Block = Schema.Struct({
   activeViewId: Schema.NullOr(Id.Node),
   ghostChildId: Schema.NullOr(Id.Node),
   ghostParentId: Schema.NullOr(Id.Node),
+  selection: Schema.optional(Schema.NullOr(BlockSelection)),
 });
 export type Block = typeof Block.Type;
 

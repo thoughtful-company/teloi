@@ -151,6 +151,7 @@ export const BlockLive = Layer.effect(
               activeViewId: null,
               ghostChildId: null as Id.Node | null,
               ghostParentId: null as Id.Node | null,
+              selection: null,
             }));
 
             // When collapsing a block with a ghost, clean up the ghost
@@ -174,6 +175,7 @@ export const BlockLive = Layer.effect(
                       activeViewId: null,
                       ghostChildId: null,
                       ghostParentId: null,
+                      selection: null,
                     },
                     ghostBlockId,
                   ).pipe(Effect.catchAll(() => Effect.void)),
@@ -223,6 +225,7 @@ export const BlockLive = Layer.effect(
               activeViewId: null,
               ghostChildId: null,
               ghostParentId: null,
+              selection: null,
             }));
             return Store.setDocument(
               "block",

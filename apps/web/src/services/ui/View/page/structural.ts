@@ -256,6 +256,7 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
         activeViewId: null,
         ghostChildId: null,
         ghostParentId: null,
+        selection: null,
       },
       ghostBlockId,
     ).pipe(Effect.catchAll(() => Effect.void));
