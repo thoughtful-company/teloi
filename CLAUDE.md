@@ -150,6 +150,10 @@ Focus is driven by state propagation, never by direct DOM `.focus()` calls:
 
 This means: to focus a block, update frame/world focus state. The UI reacts and focus happens as a consequence.
 
+**Text selection invariant**:
+- Text selection is strictly one-block-only. `Frame.getSelection` / `Frame.setSelection` now work with `{ blockId, selection: { anchor, head, assoc }, goalX, goalLine }`.
+- Multi-block operations use `Frame.setBlockSelection` / `Frame.getBlockSelectionState` only.
+
 Key services:
 - `KeyEventBusT` — Routes keyboard events to commands via keymaps
 - `CommandBusT` — Dispatches command objects to their handlers
