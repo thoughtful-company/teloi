@@ -152,6 +152,7 @@ This means: to focus a block, update frame/world focus state. The UI reacts and 
 
 **Text selection invariant**:
 - Text selection is strictly one-block-only. `Frame.getSelection` / `Frame.setSelection` now work with `{ blockId, selection: { anchor, head, assoc }, goalX, goalLine }`.
+- Selection metadata is stored only on the frame document (`frame.selection`), not on block documents.
 - Multi-block operations use `Frame.setBlockSelection` / `Frame.getBlockSelectionState` only.
 
 Key services:

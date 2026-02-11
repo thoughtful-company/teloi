@@ -27,32 +27,22 @@ export const setBlockSelection = (
     // Default focus to anchor if not provided
     const focus = blockSelectionFocus ?? blockSelectionAnchor;
 
-    if (currentFrame.activeBlockId != null) {
-      const activeBlockDoc = yield* Store.getDocument(
-        "block",
-        currentFrame.activeBlockId,
-      ).pipe(Effect.orDie);
-      if (Option.isSome(activeBlockDoc) && activeBlockDoc.value.selection) {
-        yield* Store.setDocument(
-          "block",
-          { ...activeBlockDoc.value, selection: null },
-          currentFrame.activeBlockId,
-        ).pipe(Effect.orDie);
-      }
-    }
-
     if (blocks.length > 0 && assignedNodeId) {
       const rootNodeId = Id.Node.make(assignedNodeId);
       yield* expandAncestorsForNodes(frameId, rootNodeId, blocks);
     }
 
     const focusedBlockId =
-      focus != null ? Id.makeFrameBlockId(frameId, focus) : currentFrame.activeBlockId;
+      focus != null
+        ? Id.makeFrameBlockId(frameId, focus)
+        : currentFrame.activeBlockId;
     const nextFrame = {
       ...currentFrame,
       selectedBlocks: [...blocks],
       activeBlockId: focusedBlockId,
       activePart: "body" as const,
+      selection: null,
+      focusMode: "blockSelection" as const,
     };
     yield* Store.setDocument("frame", nextFrame, frameId).pipe(Effect.orDie);
 

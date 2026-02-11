@@ -8,8 +8,8 @@ import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
-import { WorldT } from "../World";
 import { FrameNodeNotAssignedError, FrameNotFoundError } from "../errors";
+import { WorldT } from "../World";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
 import { setBlockSelection } from "./setBlockSelection";
@@ -42,7 +42,10 @@ export class FrameT extends Context.Tag("FrameT")<
     >;
     getSelection: (
       frameId: Id.Frame,
-    ) => Effect.Effect<Option.Option<Model.ActiveBlockSelection>, FrameNotFoundError>;
+    ) => Effect.Effect<
+      Option.Option<Model.ActiveBlockSelection>,
+      FrameNotFoundError
+    >;
     getAssignedNodeId: (
       frameId: Id.Frame,
     ) => Effect.Effect<Id.Node | null, FrameNotFoundError>;
@@ -84,8 +87,19 @@ export class FrameT extends Context.Tag("FrameT")<
     enterBlockSelection: (frameId: Id.Frame) => Effect.Effect<void>;
     /**
      * Enter block editing mode for a specific block.
+     * When selection is provided, sets selection atomically with the mode change
+     * (merged setSelection + enterBlockEditing in a single frame doc write).
      */
-    enterBlockEditing: (blockId: Id.Block) => Effect.Effect<void>;
+    enterBlockEditing: (
+      blockId: Id.Block,
+      selection?: {
+        anchor: number;
+        head: number;
+        assoc?: -1 | 0 | 1;
+        goalX?: number | null;
+        goalLine?: "first" | "last" | null;
+      },
+    ) => Effect.Effect<void>;
     /**
      * Clear focus (mode becomes "none").
      */
@@ -134,24 +148,8 @@ export const FrameLive = Layer.effect(
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
-          if (Option.isSome(frameDoc) && frameDoc.value.activeBlockId != null) {
-            const blockId = frameDoc.value.activeBlockId;
-            const blockDoc = yield* Store.getDocument("block", blockId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isSome(blockDoc) && blockDoc.value.selection != null) {
-              const blockSelection = blockDoc.value.selection;
-              return Option.some<Model.ActiveBlockSelection>({
-                blockId,
-                selection: {
-                  anchor: blockSelection.anchor,
-                  head: blockSelection.head,
-                  assoc: blockSelection.assoc ?? frameDoc.value.assoc ?? 0,
-                },
-                goalX: frameDoc.value.goalX ?? null,
-                goalLine: frameDoc.value.goalLine ?? null,
-              });
-            }
+          if (Option.isSome(frameDoc) && frameDoc.value.selection != null) {
+            return Option.some(frameDoc.value.selection);
           }
 
           return Option.none<Model.ActiveBlockSelection>();
@@ -205,28 +203,20 @@ export const FrameLive = Layer.effect(
           );
           if (Option.isNone(worldDoc)) return { type: "none" as const };
 
-          const isStageActive = (worldDoc.value.activeRegion ?? "stage") === "stage";
+          const isStageActive =
+            (worldDoc.value.activeRegion ?? "stage") === "stage";
           const activeFrameId = worldDoc.value.activeFrameId ?? null;
-          if (!isStageActive || activeFrameId == null) return { type: "none" as const };
+          if (!isStageActive || activeFrameId == null)
+            return { type: "none" as const };
 
-          const frameDoc = yield* Store.getDocument("frame", activeFrameId).pipe(
-            Effect.orDie,
-          );
+          const frameDoc = yield* Store.getDocument(
+            "frame",
+            activeFrameId,
+          ).pipe(Effect.orDie);
           if (Option.isNone(frameDoc)) return { type: "none" as const };
 
           const frame = frameDoc.value;
-          if ((frame.selectedBlocks ?? []).length > 0) {
-            return { type: "blockSelection" as const, frameId: activeFrameId };
-          }
-
-          if (frame.activeBlockId == null) {
-            return { type: "blockSelection" as const, frameId: activeFrameId };
-          }
-
-          const blockDoc = yield* Store.getDocument("block", frame.activeBlockId).pipe(
-            Effect.orDie,
-          );
-          if (Option.isSome(blockDoc) && blockDoc.value.selection != null) {
+          if (frame.focusMode === "editing" && frame.activeBlockId != null) {
             return { type: "block" as const, blockId: frame.activeBlockId };
           }
 
@@ -234,8 +224,6 @@ export const FrameLive = Layer.effect(
         }),
       enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
         Effect.gen(function* () {
-          yield* World.setActiveFrameId(frameId);
-
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
@@ -247,48 +235,108 @@ export const FrameLive = Layer.effect(
               ? Id.makeFrameBlockId(frameId, state.focus)
               : frameDoc.value.activeBlockId;
 
+          // Write frame doc BEFORE world doc so focusModeStream sees
+          // the correct focusMode when windowStream fires
           yield* Store.setDocument(
             "frame",
             {
               ...frameDoc.value,
               activePart: "body",
               activeBlockId: focusedBlockId,
+              selection: null,
+              focusMode: "blockSelection",
             },
             frameId,
           ).pipe(Effect.orDie);
+
+          yield* World.setActiveFrameId(frameId);
         }),
-      enterBlockEditing: (blockId: Id.Block): Effect.Effect<void> =>
+      enterBlockEditing: (
+        blockId: Id.Block,
+        selection?: {
+          anchor: number;
+          head: number;
+          assoc?: -1 | 0 | 1;
+          goalX?: number | null;
+          goalLine?: "first" | "last" | null;
+        },
+      ): Effect.Effect<void> =>
         Effect.gen(function* () {
           const blockCtx = Id.parseBlockContextSync(blockId);
           if (blockCtx.type !== "frame") return;
 
           const frameId = blockCtx.frameId;
+
+          if (selection != null) {
+            yield* setSelection(
+              frameId,
+              Option.some({
+                blockId,
+                selection: {
+                  anchor: selection.anchor,
+                  head: selection.head,
+                  assoc: selection.assoc ?? 0,
+                },
+                goalX: selection.goalX ?? null,
+                goalLine: selection.goalLine ?? null,
+              }),
+            ).pipe(Effect.provide(context), Effect.orDie);
+          } else {
+            // No selection — just enter editing mode
+            const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
+              Effect.orDie,
+            );
+            if (Option.isNone(frameDoc)) return;
+
+            const currentFrame = frameDoc.value;
+            const rootNodeId =
+              currentFrame.rootBlockId ?? currentFrame.assignedNodeId;
+            const rootBlockId =
+              rootNodeId != null
+                ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
+                : null;
+            const activePart =
+              rootBlockId != null && blockId === rootBlockId
+                ? ("head" as const)
+                : ("body" as const);
+            const existingSelection = currentFrame.selection ?? null;
+
+            yield* Store.setDocument(
+              "frame",
+              {
+                ...currentFrame,
+                activeBlockId: blockId,
+                activePart,
+                selection:
+                  existingSelection?.blockId === blockId
+                    ? existingSelection
+                    : null,
+                selectedBlocks: [],
+                focusMode: "editing",
+              },
+              frameId,
+            ).pipe(Effect.orDie);
+          }
+
           yield* World.setActiveFrameId(frameId);
 
-          const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
-            Effect.orDie,
+          yield* Effect.logDebug(
+            "[Frame.enterBlockEditing] Block editing entered",
+          ).pipe(
+            Effect.annotateLogs({
+              blockId,
+              frameId,
+              ...(selection != null
+                ? {
+                    "selection.anchor": selection.anchor,
+                    "selection.head": selection.head,
+                    "selection.assoc": selection.assoc ?? 0,
+                    "selection.goalX": selection.goalX ?? null,
+                    "selection.goalLine": selection.goalLine ?? null,
+                  }
+                : {}),
+            }),
           );
-          if (Option.isNone(frameDoc)) return;
-
-          const rootNodeId = frameDoc.value.rootBlockId ?? frameDoc.value.assignedNodeId;
-          const rootBlockId =
-            rootNodeId != null
-              ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
-              : null;
-
-          yield* Store.setDocument(
-            "frame",
-            {
-              ...frameDoc.value,
-              activeBlockId: blockId,
-              activePart:
-                rootBlockId != null && blockId === rootBlockId
-                  ? ("head" as const)
-                  : ("body" as const),
-              selectedBlocks: [],
-            },
-            frameId,
-          ).pipe(Effect.orDie);
         }),
       clearFocus: (): Effect.Effect<void> => World.setActiveFrameId(null),
 

@@ -1,7 +1,6 @@
 import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
@@ -30,17 +29,16 @@ export class Right extends Data.TaggedClass(tag)<{}> {
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { frameId, blockId } = ctx.value;
+    const { blockId } = ctx.value;
 
     const targetOpt = yield* View.resolveBlockRight(blockId);
     if (Option.isNone(targetOpt)) return;
 
     const targetBlockId = targetOpt.value;
 
-    yield* Frame.setSelection(
-      frameId,
-      makeCollapsedSelection(targetBlockId, 0),
-    );
-    yield* Frame.enterBlockEditing(targetBlockId);
+    yield* Frame.enterBlockEditing(targetBlockId, {
+      anchor: 0,
+      head: 0,
+    });
   });
 }

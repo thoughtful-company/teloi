@@ -1,8 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import type { WorkspaceTexts } from "@/services/external/Automerge";
-import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { EditorT } from "@/services/ui/Editor";
+import { KeyEventBusT } from "@/services/ui/KeyEventBus";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { defaultKeymap } from "@codemirror/commands";
@@ -63,6 +63,10 @@ const createTheme = (styles: VariantStyles): Extension =>
     ".cm-line": {
       padding: "0 0 0 var(--block-padding-left)",
     },
+    ".cm-content::selection, .cm-content ::selection, .cm-line::selection, .cm-line ::selection":
+      {
+        backgroundColor: "var(--selection-bg)",
+      },
     "&.cm-focused .cm-cursor": {
       borderLeftColor: "currentColor",
     },
@@ -158,6 +162,11 @@ const createKeydownHandler = (
  * Compute initial EditorSelection from stored selection state.
  * Handles goalX/goalLine for cross-block vertical navigation.
  */
+type SelectionResult = {
+  selection: EditorSelection;
+  method: "goalLine" | "cursor" | "range";
+};
+
 function computeInitialSelection(
   view: EditorView,
   anchor: number,
@@ -165,7 +174,7 @@ function computeInitialSelection(
   assoc: -1 | 0 | 1,
   goalX: number | null | undefined,
   goalLine: "first" | "last" | null | undefined,
-): EditorSelection | null {
+): SelectionResult | null {
   // goalLine mode: compute position using goalX + posAtCoords
   if (goalLine != null && goalX != null && view.state.doc.length > 0) {
     const linePos = goalLine === "first" ? 0 : view.state.doc.length;
@@ -174,9 +183,12 @@ function computeInitialSelection(
       const targetY = lineCoords.top + 1; // +1 to be inside the line
       const result = view.posAndSideAtCoords({ x: goalX, y: targetY });
       if (result != null) {
-        return EditorSelection.create([
-          EditorSelection.cursor(result.pos, result.assoc),
-        ]);
+        return {
+          selection: EditorSelection.create([
+            EditorSelection.cursor(result.pos, result.assoc),
+          ]),
+          method: "goalLine",
+        };
       }
     }
     // Fallback to anchor/head if posAtCoords fails
@@ -184,11 +196,14 @@ function computeInitialSelection(
 
   // Standard selection: cursor for collapsed, range for extended
   const isCollapsed = anchor === head;
-  return EditorSelection.create([
-    isCollapsed
-      ? EditorSelection.cursor(anchor, assoc)
-      : EditorSelection.range(anchor, head),
-  ]);
+  return {
+    selection: EditorSelection.create([
+      isCollapsed
+        ? EditorSelection.cursor(anchor, assoc)
+        : EditorSelection.range(anchor, head),
+    ]),
+    method: isCollapsed ? "cursor" : "range",
+  };
 }
 
 // ============================================================================
@@ -308,11 +323,12 @@ export default function Editor(props: EditorProps) {
     const editor = runtime.runSync(EditorT);
     const doc = props.handle.doc();
     const initialText = doc?.texts?.[props.path[1]] ?? "";
+    const automergeTextExisted = !!doc?.texts?.[props.path[1]];
 
     // Ensure the Automerge text exists before automergeSyncPlugin binds to it.
     // Without this, the plugin crashes on splice if the path doesn't exist yet
     // (e.g., new node created by splitAtCursor with cursor at position 0).
-    if (!doc?.texts?.[props.path[1]]) {
+    if (!automergeTextExisted) {
       props.handle.change((d) => {
         if (!d.texts) d.texts = {};
         d.texts[props.path[1]] = "";
@@ -353,9 +369,10 @@ export default function Editor(props: EditorProps) {
       parent: containerRef,
     });
 
+    let selectionResult: SelectionResult | null = null;
     if (props.initialSelection) {
       const { anchor, head, assoc, goalX, goalLine } = props.initialSelection;
-      const selection = computeInitialSelection(
+      selectionResult = computeInitialSelection(
         view,
         anchor,
         head,
@@ -363,13 +380,39 @@ export default function Editor(props: EditorProps) {
         goalX,
         goalLine,
       );
-      if (selection) {
-        view.dispatch({ selection });
+      if (selectionResult) {
+        view.dispatch({ selection: selectionResult.selection });
       }
     }
 
     view.focus();
     runtime.runSync(editor.registerView(view));
+
+    runtime.runSync(
+      Effect.logDebug("[Editor] Initialized").pipe(
+        Effect.annotateLogs({
+          blockId: props.blockId,
+          variant: props.variant ?? "block",
+          readonly: props.readonly ?? false,
+          automergeTextExisted,
+          initialTextLength: initialText.length,
+          ...(props.initialSelection
+            ? {
+                "selection.anchor": props.initialSelection.anchor,
+                "selection.head": props.initialSelection.head,
+                "selection.assoc": props.initialSelection.assoc ?? 0,
+                "selection.goalX": props.initialSelection.goalX ?? null,
+                "selection.goalLine": props.initialSelection.goalLine ?? null,
+                "selection.method": selectionResult?.method ?? null,
+                "selection.appliedAnchor":
+                  selectionResult?.selection.main.anchor ?? null,
+                "selection.appliedHead":
+                  selectionResult?.selection.main.head ?? null,
+              }
+            : {}),
+        }),
+      ),
+    );
 
     onCleanup(() => {
       // Don't call runSync here - runtime may be disposed during test cleanup

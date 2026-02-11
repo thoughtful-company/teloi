@@ -7,7 +7,6 @@ const BLOCK_DOC_DEFAULTS: Model.Block = {
   activeViewId: null,
   ghostChildId: null,
   ghostParentId: null,
-  selection: null,
 };
 
 /** Read a block document with defaults applied. Standalone helper for use in navigation. */

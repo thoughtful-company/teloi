@@ -20,14 +20,6 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
   return null;
 };
 
-const BLOCK_DOC_DEFAULTS: Model.Block = {
-  isExpanded: true,
-  activeViewId: null,
-  ghostChildId: null,
-  ghostParentId: null,
-  selection: null,
-};
-
 export const setSelection = (
   frameId: Id.Frame,
   selection: Option.Option<Model.ActiveBlockSelection>,
@@ -45,15 +37,12 @@ export const setSelection = (
 
     const currentFrame = frameDoc.value;
     const assignedNodeId = currentFrame.assignedNodeId;
-    const previousActiveBlockId = currentFrame.activeBlockId;
     let clampedSelection: Option.Option<Model.ActiveBlockSelection> = selection;
 
     if (Option.isSome(selection)) {
       const blockContext = yield* IdT.parseBlockContext(
         selection.value.blockId,
-      ).pipe(
-        Effect.orDie,
-      );
+      ).pipe(Effect.orDie);
       if (assignedNodeId) {
         const rootNodeId = Id.Node.make(assignedNodeId);
         const nodeId = getNodeIdForExpansion(blockContext);
@@ -74,7 +63,10 @@ export const setSelection = (
         selection.value.selection.anchor,
         blockText.length,
       );
-      const clampedHead = Math.min(selection.value.selection.head, blockText.length);
+      const clampedHead = Math.min(
+        selection.value.selection.head,
+        blockText.length,
+      );
 
       clampedSelection = Option.some({
         ...selection.value,
@@ -86,45 +78,10 @@ export const setSelection = (
       });
     }
 
-    // Keep block-level persisted selection as the primary source of text ranges.
-    // Selection transition clears the previous active block.
     let nextFrame = currentFrame;
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
       const targetBlockId = s.blockId;
-
-      if (
-        previousActiveBlockId != null &&
-        previousActiveBlockId !== targetBlockId
-      ) {
-        const previousBlockDoc = yield* Store.getDocument(
-          "block",
-          previousActiveBlockId,
-        ).pipe(Effect.orDie);
-        if (Option.isSome(previousBlockDoc)) {
-          yield* Store.setDocument(
-            "block",
-            { ...previousBlockDoc.value, selection: null },
-            previousActiveBlockId,
-          ).pipe(Effect.orDie);
-        }
-      }
-
-      const targetBlockDoc = yield* Store.getDocument("block", targetBlockId).pipe(
-        Effect.orDie,
-      );
-      const targetBlock = Option.getOrElse(
-        targetBlockDoc,
-        () => BLOCK_DOC_DEFAULTS,
-      );
-      yield* Store.setDocument(
-        "block",
-        {
-          ...targetBlock,
-          selection: s.selection,
-        },
-        targetBlockId,
-      ).pipe(Effect.orDie);
 
       const rootNodeId = currentFrame.rootBlockId ?? assignedNodeId;
       const rootBlockId =
@@ -139,31 +96,15 @@ export const setSelection = (
           rootBlockId != null && targetBlockId === rootBlockId
             ? ("head" as const)
             : ("body" as const),
+        selection: s,
         selectedBlocks: [],
-        goalX: s.goalX ?? null,
-        goalLine: s.goalLine ?? null,
-        assoc: s.selection.assoc,
+        focusMode: "editing",
       };
     } else {
-      if (previousActiveBlockId != null) {
-        const previousBlockDoc = yield* Store.getDocument(
-          "block",
-          previousActiveBlockId,
-        ).pipe(Effect.orDie);
-        if (Option.isSome(previousBlockDoc) && previousBlockDoc.value.selection) {
-          yield* Store.setDocument(
-            "block",
-            { ...previousBlockDoc.value, selection: null },
-            previousActiveBlockId,
-          ).pipe(Effect.orDie);
-        }
-      }
-
       nextFrame = {
         ...currentFrame,
+        selection: null,
         selectedBlocks: [],
-        goalX: null,
-        goalLine: null,
       };
     }
 

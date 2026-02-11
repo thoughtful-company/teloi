@@ -3,7 +3,6 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
@@ -33,7 +32,7 @@ export class Left extends Data.TaggedClass(tag)<{}> {
 
     const ctx = yield* resolveActiveBlockContext();
     if (Option.isNone(ctx)) return;
-    const { frameId, blockId } = ctx.value;
+    const { blockId } = ctx.value;
 
     const targetOpt = yield* View.resolveBlockLeft(blockId);
     if (Option.isNone(targetOpt)) return;
@@ -45,10 +44,9 @@ export class Left extends Data.TaggedClass(tag)<{}> {
     const targetText = yield* Automerge.getText(targetCtx.nodeId);
     const endPos = targetText.length;
 
-    yield* Frame.setSelection(
-      frameId,
-      makeCollapsedSelection(targetBlockId, endPos),
-    );
-    yield* Frame.enterBlockEditing(targetBlockId);
+    yield* Frame.enterBlockEditing(targetBlockId, {
+      anchor: endPos,
+      head: endPos,
+    });
   });
 }

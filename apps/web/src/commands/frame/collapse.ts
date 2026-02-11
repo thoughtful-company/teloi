@@ -2,7 +2,6 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { BlockT } from "@/services/ui/Block";
 import { FrameT } from "@/services/ui/Frame";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 
 const scope = "frame";
@@ -74,11 +73,10 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   if (parentId === assignedNodeId) {
     // Parent is title → focus title
     const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
-    yield* deps.Frame.setSelection(
-      frameId,
-      makeCollapsedSelection(titleBlockId, 0),
-    );
-    yield* deps.Frame.enterBlockEditing(titleBlockId);
+    yield* deps.Frame.enterBlockEditing(titleBlockId, {
+      anchor: 0,
+      head: 0,
+    });
     return;
   }
 
@@ -90,11 +88,11 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
     : null;
 
   yield* deps.Block.setExpanded(parentBlockId, false);
-  yield* deps.Frame.setSelection(
-    frameId,
-    makeCollapsedSelection(parentBlockId, 0, { goalX }),
-  );
-  yield* deps.Frame.enterBlockEditing(parentBlockId);
+  yield* deps.Frame.enterBlockEditing(parentBlockId, {
+    anchor: 0,
+    head: 0,
+    goalX,
+  });
 });
 
 const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
@@ -126,12 +124,10 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
     if (parentId === assignedNodeId) {
       // Parent is title → focus title
       const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
-      yield* deps.Frame.setBlockSelection(frameId, [], nodeId);
-      yield* deps.Frame.setSelection(
-        frameId,
-        makeCollapsedSelection(titleBlockId, 0),
-      );
-      yield* deps.Frame.enterBlockEditing(titleBlockId);
+      yield* deps.Frame.enterBlockEditing(titleBlockId, {
+        anchor: 0,
+        head: 0,
+      });
       return;
     }
 

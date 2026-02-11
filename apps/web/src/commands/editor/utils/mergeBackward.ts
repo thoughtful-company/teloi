@@ -5,7 +5,6 @@ import { BlockT } from "@/services/ui/Block";
 import { getBlockDoc } from "@/services/ui/Block/getBlockDoc";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
 
@@ -48,11 +47,10 @@ export const mergeBackward = Effect.fn("mergeBackward")(function* () {
 
   const Frame = yield* FrameT;
 
-  yield* Frame.setSelection(
-    frameId,
-    makeCollapsedSelection(targetBlockId, mergePoint),
-  );
-  yield* Frame.enterBlockEditing(targetBlockId);
+  yield* Frame.enterBlockEditing(targetBlockId, {
+    anchor: mergePoint,
+    head: mergePoint,
+  });
 });
 
 // ================================ Internal ==================================
@@ -70,9 +68,8 @@ const removeGhost = Effect.fn("mergeBackward:removeGhost")(function* (
 
   yield* Block.setExpanded(parentBlockId, false);
 
-  yield* Frame.setSelection(
-    frameId,
-    makeCollapsedSelection(parentBlockId, parentText.length),
-  );
-  yield* Frame.enterBlockEditing(parentBlockId);
+  yield* Frame.enterBlockEditing(parentBlockId, {
+    anchor: parentText.length,
+    head: parentText.length,
+  });
 });

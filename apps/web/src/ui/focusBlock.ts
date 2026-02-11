@@ -1,41 +1,24 @@
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
-import { waitFrames } from "@/utils/effect";
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
 
 /**
- * Focus a block element from a mousedown handler.
- *
- * Defers frame focus by one rAF so LiveStore processes the
- * selection update before CodeMirror mounts with view.focus().
+ * Focus a block element from pointer activation.
  */
 export const focusBlock = Effect.fn("focusBlock")(function* (params: {
   frameId: Id.Frame;
   nodeId: Id.Node;
   blockId: Id.Block;
-  offset?: number | undefined;
+  anchor?: number | undefined;
+  head?: number | undefined;
   assoc?: 0 | 1 | -1 | undefined;
 }) {
-  const { frameId, nodeId, blockId, offset, assoc } = params;
+  const { blockId, anchor, head, assoc } = params;
   const Frame = yield* FrameT;
 
-  yield* Frame.setBlockSelection(frameId, [], nodeId);
-  yield* Frame.setSelection(
-    frameId,
-    Option.some({
-      blockId,
-      selection: {
-        anchor: offset ?? 0,
-        head: offset ?? 0,
-        assoc: assoc ?? 0,
-      },
-      goalX: null,
-      goalLine: null,
-    }),
-  );
-  yield* Effect.forkDaemon(
-    waitFrames(1).pipe(
-      Effect.andThen(Frame.enterBlockEditing(blockId)),
-    ),
-  );
+  yield* Frame.enterBlockEditing(blockId, {
+    anchor: anchor ?? 0,
+    head: head ?? anchor ?? 0,
+    assoc: assoc ?? 0,
+  });
 });

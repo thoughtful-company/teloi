@@ -4,15 +4,15 @@ import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
 import { BlockT, type BlockView } from "@/services/ui/Block";
+import * as BlockType from "@/services/ui/BlockType";
 import { CommandBusT } from "@/services/ui/CommandBus";
 import type { ViewInfo } from "@/services/ui/View";
-import * as BlockType from "@/services/ui/BlockType";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
-import { focusBlock } from "./focusBlock";
 import { createEffect, For, onCleanup, onMount, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
 import Editor from "./Editor";
+import { focusBlock } from "./focusBlock";
 import { FormattedText } from "./FormattedText";
 import TypeBadge from "./TypeBadge";
 import ViewRenderer from "./ViewRenderer";
@@ -144,25 +144,69 @@ export default function Block({ blockId }: BlockProps) {
 
   let pRef: HTMLParagraphElement | undefined;
 
-  const handleMouseDown = (e: MouseEvent) => {
-    if (store.isActive) return;
+  const toTextOffset = (
+    container: HTMLElement,
+    node: Node,
+    offset: number,
+  ): number | null => {
+    if (!container.contains(node)) return null;
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  };
 
-    // Resolve click position for frame-type blocks
-    let offset: number | undefined;
-    let assoc: 1 | -1 | undefined;
-    if (pRef && blockContext.type === "frame") {
-      const resolved = posAtCoordsInElement(pRef, e.clientX, e.clientY);
-      offset = resolved?.offset;
-      assoc = resolved?.assoc;
+  const resolveInitialSelection = (
+    container: HTMLElement,
+    e: MouseEvent,
+  ): { anchor: number; head: number; assoc: -1 | 0 | 1 } => {
+    const domSelection = window.getSelection();
+    if (
+      domSelection &&
+      domSelection.rangeCount > 0 &&
+      domSelection.anchorNode &&
+      domSelection.focusNode &&
+      container.contains(domSelection.anchorNode) &&
+      container.contains(domSelection.focusNode)
+    ) {
+      const anchor = toTextOffset(
+        container,
+        domSelection.anchorNode,
+        domSelection.anchorOffset,
+      );
+      const head = toTextOffset(
+        container,
+        domSelection.focusNode,
+        domSelection.focusOffset,
+      );
+      if (anchor != null && head != null) {
+        if (anchor === head) {
+          const resolved = posAtCoordsInElement(container, e.clientX, e.clientY);
+          return { anchor, head, assoc: resolved?.assoc ?? 0 };
+        }
+        return { anchor, head, assoc: 0 };
+      }
     }
+
+    const resolved = posAtCoordsInElement(container, e.clientX, e.clientY);
+    const offset = resolved?.offset ?? 0;
+    return { anchor: offset, head: offset, assoc: resolved?.assoc ?? 0 };
+  };
+
+  const handleClick = (e: MouseEvent) => {
+    if (store.isActive) return;
+    if (!pRef) return;
+
+    const initialSelection = resolveInitialSelection(pRef, e);
 
     runtime.runSync(
       focusBlock({
         frameId: blockContext.frameId,
         nodeId,
         blockId,
-        offset,
-        assoc,
+        anchor: initialSelection.anchor,
+        head: initialSelection.head,
+        assoc: initialSelection.assoc,
       }),
     );
   };
@@ -188,7 +232,7 @@ export default function Block({ blockId }: BlockProps) {
         />
       </button>
       <div
-        onMouseDown={handleMouseDown}
+        onClick={handleClick}
         data-block-content
         class="flex"
         classList={{

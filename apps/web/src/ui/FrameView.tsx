@@ -5,18 +5,11 @@ import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Stream } from "effect";
-import {
-  createEffect,
-  createSignal,
-  Index,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createSignal, Index, onCleanup, onMount, Show } from "solid-js";
 import PropertySection from "./PropertySection";
 import Title from "./Title";
-import { BlockTypePicker } from "./TypePicker";
 import TypeList from "./TypeList";
+import { BlockTypePicker } from "./TypePicker";
 import ViewRenderer from "./ViewRenderer";
 import ViewTabs from "./ViewTabs";
 
@@ -118,14 +111,6 @@ export default function FrameView({ frameId }: FrameViewProps) {
   });
 
   let containerRef!: HTMLDivElement;
-
-  // Focus the frame container when entering block-selection mode
-  // or when popup closes (to restore keyboard event routing).
-  createEffect(() => {
-    if (store.isBlockSelectionMode && !store.popup) {
-      containerRef.focus();
-    }
-  });
 
   onMount(() => {
     const dispose = start(runtime);

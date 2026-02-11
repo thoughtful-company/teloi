@@ -1,7 +1,6 @@
 import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
 import { resolveGoalX } from "./utils/resolveGoalX";
@@ -39,10 +38,11 @@ export class Down extends Data.TaggedClass(tag)<{}> {
     const goalX = yield* resolveGoalX(frameId);
     const targetBlockId = targetOpt.value;
 
-    yield* Frame.setSelection(
-      frameId,
-      makeCollapsedSelection(targetBlockId, 0, { goalX, goalLine: "first" }),
-    );
-    yield* Frame.enterBlockEditing(targetBlockId);
+    yield* Frame.enterBlockEditing(targetBlockId, {
+      anchor: 0,
+      head: 0,
+      goalX,
+      goalLine: "first",
+    });
   });
 }

@@ -1,7 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { FrameT } from "@/services/ui/Frame";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 
 export const navigateToFirstChild = (
@@ -26,15 +25,11 @@ export const navigateToFirstChild = (
         ? existingSelection.value.goalX
         : goalX;
 
-    yield* Frame.setSelection(
-      frameId,
-      makeCollapsedSelection(
-        targetBlockId,
-        0,
-        finalGoalX != null
-          ? { goalX: finalGoalX, goalLine: "first" }
-          : undefined,
-      ),
-    );
-    yield* Frame.enterBlockEditing(targetBlockId);
+    yield* Frame.enterBlockEditing(targetBlockId, {
+      anchor: 0,
+      head: 0,
+      ...(finalGoalX != null
+        ? { goalX: finalGoalX, goalLine: "first" as const }
+        : {}),
+    });
   }).pipe(Effect.catchTag("FrameNotFoundError", () => Effect.void));

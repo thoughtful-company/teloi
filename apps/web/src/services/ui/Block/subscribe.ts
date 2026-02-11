@@ -155,7 +155,7 @@ export const subscribe = (blockId: Id.Block) =>
           blockEither,
           nodeEither,
           availableViews,
-          { isActive, isSelected, goalX, goalLine },
+          { isActive, isSelected, selection },
           activeTypes,
           picker,
           textContent,
@@ -180,17 +180,6 @@ export const subscribe = (blockId: Id.Block) =>
             activeViewId,
             availableViews,
           );
-          const selection =
-            block.selection != null
-              ? {
-                  anchor: block.selection.anchor,
-                  head: block.selection.head,
-                  goalX,
-                  goalLine,
-                  assoc: block.selection.assoc,
-                }
-              : null;
-
           return Either.right({
             nodeData,
             isActive,
@@ -240,11 +229,6 @@ type BlockDoc = {
   activeViewId: Id.Node | null;
   ghostChildId: Id.Node | null;
   ghostParentId: Id.Node | null;
-  selection?: {
-    anchor: number;
-    head: number;
-    assoc: -1 | 0 | 1;
-  } | null | undefined;
 };
 
 const makeBlockStreamEither = (blockId: Id.Block) =>
@@ -275,7 +259,6 @@ const makeBlockStreamEither = (blockId: Id.Block) =>
                 activeViewId: null,
                 ghostChildId: null,
                 ghostParentId: null,
-                selection: null,
               },
           ),
       ),
@@ -309,8 +292,7 @@ const makeNodeStreamEither = (nodeId: Id.Node) =>
 interface WindowDerived {
   isActive: boolean;
   isSelected: boolean;
-  goalX: number | null;
-  goalLine: "first" | "last" | null;
+  selection: BlockSelection | null;
 }
 
 const makeWindowDerivedStream = (
@@ -350,10 +332,18 @@ const makeWindowDerivedStream = (
         const selectedBlocks = frame?.selectedBlocks ?? [];
         const isSelected = selectedBlocks.includes(nodeId);
 
-        const goalX = frame?.goalX ?? null;
-        const goalLine = frame?.goalLine ?? null;
+        const selection =
+          frame?.selection?.blockId === blockId
+            ? {
+                anchor: frame.selection.selection.anchor,
+                head: frame.selection.selection.head,
+                goalX: frame.selection.goalX,
+                goalLine: frame.selection.goalLine,
+                assoc: frame.selection.selection.assoc,
+              }
+            : null;
 
-        return { isActive, isSelected, goalX, goalLine };
+        return { isActive, isSelected, selection };
       },
     ).pipe(
       Stream.changesWith(deepEqual),

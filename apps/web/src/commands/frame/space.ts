@@ -2,7 +2,6 @@ import { EditBlock } from "@/commands/frame/editBlock";
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect } from "effect";
 
 const scope = "frame";
@@ -38,8 +37,6 @@ export class Space extends Data.TaggedClass(tag)<{}> {
     const newCtx = Id.parseBlockContextSync(newBlockId);
     if (newCtx.type !== "frame") return;
 
-    yield* Frame.setBlockSelection(frameId, [], newCtx.nodeId);
-    yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
-    yield* Frame.enterBlockEditing(newBlockId);
+    yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
   });
 }

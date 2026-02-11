@@ -69,10 +69,9 @@ export const Frame = Schema.mutable(
     activeViewId: Schema.NullOr(Id.Node),
     activePart: Schema.optional(Schema.Literal("head", "body")),
     activeBlockId: Schema.optional(Schema.NullOr(Id.Block)),
+    selection: Schema.optional(Schema.NullOr(ActiveBlockSelection)),
+    focusMode: Schema.optional(Schema.Literal("editing", "blockSelection")),
     selectedBlocks: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
-    goalX: Schema.optional(Schema.NullOr(Schema.Number)),
-    goalLine: Schema.optional(Schema.NullOr(Schema.Literal("first", "last"))),
-    assoc: Schema.optional(Schema.Literal(-1, 0, 1)),
     /** Active popup state - null means no popup open */
     popup: Schema.NullOr(FramePopup),
   }),
@@ -84,7 +83,6 @@ export const Block = Schema.Struct({
   activeViewId: Schema.NullOr(Id.Node),
   ghostChildId: Schema.NullOr(Id.Node),
   ghostParentId: Schema.NullOr(Id.Node),
-  selection: Schema.optional(Schema.NullOr(BlockSelection)),
 });
 export type Block = typeof Block.Type;
 

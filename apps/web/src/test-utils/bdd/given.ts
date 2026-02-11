@@ -454,7 +454,10 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
       case "title": {
         const assignedNodeId = yield* Frame.getAssignedNodeId(element.frameId);
         if (assignedNodeId == null) return;
-        const titleBlockId = Id.makeFrameBlockId(element.frameId, assignedNodeId);
+        const titleBlockId = Id.makeFrameBlockId(
+          element.frameId,
+          assignedNodeId,
+        );
         yield* Frame.enterBlockEditing(titleBlockId);
         return;
       }
@@ -477,28 +480,17 @@ export const BLOCK_IS_FOCUSED_AT = (
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
-    const [frameId] = yield* Id.parseBlockId(blockId);
-
-    // Set cursor in frame selection
-    yield* Frame.setSelection(
-      frameId,
-      Option.some({
-        blockId,
-        selection: {
-          anchor: offset,
-          head: offset,
-          assoc,
-        },
-        goalX: opts?.goalX ?? null,
-        goalLine: null,
-      }),
-    );
-
-    // Set active element
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(Frame.enterBlockEditing(blockId));
+          resume(
+            Frame.enterBlockEditing(blockId, {
+              anchor: offset,
+              head: offset,
+              assoc,
+              goalX: opts?.goalX ?? null,
+            }),
+          );
         }),
       );
 
@@ -607,27 +599,15 @@ export const TITLE_IS_FOCUSED_AT = (
 
     const elementId = Id.makeFrameBlockId(frameId, rootNodeId);
 
-    // Set cursor in frame selection
-    yield* Frame.setSelection(
-      frameId,
-      Option.some({
-        blockId: elementId,
-        selection: {
-          anchor: offset,
-          head: offset,
-          assoc: 0,
-        },
-        goalX: null,
-        goalLine: null,
-      }),
-    );
-
-    // Set active element as block (titles use type: "block" with the title's blockId,
-    // matching how the real UI activates via focusBlock)
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(Frame.enterBlockEditing(elementId));
+          resume(
+            Frame.enterBlockEditing(elementId, {
+              anchor: offset,
+              head: offset,
+            }),
+          );
         }),
       );
 

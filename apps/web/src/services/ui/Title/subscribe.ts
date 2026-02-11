@@ -46,43 +46,32 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
     const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
       Effect.orDie,
     );
-    const titleBlockQuery = queryDb(
-      tables.block
-        .select("value")
-        .where("id", "=", titleBlockId)
-        .first({ fallback: () => null }),
-    );
-    const titleBlockStream = yield* Store.subscribeStream(titleBlockQuery).pipe(
-      Effect.orDie,
-    );
-
-    const windowDerived$ = Stream.zipLatestAll(
+    const windowDerived$ = Stream.zipLatestWith(
       windowStream,
       frameStream,
-      titleBlockStream,
-    ).pipe(
-      Stream.map(([window, frame, titleBlock]) => {
+      (window, frame) => {
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
         const isActive =
-          (isStageActiveFrame &&
-            frame?.activePart === "head" &&
-            frame?.activeBlockId === titleBlockId);
+          isStageActiveFrame &&
+          frame?.activePart === "head" &&
+          frame?.activeBlockId === titleBlockId;
 
         let selection: TitleSelection | null = null;
-        if (titleBlock?.selection) {
+        if (frame?.selection?.blockId === titleBlockId) {
           selection = {
-            anchor: titleBlock.selection.anchor,
-            head: titleBlock.selection.head,
-            goalX: frame?.goalX ?? null,
-            goalLine: frame?.goalLine ?? null,
-            assoc: titleBlock.selection.assoc,
+            anchor: frame.selection.selection.anchor,
+            head: frame.selection.selection.head,
+            goalX: frame.selection.goalX,
+            goalLine: frame.selection.goalLine,
+            assoc: frame.selection.selection.assoc,
           };
         }
 
         return { isActive, selection };
-      }),
+      },
+    ).pipe(
       Stream.changesWith(deepEqual),
     );
 

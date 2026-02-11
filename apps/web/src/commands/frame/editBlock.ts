@@ -3,7 +3,6 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { NodeT } from "@/services/domain/Node";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Data, Effect } from "effect";
 
 const scope = "frame";
@@ -38,10 +37,10 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
       const textLength = text.length;
       const blockId = Id.makeFrameBlockId(frameId, targetBlock);
 
-      // Clear block-selection mode first, then persist text selection.
-      yield* Frame.setBlockSelection(frameId, [], targetBlock);
-      yield* Frame.setSelection(frameId, makeCollapsedSelection(blockId, textLength));
-      yield* Frame.enterBlockEditing(blockId);
+      yield* Frame.enterBlockEditing(blockId, {
+        anchor: textLength,
+        head: textLength,
+      });
       return;
     }
 
@@ -53,9 +52,7 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
       const titleBlockId = Id.makeFrameBlockId(frameId, assignedNodeId);
       const newBlockId = yield* View.createBlock(titleBlockId, "after");
 
-      yield* Frame.setBlockSelection(frameId, [], null);
-      yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
-      yield* Frame.enterBlockEditing(newBlockId);
+      yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
       return;
     }
 
@@ -64,12 +61,10 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
     const lastText = yield* Automerge.getText(lastNodeId);
 
     if (lastText.length === 0) {
-      yield* Frame.setBlockSelection(frameId, [], lastNodeId);
-      yield* Frame.setSelection(
-        frameId,
-        makeCollapsedSelection(lastBlockId, lastText.length),
-      );
-      yield* Frame.enterBlockEditing(lastBlockId);
+      yield* Frame.enterBlockEditing(lastBlockId, {
+        anchor: lastText.length,
+        head: lastText.length,
+      });
       return;
     }
 
@@ -77,8 +72,6 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
     const newCtx = Id.parseBlockContextSync(newBlockId);
     if (newCtx.type !== "frame") return;
 
-    yield* Frame.setBlockSelection(frameId, [], newCtx.nodeId);
-    yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
-    yield* Frame.enterBlockEditing(newBlockId);
+    yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
   });
 }

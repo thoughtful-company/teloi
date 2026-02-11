@@ -49,7 +49,7 @@ export const materialize = Effect.fn("Block.materialize")(function* (
   if (Option.isSome(ghostDoc)) {
     yield* Store.setDocument(
       "block",
-      { ...ghostDoc.value, ghostParentId: null, selection: null },
+      { ...ghostDoc.value, ghostParentId: null },
       ghostBlockId,
     ).pipe(Effect.catchAll(() => Effect.void));
   }

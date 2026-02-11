@@ -53,7 +53,6 @@ export const expandAncestors = (
             activeViewId: null,
             ghostChildId: null,
             ghostParentId: null,
-            selection: null,
           },
           blockId,
         ).pipe(Effect.orDie);
@@ -120,7 +119,6 @@ export const expandAncestorsForNodes = (
             activeViewId: null,
             ghostChildId: null,
             ghostParentId: null,
-            selection: null,
           },
           blockId,
         ).pipe(Effect.orDie);

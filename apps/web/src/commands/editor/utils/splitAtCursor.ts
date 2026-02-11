@@ -2,7 +2,6 @@ import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
-import { makeCollapsedSelection } from "@/utils/selectionStrategy";
 import { Effect, Option } from "effect";
 import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
 
@@ -16,7 +15,9 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const { frameId, nodeId, blockId, isTitle } = ctx.value;
 
   const selection = yield* Frame.getSelection(frameId);
-  const cursorPos = Option.isSome(selection) ? selection.value.selection.head : 0;
+  const cursorPos = Option.isSome(selection)
+    ? selection.value.selection.head
+    : 0;
 
   const currentText = yield* Automerge.getText(nodeId);
   const clampedPos = Math.max(0, Math.min(cursorPos, currentText.length));
@@ -34,8 +35,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
     yield* Automerge.setText(newNodeId, currentText.slice(clampedPos));
   }
 
-  yield* Frame.setSelection(frameId, makeCollapsedSelection(newBlockId, 0));
-  yield* Frame.enterBlockEditing(newBlockId);
+  yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
 
   yield* Effect.logDebug("[splitAtCursor] Split completed").pipe(
     Effect.annotateLogs({

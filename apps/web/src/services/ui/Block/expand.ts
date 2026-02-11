@@ -108,7 +108,6 @@ const createGhost = (
         activeViewId: null,
         ghostChildId,
         ghostParentId: null,
-        selection: null,
       },
       parentBlockId,
     ).pipe(Effect.catchAll(() => Effect.void));
@@ -121,7 +120,6 @@ const createGhost = (
         activeViewId: null,
         ghostChildId: null,
         ghostParentId: parentNodeId,
-        selection: null,
       },
       ghostBlockId,
     ).pipe(Effect.catchAll(() => Effect.void));

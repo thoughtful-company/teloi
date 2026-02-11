@@ -49,27 +49,70 @@ export default function Title({ frameId, nodeId }: TitleProps) {
 
   let h1Ref: HTMLHeadingElement | undefined;
 
-  const handleMouseDown = (e: MouseEvent) => {
+  const toTextOffset = (
+    container: HTMLElement,
+    node: Node,
+    offset: number,
+  ): number | null => {
+    if (!container.contains(node)) return null;
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  };
+
+  const resolveInitialSelection = (
+    container: HTMLElement,
+    e: MouseEvent,
+  ): { anchor: number; head: number; assoc: -1 | 0 | 1 } => {
+    const domSelection = window.getSelection();
+    if (
+      domSelection &&
+      domSelection.rangeCount > 0 &&
+      domSelection.anchorNode &&
+      domSelection.focusNode &&
+      container.contains(domSelection.anchorNode) &&
+      container.contains(domSelection.focusNode)
+    ) {
+      const anchor = toTextOffset(
+        container,
+        domSelection.anchorNode,
+        domSelection.anchorOffset,
+      );
+      const head = toTextOffset(
+        container,
+        domSelection.focusNode,
+        domSelection.focusOffset,
+      );
+      if (anchor != null && head != null) {
+        if (anchor === head) {
+          const resolved = posAtCoordsInElement(container, e.clientX, e.clientY);
+          return { anchor, head, assoc: resolved?.assoc ?? 0 };
+        }
+        return { anchor, head, assoc: 0 };
+      }
+    }
+
+    const resolved = posAtCoordsInElement(container, e.clientX, e.clientY);
+    const offset = resolved?.offset ?? 0;
+    return { anchor: offset, head: offset, assoc: resolved?.assoc ?? 0 };
+  };
+
+  const handleClick = (e: MouseEvent) => {
     if (store.isActive) return;
+    if (!h1Ref) return;
 
     const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
-
-    // Resolve click position on the unfocused h1
-    let offset: number | undefined;
-    let assoc: 1 | -1 | undefined;
-    if (h1Ref) {
-      const resolved = posAtCoordsInElement(h1Ref, e.clientX, e.clientY);
-      offset = resolved?.offset;
-      assoc = resolved?.assoc;
-    }
+    const initialSelection = resolveInitialSelection(h1Ref, e);
 
     runtime.runSync(
       focusBlock({
         frameId,
         nodeId,
         blockId: titleBlockId,
-        offset,
-        assoc,
+        anchor: initialSelection.anchor,
+        head: initialSelection.head,
+        assoc: initialSelection.assoc,
       }),
     );
   };
@@ -83,7 +126,7 @@ export default function Title({ frameId, nodeId }: TitleProps) {
     <div
       data-element-id={frameId}
       data-element-type="title"
-      onMouseDown={handleMouseDown}
+      onClick={handleClick}
       class="min-h-[var(--text-title--line-height)]"
     >
       <Show

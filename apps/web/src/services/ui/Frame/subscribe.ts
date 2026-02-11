@@ -61,57 +61,17 @@ export const subscribe = (frameId: Id.Frame) =>
       Effect.orDie,
     );
 
-    const activeBlockSelectionStream = Stream.flatMap(
-      frameStream.pipe(
-        Stream.map((frame) => frame?.activeBlockId ?? null),
-        Stream.changesWith((a, b) => a === b),
-      ),
-      (activeBlockId) => {
-        if (activeBlockId == null) {
-          return Stream.succeed(null as Model.BlockSelection | null);
-        }
-
-        return Stream.unwrap(
-          Effect.gen(function* () {
-            const blockQuery = queryDb(
-              tables.block
-                .select("value")
-                .where("id", "=", activeBlockId)
-                .first({ fallback: () => null }),
-            );
-            const blockStream = yield* Store.subscribeStream(blockQuery).pipe(
-              Effect.orDie,
-            );
-            return blockStream.pipe(Stream.map((block) => block?.selection ?? null));
-          }),
-        );
-      },
-      { switch: true },
-    );
-
-    const focusModeStream = Stream.zipLatestAll(
+    const focusModeStream = Stream.zipLatestWith(
       windowStream,
       frameStream,
-      activeBlockSelectionStream,
-    ).pipe(
-      Stream.map(([window, frame, activeBlockSelection]) => {
+      (window, frame) => {
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
         if (!isStageActiveFrame) return { isBlockSelectionMode: false };
-
-        const selectedBlocks = frame?.selectedBlocks ?? [];
-        if (selectedBlocks.length > 0) {
-          return { isBlockSelectionMode: true };
-        }
-
-        const activeBlockId = frame?.activeBlockId ?? null;
-        if (activeBlockId != null && activeBlockSelection != null) {
-          return { isBlockSelectionMode: false };
-        }
-
-        return { isBlockSelectionMode: true };
-      }),
+        return { isBlockSelectionMode: frame?.focusMode !== "editing" };
+      },
+    ).pipe(
       Stream.changesWith(
         (a, b) => a.isBlockSelectionMode === b.isBlockSelectionMode,
       ),
