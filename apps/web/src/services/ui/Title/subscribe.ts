@@ -56,7 +56,7 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
         const isActive =
           isStageActiveFrame &&
           frame?.activePart === "head" &&
-          frame?.activeBlockId === titleBlockId;
+          frame?.selection?.blockId === titleBlockId;
 
         let selection: TitleSelection | null = null;
         if (frame?.selection?.blockId === titleBlockId) {

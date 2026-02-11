@@ -289,13 +289,17 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }, { text: "Second" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-
         render(() => <FrameView frameId={frameId} />);
 
-        // Enter block selection with first block, then extend to second
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-        yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+        const Frame = yield* FrameT;
+        yield* Frame.enterBlockSelection(frameId);
+        yield* Frame.setBlockSelection(
+          frameId,
+          [childNodeIds[0]!, childNodeIds[1]!],
+          childNodeIds[0]!,
+          childNodeIds[1]!,
+        );
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Open picker
         yield* When.USER_PRESSES("#");
@@ -379,13 +383,17 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }, { text: "Second" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-
         render(() => <FrameView frameId={frameId} />);
 
-        // Select both blocks
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
-        yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+        const Frame = yield* FrameT;
+        yield* Frame.enterBlockSelection(frameId);
+        yield* Frame.setBlockSelection(
+          frameId,
+          [childNodeIds[0]!, childNodeIds[1]!],
+          childNodeIds[0]!,
+          childNodeIds[1]!,
+        );
+        yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
         // Open picker and type a new tag name
         yield* When.USER_PRESSES("#");
@@ -853,9 +861,10 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
       yield* Then.BLOCK_IS_EXPANDED(blockA);
       yield* Then.BLOCK_IS_EXPANDED(blockB);
 
-      // Select both blocks
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
@@ -873,19 +882,106 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
 
       render(() => <FrameView frameId={frameId} />);
 
-      // Select both collapsed sibling blocks (no children = treated as collapsed)
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
       // Should navigate to parent (root node) — focuses title since parent is frame root
       yield* Then.SELECTION_IS_ON_TITLE(frameId);
+    }).pipe(runtime.runPromise);
+  });
+});
+
+describe("Block selection focus ownership", () => {
+  let runtime: BrowserRuntime;
+  let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    if (cleanup!) await cleanup();
+    const setup = await setupClientTest();
+    runtime = setup.runtime;
+    render = setup.render;
+    cleanup = setup.cleanup;
+  });
+
+  it("persists blockSelectionAnchor/blockSelectionFocus as authoritative focus state", async () => {
+    await Effect.gen(function* () {
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+
+      render(() => <FrameView frameId={frameId} />);
+
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
+        anchor: nodeA,
+        focus: nodeB,
+      });
+
+      const Store = yield* StoreT;
+      const frameDoc = yield* Store.getDocument("frame", frameId);
+      const frameValue = Option.getOrThrow(frameDoc) as unknown as {
+        blockSelectionAnchor: Id.Node | null;
+        blockSelectionFocus: Id.Node | null;
+      };
+
+      expect(frameValue.blockSelectionAnchor).toBe(nodeA);
+      expect(frameValue.blockSelectionFocus).toBe(nodeB);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("clears block-selection focus fields when entering editing mode", async () => {
+    await Effect.gen(function* () {
+      const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+        "Root",
+        [{ text: "A" }, { text: "B" }],
+      );
+
+      const [nodeA, nodeB] = childNodeIds;
+      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+
+      render(() => <FrameView frameId={frameId} />);
+
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
+        anchor: nodeA,
+        focus: nodeB,
+      });
+
+      // Transition to editing should clear block-selection focus fields.
+      yield* Frame.enterBlockEditing(blockB, { anchor: 0, head: 0 });
+      yield* Then.SELECTION_IS_ON_BLOCK(blockB);
+
+      const Store = yield* StoreT;
+      const frameDoc = yield* Store.getDocument("frame", frameId);
+      const frameValue = Option.getOrThrow(frameDoc) as unknown as {
+        selection: { blockId: Id.Block } | null;
+        selectedBlocks: readonly Id.Node[];
+        blockSelectionAnchor: Id.Node | null;
+        blockSelectionFocus: Id.Node | null;
+      };
+
+      expect(frameValue.selection?.blockId).toBe(blockB);
+      expect(frameValue.selectedBlocks).toHaveLength(0);
+      expect(frameValue.blockSelectionAnchor).toBeNull();
+      expect(frameValue.blockSelectionFocus).toBeNull();
     }).pipe(runtime.runPromise);
   });
 });
@@ -1017,9 +1113,10 @@ describe("Expand (Mod+Down) — Block selection mode", () => {
       yield* Then.BLOCK_IS_COLLAPSED(blockA);
       yield* Then.BLOCK_IS_COLLAPSED(blockB);
 
-      // Select both blocks
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
-      yield* When.USER_PRESSES("{Shift>}{ArrowDown}{/Shift}");
+      const Frame = yield* FrameT;
+      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");

@@ -155,6 +155,11 @@ This means: to focus a block, update frame/world focus state. The UI reacts and 
 - Selection metadata is stored only on the frame document (`frame.selection`), not on block documents.
 - Multi-block operations use `Frame.setBlockSelection` / `Frame.getBlockSelectionState` only.
 
+**Focus ownership invariant**:
+- Editing focus source of truth is `frame.selection.blockId`.
+- Block-selection focus source of truth is `frame.blockSelectionAnchor` + `frame.blockSelectionFocus`.
+- `frame.selectedBlocks` is persisted as a derived cache (not authoritative focus state).
+
 Key services:
 - `KeyEventBusT` — Routes keyboard events to commands via keymaps
 - `CommandBusT` — Dispatches command objects to their handlers

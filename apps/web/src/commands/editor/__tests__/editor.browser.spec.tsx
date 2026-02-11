@@ -2189,6 +2189,14 @@ describe("editor navigation", () => {
           ghostChildId as Id.Node,
         );
         yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+        yield* Then.CM_CURSOR_IS_AT(0);
+
+        // Guard against stale parent editor writes stealing selection before Backspace.
+        for (let i = 0; i < 3; i++) {
+          yield* doubleRaf;
+          yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+          yield* Then.CM_CURSOR_IS_AT(0);
+        }
 
         // Backspace on empty ghost → remove ghost, focus parent at end
         yield* When.USER_PRESSES("{Backspace}");
@@ -2539,7 +2547,7 @@ describe("editor navigation", () => {
           yield* Then.NODE_HAS_TEXT(children[1]!, " child");
 
           yield* Then.SELECTION_IS_NOT_ON_BLOCK(firstChildBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          yield* Then.CM_CURSOR_IS_AT(0);
         }).pipe(runtime.runPromise);
       });
 
@@ -2563,7 +2571,7 @@ describe("editor navigation", () => {
           yield* Then.BLOCK_COUNT_IS(2);
           yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
           yield* Then.SELECTION_IS_NOT_ON_BLOCK(firstChildBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          yield* Then.CM_CURSOR_IS_AT(0);
         }).pipe(runtime.runPromise);
       });
 
@@ -2595,7 +2603,56 @@ describe("editor navigation", () => {
           yield* Then.NODE_HAS_TEXT(children[1]!, "First child");
 
           yield* Then.SELECTION_IS_NOT_ON_BLOCK(originalBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          yield* Then.CM_CURSOR_IS_AT(0);
+        }).pipe(runtime.runPromise);
+      });
+
+      it("keeps selection on new block and unmounts previous editor after Enter at block start", async () => {
+        await Effect.gen(function* () {
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Root node", [
+              { text: "First child" },
+            ]);
+
+          const originalBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+
+          render(() => <FrameView frameId={frameId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
+          yield* When.USER_PRESSES("{Enter}");
+
+          yield* Then.BLOCK_COUNT_IS(2);
+          yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
+
+          const Node = yield* NodeT;
+          const children = yield* Node.getNodeChildren(rootNodeId);
+          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
+
+          yield* Then.NODE_HAS_TEXT(children[0]!, "");
+          yield* Then.NODE_HAS_TEXT(children[1]!, "First child");
+
+          for (let i = 0; i < 5; i++) {
+            yield* doubleRaf;
+            yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+            yield* Then.CM_CURSOR_IS_AT(0);
+          }
+
+          yield* Effect.sync(() => {
+            const originalBlockEl = document.querySelector(
+              `[data-element-id="${originalBlockId}"]`,
+            );
+            expect(originalBlockEl).not.toBeNull();
+            expect(originalBlockEl!.querySelector(".cm-editor")).toBeNull();
+
+            const newBlockEl = document.querySelector(
+              `[data-element-id="${newBlockId}"]`,
+            );
+            expect(newBlockEl).not.toBeNull();
+
+            const editors = document.querySelectorAll(".cm-editor");
+            expect(editors.length).toBe(1);
+            expect(newBlockEl!.contains(editors[0]!)).toBe(true);
+          });
         }).pipe(runtime.runPromise);
       });
 
@@ -2622,7 +2679,7 @@ describe("editor navigation", () => {
           yield* Then.NODE_HAS_TEXT(children[1]!, "");
 
           yield* Then.SELECTION_IS_NOT_ON_BLOCK(emptyBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          yield* Then.CM_CURSOR_IS_AT(0);
         }).pipe(runtime.runPromise);
       });
     });
@@ -2649,7 +2706,7 @@ describe("editor navigation", () => {
 
           const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
           yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
-          yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
+          yield* Then.CM_CURSOR_IS_AT(0);
         }).pipe(runtime.runPromise);
       });
 

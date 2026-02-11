@@ -91,13 +91,14 @@ export const setSelection = (
 
       nextFrame = {
         ...currentFrame,
-        activeBlockId: targetBlockId,
         activePart:
           rootBlockId != null && targetBlockId === rootBlockId
             ? ("head" as const)
             : ("body" as const),
         selection: s,
         selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
         focusMode: "editing",
       };
     } else {
@@ -105,6 +106,8 @@ export const setSelection = (
         ...currentFrame,
         selection: null,
         selectedBlocks: [],
+        blockSelectionAnchor: null,
+        blockSelectionFocus: null,
       };
     }
 

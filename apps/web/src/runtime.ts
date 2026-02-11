@@ -99,7 +99,7 @@ const BrowserLayer = pipe(
   Layer.provideMerge(NodeLive),
   Layer.provideMerge(
     makeAutomergeLive({
-      workspaceName: "teloi-workspace",
+      workspaceName: "teloi-workspace-v2",
       persist: automergePersist,
     }),
   ),

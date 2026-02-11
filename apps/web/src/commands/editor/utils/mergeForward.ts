@@ -18,6 +18,9 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
   if (Option.isNone(targetOpt)) return;
 
   const targetBlockId = targetOpt.value;
+  const isEligible = yield* isMergeTargetEligible(blockId, targetBlockId, View);
+  if (!isEligible) return;
+
   const targetCtx = Id.parseBlockContextSync(targetBlockId);
   if (targetCtx.type !== "frame") return;
   const targetNodeId = targetCtx.nodeId;
@@ -25,7 +28,7 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
   const Node = yield* NodeT;
 
   // Merging a block with children would orphan them
-  const targetChildren = yield* Node.getNodeChildren(targetNodeId);
+  const targetChildren = yield* View.getChildren(targetBlockId);
   if (targetChildren.length > 0) return;
 
   const Automerge = yield* AutomergeT;
@@ -46,3 +49,33 @@ export const mergeForward = Effect.fn("mergeForward")(function* () {
   );
   yield* Editor.setCursor(mergePoint);
 });
+
+// ================================ Internal ==================================
+
+const isMergeTargetEligible = Effect.fn("mergeForward:isMergeTargetEligible")(
+  function* (
+    blockId: Id.Block,
+    targetBlockId: Id.Block,
+    View: ViewT["Type"],
+  ) {
+    // Allow merge into first child (parent -> first child merge).
+    const children = yield* View.getChildren(blockId);
+    if (children[0] === targetBlockId) {
+      return true;
+    }
+
+    // Otherwise only allow immediate next sibling under the same parent.
+    const parentOpt = yield* View.getParent(blockId);
+    const targetParentOpt = yield* View.getParent(targetBlockId);
+    if (Option.isNone(parentOpt) || Option.isNone(targetParentOpt)) {
+      return false;
+    }
+    if (parentOpt.value !== targetParentOpt.value) {
+      return false;
+    }
+
+    const siblings = yield* View.getChildren(parentOpt.value);
+    const currentIndex = siblings.indexOf(blockId);
+    return currentIndex >= 0 && siblings[currentIndex + 1] === targetBlockId;
+  },
+);

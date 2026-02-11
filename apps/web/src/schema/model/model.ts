@@ -68,9 +68,10 @@ export const Frame = Schema.mutable(
     /** Active view node ID - null means default page/tree view */
     activeViewId: Schema.NullOr(Id.Node),
     activePart: Schema.optional(Schema.Literal("head", "body")),
-    activeBlockId: Schema.optional(Schema.NullOr(Id.Block)),
     selection: Schema.optional(Schema.NullOr(ActiveBlockSelection)),
     focusMode: Schema.optional(Schema.Literal("editing", "blockSelection")),
+    blockSelectionAnchor: Schema.optional(Schema.NullOr(Id.Node)),
+    blockSelectionFocus: Schema.optional(Schema.NullOr(Id.Node)),
     selectedBlocks: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
     /** Active popup state - null means no popup open */
     popup: Schema.NullOr(FramePopup),

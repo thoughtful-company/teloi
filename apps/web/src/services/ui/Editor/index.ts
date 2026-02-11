@@ -122,9 +122,22 @@ export const EditorLive = Layer.effect(
         const blockContext = Id.parseBlockContextSync(blockId);
         const frameId = blockContext.frameId;
 
+        const mode = yield* Frame.getMode();
+        // Ignore stale writes from editors that are no longer the active editing target.
+        if (mode.type !== "block" || mode.blockId !== blockId) {
+          return;
+        }
+
+        const existingSelection = yield* Frame.getSelection(frameId);
+        if (
+          Option.isSome(existingSelection) &&
+          existingSelection.value.blockId !== blockId
+        ) {
+          return;
+        }
+
         // Preserve goalX/goalLine if they exist in the current selection.
         // Allows goalX to survive across multiple arrow key presses through shorter blocks.
-        const existingSelection = yield* Frame.getSelection(frameId);
         const existingGoalX =
           Option.isSome(existingSelection) &&
           existingSelection.value.goalX != null

@@ -24,22 +24,22 @@ export const setBlockSelection = (
 
     const currentFrame = frameDoc.value;
     const assignedNodeId = currentFrame.assignedNodeId;
-    // Default focus to anchor if not provided
-    const focus = blockSelectionFocus ?? blockSelectionAnchor;
+    const normalizedSelection = normalizeBlockSelectionState(
+      blocks,
+      blockSelectionAnchor,
+      blockSelectionFocus,
+    );
 
     if (blocks.length > 0 && assignedNodeId) {
       const rootNodeId = Id.Node.make(assignedNodeId);
       yield* expandAncestorsForNodes(frameId, rootNodeId, blocks);
     }
 
-    const focusedBlockId =
-      focus != null
-        ? Id.makeFrameBlockId(frameId, focus)
-        : currentFrame.activeBlockId;
     const nextFrame = {
       ...currentFrame,
-      selectedBlocks: [...blocks],
-      activeBlockId: focusedBlockId,
+      selectedBlocks: [...normalizedSelection.selectedBlocks],
+      blockSelectionAnchor: normalizedSelection.anchor,
+      blockSelectionFocus: normalizedSelection.focus,
       activePart: "body" as const,
       selection: null,
       focusMode: "blockSelection" as const,
@@ -51,9 +51,48 @@ export const setBlockSelection = (
     ).pipe(
       Effect.annotateLogs({
         frameId,
-        selectedBlocks: blocks,
-        blockSelectionAnchor,
-        blockSelectionFocus: focus,
+        selectedBlocks: normalizedSelection.selectedBlocks,
+        blockSelectionAnchor: normalizedSelection.anchor,
+        blockSelectionFocus: normalizedSelection.focus,
       }),
     );
   });
+
+// ================================ Internal ==================================
+
+const normalizeBlockSelectionState = (
+  blocks: readonly Id.Node[],
+  anchor: Id.Node | null,
+  focus?: Id.Node | null,
+) => {
+  if (blocks.length === 0) {
+    return {
+      selectedBlocks: [] as readonly Id.Node[],
+      anchor: null as Id.Node | null,
+      focus: null as Id.Node | null,
+    };
+  }
+
+  if (anchor == null && focus == null) {
+    const fallback = blocks[0]!;
+    return {
+      selectedBlocks: blocks,
+      anchor: fallback,
+      focus: fallback,
+    };
+  }
+
+  if (anchor == null) {
+    return {
+      selectedBlocks: blocks,
+      anchor: focus ?? null,
+      focus: focus ?? null,
+    };
+  }
+
+  return {
+    selectedBlocks: blocks,
+    anchor,
+    focus: focus ?? anchor,
+  };
+};

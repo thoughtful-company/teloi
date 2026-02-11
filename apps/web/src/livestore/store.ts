@@ -17,5 +17,5 @@ export const store: Accessor<Store<typeof schema> | undefined> = await getStore<
 >({
   adapter: adapterFactory,
   schema,
-  storeId: "default",
+  storeId: "default-v2",
 });

@@ -97,12 +97,14 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 
 const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
   function* (frameId: Id.Frame, deps: Deps) {
-    const { selectedBlocks } =
-      yield* deps.Frame.getBlockSelectionState(frameId);
-    if (selectedBlocks.length === 0) return;
+    const state = yield* deps.Frame.getBlockSelectionState(frameId);
+    const nodeId =
+      state.focus ??
+      state.anchor ??
+      (state.selectedBlocks.length > 0 ? state.selectedBlocks[0]! : null);
+    if (nodeId == null) return;
 
-    // Use the first selected block for progressive collapse
-    const nodeId = selectedBlocks[0]!;
+    // Use block-selection focus as the progressive collapse cursor.
     const blockId = Id.makeFrameBlockId(frameId, nodeId);
     const blockDoc = yield* deps.Block.get(frameId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);

@@ -327,7 +327,8 @@ const makeWindowDerivedStream = (
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
-        const isActive = isStageActiveFrame && frame?.activeBlockId === blockId;
+        const isActive =
+          isStageActiveFrame && frame?.selection?.blockId === blockId;
 
         const selectedBlocks = frame?.selectedBlocks ?? [];
         const isSelected = selectedBlocks.includes(nodeId);

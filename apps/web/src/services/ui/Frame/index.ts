@@ -216,11 +216,15 @@ export const FrameLive = Layer.effect(
           if (Option.isNone(frameDoc)) return { type: "none" as const };
 
           const frame = frameDoc.value;
-          if (frame.focusMode === "editing" && frame.activeBlockId != null) {
-            return { type: "block" as const, blockId: frame.activeBlockId };
+          if (frame.selection != null) {
+            return { type: "block" as const, blockId: frame.selection.blockId };
           }
 
-          return { type: "blockSelection" as const, frameId: activeFrameId };
+          if (frame.focusMode !== "editing") {
+            return { type: "blockSelection" as const, frameId: activeFrameId };
+          }
+
+          return { type: "none" as const };
         }),
       enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
         Effect.gen(function* () {
@@ -229,21 +233,40 @@ export const FrameLive = Layer.effect(
           );
           if (Option.isNone(frameDoc)) return;
 
-          const state = deriveBlockSelectionState(frameDoc.value);
-          const focusedBlockId =
-            state.focus != null
-              ? Id.makeFrameBlockId(frameId, state.focus)
-              : frameDoc.value.activeBlockId;
+          const frame = frameDoc.value;
+          const state = deriveBlockSelectionState(frame);
+          const selectionNodeId =
+            frame.selection != null
+              ? (() => {
+                  const ctx = Id.parseBlockContextSync(frame.selection.blockId);
+                  return ctx.type === "frame" ? ctx.nodeId : null;
+                })()
+              : null;
+          const fallbackNodeId =
+            state.focus ?? state.anchor ?? selectionNodeId ?? null;
+          const selectedBlocks =
+            state.selectedBlocks.length > 0
+              ? state.selectedBlocks
+              : fallbackNodeId != null
+                ? [fallbackNodeId]
+                : [];
+          const normalized = normalizeBlockSelectionState(
+            selectedBlocks,
+            state.anchor ?? fallbackNodeId,
+            state.focus ?? fallbackNodeId,
+          );
 
           // Write frame doc BEFORE world doc so focusModeStream sees
           // the correct focusMode when windowStream fires
           yield* Store.setDocument(
             "frame",
             {
-              ...frameDoc.value,
+              ...frame,
               activePart: "body",
-              activeBlockId: focusedBlockId,
               selection: null,
+              selectedBlocks: [...normalized.selectedBlocks],
+              blockSelectionAnchor: normalized.anchor,
+              blockSelectionFocus: normalized.focus,
               focusMode: "blockSelection",
             },
             frameId,
@@ -266,57 +289,27 @@ export const FrameLive = Layer.effect(
           if (blockCtx.type !== "frame") return;
 
           const frameId = blockCtx.frameId;
+          const nextSelection = selection ?? {
+            anchor: 0,
+            head: 0,
+            assoc: 0 as const,
+            goalX: null,
+            goalLine: null,
+          };
 
-          if (selection != null) {
-            yield* setSelection(
-              frameId,
-              Option.some({
-                blockId,
-                selection: {
-                  anchor: selection.anchor,
-                  head: selection.head,
-                  assoc: selection.assoc ?? 0,
-                },
-                goalX: selection.goalX ?? null,
-                goalLine: selection.goalLine ?? null,
-              }),
-            ).pipe(Effect.provide(context), Effect.orDie);
-          } else {
-            // No selection — just enter editing mode
-            const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
-              Effect.orDie,
-            );
-            if (Option.isNone(frameDoc)) return;
-
-            const currentFrame = frameDoc.value;
-            const rootNodeId =
-              currentFrame.rootBlockId ?? currentFrame.assignedNodeId;
-            const rootBlockId =
-              rootNodeId != null
-                ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
-                : null;
-            const activePart =
-              rootBlockId != null && blockId === rootBlockId
-                ? ("head" as const)
-                : ("body" as const);
-            const existingSelection = currentFrame.selection ?? null;
-
-            yield* Store.setDocument(
-              "frame",
-              {
-                ...currentFrame,
-                activeBlockId: blockId,
-                activePart,
-                selection:
-                  existingSelection?.blockId === blockId
-                    ? existingSelection
-                    : null,
-                selectedBlocks: [],
-                focusMode: "editing",
+          yield* setSelection(
+            frameId,
+            Option.some({
+              blockId,
+              selection: {
+                anchor: nextSelection.anchor,
+                head: nextSelection.head,
+                assoc: nextSelection.assoc ?? 0,
               },
-              frameId,
-            ).pipe(Effect.orDie);
-          }
+              goalX: nextSelection.goalX ?? null,
+              goalLine: nextSelection.goalLine ?? null,
+            }),
+          ).pipe(Effect.provide(context), Effect.orDie);
 
           yield* World.setActiveFrameId(frameId);
 
@@ -326,15 +319,11 @@ export const FrameLive = Layer.effect(
             Effect.annotateLogs({
               blockId,
               frameId,
-              ...(selection != null
-                ? {
-                    "selection.anchor": selection.anchor,
-                    "selection.head": selection.head,
-                    "selection.assoc": selection.assoc ?? 0,
-                    "selection.goalX": selection.goalX ?? null,
-                    "selection.goalLine": selection.goalLine ?? null,
-                  }
-                : {}),
+              "selection.anchor": nextSelection.anchor,
+              "selection.head": nextSelection.head,
+              "selection.assoc": nextSelection.assoc ?? 0,
+              "selection.goalX": nextSelection.goalX ?? null,
+              "selection.goalLine": nextSelection.goalLine ?? null,
             }),
           );
         }),
@@ -395,20 +384,13 @@ export const FrameLive = Layer.effect(
 
 // ================================ Internal ==================================
 
-const resolveFocusedNodeId = (frame: Model.Frame): Id.Node | null => {
-  if (frame.activeBlockId == null) return null;
-  try {
-    const ctx = Id.parseBlockContextSync(frame.activeBlockId);
-    if (ctx.type !== "frame") return null;
-    return ctx.nodeId;
-  } catch {
-    return null;
-  }
-};
-
 const deriveBlockSelectionState = (frame: Model.Frame) => {
-  const selectedBlocks = frame.selectedBlocks ?? [];
-  if (selectedBlocks.length === 0) {
+  const normalized = normalizeBlockSelectionState(
+    frame.selectedBlocks ?? [],
+    frame.blockSelectionAnchor ?? null,
+    frame.blockSelectionFocus ?? null,
+  );
+  if (normalized.selectedBlocks.length === 0) {
     return {
       selectedBlocks: [] as readonly Id.Node[],
       anchor: null as Id.Node | null,
@@ -416,20 +398,46 @@ const deriveBlockSelectionState = (frame: Model.Frame) => {
     };
   }
 
-  const first = selectedBlocks[0]!;
-  const last = selectedBlocks[selectedBlocks.length - 1]!;
-  const focusedNodeId = resolveFocusedNodeId(frame);
-  const focus =
-    focusedNodeId != null && selectedBlocks.includes(focusedNodeId)
-      ? focusedNodeId
-      : last;
+  return {
+    selectedBlocks: normalized.selectedBlocks,
+    anchor: normalized.anchor,
+    focus: normalized.focus,
+  };
+};
 
-  const anchor =
-    selectedBlocks.length === 1 ? focus : focus === first ? last : first;
+const normalizeBlockSelectionState = (
+  blocks: readonly Id.Node[],
+  anchor: Id.Node | null,
+  focus: Id.Node | null,
+) => {
+  if (blocks.length === 0) {
+    return {
+      selectedBlocks: [] as readonly Id.Node[],
+      anchor: null as Id.Node | null,
+      focus: null as Id.Node | null,
+    };
+  }
+
+  if (anchor == null && focus == null) {
+    const fallback = blocks[0]!;
+    return {
+      selectedBlocks: blocks,
+      anchor: fallback,
+      focus: fallback,
+    };
+  }
+
+  if (anchor == null) {
+    return {
+      selectedBlocks: blocks,
+      anchor: focus,
+      focus,
+    };
+  }
 
   return {
-    selectedBlocks,
+    selectedBlocks: blocks,
     anchor,
-    focus,
+    focus: focus ?? anchor,
   };
 };

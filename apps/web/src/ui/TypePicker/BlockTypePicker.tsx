@@ -59,13 +59,24 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
   // Index of the "Create and apply" option (last item)
   const createIndex = () => filteredTypes().length;
 
-  const close = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Frame = yield* FrameT;
-        yield* Frame.closePopup(props.frameId);
-      }),
+  const focusFrameContainer = () => {
+    const container = document.querySelector(
+      `[data-frame-id="${props.frameId}"]`,
     );
+    if (container instanceof HTMLElement) {
+      container.focus();
+    }
+  };
+
+  const close = () => {
+    void runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const Frame = yield* FrameT;
+          yield* Frame.closePopup(props.frameId);
+        }),
+      )
+      .finally(focusFrameContainer);
   };
 
   const getSelectedBlocks = () =>
@@ -79,33 +90,37 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
 
   const applyTypeToAllSelected = (typeId: Id.Node) => {
     const blocks = getSelectedBlocks();
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Frame = yield* FrameT;
-        for (const nodeId of blocks) {
-          yield* TypePicker.applyType(nodeId, typeId);
-        }
-        yield* Frame.closePopup(props.frameId);
-      }),
-    );
+    void runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const TypePicker = yield* TypePickerT;
+          const Frame = yield* FrameT;
+          for (const nodeId of blocks) {
+            yield* TypePicker.applyType(nodeId, typeId);
+          }
+          yield* Frame.closePopup(props.frameId);
+        }),
+      )
+      .finally(focusFrameContainer);
   };
 
   const createAndApply = () => {
     const q = query();
     if (!q) return;
     const blocks = getSelectedBlocks();
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const TypePicker = yield* TypePickerT;
-        const Frame = yield* FrameT;
-        const typeId = yield* TypePicker.createType(q);
-        for (const nodeId of blocks) {
-          yield* TypePicker.applyType(nodeId, typeId);
-        }
-        yield* Frame.closePopup(props.frameId);
-      }),
-    );
+    void runtime
+      .runPromise(
+        Effect.gen(function* () {
+          const TypePicker = yield* TypePickerT;
+          const Frame = yield* FrameT;
+          const typeId = yield* TypePicker.createType(q);
+          for (const nodeId of blocks) {
+            yield* TypePicker.applyType(nodeId, typeId);
+          }
+          yield* Frame.closePopup(props.frameId);
+        }),
+      )
+      .finally(focusFrameContainer);
   };
 
   const selectCurrentItem = () => {
