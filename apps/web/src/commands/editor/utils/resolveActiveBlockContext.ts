@@ -22,7 +22,7 @@ export const resolveActiveBlockContext = Effect.fn("resolveActiveBlockContext")(
       return Option.none<ActiveBlockContext>();
     }
 
-    const blockId = selection.value.focus.elementId;
+    const blockId = selection.value.blockId;
     const blockContext = Id.parseBlockContextSync(blockId);
     if (blockContext.type !== "frame") {
       return Option.none<ActiveBlockContext>();

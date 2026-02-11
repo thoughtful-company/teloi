@@ -28,13 +28,14 @@ export const updateEditorSelection = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId },
-        anchorOffset: selection.anchor,
-        focus: { elementId },
-        focusOffset: selection.head,
+        blockId: elementId,
+        selection: {
+          anchor: selection.anchor,
+          head: selection.head,
+          assoc: selection.assoc,
+        },
         goalX: null,
         goalLine: null,
-        assoc: selection.assoc,
       }),
     );
   });
@@ -49,11 +50,12 @@ export const makeCollapsedSelection = (
   },
 ) =>
   Option.some({
-    anchor: { elementId },
-    anchorOffset: offset,
-    focus: { elementId },
-    focusOffset: offset,
+    blockId: elementId,
+    selection: {
+      anchor: offset,
+      head: offset,
+      assoc: 0 as const,
+    },
     goalX: opts?.goalX ?? null,
     goalLine: opts?.goalLine ?? null,
-    assoc: 0 as const,
   });

@@ -11,24 +11,6 @@ export const DocumentName = {
 
 export type DocumentName = (typeof DocumentName)[keyof typeof DocumentName];
 
-/** Target of a selection point - identified by elementId (BlockId format: frame:{frameId}/node:{nodeId}) */
-export const SelectionTarget = Schema.Struct({
-  elementId: Id.Block,
-});
-export type SelectionTarget = typeof SelectionTarget.Type;
-
-export const FrameSelection = Schema.Struct({
-  anchor: SelectionTarget,
-  anchorOffset: Schema.Number,
-  focus: SelectionTarget,
-  focusOffset: Schema.Number,
-  goalX: Schema.NullOr(Schema.Number),
-  goalLine: Schema.NullOr(Schema.Literal("first", "last")),
-  /** Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line */
-  assoc: Schema.optionalWith(Schema.Literal(-1, 0, 1), { default: () => 0 }),
-});
-export type FrameSelection = typeof FrameSelection.Type;
-
 export const ActiveRegion = Schema.Literal(
   "heavenbar",
   "stage",
@@ -46,6 +28,14 @@ export const BlockSelection = Schema.Struct({
   assoc: Schema.optionalWith(Schema.Literal(-1, 0, 1), { default: () => 0 }),
 });
 export type BlockSelection = typeof BlockSelection.Type;
+
+export const ActiveBlockSelection = Schema.Struct({
+  blockId: Id.Block,
+  selection: BlockSelection,
+  goalX: Schema.NullOr(Schema.Number),
+  goalLine: Schema.NullOr(Schema.Literal("first", "last")),
+});
+export type ActiveBlockSelection = typeof ActiveBlockSelection.Type;
 
 export const World = Schema.Struct({
   panes: Schema.Array(Id.Pane),

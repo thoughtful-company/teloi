@@ -65,13 +65,14 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId: blockId },
-        anchorOffset: 0,
-        focus: { elementId: blockId },
-        focusOffset: 0,
+        blockId,
+        selection: {
+          anchor: 0,
+          head: 0,
+          assoc: 0,
+        },
         goalX: null,
         goalLine: null,
-        assoc: 0,
       }),
     );
 

@@ -202,7 +202,7 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
 }> {}
 
 interface WindowCompatDoc {
-  selection: Model.FrameSelection | null;
+  selection: Model.ActiveBlockSelection | null;
   selectedBlocks: readonly Id.Node[];
   blockSelectionAnchor: Id.Node | null;
   blockSelectionFocus: Id.Node | null;

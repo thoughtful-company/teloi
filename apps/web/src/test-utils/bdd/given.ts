@@ -391,20 +391,20 @@ export const FRAME_HAS_CURSOR = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId },
-        anchorOffset: offset,
-        focus: { elementId },
-        focusOffset: offset,
+        blockId: elementId,
+        selection: {
+          anchor: offset,
+          head: offset,
+          assoc,
+        },
         goalX: null,
         goalLine: null,
-        assoc,
       }),
     );
   }).pipe(Effect.withSpan("Given.FRAME_HAS_CURSOR"));
 
 /**
- * Sets frame selection to a range (anchor ≠ focus).
- * Can span across nodes for multi-block selection.
+ * Sets frame selection to a range within a single block.
  */
 export const FRAME_HAS_SELECTION = (
   frameId: Id.Frame,
@@ -413,18 +413,23 @@ export const FRAME_HAS_SELECTION = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const anchorElementId = Id.makeFrameBlockId(frameId, anchor.nodeId);
-    const focusElementId = Id.makeFrameBlockId(frameId, focus.nodeId);
+    if (anchor.nodeId !== focus.nodeId) {
+      throw new Error(
+        "FRAME_HAS_SELECTION only supports one-block selection; use block selection helpers for multi-block state.",
+      );
+    }
+    const blockId = Id.makeFrameBlockId(frameId, anchor.nodeId);
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId: anchorElementId },
-        anchorOffset: anchor.offset,
-        focus: { elementId: focusElementId },
-        focusOffset: focus.offset,
+        blockId,
+        selection: {
+          anchor: anchor.offset,
+          head: focus.offset,
+          assoc: 0,
+        },
         goalX: null,
         goalLine: null,
-        assoc: 0,
       }),
     );
   }).pipe(Effect.withSpan("Given.FRAME_HAS_SELECTION"));
@@ -478,13 +483,14 @@ export const BLOCK_IS_FOCUSED_AT = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId: blockId },
-        anchorOffset: offset,
-        focus: { elementId: blockId },
-        focusOffset: offset,
+        blockId,
+        selection: {
+          anchor: offset,
+          head: offset,
+          assoc,
+        },
         goalX: opts?.goalX ?? null,
         goalLine: null,
-        assoc,
       }),
     );
 
@@ -573,13 +579,14 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId: blockId },
-        anchorOffset: offset,
-        focus: { elementId: blockId },
-        focusOffset: offset,
+        blockId,
+        selection: {
+          anchor: offset,
+          head: offset,
+          assoc,
+        },
         goalX: null,
         goalLine: null,
-        assoc,
       }),
     );
 
@@ -604,13 +611,14 @@ export const TITLE_IS_FOCUSED_AT = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId },
-        anchorOffset: offset,
-        focus: { elementId },
-        focusOffset: offset,
+        blockId: elementId,
+        selection: {
+          anchor: offset,
+          head: offset,
+          assoc: 0,
+        },
         goalX: null,
         goalLine: null,
-        assoc: 0,
       }),
     );
 

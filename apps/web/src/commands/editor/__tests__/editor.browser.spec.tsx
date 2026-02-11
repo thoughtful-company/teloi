@@ -199,16 +199,16 @@ describe("editor navigation", () => {
           const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
           expect(
-            winDoc.selection!.focus.elementId,
+            winDoc.selection!.blockId,
             `Selection went to hidden Nested child instead of visible First block`,
           ).not.toBe(nestedBlockId);
 
           expect(
-            winDoc.selection!.focus.elementId,
+            winDoc.selection!.blockId,
             "Selection should be on First block (visible)",
           ).toBe(expectedBlockId);
 
-          expect(winDoc.selection!.focusOffset).toBe(5);
+          expect(winDoc.selection!.selection.head).toBe(5);
         }).pipe(runtime.runPromise);
       });
     });
@@ -337,6 +337,32 @@ describe("editor navigation", () => {
         }).pipe(runtime.runPromise);
       });
 
+      it("focuses title on first click when switching from active body block", async () => {
+        await Effect.gen(function* () {
+          const { frameId, rootNodeId, childNodeIds } =
+            yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
+              { text: "First block" },
+            ]);
+
+          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const titleBlockId = Id.makeFrameBlockId(frameId, rootNodeId);
+
+          render(() => <FrameView frameId={frameId} />);
+
+          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 3);
+          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+
+          yield* When.USER_CLICKS_TITLE(frameId);
+          yield* doubleRaf;
+
+          yield* Then.SELECTION_IS_ON_TITLE(frameId);
+
+          const winDoc = Option.getOrThrow(yield* Then.WINDOW_DOC_COMPAT(frameId));
+          expect(winDoc.selection).not.toBeNull();
+          expect(winDoc.selection!.blockId).toBe(titleBlockId);
+        }).pipe(runtime.runPromise);
+      });
+
       it("skips hidden children when current block is collapsed", async () => {
         await Effect.gen(function* () {
           const { frameId, childNodeIds } =
@@ -373,9 +399,9 @@ describe("editor navigation", () => {
           );
           const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
-          expect(winDoc.selection!.focus.elementId).not.toBe(nestedBlockId);
-          expect(winDoc.selection!.focus.elementId).toBe(expectedBlockId);
-          expect(winDoc.selection!.focusOffset).toBe(0);
+          expect(winDoc.selection!.blockId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.blockId).toBe(expectedBlockId);
+          expect(winDoc.selection!.selection.head).toBe(0);
         }).pipe(runtime.runPromise);
       });
     });
@@ -1894,8 +1920,8 @@ describe("editor navigation", () => {
           );
           const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
 
-          expect(winDoc.selection!.focus.elementId).not.toBe(nestedBlockId);
-          expect(winDoc.selection!.focus.elementId).toBe(expectedBlockId);
+          expect(winDoc.selection!.blockId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.blockId).toBe(expectedBlockId);
         }).pipe(runtime.runPromise);
       });
     });

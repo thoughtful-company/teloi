@@ -120,13 +120,14 @@ const finishPickerAction = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        anchor: { elementId: state.elementId },
-        anchorOffset: state.from,
-        focus: { elementId: state.elementId },
-        focusOffset: state.from,
+        blockId: state.elementId,
+        selection: {
+          anchor: state.from,
+          head: state.from,
+          assoc: 0,
+        },
         goalX: null,
         goalLine: null,
-        assoc: 0,
       }),
     );
 

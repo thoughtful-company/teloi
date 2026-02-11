@@ -1301,7 +1301,7 @@ describe("Auto-expand ancestors on selection", () => {
 
       const selection = yield* Frame.getSelection(frameId);
       expect(Option.isSome(selection)).toBe(true);
-      expect(Option.getOrThrow(selection).anchor.elementId).toBe(childBlockId);
+      expect(Option.getOrThrow(selection).blockId).toBe(childBlockId);
     }).pipe(runtime.runPromise);
   });
 });

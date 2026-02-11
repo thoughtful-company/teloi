@@ -257,8 +257,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text with content including trigger
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @per world");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @per world");
 
         // Open picker and set some query
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -300,8 +299,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @test world");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @test world");
 
         // Open picker at position 6
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
@@ -313,14 +311,14 @@ describe("PickerT", () => {
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
         const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
           Id.Frame,
-          Option.Option<Model.FrameSelection>,
+          Option.Option<Model.ActiveBlockSelection>,
         ];
         expect(frameId).toBe(TEST_FRAME_ID);
 
         // Selection should be set to position 6
         const selection = Option.getOrThrow(selectionOption);
-        expect(selection.anchorOffset).toBe(6);
-        expect(selection.focusOffset).toBe(6);
+        expect(selection.selection.anchor).toBe(6);
+        expect(selection.selection.head).toBe(6);
       }).pipe(runtime.runPromise);
     });
 
@@ -330,8 +328,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @test");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @test");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
         yield* Picker.updateQuery("test");
@@ -408,8 +405,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @NewType");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
         yield* Picker.updateQuery("NewType");
@@ -427,8 +423,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @NewType");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
         yield* Picker.updateQuery("NewType");
@@ -447,8 +442,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @NewType world");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @NewType world");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
         yield* Picker.updateQuery("NewType");
@@ -456,7 +450,8 @@ describe("PickerT", () => {
         yield* Picker.createAndSelectType("NewType");
 
         // Trigger text deleted
-        expect(ytext.toString()).toBe("Hello  world");
+        const text = yield* Automerge.getText(TEST_NODE_ID);
+        expect(text).toBe("Hello  world");
 
         // Picker closed
         const state = yield* Picker.getState();
@@ -470,8 +465,7 @@ describe("PickerT", () => {
         const Automerge = yield* AutomergeT;
 
         // Set up Y.Text
-        const ytext = Automerge.getText(TEST_NODE_ID);
-        ytext.insert(0, "Hello @NewType");
+        yield* Automerge.setText(TEST_NODE_ID, "Hello @NewType");
 
         yield* Picker.open(TEST_BLOCK_ID, { x: 100, y: 200 }, 6);
         yield* Picker.updateQuery("NewType");
@@ -482,13 +476,13 @@ describe("PickerT", () => {
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
         const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
           Id.Frame,
-          Option.Option<Model.FrameSelection>,
+          Option.Option<Model.ActiveBlockSelection>,
         ];
         expect(frameId).toBe(TEST_FRAME_ID);
 
         const selection = Option.getOrThrow(selectionOption);
-        expect(selection.anchorOffset).toBe(6);
-        expect(selection.focusOffset).toBe(6);
+        expect(selection.selection.anchor).toBe(6);
+        expect(selection.selection.head).toBe(6);
       }).pipe(runtime.runPromise);
     });
   });

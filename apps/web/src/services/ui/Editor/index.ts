@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - Hold reference to the currently active CodeMirror EditorView
- * - Sync editor state to model (selection, blur cleanup)
+ * - Sync editor state to model (selection)
  *
  * Data flows unidirectionally: CodeMirror → model.
  * This is NOT action interpretation—just state sync.
@@ -41,7 +41,7 @@ export class EditorT extends Context.Tag("EditorT")<
   EditorT,
   {
     /**
-     * Create CodeMirror extension for state sync (selection changes, blur).
+     * Create CodeMirror extension for state sync (selection changes).
      * Must be added to EditorView at creation time.
      *
      * TODO: Add beforeunload handler to sync selection on tab close.
@@ -138,31 +138,16 @@ export const EditorLive = Layer.effect(
         yield* Frame.setSelection(
           frameId,
           Option.some({
-            anchor: { elementId: blockId },
-            anchorOffset: selection.anchor,
-            focus: { elementId: blockId },
-            focusOffset: selection.head,
+            blockId,
+            selection: {
+              anchor: selection.anchor,
+              head: selection.head,
+              assoc: selection.assoc,
+            },
             goalX: existingGoalX,
             goalLine: existingGoalLine,
-            assoc: selection.assoc,
           }),
         );
-      }).pipe(Effect.provide(context), Effect.orDie);
-
-    const makeHandleBlurEffect = (blockId: Id.Block): Effect.Effect<void> =>
-      Effect.gen(function* () {
-        const blockContext = Id.parseBlockContextSync(blockId);
-        const frameId = blockContext.frameId;
-
-        // Only clear selection/focus if still pointing to this block
-        const selectionOpt = yield* Frame.getSelection(frameId);
-        const sel = Option.getOrNull(selectionOpt);
-        const selBlockId = sel ? sel.anchor.elementId : null;
-
-        if (sel && selBlockId === blockId) {
-          yield* Frame.setSelection(frameId, Option.none());
-          yield* Frame.clearFocus();
-        }
       }).pipe(Effect.provide(context), Effect.orDie);
 
     return {
@@ -182,9 +167,6 @@ export const EditorLive = Layer.effect(
                   assoc: sel.assoc as -1 | 0 | 1,
                 }),
               );
-            }
-            if (update.focusChanged && !update.view.hasFocus) {
-              runSync(makeHandleBlurEffect(blockId));
             }
           } catch {
             // Runtime disposed - ignore (happens during cleanup)

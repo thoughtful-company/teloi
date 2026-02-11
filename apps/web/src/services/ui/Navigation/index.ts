@@ -123,7 +123,7 @@ export const NavigationLive = Layer.effect(
               );
 
               if (Option.isSome(selection)) {
-                const anchorBlockId = selection.value.anchor.elementId;
+                const anchorBlockId = selection.value.blockId;
                 const selContext = yield* IdT.parseBlockContext(
                   anchorBlockId,
                 ).pipe(Effect.orDie);

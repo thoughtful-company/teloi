@@ -42,13 +42,13 @@ export class FrameT extends Context.Tag("FrameT")<
     >;
     getSelection: (
       frameId: Id.Frame,
-    ) => Effect.Effect<Option.Option<Model.FrameSelection>, FrameNotFoundError>;
+    ) => Effect.Effect<Option.Option<Model.ActiveBlockSelection>, FrameNotFoundError>;
     getAssignedNodeId: (
       frameId: Id.Frame,
     ) => Effect.Effect<Id.Node | null, FrameNotFoundError>;
     setSelection: (
       frameId: Id.Frame,
-      selection: Option.Option<Model.FrameSelection>,
+      selection: Option.Option<Model.ActiveBlockSelection>,
     ) => Effect.Effect<void, FrameNotFoundError>;
     setAssignedNodeId: (
       frameId: Id.Frame,
@@ -141,19 +141,20 @@ export const FrameLive = Layer.effect(
             );
             if (Option.isSome(blockDoc) && blockDoc.value.selection != null) {
               const blockSelection = blockDoc.value.selection;
-              return Option.some<Model.FrameSelection>({
-                anchor: { elementId: blockId },
-                anchorOffset: blockSelection.anchor,
-                focus: { elementId: blockId },
-                focusOffset: blockSelection.head,
+              return Option.some<Model.ActiveBlockSelection>({
+                blockId,
+                selection: {
+                  anchor: blockSelection.anchor,
+                  head: blockSelection.head,
+                  assoc: blockSelection.assoc ?? frameDoc.value.assoc ?? 0,
+                },
                 goalX: frameDoc.value.goalX ?? null,
                 goalLine: frameDoc.value.goalLine ?? null,
-                assoc: blockSelection.assoc ?? frameDoc.value.assoc ?? 0,
               });
             }
           }
 
-          return Option.none<Model.FrameSelection>();
+          return Option.none<Model.ActiveBlockSelection>();
         }),
       getAssignedNodeId: (frameId: Id.Frame) =>
         get(frameId, "assignedNodeId").pipe(

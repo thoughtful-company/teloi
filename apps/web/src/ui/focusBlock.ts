@@ -23,13 +23,14 @@ export const focusBlock = Effect.fn("focusBlock")(function* (params: {
   yield* Frame.setSelection(
     frameId,
     Option.some({
-      anchor: { elementId: blockId },
-      anchorOffset: offset ?? 0,
-      focus: { elementId: blockId },
-      focusOffset: offset ?? 0,
+      blockId,
+      selection: {
+        anchor: offset ?? 0,
+        head: offset ?? 0,
+        assoc: assoc ?? 0,
+      },
       goalX: null,
       goalLine: null,
-      assoc: assoc ?? 0,
     }),
   );
   yield* Effect.forkDaemon(

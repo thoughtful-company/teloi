@@ -30,7 +30,7 @@ const BLOCK_DOC_DEFAULTS: Model.Block = {
 
 export const setSelection = (
   frameId: Id.Frame,
-  selection: Option.Option<Model.FrameSelection>,
+  selection: Option.Option<Model.ActiveBlockSelection>,
 ): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT | AutomergeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
@@ -46,44 +46,43 @@ export const setSelection = (
     const currentFrame = frameDoc.value;
     const assignedNodeId = currentFrame.assignedNodeId;
     const previousActiveBlockId = currentFrame.activeBlockId;
-    let clampedSelection: Option.Option<Model.FrameSelection> = selection;
+    let clampedSelection: Option.Option<Model.ActiveBlockSelection> = selection;
 
-    if (Option.isSome(selection) && assignedNodeId) {
-      const rootNodeId = Id.Node.make(assignedNodeId);
-      const { anchor, focus } = selection.value;
-
-      const anchorContext = yield* IdT.parseBlockContext(anchor.elementId).pipe(
+    if (Option.isSome(selection)) {
+      const blockContext = yield* IdT.parseBlockContext(
+        selection.value.blockId,
+      ).pipe(
         Effect.orDie,
       );
-      const anchorNodeId = getNodeIdForExpansion(anchorContext);
-      if (anchorNodeId) {
-        yield* expandAncestors(frameId, rootNodeId, anchorNodeId);
-      }
-
-      const focusContext = yield* IdT.parseBlockContext(focus.elementId).pipe(
-        Effect.orDie,
-      );
-      const focusNodeId = getNodeIdForExpansion(focusContext);
-      if (focusNodeId && focusNodeId !== anchorNodeId) {
-        yield* expandAncestors(frameId, rootNodeId, focusNodeId);
+      if (assignedNodeId) {
+        const rootNodeId = Id.Node.make(assignedNodeId);
+        const nodeId = getNodeIdForExpansion(blockContext);
+        if (nodeId) {
+          yield* expandAncestors(frameId, rootNodeId, nodeId);
+        }
       }
 
       // Clamp offsets to text length — click position resolution can overshoot
       // when non-content DOM nodes (e.g. type badges) are inside the container
       const Automerge = yield* AutomergeT;
-      const getNodeId = (ctx: Id.BlockContext): Id.Node =>
-        ctx.type === "frame" ? ctx.nodeId : ctx.hostNodeId;
-
-      const anchorText = yield* Automerge.getText(getNodeId(anchorContext));
-      const focusTextLen =
-        focus.elementId === anchor.elementId
-          ? anchorText.length
-          : (yield* Automerge.getText(getNodeId(focusContext))).length;
+      const blockNodeId =
+        blockContext.type === "frame"
+          ? blockContext.nodeId
+          : blockContext.hostNodeId;
+      const blockText = yield* Automerge.getText(blockNodeId);
+      const clampedAnchor = Math.min(
+        selection.value.selection.anchor,
+        blockText.length,
+      );
+      const clampedHead = Math.min(selection.value.selection.head, blockText.length);
 
       clampedSelection = Option.some({
         ...selection.value,
-        anchorOffset: Math.min(selection.value.anchorOffset, anchorText.length),
-        focusOffset: Math.min(selection.value.focusOffset, focusTextLen),
+        selection: {
+          ...selection.value.selection,
+          anchor: clampedAnchor,
+          head: clampedHead,
+        },
       });
     }
 
@@ -92,7 +91,7 @@ export const setSelection = (
     let nextFrame = currentFrame;
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
-      const targetBlockId = s.focus.elementId;
+      const targetBlockId = s.blockId;
 
       if (
         previousActiveBlockId != null &&
@@ -118,17 +117,11 @@ export const setSelection = (
         targetBlockDoc,
         () => BLOCK_DOC_DEFAULTS,
       );
-      const isSingleBlockRange = s.anchor.elementId === s.focus.elementId;
-      const nextBlockSelection: Model.BlockSelection = {
-        anchor: isSingleBlockRange ? s.anchorOffset : s.focusOffset,
-        head: s.focusOffset,
-        assoc: s.assoc,
-      };
       yield* Store.setDocument(
         "block",
         {
           ...targetBlock,
-          selection: nextBlockSelection,
+          selection: s.selection,
         },
         targetBlockId,
       ).pipe(Effect.orDie);
@@ -149,7 +142,7 @@ export const setSelection = (
         selectedBlocks: [],
         goalX: s.goalX ?? null,
         goalLine: s.goalLine ?? null,
-        assoc: s.assoc,
+        assoc: s.selection.assoc,
       };
     } else {
       if (previousActiveBlockId != null) {
@@ -181,23 +174,22 @@ export const setSelection = (
         Effect.succeed({ selection: null } as Record<string, unknown>),
       onSome: (s) =>
         Effect.gen(function* () {
-          const focusContext = yield* IdT.parseBlockContext(
-            s.focus.elementId,
-          ).pipe(Effect.orDie);
+          const blockContext = yield* IdT.parseBlockContext(s.blockId).pipe(
+            Effect.orDie,
+          );
           const Automerge = yield* AutomergeT;
-          const focusNodeId =
-            focusContext.type === "frame"
-              ? focusContext.nodeId
-              : focusContext.hostNodeId;
-          const focusText = yield* Automerge.getText(focusNodeId);
+          const nodeId =
+            blockContext.type === "frame"
+              ? blockContext.nodeId
+              : blockContext.hostNodeId;
+          const text = yield* Automerge.getText(nodeId);
 
           return {
-            "selection.anchor": s.anchor.elementId,
-            "selection.anchorOffset": s.anchorOffset,
-            "selection.focus": s.focus.elementId,
-            "selection.focusOffset": s.focusOffset,
-            "selection.focusText": focusText,
-            "selection.assoc": s.assoc,
+            "selection.blockId": s.blockId,
+            "selection.anchor": s.selection.anchor,
+            "selection.head": s.selection.head,
+            "selection.text": text,
+            "selection.assoc": s.selection.assoc,
             "selection.goalX": s.goalX,
             "selection.goalLine": s.goalLine,
           } as Record<string, unknown>;

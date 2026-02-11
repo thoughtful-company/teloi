@@ -16,7 +16,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const { frameId, nodeId, blockId, isTitle } = ctx.value;
 
   const selection = yield* Frame.getSelection(frameId);
-  const cursorPos = Option.isSome(selection) ? selection.value.focusOffset : 0;
+  const cursorPos = Option.isSome(selection) ? selection.value.selection.head : 0;
 
   const currentText = yield* Automerge.getText(nodeId);
   const clampedPos = Math.max(0, Math.min(cursorPos, currentText.length));
