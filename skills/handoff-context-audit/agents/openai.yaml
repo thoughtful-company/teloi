@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff Context Audit"
+  short_description: "Audit handoff context before coding"
+  default_prompt: "Read handoff and docs, then report current state without making changes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Export Context"
+  short_description: "Create handoff prompts for fresh chat sessions"
+  default_prompt: "Create a self-contained handoff prompt from the current conversation context."
