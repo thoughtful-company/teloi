@@ -9,9 +9,21 @@ import "./index.css";
 import { runtime } from "./runtime";
 import { NavigationT } from "./services/ui/Navigation";
 
-const root = document.getElementById("root");
+async function boot() {
+  if (typeof SharedWorker === "undefined") {
+    const { SharedWorkerPolyfill } = await import("@okikio/sharedworker");
+    globalThis.SharedWorker =
+      SharedWorkerPolyfill as unknown as typeof SharedWorker;
+  }
 
-runtime.runPromise(bootstrap).then(() => {
+  if ((window as any).electron?.platform === "darwin") {
+    document.documentElement.classList.add("electron-mac");
+  }
+
+  const root = document.getElementById("root");
+
+  await runtime.runPromise(bootstrap);
+
   // Page load triggers url sync
   runtime.runPromise(
     Effect.gen(function* () {
@@ -37,4 +49,6 @@ runtime.runPromise(bootstrap).then(() => {
     ),
     root!,
   );
-});
+}
+
+boot();

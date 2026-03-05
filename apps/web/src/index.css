@@ -255,10 +255,20 @@ tfoot th {
   }
 }
 
+@custom-variant electron-mac (&:where(.electron-mac, .electron-mac *));
+
 @layer utilities {
   .font-bold {
     font-weight: var(--font-weight-bold);
   }
+}
+
+@utility app-region-drag {
+  -webkit-app-region: drag;
+}
+
+@utility app-region-no-drag {
+  -webkit-app-region: no-drag;
 }
 
 /* Block move animation for TransitionGroup */

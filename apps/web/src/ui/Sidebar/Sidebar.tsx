@@ -8,12 +8,14 @@ interface SidebarProps {
 export default function Sidebar(props: SidebarProps) {
   return (
     <aside class="flex flex-col h-full w-64 bg-sidebar/80 backdrop-blur-md border border-sidebar-border rounded-lg m-1">
-      {/* Header with toggle on right */}
-      <div class="flex items-center justify-between p-2">
-        <span class="text-sm font-medium text-sidebar-foreground px-1">Teloi</span>
+      {/* Header with toggle on right — draggable for Electron window move */}
+      <div class="electron-mac:pl-18 electron-mac:pt-1 flex items-center justify-between p-2 app-region-drag">
+        <span class="text-sm font-medium text-sidebar-foreground px-1">
+          Teloi
+        </span>
         <button
           onClick={props.onToggle}
-          class="w-10 h-6 flex items-center justify-center gap-0.5 rounded hover:bg-sidebar-accent text-sidebar-foreground"
+          class="w-10 h-6 flex items-center justify-center gap-0.5 rounded hover:bg-sidebar-accent text-sidebar-foreground app-region-no-drag"
           aria-label="Hide sidebar"
         >
           <svg

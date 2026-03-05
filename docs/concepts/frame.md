@@ -1,6 +1,6 @@
 # Frame
 
-A Frame is a container for a node. It displays the node and handles all interaction with it.
+A Frame is the top-level interaction container. It holds an assigned khora and manages focus, selection, and view state around it.
 
 ## Anatomy
 
@@ -32,6 +32,23 @@ The body is entirely owned by the active view. Each view type implements its own
 - **Page view** — the default hierarchical outline. Renders the node's children as blocks, with properties shown above the outline.
 - **Table view** — renders children as rows with typed columns.
 - **Chat view** — renders children as a conversation with role labels and visual grouping.
+
+## Parts
+
+A frame is divided into **parts** — regions that can independently hold focus. The frame tracks which part is active via `activePart`.
+
+Currently the only part is `"khora"` — the body region rooted at the frame's assigned khora. Widgets (e.g., side panels) will be additional parts in the future.
+
+### Khora Part
+
+The khora part owns the selection state for the body region:
+
+- **`selectedKhoraIds`** — which khoras are currently selected (one for single selection, multiple for range selection)
+- **`anchor` / `focus`** — define the endpoints of a range selection
+
+Text selection (cursor position within an active khora) lives on the individual block document, not on the part.
+
+See `docs/concepts/khora.md` for what a khora is and how khora URIs work.
 
 ## Views
 
