@@ -66,6 +66,7 @@ tfoot th {
 #root {
   width: 100svw;
   height: 100svh;
+  overflow: hidden;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
