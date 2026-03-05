@@ -3,4 +3,12 @@ packages:
   - "packages/*"
 
 onlyBuiltDependencies:
+  - electron
   - fsevents
+
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - "@tailwindcss/oxide"
+  - core-js
+  - esbuild
+  - msgpackr-extract

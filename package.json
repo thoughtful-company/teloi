@@ -5,7 +5,9 @@
   "scripts": {
     "zed_diff": "git diff --staged --full-index > commit.txt | zed commit.txt",
     "prepare": "husky",
-    "dev:web": "pnpm -F @teloi/web dev"
+    "dev:web": "pnpm -F @teloi/web dev",
+    "dev:electron": "pnpm -F @teloi/electron dev",
+    "typecheck": "pnpm -r typecheck"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx}": "eslint --fix"
@@ -25,18 +27,5 @@
   "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=20"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@tailwindcss/oxide",
-      "fsevents"
-    ],
-    "ignoredBuiltDependencies": [
-      "@parcel/watcher",
-      "@tailwindcss/oxide",
-      "core-js",
-      "esbuild",
-      "msgpackr-extract"
-    ]
   }
 }
