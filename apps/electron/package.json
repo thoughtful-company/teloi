@@ -34,7 +34,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "electron": "^35.1.2",
+    "electron": "^40.7.0",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.25.0"
   }

@@ -61,6 +61,8 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      BrowserWindow.getAllWindows()[0]?.show();
     }
   });
 });
