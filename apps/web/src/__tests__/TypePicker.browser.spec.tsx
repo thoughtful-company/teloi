@@ -40,14 +40,14 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
 
         yield* Effect.promise(() =>
@@ -71,14 +71,14 @@ describe("TypePicker", () => {
           [{ text: "" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#");
 
         yield* Effect.promise(() =>
@@ -109,14 +109,14 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#pa");
 
         yield* Effect.promise(() =>
@@ -144,14 +144,14 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#newtype");
 
         yield* Effect.promise(() =>
@@ -185,7 +185,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
@@ -193,7 +193,7 @@ describe("TypePicker", () => {
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
 
         // Type # to open picker
         yield* When.USER_PRESSES("#");
@@ -285,7 +285,7 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
@@ -293,7 +293,7 @@ describe("TypePicker", () => {
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#mytag");
 
         // Wait for picker
@@ -346,14 +346,14 @@ describe("TypePicker", () => {
           [{ text: "Hello" }],
         );
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("#test");
 
         // Wait for picker to show

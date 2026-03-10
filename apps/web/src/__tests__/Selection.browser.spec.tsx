@@ -1,6 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
-import { makeFrameBlockId } from "@/schema/id/id";
+import { makeFrameKhoraId } from "@/schema/id/id";
 import { FrameT } from "@/services/ui/Frame";
 import FrameView from "@/ui/FrameView";
 import { EditorView } from "@codemirror/view";
@@ -71,21 +71,21 @@ describe("Selection sync", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus the block to mount CodeMirror
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       // Set selection via model (position 5 = "Hello| world")
       const Frame = yield* FrameT;
       yield* Frame.setSelection(
         frameId,
         Option.some({
-          anchor: { elementId: blockId },
+          anchor: { elementId: khoraId },
           anchorOffset: 5,
-          focus: { elementId: blockId },
+          focus: { elementId: khoraId },
           focusOffset: 5,
           goalX: null,
           goalLine: null,
@@ -106,12 +106,12 @@ describe("Selection sync", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus second child, move cursor to position 7
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 7);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 7);
 
       // Indent (causes remount under new parent)
       yield* When.USER_PRESSES("{Tab}");
@@ -145,11 +145,11 @@ describe("Selection sync", () => {
         [{ text: "Hello world" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       // First render: focus and set position at 6
       render(() => <FrameView frameId={frameId} />);
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
       yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 6);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
 
@@ -165,7 +165,7 @@ describe("Selection sync", () => {
         waitFor(
           () => {
             const container = document.querySelector(
-              "[data-element-type='block'] .cm-editor",
+              "[data-element-type='khora'] .cm-editor",
             )?.parentElement;
             if (!container) throw new Error("CodeMirror container not found");
             return container as HTMLElement;
@@ -207,8 +207,8 @@ describe("Selection sync", () => {
 
       yield* Given.FRAME_HAS_WIDTH(200);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(
-        makeFrameBlockId(frameId, childNodeIds[0]),
+      yield* Given.KHORA_IS_FOCUSED_AT(
+        makeFrameKhoraId(frameId, childNodeIds[0]),
         20,
         1,
       );
@@ -242,12 +242,12 @@ describe("Selection sync", () => {
         [{ text: wrappingText }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // First click to mount CodeMirror
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       // Wait for layout
       yield* Effect.promise(() => new Promise((r) => setTimeout(r, 100)));
@@ -296,13 +296,13 @@ describe("Selection sync", () => {
         [{ text: "hello" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Set cursor far beyond text length (simulates badge text node overshoot)
       yield* Given.FRAME_HAS_CURSOR(frameId, childNodeIds[0], 999);
-      yield* Given.ACTIVE_ELEMENT_IS({ id: blockId, type: "block" });
+      yield* Given.ACTIVE_ELEMENT_IS({ id: khoraId, type: "khora" });
 
       // Cursor should be clamped to end of "hello" (5), not 999
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
@@ -328,12 +328,12 @@ describe("Selection sync", () => {
         [{ text: "" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Click on the empty block to focus it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       // Wait for CodeMirror to be focused
       yield* Effect.promise(() =>

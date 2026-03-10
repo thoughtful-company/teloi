@@ -89,7 +89,7 @@ export const BLOCK_COUNT_IS = (count: number) =>
   Effect.promise(() =>
     waitFor(
       () => {
-        const blocks = document.querySelectorAll("[data-element-type='block']");
+        const blocks = document.querySelectorAll("[data-element-type='khora']");
         expect(blocks.length).toBe(count);
       },
       { timeout: 3000 },
@@ -113,12 +113,12 @@ export const SELECTION_IS_COLLAPSED_AT_OFFSET = (offset: number) =>
 /**
  * Asserts that the DOM selection is NOT in the specified block.
  */
-export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
+export const SELECTION_IS_NOT_ON_BLOCK = (khoraId: Id.Khora) =>
   doubleRaf.pipe(
     Effect.andThen(() => {
       const currentBlockId = getSelectionBlockId();
       expect(currentBlockId).not.toBeNull();
-      expect(currentBlockId).not.toBe(blockId);
+      expect(currentBlockId).not.toBe(khoraId);
     }),
     Effect.withSpan("Then.SELECTION_IS_NOT_ON_BLOCK"),
   );
@@ -126,13 +126,13 @@ export const SELECTION_IS_NOT_ON_BLOCK = (blockId: Id.Block) =>
 /**
  * Asserts that the DOM selection IS in the specified block.
  */
-export const SELECTION_IS_ON_BLOCK = (blockId: Id.Block) =>
+export const SELECTION_IS_ON_KHORA = (khoraId: Id.Khora) =>
   doubleRaf.pipe(
     Effect.andThen(() => {
       const currentBlockId = getSelectionBlockId();
-      expect(currentBlockId).toBe(blockId);
+      expect(currentBlockId).toBe(khoraId);
     }),
-    Effect.withSpan("Then.SELECTION_IS_ON_BLOCK"),
+    Effect.withSpan("Then.SELECTION_IS_ON_KHORA"),
   );
 
 /**
@@ -202,29 +202,29 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
 }> {}
 
 interface WindowCompatDoc {
-  selection: Model.ActiveBlockSelection | null;
-  selectedBlocks: readonly Id.Node[];
-  blockSelectionAnchor: Id.Node | null;
-  blockSelectionFocus: Id.Node | null;
+  selection: Model.ActiveKhoraSelection | null;
+  selectedKhoras: readonly Id.Node[];
+  khoraSelectionAnchor: Id.Node | null;
+  khoraSelectionFocus: Id.Node | null;
 }
 
 const normalizeSelectedBlocks = (
   state: {
-    selectedBlocks: readonly Id.Node[];
+    selectedKhoras: readonly Id.Node[];
     anchor: Id.Node | null;
     focus: Id.Node | null;
   },
-  mode: { type: "none" } | { type: "block"; blockId: Id.Block } | { type: "blockSelection"; frameId: Id.Frame },
+  mode: { type: "none" } | { type: "khora"; khoraId: Id.Khora } | { type: "khoraSelection"; frameId: Id.Frame },
 ): readonly Id.Node[] => {
-  if (state.selectedBlocks.length > 0) {
-    return state.selectedBlocks;
+  if (state.selectedKhoras.length > 0) {
+    return state.selectedKhoras;
   }
 
-  if (mode.type === "blockSelection" && state.focus != null) {
+  if (mode.type === "khoraSelection" && state.focus != null) {
     return [state.focus];
   }
 
-  return state.selectedBlocks;
+  return state.selectedKhoras;
 };
 
 /**
@@ -235,22 +235,22 @@ export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
-    const blockSelection = yield* Frame.getBlockSelectionState(frameId);
+    const blockSelection = yield* Frame.getKhoraSelectionState(frameId);
     const selection = yield* Frame.getSelection(frameId);
     const mode = yield* Frame.getMode();
     const normalizedSelected = normalizeSelectedBlocks(blockSelection, mode);
 
     return Option.some<WindowCompatDoc>({
       selection: Option.getOrNull(selection),
-      selectedBlocks: normalizedSelected,
-      blockSelectionAnchor: blockSelection.anchor,
-      blockSelectionFocus: blockSelection.focus,
+      selectedKhoras: normalizedSelected,
+      khoraSelectionAnchor: blockSelection.anchor,
+      khoraSelectionFocus: blockSelection.focus,
     });
   });
 
 /**
  * Asserts that the frame has exactly the specified blocks selected.
- * Checks both the selectedBlocks array and optionally anchor/focus.
+ * Checks both the selectedKhoras array and optionally anchor/focus.
  * Uses Effect-native retry instead of waitFor for proper Effect composition.
  */
 export const BLOCKS_ARE_SELECTED = (
@@ -260,14 +260,14 @@ export const BLOCKS_ARE_SELECTED = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const state = yield* Frame.getBlockSelectionState(frameId);
+    const state = yield* Frame.getKhoraSelectionState(frameId);
     const mode = yield* Frame.getMode();
-    const selectedBlocks = normalizeSelectedBlocks(state, mode);
+    const selectedKhoras = normalizeSelectedBlocks(state, mode);
 
     yield* Effect.sync(() => {
-      expect(selectedBlocks).toHaveLength(expectedNodeIds.length);
+      expect(selectedKhoras).toHaveLength(expectedNodeIds.length);
       for (const nodeId of expectedNodeIds) {
-        expect(selectedBlocks).toContain(nodeId);
+        expect(selectedKhoras).toContain(nodeId);
       }
 
       if (options?.anchor !== undefined) {
@@ -414,8 +414,8 @@ const markStyleConfig: Record<
 /**
  * Asserts that an unfocused block renders the specified text with a mark's styling.
  */
-export const UNFOCUSED_BLOCK_HAS_MARK_TEXT = (
-  blockId: Id.Block,
+export const UNFOCUSED_KHORA_HAS_MARK_TEXT = (
+  khoraId: Id.Khora,
   expectedText: string,
   mark: MarkType,
 ) =>
@@ -423,9 +423,9 @@ export const UNFOCUSED_BLOCK_HAS_MARK_TEXT = (
     waitFor(
       () => {
         const blockEl = document.querySelector(
-          `[data-element-id="${blockId}"][data-element-type="block"]`,
+          `[data-element-id="${khoraId}"][data-element-type="khora"]`,
         );
-        expect(blockEl, `Block ${blockId} not found`).not.toBeNull();
+        expect(blockEl, `Block ${khoraId} not found`).not.toBeNull();
 
         const config = markStyleConfig[mark];
 
@@ -450,25 +450,25 @@ export const UNFOCUSED_BLOCK_HAS_MARK_TEXT = (
         }
 
         expect.fail(
-          `No ${mark} styling found for text "${expectedText}" in unfocused block ${blockId}`,
+          `No ${mark} styling found for text "${expectedText}" in unfocused block ${khoraId}`,
         );
       },
       { timeout: 2000 },
     ),
-  ).pipe(Effect.withSpan(`Then.UNFOCUSED_BLOCK_HAS_MARK_TEXT(${mark})`));
+  ).pipe(Effect.withSpan(`Then.UNFOCUSED_KHORA_HAS_MARK_TEXT(${mark})`));
 
 /** Convenience wrapper for bold text in unfocused block */
-export const UNFOCUSED_BLOCK_HAS_BOLD_TEXT = (
-  blockId: Id.Block,
+export const UNFOCUSED_KHORA_HAS_BOLD_TEXT = (
+  khoraId: Id.Khora,
   expectedText: string,
-) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "bold");
+) => UNFOCUSED_KHORA_HAS_MARK_TEXT(khoraId, expectedText, "bold");
 
 /**
  * Asserts that an unfocused block renders the specified text WITHOUT bold styling.
  * The text should appear as plain text, not wrapped in a bold span.
  */
-export const UNFOCUSED_BLOCK_HAS_PLAIN_TEXT = (
-  blockId: Id.Block,
+export const UNFOCUSED_KHORA_HAS_PLAIN_TEXT = (
+  khoraId: Id.Khora,
   expectedText: string,
 ) =>
   Effect.promise(() =>
@@ -476,9 +476,9 @@ export const UNFOCUSED_BLOCK_HAS_PLAIN_TEXT = (
       () => {
         // Find the block element by block ID
         const blockEl = document.querySelector(
-          `[data-element-id="${blockId}"][data-element-type="block"]`,
+          `[data-element-id="${khoraId}"][data-element-type="khora"]`,
         );
-        expect(blockEl, `Block ${blockId} not found`).not.toBeNull();
+        expect(blockEl, `Block ${khoraId} not found`).not.toBeNull();
 
         // Verify the text exists in the block
         expect(
@@ -509,7 +509,7 @@ export const UNFOCUSED_BLOCK_HAS_PLAIN_TEXT = (
       },
       { timeout: 2000 },
     ),
-  ).pipe(Effect.withSpan("Then.UNFOCUSED_BLOCK_HAS_PLAIN_TEXT"));
+  ).pipe(Effect.withSpan("Then.UNFOCUSED_KHORA_HAS_PLAIN_TEXT"));
 
 /** Convenience wrapper for italic */
 export const NODE_HAS_ITALIC_AT = (
@@ -540,25 +540,25 @@ export const NODE_HAS_NO_CODE_AT = (
 ) => NODE_HAS_NO_MARK_AT(nodeId, index, length, "code");
 
 /** Convenience wrapper for italic text in unfocused block */
-export const UNFOCUSED_BLOCK_HAS_ITALIC_TEXT = (
-  blockId: Id.Block,
+export const UNFOCUSED_KHORA_HAS_ITALIC_TEXT = (
+  khoraId: Id.Khora,
   expectedText: string,
-) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "italic");
+) => UNFOCUSED_KHORA_HAS_MARK_TEXT(khoraId, expectedText, "italic");
 
 /** Convenience wrapper for code text in unfocused block */
-export const UNFOCUSED_BLOCK_HAS_CODE_TEXT = (
-  blockId: Id.Block,
+export const UNFOCUSED_KHORA_HAS_CODE_TEXT = (
+  khoraId: Id.Khora,
   expectedText: string,
-) => UNFOCUSED_BLOCK_HAS_MARK_TEXT(blockId, expectedText, "code");
+) => UNFOCUSED_KHORA_HAS_MARK_TEXT(khoraId, expectedText, "code");
 
 /**
  * Asserts that a block is expanded (showing its children).
- * Uses the BlockT service to check the actual model state.
+ * Uses the KhoraT service to check the actual model state.
  */
-export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
+export const KHORA_IS_EXPANDED = (khoraId: Id.Khora) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const blockDoc = yield* Store.getDocument("block", blockId);
+    const blockDoc = yield* Store.getDocument("khora", khoraId);
 
     yield* Effect.try({
       try: () => {
@@ -567,7 +567,7 @@ export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
           return; // Pass - no doc means expanded by default
         }
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be expanded`).toBe(
+        expect(doc.isExpanded, `Block ${khoraId} should be expanded`).toBe(
           true,
         );
       },
@@ -575,26 +575,26 @@ export const BLOCK_IS_EXPANDED = (blockId: Id.Block) =>
     });
   }).pipe(
     Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
-    Effect.withSpan("Then.BLOCK_IS_EXPANDED"),
+    Effect.withSpan("Then.KHORA_IS_EXPANDED"),
   );
 
 /**
  * Asserts that a block is collapsed (hiding its children).
- * Uses the BlockT service to check the actual model state.
+ * Uses the KhoraT service to check the actual model state.
  */
-export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
+export const KHORA_IS_COLLAPSED = (khoraId: Id.Khora) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
-    const blockDoc = yield* Store.getDocument("block", blockId);
+    const blockDoc = yield* Store.getDocument("khora", khoraId);
 
     yield* Effect.try({
       try: () => {
         expect(
           Option.isSome(blockDoc),
-          `Block ${blockId} should have a document`,
+          `Block ${khoraId} should have a document`,
         ).toBe(true);
         const doc = Option.getOrThrow(blockDoc);
-        expect(doc.isExpanded, `Block ${blockId} should be collapsed`).toBe(
+        expect(doc.isExpanded, `Block ${khoraId} should be collapsed`).toBe(
           false,
         );
       },
@@ -602,5 +602,5 @@ export const BLOCK_IS_COLLAPSED = (blockId: Id.Block) =>
     });
   }).pipe(
     Effect.retry(Schedule.spaced("50 millis").pipe(Schedule.upTo("2 seconds"))),
-    Effect.withSpan("Then.BLOCK_IS_COLLAPSED"),
+    Effect.withSpan("Then.KHORA_IS_COLLAPSED"),
   );

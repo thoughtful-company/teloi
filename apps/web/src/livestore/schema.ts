@@ -164,9 +164,9 @@ const frame = State.SQLite.clientDocument({
   },
 });
 
-const block = State.SQLite.clientDocument({
-  name: Model.DocumentName.Block,
-  schema: Model.DocumentSchemas[Model.DocumentName.Block].schema,
+const khora = State.SQLite.clientDocument({
+  name: Model.DocumentName.Khora,
+  schema: Model.DocumentSchemas[Model.DocumentName.Khora].schema,
   default: {
     id: SessionIdSymbol,
     value: null,
@@ -178,7 +178,7 @@ type ClientDocumentModels = {
   world: Model.World | null;
   pane: Model.Pane | null;
   frame: Model.Frame | null;
-  block: Model.Block | null;
+  khora: Model.Khora | null;
 };
 
 // Use the mapping
@@ -190,7 +190,7 @@ type ClientDocumentBrandedIds = {
   world: Id.World;
   pane: Id.Pane;
   frame: Id.Frame;
-  block: Id.Block;
+  khora: Id.Khora;
 };
 
 export type BrandedId<K extends Model.DocumentName> =
@@ -211,7 +211,7 @@ export const documentEvents = {
   [Model.DocumentName.World]: world.set,
   [Model.DocumentName.Pane]: pane.set,
   [Model.DocumentName.Frame]: frame.set,
-  [Model.DocumentName.Block]: block.set,
+  [Model.DocumentName.Khora]: khora.set,
 } satisfies EventsMap;
 
 export const events = {
@@ -244,7 +244,7 @@ export const tables = {
   world,
   pane,
   frame,
-  block,
+  khora,
 };
 
 const materializers = State.SQLite.materializers(events, {

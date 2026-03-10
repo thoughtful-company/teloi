@@ -230,7 +230,7 @@ describe("Navigation with UI", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               if (blocks.length < 20)
                 throw new Error("Not all blocks rendered");
@@ -241,10 +241,10 @@ describe("Navigation with UI", () => {
 
         // Get the last child block (index 19 = 20th element)
         const lastChildId = childNodeIds[19]!;
-        const lastBlockId = Id.makeFrameBlockId(frameId, lastChildId);
+        const lastKhoraId = Id.makeFrameKhoraId(frameId, lastChildId);
 
         // Click on the last block (this should scroll it into view initially)
-        yield* Given.BLOCK_IS_FOCUSED_AT(lastBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(lastKhoraId, 0);
 
         // Set cursor position in this block
         yield* Given.FRAME_HAS_CURSOR(frameId, lastChildId, 3);
@@ -286,7 +286,7 @@ describe("Navigation with UI", () => {
           waitFor(
             () => {
               const block = document.querySelector(
-                `[data-element-id="${lastBlockId}"]`,
+                `[data-element-id="${lastKhoraId}"]`,
               );
               const editor = block?.querySelector(".cm-editor");
               if (!editor) throw new Error("CodeMirror not mounted in block");
@@ -301,7 +301,7 @@ describe("Navigation with UI", () => {
           waitFor(
             () => {
               const blockEl = document.querySelector(
-                `[data-element-id="${lastBlockId}"]`,
+                `[data-element-id="${lastKhoraId}"]`,
               );
               expect(blockEl).not.toBeNull();
 

@@ -19,14 +19,14 @@ export class Send extends Data.TaggedClass(tag)<{}> {
     const Type = yield* TypeT;
     const Chat = yield* ChatT;
 
-    // Get current frame — works from either block editing or block selection mode
+    // Get current frame — works from either block editing or khora selection mode
     const mode = yield* Frame.getMode();
 
     let frameId: Id.Frame;
-    if (mode.type === "blockSelection") {
+    if (mode.type === "khoraSelection") {
       frameId = mode.frameId;
-    } else if (mode.type === "block") {
-      const [parsedFrameId] = yield* Id.parseBlockId(mode.blockId);
+    } else if (mode.type === "khora") {
+      const [parsedFrameId] = yield* Id.parseKhoraId(mode.khoraId);
       frameId = parsedFrameId;
     } else {
       return;

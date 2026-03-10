@@ -1,11 +1,11 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
 import { Data, Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "../editor/utils/resolveActiveKhoraContext";
 
 const scope = "frame";
 const commandName = "zoomOut";
@@ -20,9 +20,9 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     const Node = yield* NodeT;
     const Navigation = yield* NavigationT;
     const Frame = yield* FrameT;
-    const Block = yield* BlockT;
+    const Khora = yield* KhoraT;
 
-    const ctx = yield* resolveActiveBlockContext();
+    const ctx = yield* resolveActiveKhoraContext();
     if (Option.isNone(ctx)) return;
 
     const { frameId, nodeId } = ctx.value;
@@ -42,14 +42,14 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     yield* Navigation.navigateTo(parentId);
 
     // Check if the previous root (now a block) is expanded
-    const rootBlockId = Id.makeFrameBlockId(frameId, rootNodeId);
-    const isRootExpanded = yield* Block.isExpanded(rootBlockId);
+    const rootKhoraId = Id.makeFrameKhoraId(frameId, rootNodeId);
+    const isRootExpanded = yield* Khora.isExpanded(rootKhoraId);
 
     // If expanded, select the original node; if collapsed, select the root block
-    const targetBlockId = isRootExpanded
-      ? Id.makeFrameBlockId(frameId, nodeId)
-      : rootBlockId;
+    const targetKhoraId = isRootExpanded
+      ? Id.makeFrameKhoraId(frameId, nodeId)
+      : rootKhoraId;
 
-    yield* Frame.enterBlockEditing(targetBlockId);
+    yield* Frame.enterBlockEditing(targetKhoraId);
   });
 }

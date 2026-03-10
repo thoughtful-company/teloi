@@ -16,7 +16,7 @@ import { PickerT, PickerLive } from "./index";
 // Test IDs
 const TEST_FRAME_ID = Id.Frame.make("test-frame");
 const TEST_NODE_ID = Id.Node.make("test-node");
-const TEST_BLOCK_ID = Id.Block.make(
+const TEST_BLOCK_ID = Id.Khora.make(
   `frame:${TEST_FRAME_ID}/node:${TEST_NODE_ID}`,
 );
 const TEST_TYPE_ID = Id.Node.make("test-type");
@@ -36,11 +36,11 @@ const createBasicMockLayer = () => {
     getAssignedNodeId: () => Effect.succeed(null),
     setSelection: () => Effect.void,
     setAssignedNodeId: () => Effect.void,
-    setBlockSelection: () => Effect.void,
-    getBlockSelectionState: () =>
-      Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+    setKhoraSelection: () => Effect.void,
+    getKhoraSelectionState: () =>
+      Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
     getMode: () => Effect.succeed({ type: "none" as const }),
-    enterBlockSelection: () => Effect.void,
+    enterKhoraSelection: () => Effect.void,
     enterBlockEditing: () => Effect.void,
     clearFocus: () => Effect.void,
     hasPopup: () => Effect.succeed(false),
@@ -219,11 +219,11 @@ describe("PickerT", () => {
         getAssignedNodeId: () => Effect.succeed(null),
         setSelection: setSelectionMock,
         setAssignedNodeId: () => Effect.void,
-        setBlockSelection: () => Effect.void,
-        getBlockSelectionState: () =>
-          Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+        setKhoraSelection: () => Effect.void,
+        getKhoraSelectionState: () =>
+          Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
         getMode: () => Effect.succeed({ type: "none" as const }),
-        enterBlockSelection: () => Effect.void,
+        enterKhoraSelection: () => Effect.void,
         enterBlockEditing: () => Effect.void,
         clearFocus: () => Effect.void,
         hasPopup: () => Effect.succeed(false),
@@ -311,7 +311,7 @@ describe("PickerT", () => {
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
         const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
           Id.Frame,
-          Option.Option<Model.ActiveBlockSelection>,
+          Option.Option<Model.ActiveKhoraSelection>,
         ];
         expect(frameId).toBe(TEST_FRAME_ID);
 
@@ -367,11 +367,11 @@ describe("PickerT", () => {
         getAssignedNodeId: () => Effect.succeed(null),
         setSelection: setSelectionMock,
         setAssignedNodeId: () => Effect.void,
-        setBlockSelection: () => Effect.void,
-        getBlockSelectionState: () =>
-          Effect.succeed({ selectedBlocks: [], anchor: null, focus: null }),
+        setKhoraSelection: () => Effect.void,
+        getKhoraSelectionState: () =>
+          Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
         getMode: () => Effect.succeed({ type: "none" as const }),
-        enterBlockSelection: () => Effect.void,
+        enterKhoraSelection: () => Effect.void,
         enterBlockEditing: () => Effect.void,
         clearFocus: () => Effect.void,
         hasPopup: () => Effect.succeed(false),
@@ -476,7 +476,7 @@ describe("PickerT", () => {
         expect(setSelectionMock).toHaveBeenCalledTimes(1);
         const [frameId, selectionOption] = setSelectionMock.mock.calls[0] as [
           Id.Frame,
-          Option.Option<Model.ActiveBlockSelection>,
+          Option.Option<Model.ActiveKhoraSelection>,
         ];
         expect(frameId).toBe(TEST_FRAME_ID);
 

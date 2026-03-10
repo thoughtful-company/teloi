@@ -2,7 +2,7 @@ import { FrameT } from "@/services/ui/Frame";
 import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { Data, Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
 import { resolveGoalX } from "./utils/resolveGoalX";
 
 const scope = "editor";
@@ -25,20 +25,20 @@ export class Down extends Data.TaggedClass(tag)<{}> {
     const View = yield* ViewT;
     const Frame = yield* FrameT;
 
-    const ctx = yield* resolveActiveBlockContext();
+    const ctx = yield* resolveActiveKhoraContext();
     if (Option.isNone(ctx)) return;
-    const { frameId, blockId } = ctx.value;
+    const { frameId, khoraId } = ctx.value;
 
-    const targetOpt = yield* View.resolveBlockBelow(blockId);
+    const targetOpt = yield* View.resolveBlockBelow(khoraId);
     if (Option.isNone(targetOpt)) {
       yield* Editor.moveDown();
       return;
     }
 
     const goalX = yield* resolveGoalX(frameId);
-    const targetBlockId = targetOpt.value;
+    const targetKhoraId = targetOpt.value;
 
-    yield* Frame.enterBlockEditing(targetBlockId, {
+    yield* Frame.enterBlockEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
       goalX,

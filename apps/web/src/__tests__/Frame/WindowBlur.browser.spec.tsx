@@ -30,11 +30,11 @@ describe("Window blur preserves selection", () => {
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       const Window = yield* WindowT;
       const Frame = yield* FrameT;
@@ -53,7 +53,7 @@ describe("Window blur preserves selection", () => {
 
         try {
           const blockEl = document.querySelector(
-            `[data-element-id="${blockId}"]`,
+            `[data-element-id="${khoraId}"]`,
           );
           const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
           if (!cm) throw new Error("Block CodeMirror not found");
@@ -89,11 +89,11 @@ describe("Window blur preserves selection", () => {
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       const Frame = yield* FrameT;
       const selectionBefore = yield* Frame.getSelection(frameId);
@@ -101,7 +101,7 @@ describe("Window blur preserves selection", () => {
 
       yield* Effect.promise(async () => {
         const blockEl = document.querySelector(
-          `[data-element-id="${blockId}"]`,
+          `[data-element-id="${khoraId}"]`,
         );
         const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
         if (!cm) throw new Error("Block CodeMirror not found");

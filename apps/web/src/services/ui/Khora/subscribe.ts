@@ -1,0 +1,360 @@
+import { tables, TeloiNode } from "@/livestore/schema";
+import { Id, System } from "@/schema";
+import { NodeNotFoundError } from "@/services/domain/errors";
+import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
+import { TypeT } from "@/services/domain/Type";
+import { AutomergeT } from "@/services/external/Automerge";
+import { StoreT } from "@/services/external/Store";
+import { PickerState, PickerT } from "@/services/ui/Picker";
+import { isSystemType } from "@/services/ui/TypePicker";
+import {
+  resolveActiveViewType,
+  subscribeViewInfo,
+  type ViewInfo,
+  type ViewType,
+} from "./views";
+import { deepEqual, queryDb } from "@livestore/livestore";
+import { Effect, Either, Option, Stream } from "effect";
+import { KhoraGoneError, VirtualBlockError } from "./errors";
+
+export interface KhoraTextSelection {
+  anchor: number;
+  head: number;
+  goalX: number | null;
+  goalLine: "first" | "last" | null;
+  assoc: -1 | 0 | 1;
+}
+
+export interface KhoraView {
+  nodeData: TeloiNode;
+  isActive: boolean;
+  isSelected: boolean;
+  isExpanded: boolean;
+  selection: KhoraTextSelection | null;
+
+  activeViewId: Id.Node | null;
+  activeViewType: ViewType;
+  availableViews: readonly ViewInfo[];
+
+  activeTypes: readonly Id.Node[];
+  userTypes: readonly Id.Node[];
+  textContent: string;
+  picker: PickerState | null;
+  childCount: number;
+  ghostChildId: Id.Node | null;
+  ghostParentId: Id.Node | null;
+}
+
+export const subscribe = (khoraId: Id.Khora) =>
+  Effect.gen(function* () {
+    const ctx = yield* Id.parseKhoraContext(khoraId);
+    const Node = yield* NodeT;
+    const Tuple = yield* TupleT;
+    const Type = yield* TypeT;
+    const Picker = yield* PickerT;
+    const Automerge = yield* AutomergeT;
+
+    // Extract nodeId based on block type
+    let nodeId: Id.Node;
+
+    if (ctx.type === "frame") {
+      nodeId = ctx.nodeId;
+    } else {
+      // Section block: derive nodeId from tuple lookup
+
+      // Virtual blocks cannot be subscribed to
+      if (ctx.tupleId === Id.VIRTUAL_TUPLE) {
+        return yield* Effect.fail(new VirtualBlockError({ khoraId }));
+      }
+
+      const maybeTuple = yield* Tuple.get(ctx.tupleId);
+      if (Option.isNone(maybeTuple)) {
+        return yield* Effect.fail(
+          new KhoraGoneError({ khoraId, nodeId: Id.Node.make(ctx.tupleId) }),
+        );
+      }
+      const tuple = maybeTuple.value;
+
+      // Get display position from property config
+      const configTuples = yield* Tuple.findByPosition(
+        System.PROPERTY_CONFIG,
+        0,
+        ctx.propertyId,
+      );
+
+      let displayPosition: 0 | 1 = 1;
+      if (configTuples.length > 0) {
+        const config = configTuples[0]!;
+        displayPosition = config.members[2] === System.POSITION_0 ? 0 : 1;
+      }
+
+      nodeId = tuple.members[displayPosition] as Id.Node;
+    }
+
+    // Ghost blocks have no LiveStore node yet — skip existence check
+    const Store = yield* StoreT;
+    const initialDoc = yield* Store.getDocument("khora", khoraId);
+    const isGhost =
+      Option.isSome(initialDoc) && !!initialDoc.value.ghostParentId;
+    if (!isGhost) {
+      yield* Node.attestExistence(nodeId);
+    }
+
+    // Resolve worldId once for selection/isSelected streams
+    const sessionId = yield* Store.getSessionId();
+    const worldId = Id.World.make(sessionId);
+    const frameId = ctx.frameId;
+
+    const block$ = yield* makeBlockStreamEither(khoraId);
+    const node$ = yield* makeNodeStreamEither(nodeId);
+    const window$ = yield* makeWindowDerivedStream(
+      worldId,
+      frameId,
+      nodeId,
+      khoraId,
+    );
+
+    const viewInfo$ = yield* subscribeViewInfo(nodeId);
+
+    const typesStream = yield* Type.subscribeTypes(nodeId);
+
+    // Prepend current state since ref.changes might not emit initial value immediately
+    const initialPickerState = yield* Picker.getState();
+    const pickerStream = yield* Picker.subscribe();
+    const filteredPickerStream = Stream.concat(
+      Stream.make(initialPickerState),
+      pickerStream,
+    ).pipe(
+      Stream.map((state) => (state?.elementId === khoraId ? state : null)),
+    );
+
+    const textStream = yield* Automerge.subscribeText(nodeId);
+    const textContentStream = textStream.pipe(
+      Stream.map((textData) => textData.content),
+    );
+
+    const childrenStream = yield* Node.subscribeChildren(nodeId);
+    const childCountStream = childrenStream.pipe(
+      Stream.map((children) => children.length),
+      Stream.changesWith((a, b) => a === b),
+    );
+
+    const view$ = Stream.zipLatestAll(
+      block$,
+      node$,
+      viewInfo$,
+      window$,
+      typesStream,
+      filteredPickerStream,
+      textContentStream,
+      childCountStream,
+    ).pipe(
+      Stream.map(
+        ([
+          blockEither,
+          nodeEither,
+          availableViews,
+          { isActive, isSelected, selection },
+          activeTypes,
+          picker,
+          textContent,
+          childCount,
+        ]) => {
+          const block = Either.getOrThrow(blockEither);
+
+          // Ghost blocks may not have a LiveStore node yet
+          let nodeData: TeloiNode;
+          if (Either.isLeft(nodeEither)) {
+            if (block.ghostParentId) {
+              nodeData = { id: nodeId, createdAt: 0, modifiedAt: 0 };
+            } else {
+              return Either.left(new KhoraGoneError({ khoraId, nodeId }));
+            }
+          } else {
+            nodeData = Either.getOrThrow(nodeEither);
+          }
+
+          const activeViewId = block.activeViewId;
+          const activeViewType = resolveActiveViewType(
+            activeViewId,
+            availableViews,
+          );
+          return Either.right({
+            nodeData,
+            isActive,
+            isSelected,
+            isExpanded: block.isExpanded,
+            selection,
+            activeViewId,
+            activeViewType,
+            availableViews,
+            activeTypes,
+            userTypes: activeTypes.filter((t) => !isSystemType(t)),
+            textContent,
+            picker,
+            childCount,
+            ghostChildId: block.ghostChildId ?? null,
+            ghostParentId: block.ghostParentId ?? null,
+          } satisfies KhoraView);
+        },
+      ),
+      Stream.tap((either) =>
+        Either.match(either, {
+          onLeft: (error) =>
+            Effect.logError("[Khora.Subscribe] Stream error").pipe(
+              Effect.annotateLogs({ error: error._tag, khoraId }),
+            ),
+          onRight: () => Effect.void,
+        }),
+      ),
+
+      Stream.mapEffect((either) =>
+        Either.match(either, {
+          onLeft: (error) => Effect.fail(error),
+          onRight: (value) => Effect.succeed(value),
+        }),
+      ),
+    );
+
+    return view$;
+  });
+
+// ===============================
+//   Internal Functions
+// ===============================
+
+type BlockDoc = {
+  isExpanded: boolean;
+  activeViewId: Id.Node | null;
+  ghostChildId: Id.Node | null;
+  ghostParentId: Id.Node | null;
+};
+
+const makeBlockStreamEither = (khoraId: Id.Khora) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const query = queryDb(
+      tables.khora
+        .select("value")
+        .where("id", "=", khoraId)
+        .first({ fallback: () => null }),
+    );
+    const stream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+
+    return stream.pipe(
+      Stream.changesWith(deepEqual),
+      Stream.tap((b) =>
+        Effect.logTrace("[Khora.Subscribe] Khora value emitted").pipe(
+          Effect.annotateLogs({ khoraId, ...(b || {}) }),
+        ),
+      ),
+      // Don't fail on missing block doc - use default value (expanded)
+      // Khora docs are created lazily, so the first emission might be null
+      Stream.map(
+        (b): Either.Either<BlockDoc, never> =>
+          Either.right(
+              b ?? {
+                isExpanded: true,
+                activeViewId: null,
+                ghostChildId: null,
+                ghostParentId: null,
+              },
+          ),
+      ),
+    );
+  });
+
+const makeNodeStreamEither = (nodeId: Id.Node) =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+    const stream = yield* Node.subscribeEither(nodeId);
+
+    return stream.pipe(
+      Stream.changesWith<Either.Either<TeloiNode, NodeNotFoundError>>(
+        deepEqual,
+      ),
+      Stream.tap((either) =>
+        Either.match(either, {
+          onLeft: () => Effect.void,
+          onRight: (n) =>
+            Effect.logTrace("[Khora.Subscribe] Node value emitted").pipe(
+              Effect.annotateLogs({
+                nodeId: n.id,
+                modifiedAt: n.modifiedAt,
+              }),
+            ),
+        }),
+      ),
+    );
+  });
+
+interface WindowDerived {
+  isActive: boolean;
+  isSelected: boolean;
+  selection: KhoraTextSelection | null;
+}
+
+const makeWindowDerivedStream = (
+  worldId: Id.World,
+  frameId: Id.Frame,
+  nodeId: Id.Node,
+  khoraId: Id.Khora,
+) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const query = queryDb(
+      tables.world
+        .select("value")
+        .where("id", "=", worldId)
+        .first({ fallback: () => null }),
+    );
+    const windowStream = yield* Store.subscribeStream(query).pipe(Effect.orDie);
+    const frameQuery = queryDb(
+      tables.frame
+        .select("value")
+        .where("id", "=", frameId)
+        .first({ fallback: () => null }),
+    );
+    const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
+      Effect.orDie,
+    );
+
+    return Stream.zipLatestWith(
+      windowStream,
+      frameStream,
+      (window, frame): WindowDerived => {
+        const isStageActiveFrame =
+          (window?.activeRegion ?? "stage") === "stage" &&
+          window?.activeFrameId === frameId;
+        const isActive =
+          isStageActiveFrame && frame?.selection?.khoraId === khoraId;
+
+        const selectedKhoras = frame?.selectedKhoras ?? [];
+        const isSelected = selectedKhoras.includes(nodeId);
+
+        const selection =
+          frame?.selection?.khoraId === khoraId
+            ? {
+                anchor: frame.selection.selection.anchor,
+                head: frame.selection.selection.head,
+                goalX: frame.selection.goalX,
+                goalLine: frame.selection.goalLine,
+                assoc: frame.selection.selection.assoc,
+              }
+            : null;
+
+        return { isActive, isSelected, selection };
+      },
+    ).pipe(
+      Stream.changesWith(deepEqual),
+      Stream.tap(({ isActive }) =>
+        Effect.logDebug("[Khora.Subscribe] World-derived stream emitted").pipe(
+          Effect.annotateLogs({
+            khoraId,
+            isActive,
+          }),
+        ),
+      ),
+    );
+  });

@@ -20,13 +20,13 @@ import {
 /**
  * Enter/Space frame activation tests.
  *
- * When frame is active but nothing is selected (no block selection, no text editing),
+ * When frame is active but nothing is selected (no khora selection, no text editing),
  * pressing Enter or Space should:
  * - If frame has no children: create new block and enter editing mode (cursor at pos 0)
  * - If last block is empty: focus it (enter editing mode, cursor at end = 0)
  * - If last block has content: create new block after it, focus new block (cursor at pos 0)
  *
- * Neither should trigger when CodeMirror is focused or in block selection mode.
+ * Neither should trigger when CodeMirror is focused or in khora selection mode.
  */
 describe("Enter/Space frame activation", () => {
   let runtime: BrowserRuntime;
@@ -75,7 +75,7 @@ describe("Enter/Space frame activation", () => {
     });
 
   /**
-   * Sets the frame as the active element (no text editing, no block selection).
+   * Sets the frame as the active element (no text editing, no khora selection).
    * This is the state where Enter/Space should trigger.
    */
   const activateFrameWithoutSelection = (frameId: Id.Frame) =>
@@ -249,10 +249,10 @@ describe("Enter/Space frame activation", () => {
         const el = Option.getOrThrow(activeElement);
         expect(Option.isSome(el)).toBe(true);
         const element = Option.getOrThrow(el);
-        expect(element.type).toBe("block");
-        if (element.type === "block") {
+        expect(element.type).toBe("khora");
+        if (element.type === "khora") {
           expect(element.id).toBe(
-            Id.makeFrameBlockId(frameId, childNodeIds[1]),
+            Id.makeFrameKhoraId(frameId, childNodeIds[1]),
           );
         }
       }).pipe(runtime.runPromise);
@@ -291,10 +291,10 @@ describe("Enter/Space frame activation", () => {
         const el = Option.getOrThrow(activeElement);
         expect(Option.isSome(el)).toBe(true);
         const element = Option.getOrThrow(el);
-        expect(element.type).toBe("block");
-        if (element.type === "block") {
+        expect(element.type).toBe("khora");
+        if (element.type === "khora") {
           expect(element.id).toBe(
-            Id.makeFrameBlockId(frameId, childNodeIds[1]),
+            Id.makeFrameKhoraId(frameId, childNodeIds[1]),
           );
         }
       }).pipe(runtime.runPromise);
@@ -379,10 +379,10 @@ describe("Enter/Space frame activation", () => {
         render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         // Click the block to enter editing mode
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
         yield* waitForCodeMirrorFocused();
 
         // Get initial block count
@@ -412,10 +412,10 @@ describe("Enter/Space frame activation", () => {
         render(() => <FrameView frameId={frameId} />);
         yield* Then.BLOCK_COUNT_IS(1);
 
-        const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         // Click the block to enter editing mode
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
         yield* waitForCodeMirrorFocused();
 
         // Press Space (should type a space in CodeMirror)
@@ -433,7 +433,7 @@ describe("Enter/Space frame activation", () => {
       }).pipe(runtime.runPromise);
     });
 
-    it("Enter does not trigger when in block selection mode (existing handler takes over)", async () => {
+    it("Enter does not trigger when in khora selection mode (existing handler takes over)", async () => {
       await Effect.gen(function* () {
         const { frameId, rootNodeId, childNodeIds, windowId } =
           yield* Given.A_FRAME_WITH_CHILDREN("Document Title", [
@@ -446,7 +446,7 @@ describe("Enter/Space frame activation", () => {
 
         const Frame = yield* FrameT;
         const Window = yield* WindowT;
-        yield* Frame.setBlockSelection(
+        yield* Frame.setKhoraSelection(
           frameId,
           [childNodeIds[0]],
           childNodeIds[0],
@@ -457,7 +457,7 @@ describe("Enter/Space frame activation", () => {
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
-        // Verify we're in block selection mode
+        // Verify we're in khora selection mode
         yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
           anchor: childNodeIds[0],
           focus: childNodeIds[0],
@@ -467,7 +467,7 @@ describe("Enter/Space frame activation", () => {
         // NOT create a new block via our activation handler
         yield* pressKeyOnDocument("Enter");
 
-        // The existing block selection handler should focus the selected block
+        // The existing khora selection handler should focus the selected block
         // We should be in editing mode now
         yield* waitForCodeMirrorFocused();
 
@@ -477,7 +477,7 @@ describe("Enter/Space frame activation", () => {
       }).pipe(runtime.runPromise);
     });
 
-    // NOTE: Space in block selection mode has existing behavior (creates sibling block)
+    // NOTE: Space in khora selection mode has existing behavior (creates sibling block)
     // which is tested in Block/Space.browser.spec.tsx. That's intentional and separate
     // from the Enter/Space activation feature which only triggers when NO block is selected.
   });

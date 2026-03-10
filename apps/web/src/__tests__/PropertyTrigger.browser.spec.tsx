@@ -53,7 +53,7 @@ describe("Property Creation Trigger", () => {
         const { frameId, rootNodeId, childNodeIds } =
           yield* Given.A_FRAME_WITH_CHILDREN("Page Title", [{ text: "" }]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -71,7 +71,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -110,7 +110,7 @@ describe("Property Creation Trigger", () => {
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -134,7 +134,7 @@ describe("Property Creation Trigger", () => {
         expect(nodeBefore).toBeDefined();
 
         // Click the block to focus it
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -170,7 +170,7 @@ describe("Property Creation Trigger", () => {
         const { frameId, rootNodeId, childNodeIds } =
           yield* Given.A_FRAME_WITH_CHILDREN("Page Title", [{ text: "" }]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -188,7 +188,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -221,7 +221,7 @@ describe("Property Creation Trigger", () => {
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -239,7 +239,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " (the trigger sequence)
         yield* When.USER_PRESSES(">");
@@ -284,7 +284,7 @@ describe("Property Creation Trigger", () => {
             { text: "some text" },
           ]);
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -302,7 +302,7 @@ describe("Property Creation Trigger", () => {
         );
 
         // Click the block to focus it (cursor at end by default)
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " at end of line (mid-line, not at start)
         yield* When.USER_PRESSES(">");

@@ -13,7 +13,7 @@ export class OpenTypePicker extends Data.TaggedClass(tag)<{}> {
     const Frame = yield* FrameT;
     const mode = yield* Frame.getMode();
 
-    if (mode.type !== "blockSelection") return;
+    if (mode.type !== "khoraSelection") return;
 
     yield* Frame.openPopup(mode.frameId, {
       type: "typePicker",

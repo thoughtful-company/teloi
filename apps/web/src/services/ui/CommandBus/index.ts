@@ -14,7 +14,7 @@ import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { ChatT } from "@/services/ui/Chat";
 import { EditorT } from "@/services/ui/Editor";
@@ -68,7 +68,7 @@ export const CommandBusLive = Layer.effect(
     const Automerge = yield* AutomergeT;
     const Node = yield* NodeT;
     const Store = yield* StoreT;
-    const Block = yield* BlockT;
+    const Khora = yield* KhoraT;
     const Navigation = yield* NavigationT;
     const Type = yield* TypeT;
     const Tuple = yield* TupleT;
@@ -82,7 +82,7 @@ export const CommandBusLive = Layer.effect(
       Context.add(AutomergeT, Automerge),
       Context.add(NodeT, Node),
       Context.add(StoreT, Store),
-      Context.add(BlockT, Block),
+      Context.add(KhoraT, Khora),
       Context.add(NavigationT, Navigation),
       Context.add(TypeT, Type),
       Context.add(TupleT, Tuple),

@@ -1,7 +1,7 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { getBlockDoc } from "@/services/ui/Block/getBlockDoc";
+import { getKhoraDoc } from "@/services/ui/Khora/getKhoraDoc";
 import { Effect, Option } from "effect";
 
 type NavResult = Effect.Effect<Option.Option<Id.Node>, never, NodeT | StoreT>;
@@ -21,7 +21,7 @@ export const findPreviousNode = Effect.fn("View.page.findPreviousNode")(
 
     // Ghost blocks have no parent_links — resolve via ghostParentId
     if (!parentId) {
-      const block = yield* getBlockDoc(frameId, nodeId);
+      const block = yield* getKhoraDoc(frameId, nodeId);
       if (block.ghostParentId) {
         return Option.some(block.ghostParentId);
       }
@@ -52,7 +52,7 @@ export const findNextNodeInDocumentOrder = Effect.fn(
 )(function* (nodeId: Id.Node, frameId: Id.Frame) {
   const Node = yield* NodeT;
 
-  const block = yield* getBlockDoc(frameId, nodeId);
+  const block = yield* getKhoraDoc(frameId, nodeId);
   if (block.isExpanded) {
     const children = yield* Node.getNodeChildren(nodeId);
     if (children.length > 0) {
@@ -84,7 +84,7 @@ export const findNextNode = (
 
     // Ghost blocks have no parent_links — resolve via ghostParentId
     if (!parentId) {
-      const block = yield* getBlockDoc(frameId, currentId);
+      const block = yield* getKhoraDoc(frameId, currentId);
       if (block.ghostParentId) {
         parentId = block.ghostParentId;
       }
@@ -116,7 +116,7 @@ export const findDeepestLastChild = Effect.fn("View.page.findDeepestLastChild")(
 
     let current = startNodeId;
     while (true) {
-      const block = yield* getBlockDoc(frameId, current);
+      const block = yield* getKhoraDoc(frameId, current);
       if (!block.isExpanded) return current;
 
       const children = yield* Node.getNodeChildren(current);

@@ -1,6 +1,6 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, Model } from "@/schema";
-import { BlockT, type ViewInfo } from "@/services/ui/Block";
+import { KhoraT, type ViewInfo } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
@@ -22,11 +22,11 @@ function PropertyList(props: { pageId: Id.Node; frameId: Id.Frame }) {
     // Subscribe to views for the page, then subscribe to properties when a view exists
     const fiber = runtime.runFork(
       Effect.gen(function* () {
-        const Block = yield* BlockT;
+        const Khora = yield* KhoraT;
         const Property = yield* PropertyT;
 
         // Subscribe to views for the node
-        const viewsStream = yield* Block.subscribeViewsForNode(props.pageId);
+        const viewsStream = yield* Khora.subscribeViewsForNode(props.pageId);
 
         // When views change, subscribe to properties of the first view
         yield* Stream.runForEach(
@@ -97,7 +97,7 @@ export default function FrameView({ frameId }: FrameViewProps) {
       activeViewId: v.activeViewId,
       activeViewType: v.activeViewType,
       availableViews: v.availableViews as ViewInfo[],
-      isBlockSelectionMode: v.isBlockSelectionMode,
+      isKhoraSelectionMode: v.isKhoraSelectionMode,
       popup: v.popup,
     }),
     initial: {
@@ -105,7 +105,7 @@ export default function FrameView({ frameId }: FrameViewProps) {
       activeViewId: null as Id.Node | null,
       activeViewType: "page" as const,
       availableViews: [] as ViewInfo[],
-      isBlockSelectionMode: false,
+      isKhoraSelectionMode: false,
       popup: null as Model.FramePopup | null,
     },
   });

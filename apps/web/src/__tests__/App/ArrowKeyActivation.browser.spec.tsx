@@ -118,13 +118,13 @@ describe("Arrow key frame activation", () => {
 
       yield* pressKeyOnDocument("ArrowDown");
 
-      // First block should be selected in block selection mode
+      // First block should be selected in khora selection mode
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]], {
         anchor: childNodeIds[0],
         focus: childNodeIds[0],
       });
 
-      // activeElement should be the frame (block selection mode)
+      // activeElement should be the frame (khora selection mode)
       const Window = yield* WindowT;
       const stream = yield* Window.subscribeActiveElement();
       const activeElement = yield* stream.pipe(Stream.runHead);
@@ -155,13 +155,13 @@ describe("Arrow key frame activation", () => {
 
       yield* pressKeyOnDocument("ArrowUp");
 
-      // Last block should be selected in block selection mode
+      // Last block should be selected in khora selection mode
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
         anchor: childNodeIds[2],
         focus: childNodeIds[2],
       });
 
-      // activeElement should be the frame (block selection mode)
+      // activeElement should be the frame (khora selection mode)
       const Window = yield* WindowT;
       const stream = yield* Window.subscribeActiveElement();
       const activeElement = yield* stream.pipe(Stream.runHead);

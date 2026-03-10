@@ -7,7 +7,7 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { queryDb } from "@livestore/livestore";
 import { Effect, Stream } from "effect";
 import { For, onCleanup, onMount, Show } from "solid-js";
-import Block from "./Block";
+import Khora from "./Khora";
 
 interface PageViewProps {
   frameId: Id.Frame;
@@ -28,22 +28,22 @@ export default function PageView(props: PageViewProps) {
   const { store, start } = bindStreamToStore({
     stream: childrenStream,
     project: (childIds) => ({
-      childBlockIds: childIds.map((id) =>
-        Id.makeFrameBlockId(props.frameId, Id.Node.make(id)),
+      childKhoraIds: childIds.map((id) =>
+        Id.makeFrameKhoraId(props.frameId, Id.Node.make(id)),
       ),
     }),
-    initial: { childBlockIds: [] as Id.Block[] },
+    initial: { childKhoraIds: [] as Id.Khora[] },
   });
 
   const blockDocStream = Stream.unwrap(
     Effect.gen(function* () {
       const Store = yield* StoreT;
-      const blockId = Id.makeFrameBlockId(props.frameId, props.nodeId);
+      const khoraId = Id.makeFrameKhoraId(props.frameId, props.nodeId);
       return yield* Store.subscribeStream(
         queryDb(
-          tables.block
+          tables.khora
             .select("value")
-            .where("id", "=", blockId)
+            .where("id", "=", khoraId)
             .first({ fallback: () => null }),
         ),
       );
@@ -59,10 +59,10 @@ export default function PageView(props: PageViewProps) {
   });
 
   const allBlockIds = () => {
-    const children = store.childBlockIds;
+    const children = store.childKhoraIds;
     const ghostId = ghostStore.ghostChildId;
     if (children.length === 0 && ghostId) {
-      return [Id.makeFrameBlockId(props.frameId, ghostId)];
+      return [Id.makeFrameKhoraId(props.frameId, ghostId)];
     }
     return children;
   };
@@ -84,7 +84,7 @@ export default function PageView(props: PageViewProps) {
     >
       <div class="mx-auto flex flex-col gap-1.5 max-w-[var(--max-line-width)] w-full">
         <For each={allBlockIds()}>
-          {(childId) => <Block blockId={childId} />}
+          {(childId) => <Khora khoraId={childId} />}
         </For>
       </div>
       <Show when={!props.inline}>

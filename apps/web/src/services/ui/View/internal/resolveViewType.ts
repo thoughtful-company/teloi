@@ -1,7 +1,7 @@
 import { Id, System } from "@/schema";
 import { TypeT } from "@/services/domain/Type";
 import { StoreT } from "@/services/external/Store";
-import type { ViewType } from "@/services/ui/Block/views/types";
+import type { ViewType } from "@/services/ui/Khora/views/types";
 import { Effect, Option } from "effect";
 
 export type { ViewType };
@@ -11,12 +11,12 @@ export type { ViewType };
  * Returns "chat" if the active view has CHAT_VIEW type, otherwise "page".
  */
 export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
-  blockId: Id.Block,
+  khoraId: Id.Khora,
 ) {
   const Store = yield* StoreT;
   const Type = yield* TypeT;
 
-  const ctx = Id.parseBlockContextSync(blockId);
+  const ctx = Id.parseKhoraContextSync(khoraId);
   if (ctx.type !== "frame") return "page";
 
   const frameDoc = yield* Store.getDocument("frame", ctx.frameId);

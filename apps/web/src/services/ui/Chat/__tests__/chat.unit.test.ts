@@ -5,7 +5,7 @@ import { TupleLive, TupleT } from "@/services/domain/Tuple";
 import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
-import { BlockLive } from "@/services/ui/Block";
+import { KhoraLive } from "@/services/ui/Khora";
 import { FrameLive, FrameT } from "@/services/ui/Frame";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
@@ -55,7 +55,7 @@ const setupTest = async () => {
   // Layer order: lower provides to higher; Picker needs Frame, Block needs Picker
   const TestLayer = ChatLive.pipe(
     Layer.provideMerge(ViewLive),
-    Layer.provideMerge(BlockLive),
+    Layer.provideMerge(KhoraLive),
     Layer.provideMerge(PickerLive),
     Layer.provideMerge(TypePickerLive),
     Layer.provideMerge(FrameLive),

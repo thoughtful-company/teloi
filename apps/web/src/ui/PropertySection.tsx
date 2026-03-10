@@ -12,8 +12,8 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import Block from "./Block";
-// TODO: Re-enable Editor import once blockId support is added
+import Khora from "./Khora";
+// TODO: Re-enable Editor import once khoraId support is added
 // import Editor from "./Editor";
 
 interface PropertySectionProps {
@@ -22,7 +22,7 @@ interface PropertySectionProps {
   frameId: Id.Frame;
 }
 
-interface GhostBlockProps {
+interface GhostKhoraProps {
   propertyId: Id.Node;
   pageId: Id.Node;
   /** Called when ghost block is materialized (user typed something) */
@@ -42,7 +42,7 @@ interface GhostBlockProps {
  * the actual node when the user types. The typed content is preserved because
  * the real Block will use the same nodeId (same Automerge text!).
  */
-function GhostBlock(props: GhostBlockProps) {
+function GhostBlock(props: GhostKhoraProps) {
   const runtime = useBrowserRuntime();
   const Automerge = runtime.runSync(AutomergeT);
 
@@ -122,13 +122,13 @@ function GhostBlock(props: GhostBlockProps) {
     setIsActive(true);
   };
 
-  // TODO: handleBlur/handleSelectionChange needs blockId support.
+  // TODO: handleBlur/handleSelectionChange needs khoraId support.
   // For now, focus/blur state is broken.
 
   return (
     <div
       data-testid="ghost-block"
-      data-element-type="block"
+      data-element-type="khora"
       class="relative"
       onClick={handleFocus}
     >
@@ -140,9 +140,9 @@ function GhostBlock(props: GhostBlockProps) {
           </span>
         }
       >
-        {/* TODO: Pre-generate blockId for ghost block and pass to Editor.
-            The ghost block pattern needs a blockId before materialization.
-            See: Editor requires blockId for KeyEventBus integration. */}
+        {/* TODO: Pre-generate khoraId for ghost block and pass to Editor.
+            The ghost block pattern needs a khoraId before materialization.
+            See: Editor requires khoraId for KeyEventBus integration. */}
         <div class="text-neutral-400">[Ghost editor placeholder]</div>
       </Show>
     </div>
@@ -181,8 +181,8 @@ export default function PropertySection(props: PropertySectionProps) {
   const [ghostFocusRequested, setGhostFocusRequested] = createSignal(false);
 
   // Create property block ID for a linked tuple
-  const makePropertyBlockId = (tupleId: Id.Tuple) =>
-    Id.makePropertyBlockId(
+  const makePropertyKhoraId = (tupleId: Id.Tuple) =>
+    Id.makePropertyKhoraId(
       props.frameId,
       props.pageId,
       props.propertyId,
@@ -252,7 +252,7 @@ export default function PropertySection(props: PropertySectionProps) {
     setIsActive(true);
   };
 
-  // TODO: handleBlur/handleSelectionChange needs blockId support.
+  // TODO: handleBlur/handleSelectionChange needs khoraId support.
   // For now, focus/blur state is broken.
 
   return (
@@ -274,8 +274,8 @@ export default function PropertySection(props: PropertySectionProps) {
               </span>
             }
           >
-            {/* TODO: Pre-generate blockId for property header and pass to Editor.
-                Editor requires blockId for KeyEventBus integration. */}
+            {/* TODO: Pre-generate khoraId for property header and pass to Editor.
+                Editor requires khoraId for KeyEventBus integration. */}
             <div class="text-neutral-400">[Property editor placeholder]</div>
           </Show>
         </div>
@@ -311,7 +311,7 @@ export default function PropertySection(props: PropertySectionProps) {
           }
         >
           <For each={linkedTuples()}>
-            {(tuple) => <Block blockId={makePropertyBlockId(tuple.tupleId)} />}
+            {(tuple) => <Khora khoraId={makePropertyKhoraId(tuple.tupleId)} />}
           </For>
         </Show>
       </div>

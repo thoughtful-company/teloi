@@ -6,7 +6,7 @@ import {
   subscribeViewInfo,
   type ViewInfo,
   type ViewType,
-} from "@/services/ui/Block/views";
+} from "@/services/ui/Khora/views";
 import { TupleT } from "@/services/domain/Tuple";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
@@ -19,7 +19,7 @@ export interface FrameView {
   activeViewId: Id.Node | null;
   activeViewType: ViewType;
   availableViews: readonly ViewInfo[];
-  isBlockSelectionMode: boolean;
+  isKhoraSelectionMode: boolean;
   popup: Model.FramePopup | null;
 }
 
@@ -68,12 +68,12 @@ export const subscribe = (frameId: Id.Frame) =>
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
-        if (!isStageActiveFrame) return { isBlockSelectionMode: false };
-        return { isBlockSelectionMode: frame?.focusMode !== "editing" };
+        if (!isStageActiveFrame) return { isKhoraSelectionMode: false };
+        return { isKhoraSelectionMode: frame?.focusMode !== "editing" };
       },
     ).pipe(
       Stream.changesWith(
-        (a, b) => a.isBlockSelectionMode === b.isBlockSelectionMode,
+        (a, b) => a.isKhoraSelectionMode === b.isKhoraSelectionMode,
       ),
     );
 
@@ -157,7 +157,7 @@ export const subscribe = (frameId: Id.Frame) =>
       focusModeStream,
       (content, focusMode) => ({
         ...content,
-        isBlockSelectionMode: focusMode.isBlockSelectionMode,
+        isKhoraSelectionMode: focusMode.isKhoraSelectionMode,
       }),
     );
 

@@ -59,7 +59,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(1);
       yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
-      const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
+      const newKhoraId = Id.makeFrameKhoraId(frameId, children[0]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -73,7 +73,7 @@ describe("Body click creates block", () => {
                 : anchorNode.parentElement;
             const blockEl = element?.closest("[data-element-id]");
             const currentBlockId = blockEl?.getAttribute("data-element-id");
-            if (currentBlockId !== newBlockId) {
+            if (currentBlockId !== newKhoraId) {
               throw new Error(`Selection not on block: ${currentBlockId}`);
             }
           },
@@ -117,7 +117,7 @@ describe("Body click creates block", () => {
       expect(children.length).toBe(2);
       yield* Then.NODE_HAS_TEXT(children[1]!, "");
 
-      const newBlockId = Id.makeFrameBlockId(frameId, children[1]!);
+      const newKhoraId = Id.makeFrameKhoraId(frameId, children[1]!);
       yield* Effect.promise(() =>
         waitFor(
           () => {
@@ -131,7 +131,7 @@ describe("Body click creates block", () => {
                 : anchorNode.parentElement;
             const blockEl = element?.closest("[data-element-id]");
             const currentBlockId = blockEl?.getAttribute("data-element-id");
-            if (currentBlockId !== newBlockId) {
+            if (currentBlockId !== newKhoraId) {
               throw new Error(`Selection not on block: ${currentBlockId}`);
             }
           },
@@ -150,7 +150,7 @@ describe("Body click creates block", () => {
           { text: "" },
         ]);
 
-      const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const emptyBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
@@ -204,7 +204,7 @@ describe("Body click creates block", () => {
         [{ text: "" }],
       );
 
-      const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const emptyBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
@@ -262,7 +262,7 @@ describe("Body click creates block", () => {
         [{ text: "some text" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
@@ -270,7 +270,7 @@ describe("Body click creates block", () => {
         const blockContent = await waitFor(
           () => {
             const block = document.querySelector(
-              `[data-element-id="${blockId}"]`,
+              `[data-element-id="${khoraId}"]`,
             );
             if (!block) throw new Error("Block not found");
             const p = block.querySelector("p");
@@ -322,7 +322,7 @@ describe("Body click creates block", () => {
         ),
       );
 
-      yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+      yield* Then.SELECTION_IS_ON_KHORA(khoraId);
       yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
     }).pipe(runtime.runPromise);
   });
@@ -339,7 +339,7 @@ describe("Body click creates block", () => {
       const blockElement = yield* Effect.promise(() =>
         waitFor(
           () => {
-            const block = document.querySelector("[data-element-type='block']");
+            const block = document.querySelector("[data-element-type='khora']");
             if (!block) throw new Error("Block not found");
             return block as HTMLElement;
           },
@@ -364,7 +364,7 @@ describe("Body click creates block", () => {
       const targetElement = document.elementFromPoint(clickX, clickY);
 
       const isClickingOnBlock =
-        targetElement?.closest("[data-element-type='block']") !== null;
+        targetElement?.closest("[data-element-type='khora']") !== null;
       expect(
         isClickingOnBlock,
         `Test requires clicking beside block, but coordinates (${clickX}, ${clickY}) land on block element`,

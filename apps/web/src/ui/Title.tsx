@@ -11,7 +11,7 @@ import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
 import { onCleanup, onMount, Show } from "solid-js";
 import Editor from "./Editor";
-import { focusBlock } from "./focusBlock";
+import { focusKhora } from "./focusKhora";
 
 interface TitleProps {
   frameId: Id.Frame;
@@ -102,14 +102,14 @@ export default function Title({ frameId, nodeId }: TitleProps) {
     if (store.isActive) return;
     if (!h1Ref) return;
 
-    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
+    const titleBlockId = Id.makeFrameKhoraId(frameId, nodeId);
     const initialSelection = resolveInitialSelection(h1Ref, e);
 
     runtime.runSync(
-      focusBlock({
+      focusKhora({
         frameId,
         nodeId,
-        blockId: titleBlockId,
+        khoraId: titleBlockId,
         anchor: initialSelection.anchor,
         head: initialSelection.head,
         assoc: initialSelection.assoc,
@@ -143,7 +143,7 @@ export default function Title({ frameId, nodeId }: TitleProps) {
         <Editor
           handle={Automerge.handle}
           path={Automerge.getTextPath(nodeId)}
-          blockId={Id.makeFrameBlockId(frameId, nodeId)}
+          khoraId={Id.makeFrameKhoraId(frameId, nodeId)}
           {...(store.selection ? { initialSelection: store.selection } : {})}
           variant="title"
         />

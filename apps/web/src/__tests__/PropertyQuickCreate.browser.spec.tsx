@@ -621,7 +621,7 @@ describe("Property Quick-Create", () => {
           [{ text: "" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
@@ -639,7 +639,7 @@ describe("Property Quick-Create", () => {
         );
 
         // Click the block to focus it
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "> " to trigger property creation (this creates an unbound property)
         yield* When.USER_PRESSES(">");

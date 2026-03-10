@@ -56,7 +56,7 @@ export interface Modifiers {
 }
 
 export type KeyEventSource =
-  | { type: "editor"; blockId: Id.Block }
+  | { type: "editor"; khoraId: Id.Khora }
   | { type: "app" };
 
 export interface KeyEvent {
@@ -104,7 +104,7 @@ const altKeymap: Record<string, () => Command> = {
   Delete: () => new DeleteWordForward(),
 };
 
-/** Keymap for block selection mode (app-level events). */
+/** Keymap for khora selection mode (app-level events). */
 const blockSelectionKeymap: Record<string, () => Command> = {
   "#": () => new OpenTypePicker(),
   Enter: () => new EditBlock(),
@@ -112,12 +112,12 @@ const blockSelectionKeymap: Record<string, () => Command> = {
   Tab: () => new Indent(),
 };
 
-/** Shift+ keymap for block selection mode. */
+/** Shift+ keymap for khora selection mode. */
 const blockSelectionShiftKeymap: Record<string, () => Command> = {
   Tab: () => new Outdent(),
 };
 
-/** Cmd+ keymap for block selection mode. */
+/** Cmd+ keymap for khora selection mode. */
 const blockSelectionMetaKeymap: Record<string, () => Command> = {
   ArrowUp: () => new Collapse(),
   ArrowDown: () => new Expand(),
@@ -132,13 +132,13 @@ const blockSelectionMetaKeymap: Record<string, () => Command> = {
  */
 const lookupKeymap = (
   event: KeyEvent,
-  mode: "blockSelection" | "editor",
+  mode: "khoraSelection" | "editor",
 ): Option.Option<Command> => {
   const { key, modifiers } = event;
   const { meta, ctrl, alt, shift } = modifiers;
 
-  // Block selection mode: check block selection keymaps only
-  if (mode === "blockSelection") {
+  // Khora selection mode: check khora selection keymaps only
+  if (mode === "khoraSelection") {
     if (meta && !ctrl && !alt && !shift) {
       const factory = blockSelectionMetaKeymap[key];
       if (factory) return Option.some(factory());
@@ -203,7 +203,7 @@ export class KeyEventBusT extends Context.Tag("KeyEventBusT")<
      * Start the app-level keyboard handler.
      * Consumes window keyboard events and routes them:
      * - App shortcuts (Cmd+K, Cmd+\) → callbacks
-     * - Block selection mode → keymap lookup → command dispatch
+     * - Khora selection mode → keymap lookup → command dispatch
      *
      * Returns a long-running Effect - run with runFork.
      */
@@ -230,16 +230,16 @@ export const KeyEventBusLive = Layer.effect(
           shift: event.modifiers.shift,
           sourceType: event.source.type,
           ...(event.source.type !== "app"
-            ? { blockId: event.source.blockId }
+            ? { khoraId: event.source.khoraId }
             : {}),
         }),
       );
 
-      const keymapMode: "blockSelection" | "editor" =
+      const keymapMode: "khoraSelection" | "editor" =
         event.source.type === "app"
           ? yield* Frame.getMode().pipe(
               Effect.map((m) =>
-                m.type === "blockSelection" ? "blockSelection" : "editor",
+                m.type === "khoraSelection" ? "khoraSelection" : "editor",
               ),
             )
           : "editor";
@@ -278,8 +278,8 @@ export const KeyEventBusLive = Layer.effect(
             return;
           }
 
-          // --- Block selection mode ---
-          if (mode.type === "blockSelection") {
+          // --- Khora selection mode ---
+          if (mode.type === "khoraSelection") {
             // When a popup is open, let the popup component handle all keys
             const popupOpen = yield* Frame.hasPopup(mode.frameId).pipe(
               Effect.orDie,

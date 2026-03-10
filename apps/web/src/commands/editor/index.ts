@@ -13,7 +13,7 @@ import { MoveToLineStart } from "./moveToLineStart";
 import { MoveToLineEnd } from "./moveToLineEnd";
 import { MoveWordLeft } from "./moveWordLeft";
 import { MoveWordRight } from "./moveWordRight";
-import { SelectBlock } from "./selectBlock";
+import { SelectBlock } from "./selectKhora";
 export {
   Backspace,
   Delete,

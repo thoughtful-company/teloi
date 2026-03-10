@@ -24,7 +24,7 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
     const Store = yield* StoreT;
     const Automerge = yield* AutomergeT;
 
-    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
+    const titleBlockId = Id.makeFrameKhoraId(frameId, nodeId);
 
     const sessionId = yield* Store.getSessionId();
     const worldId = Id.World.make(sessionId);
@@ -56,10 +56,10 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
         const isActive =
           isStageActiveFrame &&
           frame?.activePart === "head" &&
-          frame?.selection?.blockId === titleBlockId;
+          frame?.selection?.khoraId === titleBlockId;
 
         let selection: TitleSelection | null = null;
-        if (frame?.selection?.blockId === titleBlockId) {
+        if (frame?.selection?.khoraId === titleBlockId) {
           selection = {
             anchor: frame.selection.selection.anchor,
             head: frame.selection.selection.head,

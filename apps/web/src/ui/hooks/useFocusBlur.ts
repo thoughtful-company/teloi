@@ -8,11 +8,11 @@ interface UseFocusBlurOptions {
   isActive: Accessor<boolean>;
   clickCapture: ReturnType<typeof useClickCapture>;
   runtime: BrowserRuntime;
-  /** Effect to run on focus (set active element, clear block selection, etc.) */
+  /** Effect to run on focus (set active element, clear khora selection, etc.) */
   onFocusEffect: Effect.Effect<void, unknown, BrowserRequirements>;
   /** Effect to run on blur */
   onBlurEffect: Effect.Effect<void, unknown, BrowserRequirements>;
-  /** Optional: check before running blur effect (e.g., isTransitioningToBlockSelection) */
+  /** Optional: check before running blur effect (e.g., isTransitioningToKhoraSelection) */
   shouldSkipBlur?: () => boolean;
 }
 
@@ -23,7 +23,7 @@ interface UseFocusBlurResult {
   handleBlur: () => void;
   /** Get captured DOM selection for resolveSelectionStrategy */
   getInitialSelection: () => { anchor: number; head: number } | null;
-  /** Clear captured DOM selection (e.g., when entering block selection mode) */
+  /** Clear captured DOM selection (e.g., when entering khora selection mode) */
   clearInitialSelection: () => void;
 }
 

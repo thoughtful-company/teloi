@@ -1,5 +1,5 @@
 import { Collapse } from "./collapse";
-import { EditBlock } from "./editBlock";
+import { EditBlock } from "./editKhora";
 import { Expand } from "./expand";
 import { Indent } from "./indent";
 import { OpenTypePicker } from "./openTypePicker";

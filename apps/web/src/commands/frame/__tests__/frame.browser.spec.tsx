@@ -4,7 +4,7 @@ import { NodeT } from "@/services/domain/Node";
 import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { TypePickerT } from "@/services/ui/TypePicker";
 import FrameView from "@/ui/FrameView";
@@ -42,12 +42,12 @@ describe("Frame indent/outdent (Tab key)", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus second child and press Tab
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Tab}");
 
       // Root should now have only one child (the first one)
@@ -71,12 +71,12 @@ describe("Frame indent/outdent (Tab key)", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus second child, select some text, then press Tab
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Shift>}{End}{/Shift}"); // Select all text
       yield* When.USER_PRESSES("{Tab}");
 
@@ -97,12 +97,12 @@ describe("Frame indent/outdent (Tab key)", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus second child, move cursor to position 7 ("Second |child")
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 7);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 7);
       yield* When.USER_PRESSES("{Tab}");
 
       // Should indent
@@ -121,11 +121,11 @@ describe("Frame indent/outdent (Tab key)", () => {
           { text: "Second child" },
         ]);
 
-      const secondChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
       yield* When.USER_PRESSES("{Tab}");
 
       yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -156,12 +156,12 @@ describe("Frame indent/outdent (Tab key)", () => {
           [{ text: "Child" }],
         );
 
-      const childBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const childBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus child and press Shift+Tab
-      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
       yield* When.USER_PRESSES("{Shift>}{Tab}{/Shift}");
 
       // Child should STILL be under frame root (no-op, not moved to grandparent)
@@ -192,18 +192,18 @@ describe("BlockTypePicker", () => {
   });
 
   describe("Opening the picker", () => {
-    it("pressing # in block selection mode opens the type picker", async () => {
+    it("pressing # in khora selection mode opens the type picker", async () => {
       await Effect.gen(function* () {
         const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
           "Root",
           [{ text: "First" }, { text: "Second" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
 
         yield* When.USER_PRESSES("#");
 
@@ -234,11 +234,11 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
         yield* When.USER_PRESSES("#");
 
         // Wait for picker to appear
@@ -292,8 +292,8 @@ describe("BlockTypePicker", () => {
         render(() => <FrameView frameId={frameId} />);
 
         const Frame = yield* FrameT;
-        yield* Frame.enterBlockSelection(frameId);
-        yield* Frame.setBlockSelection(
+        yield* Frame.enterKhoraSelection(frameId);
+        yield* Frame.setKhoraSelection(
           frameId,
           [childNodeIds[0]!, childNodeIds[1]!],
           childNodeIds[0]!,
@@ -386,8 +386,8 @@ describe("BlockTypePicker", () => {
         render(() => <FrameView frameId={frameId} />);
 
         const Frame = yield* FrameT;
-        yield* Frame.enterBlockSelection(frameId);
-        yield* Frame.setBlockSelection(
+        yield* Frame.enterKhoraSelection(frameId);
+        yield* Frame.setKhoraSelection(
           frameId,
           [childNodeIds[0]!, childNodeIds[1]!],
           childNodeIds[0]!,
@@ -497,11 +497,11 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
         yield* When.USER_PRESSES("#");
 
         // Wait for picker
@@ -547,11 +547,11 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
         yield* When.USER_PRESSES("#");
 
         // Wait for picker
@@ -595,11 +595,11 @@ describe("BlockTypePicker", () => {
           [{ text: "First" }],
         );
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+        yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
         yield* When.USER_PRESSES("#");
 
         // Wait for picker
@@ -668,7 +668,7 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+      const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
@@ -678,13 +678,13 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
-      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 0);
+      yield* Then.KHORA_IS_EXPANDED(parentBlockId);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
-      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.KHORA_IS_COLLAPSED(parentBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
     }).pipe(runtime.runPromise);
   });
 
@@ -696,23 +696,23 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+      const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+      const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
-      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
+      yield* Then.KHORA_IS_COLLAPSED(parentBlockId);
     }).pipe(runtime.runPromise);
   });
 
@@ -724,7 +724,7 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       );
 
       const rootBlockNodeId = childNodeIds[0];
-      const rootBlockId = Id.makeFrameBlockId(frameId, rootBlockNodeId);
+      const rootKhoraId = Id.makeFrameKhoraId(frameId, rootBlockNodeId);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: rootBlockNodeId,
@@ -734,11 +734,11 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(rootBlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(rootBlockId);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(rootKhoraId, false);
+      yield* Then.KHORA_IS_COLLAPSED(rootKhoraId);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(rootBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(rootKhoraId, 0);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
@@ -756,23 +756,23 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+      const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
         insert: "after",
         text: "Child",
       });
-      const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+      const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Pre-set goalX=42 on the child block
-      yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0, 0, { goalX: 42 });
+      yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0, 0, { goalX: 42 });
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
-      yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
 
       const selectionAfter = yield* Frame.getSelection(frameId);
       expect(Option.isSome(selectionAfter)).toBe(true);
@@ -788,38 +788,38 @@ describe("Collapse (Mod+Up) — Text editing mode", () => {
       );
 
       const leafNodeId = childNodeIds[0];
-      const leafBlockId = Id.makeFrameBlockId(frameId, leafNodeId);
+      const leafBlockId = Id.makeFrameKhoraId(frameId, leafNodeId);
 
       render(() => <FrameView frameId={frameId} />);
 
       // Focus the leaf and expand it — creates a ghost
-      yield* Given.BLOCK_IS_FOCUSED_AT(leafBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(leafBlockId, 0);
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       // Ghost should exist and be focused
       const Store = yield* StoreT;
-      const blockDoc = yield* Store.getDocument("block", leafBlockId);
+      const blockDoc = yield* Store.getDocument("khora", leafBlockId);
       const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId!;
-      const ghostBlockId = Id.makeFrameBlockId(
+      const ghostBlockId = Id.makeFrameKhoraId(
         frameId,
         ghostChildId as Id.Node,
       );
-      yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(ghostBlockId);
 
       // Mod+Up on ghost → navigate to parent and collapse it
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
-      yield* Then.SELECTION_IS_ON_BLOCK(leafBlockId);
-      yield* Then.BLOCK_IS_COLLAPSED(leafBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(leafBlockId);
+      yield* Then.KHORA_IS_COLLAPSED(leafBlockId);
     }).pipe(runtime.runPromise);
   });
 });
 
 // =============================================================================
-// Collapse (Mod+Up) — Block selection mode
+// Collapse (Mod+Up) — Khora selection mode
 // =============================================================================
 
-describe("Collapse (Mod+Up) — Block selection mode", () => {
+describe("Collapse (Mod+Up) — Khora selection mode", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -832,7 +832,7 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
     cleanup = setup.cleanup;
   });
 
-  // Multi-block collapse not yet implemented (Collapse only handles selectedBlocks[0])
+  // Multi-block collapse not yet implemented (Collapse only handles selectedKhoras[0])
   it.fails("Mod+Up collapses all expanded selected blocks", async () => {
     await Effect.gen(function* () {
       const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
@@ -841,8 +841,8 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       // Give both children so they are expandable
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -858,19 +858,19 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_EXPANDED(blockB);
 
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
-      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.enterKhoraSelection(frameId);
+      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      yield* Then.KHORA_IS_COLLAPSED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
     }).pipe(runtime.runPromise);
   });
 
@@ -886,8 +886,8 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
-      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.enterKhoraSelection(frameId);
+      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
@@ -899,7 +899,7 @@ describe("Collapse (Mod+Up) — Block selection mode", () => {
   });
 });
 
-describe("Block selection focus ownership", () => {
+describe("Khora selection focus ownership", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -912,7 +912,7 @@ describe("Block selection focus ownership", () => {
     cleanup = setup.cleanup;
   });
 
-  it("persists blockSelectionAnchor/blockSelectionFocus as authoritative focus state", async () => {
+  it("persists khoraSelectionAnchor/khoraSelectionFocus as authoritative focus state", async () => {
     await Effect.gen(function* () {
       const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
@@ -924,8 +924,8 @@ describe("Block selection focus ownership", () => {
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
-      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.enterKhoraSelection(frameId);
+      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
         anchor: nodeA,
@@ -935,12 +935,12 @@ describe("Block selection focus ownership", () => {
       const Store = yield* StoreT;
       const frameDoc = yield* Store.getDocument("frame", frameId);
       const frameValue = Option.getOrThrow(frameDoc) as unknown as {
-        blockSelectionAnchor: Id.Node | null;
-        blockSelectionFocus: Id.Node | null;
+        khoraSelectionAnchor: Id.Node | null;
+        khoraSelectionFocus: Id.Node | null;
       };
 
-      expect(frameValue.blockSelectionAnchor).toBe(nodeA);
-      expect(frameValue.blockSelectionFocus).toBe(nodeB);
+      expect(frameValue.khoraSelectionAnchor).toBe(nodeA);
+      expect(frameValue.khoraSelectionFocus).toBe(nodeB);
     }).pipe(runtime.runPromise);
   });
 
@@ -952,13 +952,13 @@ describe("Block selection focus ownership", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
-      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.enterKhoraSelection(frameId);
+      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
         anchor: nodeA,
@@ -967,21 +967,21 @@ describe("Block selection focus ownership", () => {
 
       // Transition to editing should clear block-selection focus fields.
       yield* Frame.enterBlockEditing(blockB, { anchor: 0, head: 0 });
-      yield* Then.SELECTION_IS_ON_BLOCK(blockB);
+      yield* Then.SELECTION_IS_ON_KHORA(blockB);
 
       const Store = yield* StoreT;
       const frameDoc = yield* Store.getDocument("frame", frameId);
       const frameValue = Option.getOrThrow(frameDoc) as unknown as {
-        selection: { blockId: Id.Block } | null;
-        selectedBlocks: readonly Id.Node[];
-        blockSelectionAnchor: Id.Node | null;
-        blockSelectionFocus: Id.Node | null;
+        selection: { khoraId: Id.Khora } | null;
+        selectedKhoras: readonly Id.Node[];
+        khoraSelectionAnchor: Id.Node | null;
+        khoraSelectionFocus: Id.Node | null;
       };
 
-      expect(frameValue.selection?.blockId).toBe(blockB);
-      expect(frameValue.selectedBlocks).toHaveLength(0);
-      expect(frameValue.blockSelectionAnchor).toBeNull();
-      expect(frameValue.blockSelectionFocus).toBeNull();
+      expect(frameValue.selection?.khoraId).toBe(blockB);
+      expect(frameValue.selectedKhoras).toHaveLength(0);
+      expect(frameValue.khoraSelectionAnchor).toBeNull();
+      expect(frameValue.khoraSelectionFocus).toBeNull();
     }).pipe(runtime.runPromise);
   });
 });
@@ -1011,7 +1011,7 @@ describe("Expand (Mod+Down) — Text editing mode", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+      const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
@@ -1021,15 +1021,15 @@ describe("Expand (Mod+Down) — Text editing mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(parentBlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(parentBlockId, false);
+      yield* Then.KHORA_IS_COLLAPSED(parentBlockId);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 0);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
-      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      yield* Then.KHORA_IS_EXPANDED(parentBlockId);
     }).pipe(runtime.runPromise);
   });
 
@@ -1041,36 +1041,36 @@ describe("Expand (Mod+Down) — Text editing mode", () => {
       );
 
       const leafNodeId = childNodeIds[0];
-      const leafBlockId = Id.makeFrameBlockId(frameId, leafNodeId);
+      const leafBlockId = Id.makeFrameKhoraId(frameId, leafNodeId);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(leafBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(leafBlockId, 0);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       // Parent should have a ghostChildId
       const Store = yield* StoreT;
-      const blockDoc = yield* Store.getDocument("block", leafBlockId);
+      const blockDoc = yield* Store.getDocument("khora", leafBlockId);
       expect(Option.isSome(blockDoc)).toBe(true);
       const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId;
       expect(ghostChildId).not.toBeNull();
 
       // Focus should have moved to the ghost block
-      const ghostBlockId = Id.makeFrameBlockId(
+      const ghostBlockId = Id.makeFrameKhoraId(
         frameId,
         ghostChildId! as Id.Node,
       );
-      yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+      yield* Then.SELECTION_IS_ON_KHORA(ghostBlockId);
     }).pipe(runtime.runPromise);
   });
 });
 
 // =============================================================================
-// Expand (Mod+Down) — Block selection mode
+// Expand (Mod+Down) — Khora selection mode
 // =============================================================================
 
-describe("Expand (Mod+Down) — Block selection mode", () => {
+describe("Expand (Mod+Down) — Khora selection mode", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -1091,8 +1091,8 @@ describe("Expand (Mod+Down) — Block selection mode", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -1107,22 +1107,22 @@ describe("Expand (Mod+Down) — Block selection mode", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(blockA, false);
-      yield* Block.setExpanded(blockB, false);
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(blockA, false);
+      yield* Khora.setExpanded(blockB, false);
+      yield* Then.KHORA_IS_COLLAPSED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
 
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
-      yield* Frame.setBlockSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.enterKhoraSelection(frameId);
+      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_EXPANDED(blockB);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
     }).pipe(runtime.runPromise);
   });
@@ -1135,14 +1135,14 @@ describe("Expand (Mod+Down) — Block selection mode", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
 
       const nodeB = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
         insert: "after",
         text: "B",
       });
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       // Give B a child so it's collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1154,18 +1154,18 @@ describe("Expand (Mod+Down) — Block selection mode", () => {
       render(() => <FrameView frameId={frameId} />);
 
       // A expanded by default, collapse B
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(blockB, false);
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(blockB, false);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
 
-      // Select A in block selection mode
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      // Select A in khora selection mode
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockA);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       // A was already expanded, so B (child) should expand
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockB);
     }).pipe(runtime.runPromise);
   });
 });
@@ -1195,8 +1195,8 @@ describe("Expand (Mod+Down) — Title", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       // Give both children so they are collapsible
       yield* Given.INSERT_NODE_WITH_TEXT({
@@ -1213,22 +1213,22 @@ describe("Expand (Mod+Down) — Title", () => {
       render(() => <FrameView frameId={frameId} />);
 
       // Collapse both
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(blockA, false);
-      yield* Block.setExpanded(blockB, false);
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(blockA, false);
+      yield* Khora.setExpanded(blockB, false);
+      yield* Then.KHORA_IS_COLLAPSED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
 
       yield* When.USER_CLICKS_TITLE(frameId);
 
       // DFS expand: first press expands A (first collapsed child)
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
 
       // Second press expands B (next collapsed child at same level)
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockB);
     }).pipe(runtime.runPromise);
   });
 
@@ -1240,14 +1240,14 @@ describe("Expand (Mod+Down) — Title", () => {
       );
 
       const nodeA = childNodeIds[0];
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
 
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
         insert: "after",
         text: "A1",
       });
-      const blockA1 = Id.makeFrameBlockId(frameId, nodeA1);
+      const blockA1 = Id.makeFrameKhoraId(frameId, nodeA1);
 
       yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA1,
@@ -1258,17 +1258,17 @@ describe("Expand (Mod+Down) — Title", () => {
       render(() => <FrameView frameId={frameId} />);
 
       // A expanded by default, collapse A1
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(blockA1, false);
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockA1);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(blockA1, false);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockA1);
 
       yield* When.USER_CLICKS_TITLE(frameId);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       // First level (A) already expanded, so A1 should expand
-      yield* Then.BLOCK_IS_EXPANDED(blockA1);
+      yield* Then.KHORA_IS_EXPANDED(blockA1);
     }).pipe(runtime.runPromise);
   });
 });
@@ -1290,7 +1290,7 @@ describe("Auto-expand ancestors on selection", () => {
     cleanup = setup.cleanup;
   });
 
-  it("expands collapsed parent when setting block selection to child", async () => {
+  it("expands collapsed parent when setting khora selection to child", async () => {
     await Effect.gen(function* () {
       const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
         "Root",
@@ -1298,7 +1298,7 @@ describe("Auto-expand ancestors on selection", () => {
       );
 
       const parentNodeId = childNodeIds[0];
-      const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+      const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
       const childNodeId = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: parentNodeId,
@@ -1308,19 +1308,19 @@ describe("Auto-expand ancestors on selection", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(parentBlockId, false);
-      yield* Then.BLOCK_IS_COLLAPSED(parentBlockId);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(parentBlockId, false);
+      yield* Then.KHORA_IS_COLLAPSED(parentBlockId);
 
       const Frame = yield* FrameT;
-      yield* Frame.setBlockSelection(
+      yield* Frame.setKhoraSelection(
         frameId,
         [childNodeId],
         childNodeId,
         childNodeId,
       );
 
-      yield* Then.BLOCK_IS_EXPANDED(parentBlockId);
+      yield* Then.KHORA_IS_EXPANDED(parentBlockId);
     }).pipe(runtime.runPromise);
   });
 
@@ -1332,8 +1332,8 @@ describe("Auto-expand ancestors on selection", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      const blockB = Id.makeFrameBlockId(frameId, nodeB);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
       const nodeA1 = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeA,
@@ -1346,7 +1346,7 @@ describe("Auto-expand ancestors on selection", () => {
         insert: "after",
         text: "B1",
       });
-      const blockB1 = Id.makeFrameBlockId(frameId, nodeB1);
+      const blockB1 = Id.makeFrameKhoraId(frameId, nodeB1);
 
       const nodeB1a = yield* Given.INSERT_NODE_WITH_TEXT({
         parentId: nodeB1,
@@ -1356,25 +1356,25 @@ describe("Auto-expand ancestors on selection", () => {
 
       render(() => <FrameView frameId={frameId} />);
 
-      const Block = yield* BlockT;
-      yield* Block.setExpanded(blockA, false);
-      yield* Block.setExpanded(blockB, false);
-      yield* Block.setExpanded(blockB1, false);
-      yield* Then.BLOCK_IS_COLLAPSED(blockA);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB);
-      yield* Then.BLOCK_IS_COLLAPSED(blockB1);
+      const Khora = yield* KhoraT;
+      yield* Khora.setExpanded(blockA, false);
+      yield* Khora.setExpanded(blockB, false);
+      yield* Khora.setExpanded(blockB1, false);
+      yield* Then.KHORA_IS_COLLAPSED(blockA);
+      yield* Then.KHORA_IS_COLLAPSED(blockB);
+      yield* Then.KHORA_IS_COLLAPSED(blockB1);
 
       const Frame = yield* FrameT;
-      yield* Frame.setBlockSelection(
+      yield* Frame.setKhoraSelection(
         frameId,
         [nodeA1, nodeB1a],
         nodeA1,
         nodeB1a,
       );
 
-      yield* Then.BLOCK_IS_EXPANDED(blockA);
-      yield* Then.BLOCK_IS_EXPANDED(blockB);
-      yield* Then.BLOCK_IS_EXPANDED(blockB1);
+      yield* Then.KHORA_IS_EXPANDED(blockA);
+      yield* Then.KHORA_IS_EXPANDED(blockB);
+      yield* Then.KHORA_IS_EXPANDED(blockB1);
     }).pipe(runtime.runPromise);
   });
 
@@ -1390,7 +1390,7 @@ describe("Auto-expand ancestors on selection", () => {
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
-      const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+      const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
       yield* Frame.setSelection(
         frameId,
         makeCollapsedSelection(childBlockId, 0),
@@ -1398,7 +1398,7 @@ describe("Auto-expand ancestors on selection", () => {
 
       const selection = yield* Frame.getSelection(frameId);
       expect(Option.isSome(selection)).toBe(true);
-      expect(Option.getOrThrow(selection).blockId).toBe(childBlockId);
+      expect(Option.getOrThrow(selection).khoraId).toBe(childBlockId);
     }).pipe(runtime.runPromise);
   });
 });

@@ -19,7 +19,7 @@ import { FrameT } from "../Frame";
 import { TypePickerT } from "../TypePicker";
 
 export interface PickerState {
-  elementId: Id.Block;
+  elementId: Id.Khora;
   position: { x: number; y: number };
   from: number;
   query: string;
@@ -33,7 +33,7 @@ export class PickerT extends Context.Tag("PickerT")<
      * Sets state with elementId, position, from, and empty query.
      */
     open: (
-      elementId: Id.Block,
+      elementId: Id.Khora,
       position: { x: number; y: number },
       from: number,
     ) => Effect.Effect<void>;
@@ -97,8 +97,8 @@ const finishPickerAction = (
     const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
 
-    // Parse blockId to get frameId and nodeId
-    const blockContext = Id.parseBlockContextSync(state.elementId);
+    // Parse khoraId to get frameId and nodeId
+    const blockContext = Id.parseKhoraContextSync(state.elementId);
     const frameId = blockContext.frameId;
     const nodeId =
       blockContext.type === "frame"
@@ -120,7 +120,7 @@ const finishPickerAction = (
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId: state.elementId,
+        khoraId: state.elementId,
         selection: {
           anchor: state.from,
           head: state.from,
@@ -152,7 +152,7 @@ export const PickerLive = Layer.effect(
 
     return {
       open: (
-        elementId: Id.Block,
+        elementId: Id.Khora,
         position: { x: number; y: number },
         from: number,
       ): Effect.Effect<void> =>
@@ -187,8 +187,8 @@ export const PickerLive = Layer.effect(
 
           const TypePicker = yield* TypePickerT;
 
-          // Parse blockId to get nodeId
-          const blockContext = Id.parseBlockContextSync(state.elementId);
+          // Parse khoraId to get nodeId
+          const blockContext = Id.parseKhoraContextSync(state.elementId);
           const nodeId =
             blockContext.type === "frame"
               ? blockContext.nodeId
@@ -211,8 +211,8 @@ export const PickerLive = Layer.effect(
 
           const TypePicker = yield* TypePickerT;
 
-          // Parse blockId to get nodeId
-          const blockContext = Id.parseBlockContextSync(state.elementId);
+          // Parse khoraId to get nodeId
+          const blockContext = Id.parseKhoraContextSync(state.elementId);
           const nodeId =
             blockContext.type === "frame"
               ? blockContext.nodeId

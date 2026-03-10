@@ -2,7 +2,7 @@ import "@/index.css";
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { StoreT } from "@/services/external/Store";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import {
   Given,
   Then,
@@ -39,15 +39,15 @@ describe("editor navigation", () => {
               { text: "Hello" },
             ]);
 
-          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 3);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+          yield* Then.SELECTION_IS_ON_KHORA(khoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(2);
         }).pipe(runtime.runPromise);
       });
@@ -60,22 +60,22 @@ describe("editor navigation", () => {
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(5);
         }).pipe(runtime.runPromise);
       });
@@ -94,22 +94,22 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeFrameBlockId(
+          const nestedChildBlockId = Id.makeFrameKhoraId(
             frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(nestedChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(nestedChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
         }).pipe(runtime.runPromise);
       });
@@ -127,16 +127,16 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const childBlockId = Id.makeFrameBlockId(frameId, childId);
+          const parentBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameKhoraId(frameId, childId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6);
         }).pipe(runtime.runPromise);
       });
@@ -148,11 +148,11 @@ describe("editor navigation", () => {
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
@@ -175,15 +175,15 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
-          const Block = yield* BlockT;
-          yield* Block.setExpanded(firstBlockId, false);
+          const Khora = yield* KhoraT;
+          yield* Khora.setExpanded(firstKhoraId, false);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
 
@@ -192,19 +192,19 @@ describe("editor navigation", () => {
           );
 
           expect(winDoc.selection).not.toBeNull();
-          const expectedBlockId = Id.makeFrameBlockId(
+          const expectedBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
+          const nestedBlockId = Id.makeFrameKhoraId(frameId, nestedChildId);
 
           expect(
-            winDoc.selection!.blockId,
+            winDoc.selection!.khoraId,
             `Selection went to hidden Nested child instead of visible First block`,
           ).not.toBe(nestedBlockId);
 
           expect(
-            winDoc.selection!.blockId,
+            winDoc.selection!.khoraId,
             "Selection should be on First block (visible)",
           ).toBe(expectedBlockId);
 
@@ -221,15 +221,15 @@ describe("editor navigation", () => {
               { text: "Hello" },
             ]);
 
-          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 2);
+          yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 2);
 
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+          yield* Then.SELECTION_IS_ON_KHORA(khoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
         }).pipe(runtime.runPromise);
       });
@@ -242,22 +242,22 @@ describe("editor navigation", () => {
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -275,16 +275,16 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const childBlockId = Id.makeFrameBlockId(frameId, childId);
+          const parentBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameKhoraId(frameId, childId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 0);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(childBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -303,16 +303,16 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedId);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const nestedBlockId = Id.makeFrameKhoraId(frameId, nestedId);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(nestedBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(nestedBlockId, 0);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -324,7 +324,7 @@ describe("editor navigation", () => {
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
@@ -332,7 +332,7 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -344,13 +344,13 @@ describe("editor navigation", () => {
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const titleBlockId = Id.makeFrameBlockId(frameId, rootNodeId);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const titleBlockId = Id.makeFrameKhoraId(frameId, rootNodeId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 3);
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 3);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           yield* When.USER_CLICKS_TITLE(frameId);
           yield* doubleRaf;
@@ -359,7 +359,7 @@ describe("editor navigation", () => {
 
           const winDoc = Option.getOrThrow(yield* Then.WINDOW_DOC_COMPAT(frameId));
           expect(winDoc.selection).not.toBeNull();
-          expect(winDoc.selection!.blockId).toBe(titleBlockId);
+          expect(winDoc.selection!.khoraId).toBe(titleBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -377,14 +377,14 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
-          const Block = yield* BlockT;
-          yield* Block.setExpanded(firstBlockId, false);
+          const Khora = yield* KhoraT;
+          yield* Khora.setExpanded(firstKhoraId, false);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
           yield* When.USER_PRESSES("{End}");
           yield* When.USER_PRESSES("{ArrowRight}");
 
@@ -393,14 +393,14 @@ describe("editor navigation", () => {
           );
 
           expect(winDoc.selection).not.toBeNull();
-          const expectedBlockId = Id.makeFrameBlockId(
+          const expectedBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
-          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
+          const nestedBlockId = Id.makeFrameKhoraId(frameId, nestedChildId);
 
-          expect(winDoc.selection!.blockId).not.toBe(nestedBlockId);
-          expect(winDoc.selection!.blockId).toBe(expectedBlockId);
+          expect(winDoc.selection!.khoraId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.khoraId).toBe(expectedBlockId);
           expect(winDoc.selection!.selection.head).toBe(0);
         }).pipe(runtime.runPromise);
       });
@@ -417,22 +417,22 @@ describe("editor navigation", () => {
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstChildBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -444,22 +444,22 @@ describe("editor navigation", () => {
               { text: "Second" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondChildBlockId);
         }).pipe(runtime.runPromise);
       });
     });
@@ -472,11 +472,11 @@ describe("editor navigation", () => {
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 5);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
@@ -491,7 +491,7 @@ describe("editor navigation", () => {
               { text: "First block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
@@ -499,7 +499,7 @@ describe("editor navigation", () => {
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -511,13 +511,13 @@ describe("editor navigation", () => {
               { text: "Second block text here" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(350);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 29);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 29);
 
           const xInBlock = yield* Effect.promise(
             () =>
@@ -541,7 +541,7 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{ArrowDown}");
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           const xAfter = yield* Effect.promise(
             () =>
@@ -572,22 +572,22 @@ describe("editor navigation", () => {
               { text: "Short" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 4);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 4);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
         }).pipe(runtime.runPromise);
       });
@@ -600,22 +600,22 @@ describe("editor navigation", () => {
               { text: "LongSecondBlock" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 4);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 4);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
         }).pipe(runtime.runPromise);
       });
@@ -628,22 +628,22 @@ describe("editor navigation", () => {
               { text: "LongerText" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 8);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 8);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(2);
         }).pipe(runtime.runPromise);
       });
@@ -656,22 +656,22 @@ describe("editor navigation", () => {
               { text: "Hi" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 8);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 8);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondChildBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(2);
         }).pipe(runtime.runPromise);
       });
@@ -690,14 +690,14 @@ describe("editor navigation", () => {
             text: "Nested child content",
           });
 
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 5);
 
           const xBefore = yield* Effect.promise(
             () =>
@@ -752,11 +752,11 @@ describe("editor navigation", () => {
             text: "Nested child content",
           });
 
-          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedId);
+          const nestedBlockId = Id.makeFrameKhoraId(frameId, nestedId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(nestedBlockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(nestedBlockId, 5);
 
           const xBefore = yield* Effect.promise(
             () =>
@@ -803,14 +803,14 @@ describe("editor navigation", () => {
               { text: "WW" },
             ]);
 
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 2);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 2);
 
           const xBefore = yield* Effect.promise(
             () =>
@@ -857,14 +857,14 @@ describe("editor navigation", () => {
               { text: "iiiiiiiiii" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 2);
 
           const xBefore = yield* Effect.promise(
             () =>
@@ -912,12 +912,12 @@ describe("editor navigation", () => {
               { text: "Long paragraph" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const thirdBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(thirdBlockId, 14);
+          yield* Given.KHORA_IS_FOCUSED_AT(thirdBlockId, 14);
 
           const xInitial = yield* Effect.promise(
             () =>
@@ -937,7 +937,7 @@ describe("editor navigation", () => {
           yield* When.USER_PRESSES("{ArrowUp}");
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           const xFinal = yield* Effect.promise(
             () =>
@@ -969,23 +969,23 @@ describe("editor navigation", () => {
               { text: "Long text" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 9);
 
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
 
           yield* When.USER_PRESSES("{Meta>}{ArrowLeft}{/Meta}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
 
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -998,16 +998,16 @@ describe("editor navigation", () => {
               { text: "Long text here too" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 18);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 18);
 
           // Establish goalX via vertical nav
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
 
           // Cmd+Left to go to start, then Cmd+Right to line end — clears goalX
@@ -1019,7 +1019,7 @@ describe("editor navigation", () => {
 
           // ArrowDown should start fresh from offset 9, not use stale goalX (18)
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(9);
         }).pipe(runtime.runPromise);
       });
@@ -1035,7 +1035,7 @@ describe("editor navigation", () => {
               { text: longText },
             ]);
 
-          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
@@ -1043,7 +1043,7 @@ describe("editor navigation", () => {
           yield* Given.FRAME_HAS_WIDTH(200);
 
           // Place cursor near the start of the first visual line (offset 5)
-          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 5);
 
           // Read CodeMirror state before the move
           yield* doubleRaf;
@@ -1098,20 +1098,20 @@ describe("editor navigation", () => {
               { text: "longer text here" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 16);
 
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           yield* When.USER_PRESSES("{Alt>}{ArrowLeft}{/Alt}");
 
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1123,20 +1123,20 @@ describe("editor navigation", () => {
               { text: "longer text here" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 16);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 16);
 
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           yield* When.USER_PRESSES("{Alt>}{ArrowRight}{/Alt}");
 
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1148,25 +1148,25 @@ describe("editor navigation", () => {
               { text: "Long text" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 9);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 9);
 
           // Establish goalX via vertical nav
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(4);
 
           yield* When.USER_PRESSES("{ArrowLeft}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
 
           // ArrowDown should start fresh from offset 3, not use stale goalX
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(3);
         }).pipe(runtime.runPromise);
       });
@@ -1180,17 +1180,17 @@ describe("editor navigation", () => {
               { text: "Some text here plus more" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
           // Start deep in secondBlock (offset 20) — stale goalX would land here
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 20);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 20);
 
           // Establish goalX via vertical nav
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
           // ArrowLeft twice to move away from end-of-line, then ArrowRight
           yield* When.USER_PRESSES("{ArrowLeft}");
@@ -1200,7 +1200,7 @@ describe("editor navigation", () => {
 
           // ArrowDown should use fresh goalX from offset 13, not stale from 20
           yield* When.USER_PRESSES("{ArrowDown}");
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(13);
         }).pipe(runtime.runPromise);
       });
@@ -1215,19 +1215,19 @@ describe("editor navigation", () => {
                 { text: longText },
               ]);
 
-            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+            const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
             render(() => <FrameView frameId={frameId} />);
             yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at end of visual line 2
-            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+            yield* Given.KHORA_IS_FOCUSED_AT_VISUAL_LINE(khoraId, {
               line: 2,
               side: "end",
             });
 
             const { offset: visualLine2Start } =
-              yield* Given.VISUAL_LINE_OFFSET(blockId, {
+              yield* Given.VISUAL_LINE_OFFSET(khoraId, {
                 line: 2,
                 side: "start",
               });
@@ -1238,7 +1238,7 @@ describe("editor navigation", () => {
 
             // Cmd+Backspace should delete to visual line 2 start only
             yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
-            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+            yield* Then.SELECTION_IS_ON_KHORA(khoraId);
 
             // Cursor lands at visual line 2 start — NOT at 0
             yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(visualLine2Start);
@@ -1254,19 +1254,19 @@ describe("editor navigation", () => {
                 { text: longText },
               ]);
 
-            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+            const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
             render(() => <FrameView frameId={frameId} />);
             yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at start of visual line 2 (the wrap point)
-            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+            yield* Given.KHORA_IS_FOCUSED_AT_VISUAL_LINE(khoraId, {
               line: 2,
               side: "start",
             });
 
             const { offset: visualLine2Start } =
-              yield* Given.VISUAL_LINE_OFFSET(blockId, {
+              yield* Given.VISUAL_LINE_OFFSET(khoraId, {
                 line: 2,
                 side: "start",
               });
@@ -1277,7 +1277,7 @@ describe("editor navigation", () => {
 
             // Cmd+Backspace at a visual line boundary should delete the entire previous visual line
             yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
-            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+            yield* Then.SELECTION_IS_ON_KHORA(khoraId);
 
             // Cursor lands at offset 0 — the previous visual line was fully deleted
             yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
@@ -1293,19 +1293,19 @@ describe("editor navigation", () => {
                 { text: longText },
               ]);
 
-            const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+            const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
             render(() => <FrameView frameId={frameId} />);
             yield* Given.FRAME_HAS_WIDTH(400);
 
             // Place cursor at start of visual line 2
-            yield* Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE(blockId, {
+            yield* Given.KHORA_IS_FOCUSED_AT_VISUAL_LINE(khoraId, {
               line: 2,
               side: "start",
             });
 
             const { offset: visualLine2End } = yield* Given.VISUAL_LINE_OFFSET(
-              blockId,
+              khoraId,
               {
                 line: 2,
                 side: "end",
@@ -1317,7 +1317,7 @@ describe("editor navigation", () => {
             ).toBeLessThan(longText.length);
 
             const { offset: cursorOffset } = yield* Given.VISUAL_LINE_OFFSET(
-              blockId,
+              khoraId,
               {
                 line: 2,
                 side: "start",
@@ -1327,7 +1327,7 @@ describe("editor navigation", () => {
 
             // Cmd+Delete should delete to visual line 2 end only
             yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
-            yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+            yield* Then.SELECTION_IS_ON_KHORA(khoraId);
 
             // Cursor stays at visual line 2 start — text after cursor was removed
             yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(cursorOffset);
@@ -1347,11 +1347,11 @@ describe("editor navigation", () => {
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeFrameBlockId(
+            const firstKhoraId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeFrameBlockId(
+            const secondBlockId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[1],
             );
@@ -1359,11 +1359,11 @@ describe("editor navigation", () => {
             render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
-            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+            yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 2);
 
             // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
             yield* When.USER_PRESSES("{ArrowUp}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // Verify goalX is set (non-null) after vertical nav
             const winBefore = Option.getOrThrow(
@@ -1376,7 +1376,7 @@ describe("editor navigation", () => {
 
             // Cmd+Backspace deletes from cursor to line start
             yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
@@ -1389,7 +1389,7 @@ describe("editor navigation", () => {
 
             // ArrowDown without goalX should land at offset 0 (no remembered X)
             yield* When.USER_PRESSES("{ArrowDown}");
-            yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
             yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
           }).pipe(runtime.runPromise);
         });
@@ -1402,11 +1402,11 @@ describe("editor navigation", () => {
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeFrameBlockId(
+            const firstKhoraId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeFrameBlockId(
+            const secondBlockId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[1],
             );
@@ -1414,11 +1414,11 @@ describe("editor navigation", () => {
             render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
-            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+            yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 2);
 
             // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
             yield* When.USER_PRESSES("{ArrowUp}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // Verify goalX is set (non-null) after vertical nav
             const winBefore = Option.getOrThrow(
@@ -1431,7 +1431,7 @@ describe("editor navigation", () => {
 
             // Cmd+Delete deletes from cursor to end: removes most text, cursor stays
             yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
@@ -1452,21 +1452,21 @@ describe("editor navigation", () => {
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeFrameBlockId(
+            const firstKhoraId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeFrameBlockId(
+            const secondBlockId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[1],
             );
 
             render(() => <FrameView frameId={frameId} />);
 
-            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+            yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 2);
 
             yield* When.USER_PRESSES("{ArrowUp}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // Verify goalX is set after vertical nav
             const winBefore = Option.getOrThrow(
@@ -1499,11 +1499,11 @@ describe("editor navigation", () => {
                 { text: "ab" },
               ]);
 
-            const firstBlockId = Id.makeFrameBlockId(
+            const firstKhoraId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[0],
             );
-            const secondBlockId = Id.makeFrameBlockId(
+            const secondBlockId = Id.makeFrameKhoraId(
               frameId,
               childNodeIds[1],
             );
@@ -1511,11 +1511,11 @@ describe("editor navigation", () => {
             render(() => <FrameView frameId={frameId} />);
 
             // Start at end of second (shorter) block
-            yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 2);
+            yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 2);
 
             // ArrowUp establishes goalX; cursor lands at ~offset 2 in first block
             yield* When.USER_PRESSES("{ArrowUp}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // Verify goalX is set (non-null) after vertical nav
             const winBefore = Option.getOrThrow(
@@ -1528,7 +1528,7 @@ describe("editor navigation", () => {
 
             // Alt+Delete deletes next word forward, cursor stays at same offset
             yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
-            yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
 
             // goalX should now be cleared
             const winAfter = Option.getOrThrow(
@@ -1551,15 +1551,15 @@ describe("editor navigation", () => {
               { text: "Line1\nLine2\nLine3" },
             ]);
 
-          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 14);
+          yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 14);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+          yield* Then.SELECTION_IS_ON_KHORA(khoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1571,15 +1571,15 @@ describe("editor navigation", () => {
           const { frameId, childNodeIds } =
             yield* Given.A_FRAME_WITH_CHILDREN("Title", [{ text: longText }]);
 
-          const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(blockId, longText.length - 10);
+          yield* Given.KHORA_IS_FOCUSED_AT(khoraId, longText.length - 10);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(blockId);
+          yield* Then.SELECTION_IS_ON_KHORA(khoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1593,20 +1593,20 @@ describe("editor navigation", () => {
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(100);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
           yield* When.USER_PRESSES("{ArrowLeft}");
           yield* When.USER_PRESSES("{Home}");
           yield* When.USER_PRESSES("{End}");
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1620,17 +1620,17 @@ describe("editor navigation", () => {
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(100);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1644,17 +1644,17 @@ describe("editor navigation", () => {
               { text: wrappingText },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(100);
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 10, -1);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 10, -1);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1668,18 +1668,18 @@ describe("editor navigation", () => {
               { text: "Second block" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(100);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 10, 1);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 10, 1);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1693,18 +1693,18 @@ describe("editor navigation", () => {
               { text: "Second" },
             ]);
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
           yield* Given.FRAME_HAS_WIDTH(800);
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
-          yield* Then.SELECTION_IS_ON_BLOCK(secondBlockId);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
+          yield* Then.SELECTION_IS_ON_KHORA(secondBlockId);
 
           yield* When.USER_PRESSES("{ArrowRight}");
           yield* When.USER_PRESSES("{ArrowUp}");
-          yield* Then.SELECTION_IS_ON_BLOCK(firstBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(firstKhoraId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1718,7 +1718,7 @@ describe("editor navigation", () => {
               },
             ]);
 
-          const longTextBlockId = Id.makeFrameBlockId(
+          const longTextBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
@@ -1727,16 +1727,16 @@ describe("editor navigation", () => {
 
           yield* Given.FRAME_HAS_WIDTH(800);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(longTextBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(longTextBlockId, 0);
           yield* When.USER_PRESSES("{Meta>}{ArrowRight}{/Meta}");
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(longTextBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(longTextBlockId);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(longTextBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(longTextBlockId);
         }).pipe(runtime.runPromise);
       });
     });
@@ -1756,22 +1756,22 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeFrameBlockId(
+          const nestedChildBlockId = Id.makeFrameKhoraId(
             frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(nestedChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(nestedChildBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1788,16 +1788,16 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const childBlockId = Id.makeFrameBlockId(frameId, childId);
+          const parentBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameKhoraId(frameId, childId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowUp}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1814,16 +1814,16 @@ describe("editor navigation", () => {
             text: "Child",
           });
 
-          const parentBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-          const childBlockId = Id.makeFrameBlockId(frameId, childId);
+          const parentBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+          const childBlockId = Id.makeFrameKhoraId(frameId, childId);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(childBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(childBlockId);
         }).pipe(runtime.runPromise);
       });
 
@@ -1841,22 +1841,22 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const nestedChildBlockId = Id.makeFrameBlockId(
+          const nestedChildBlockId = Id.makeFrameKhoraId(
             frameId,
             nestedChildId,
           );
-          const secondChildBlockId = Id.makeFrameBlockId(
+          const secondChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(nestedChildBlockId, 3);
+          yield* Given.KHORA_IS_FOCUSED_AT(nestedChildBlockId, 3);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(secondChildBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(secondChildBlockId);
         }).pipe(runtime.runPromise);
       });
     });
@@ -1870,15 +1870,15 @@ describe("editor navigation", () => {
               { text: "Last block" },
             ]);
 
-          const lastBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+          const lastKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(lastBlockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(lastKhoraId, 5);
 
           yield* When.USER_PRESSES("{ArrowDown}");
 
-          yield* Then.SELECTION_IS_ON_BLOCK(lastBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(lastKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(10);
         }).pipe(runtime.runPromise);
       });
@@ -1899,14 +1899,14 @@ describe("editor navigation", () => {
             text: "Nested",
           });
 
-          const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
-          const Block = yield* BlockT;
-          yield* Block.setExpanded(firstBlockId, false);
+          const Khora = yield* KhoraT;
+          yield* Khora.setExpanded(firstKhoraId, false);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
           yield* When.USER_PRESSES("{ArrowDown}");
 
           const winDoc = Option.getOrThrow(
@@ -1914,14 +1914,14 @@ describe("editor navigation", () => {
           );
 
           expect(winDoc.selection).not.toBeNull();
-          const expectedBlockId = Id.makeFrameBlockId(
+          const expectedBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[1],
           );
-          const nestedBlockId = Id.makeFrameBlockId(frameId, nestedChildId);
+          const nestedBlockId = Id.makeFrameKhoraId(frameId, nestedChildId);
 
-          expect(winDoc.selection!.blockId).not.toBe(nestedBlockId);
-          expect(winDoc.selection!.blockId).toBe(expectedBlockId);
+          expect(winDoc.selection!.khoraId).not.toBe(nestedBlockId);
+          expect(winDoc.selection!.khoraId).toBe(expectedBlockId);
         }).pipe(runtime.runPromise);
       });
     });
@@ -1936,14 +1936,14 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeFrameBlockId(
+        const secondChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[1],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -1964,19 +1964,19 @@ describe("editor navigation", () => {
             { text: "12" },
           ]);
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
-        const secondChildBlockId = Id.makeFrameBlockId(
+        const secondChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[1],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 2);
-        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 2);
+        yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
 
         yield* When.USER_PRESSES("{Backspace}");
 
@@ -2016,15 +2016,15 @@ describe("editor navigation", () => {
           text: "B",
         });
 
-        const blockA = Id.makeFrameBlockId(frameId, nodeA);
-        const blockC = Id.makeFrameBlockId(frameId, nodeC);
+        const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+        const blockC = Id.makeFrameKhoraId(frameId, nodeC);
 
         render(() => <FrameView frameId={frameId} />);
 
-        const Block = yield* BlockT;
-        yield* Block.setExpanded(blockA, true);
+        const Khora = yield* KhoraT;
+        yield* Khora.setExpanded(blockA, true);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(blockC, 0);
         yield* When.USER_PRESSES("{Backspace}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2051,11 +2051,11 @@ describe("editor navigation", () => {
           ]);
 
         const [firstChildId] = childNodeIds;
-        const firstChildBlockId = Id.makeFrameBlockId(frameId, firstChildId);
+        const firstChildBlockId = Id.makeFrameKhoraId(frameId, firstChildId);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 0);
@@ -2073,13 +2073,13 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeFrameBlockId(
+        const secondChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[1],
         );
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{Backspace}{/Meta}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2099,13 +2099,13 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const secondChildBlockId = Id.makeFrameBlockId(
+        const secondChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[1],
         );
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(secondChildBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(secondChildBlockId, 0);
         yield* When.USER_PRESSES("{Alt>}{Backspace}{/Alt}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2145,11 +2145,11 @@ describe("editor navigation", () => {
           text: "Child",
         });
 
-        const secondBlockId = Id.makeFrameBlockId(frameId, secondNodeId);
+        const secondBlockId = Id.makeFrameKhoraId(frameId, secondNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
         yield* When.USER_PRESSES("{Backspace}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 3);
@@ -2172,40 +2172,40 @@ describe("editor navigation", () => {
         );
 
         const parentNodeId = childNodeIds[0];
-        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+        const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
         // Expand the childless block to create a ghost
-        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 0);
         yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
         // Ghost should be focused
         const Store = yield* StoreT;
-        const blockDoc = yield* Store.getDocument("block", parentBlockId);
+        const blockDoc = yield* Store.getDocument("khora", parentBlockId);
         const ghostChildId = Option.getOrThrow(blockDoc).ghostChildId!;
-        const ghostBlockId = Id.makeFrameBlockId(
+        const ghostBlockId = Id.makeFrameKhoraId(
           frameId,
           ghostChildId as Id.Node,
         );
-        yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+        yield* Then.SELECTION_IS_ON_KHORA(ghostBlockId);
         yield* Then.CM_CURSOR_IS_AT(0);
 
         // Guard against stale parent editor writes stealing selection before Backspace.
         for (let i = 0; i < 3; i++) {
           yield* doubleRaf;
-          yield* Then.SELECTION_IS_ON_BLOCK(ghostBlockId);
+          yield* Then.SELECTION_IS_ON_KHORA(ghostBlockId);
           yield* Then.CM_CURSOR_IS_AT(0);
         }
 
         // Backspace on empty ghost → remove ghost, focus parent at end
         yield* When.USER_PRESSES("{Backspace}");
 
-        yield* Then.SELECTION_IS_ON_BLOCK(parentBlockId);
+        yield* Then.SELECTION_IS_ON_KHORA(parentBlockId);
         yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(6); // "Parent".length
 
         // Ghost should be cleaned up
-        const blockDocAfter = yield* Store.getDocument("block", parentBlockId);
+        const blockDocAfter = yield* Store.getDocument("khora", parentBlockId);
         expect(Option.getOrThrow(blockDocAfter).ghostChildId).toBeNull();
       }).pipe(runtime.runPromise);
     });
@@ -2227,14 +2227,14 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2271,14 +2271,14 @@ describe("editor navigation", () => {
           text: "FirstChild",
         });
 
-        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+        const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
-        const Block = yield* BlockT;
-        yield* Block.setExpanded(parentBlockId, true);
+        const Khora = yield* KhoraT;
+        yield* Khora.setExpanded(parentBlockId, true);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
+        yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 6);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(parentNodeId, 0);
@@ -2311,15 +2311,15 @@ describe("editor navigation", () => {
           text: "B",
         });
 
-        const blockA = Id.makeFrameBlockId(frameId, nodeA);
-        const blockB = Id.makeFrameBlockId(frameId, nodeB);
+        const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+        const blockB = Id.makeFrameKhoraId(frameId, nodeB);
 
         render(() => <FrameView frameId={frameId} />);
 
-        const Block = yield* BlockT;
-        yield* Block.setExpanded(blockA, true);
+        const Khora = yield* KhoraT;
+        yield* Khora.setExpanded(blockA, true);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 1);
+        yield* Given.KHORA_IS_FOCUSED_AT(blockB, 1);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
@@ -2340,13 +2340,13 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Meta>}{Delete}{/Meta}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2366,13 +2366,13 @@ describe("editor navigation", () => {
             { text: "Second" },
           ]);
 
-        const firstChildBlockId = Id.makeFrameBlockId(
+        const firstChildBlockId = Id.makeFrameKhoraId(
           frameId,
           childNodeIds[0],
         );
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 5);
         yield* When.USER_PRESSES("{Alt>}{Delete}{/Alt}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2410,14 +2410,14 @@ describe("editor navigation", () => {
           text: "Hidden",
         });
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, firstNodeId);
 
-        const Block = yield* BlockT;
-        yield* Block.setExpanded(firstBlockId, false);
+        const Khora = yield* KhoraT;
+        yield* Khora.setExpanded(firstKhoraId, false);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 5);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2459,11 +2459,11 @@ describe("editor navigation", () => {
           text: "Grandchild",
         });
 
-        const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+        const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(parentBlockId, 6);
+        yield* Given.KHORA_IS_FOCUSED_AT(parentBlockId, 6);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 1);
@@ -2502,11 +2502,11 @@ describe("editor navigation", () => {
           text: "Nephew",
         });
 
-        const firstBlockId = Id.makeFrameBlockId(frameId, firstNodeId);
+        const firstKhoraId = Id.makeFrameKhoraId(frameId, firstNodeId);
 
         render(() => <FrameView frameId={frameId} />);
 
-        yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 5);
+        yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 5);
         yield* When.USER_PRESSES("{Delete}");
 
         yield* Then.NODE_HAS_CHILDREN(rootNodeId, 2);
@@ -2520,7 +2520,7 @@ describe("editor navigation", () => {
   });
 
   describe("Enter", () => {
-    describe("block", () => {
+    describe("khora", () => {
       it("splits text when Enter pressed in middle of text", async () => {
         await Effect.gen(function* () {
           const { frameId, rootNodeId, childNodeIds } =
@@ -2528,14 +2528,14 @@ describe("editor navigation", () => {
               { text: "First child" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 5);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 5);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(2);
@@ -2558,14 +2558,14 @@ describe("editor navigation", () => {
               { text: "First child" },
             ]);
 
-          const firstChildBlockId = Id.makeFrameBlockId(
+          const firstChildBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(firstChildBlockId, 11);
+          yield* Given.KHORA_IS_FOCUSED_AT(firstChildBlockId, 11);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(2);
@@ -2582,14 +2582,14 @@ describe("editor navigation", () => {
               { text: "First child" },
             ]);
 
-          const originalBlockId = Id.makeFrameBlockId(
+          const originalBlockId = Id.makeFrameKhoraId(
             frameId,
             childNodeIds[0],
           );
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(originalBlockId, 0);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(2);
@@ -2614,11 +2614,11 @@ describe("editor navigation", () => {
               { text: "First child" },
             ]);
 
-          const originalBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const originalBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(originalBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(originalBlockId, 0);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(2);
@@ -2626,14 +2626,14 @@ describe("editor navigation", () => {
 
           const Node = yield* NodeT;
           const children = yield* Node.getNodeChildren(rootNodeId);
-          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
+          const newKhoraId = Id.makeFrameKhoraId(frameId, children[0]!);
 
           yield* Then.NODE_HAS_TEXT(children[0]!, "");
           yield* Then.NODE_HAS_TEXT(children[1]!, "First child");
 
           for (let i = 0; i < 5; i++) {
             yield* doubleRaf;
-            yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+            yield* Then.SELECTION_IS_ON_KHORA(newKhoraId);
             yield* Then.CM_CURSOR_IS_AT(0);
           }
 
@@ -2645,7 +2645,7 @@ describe("editor navigation", () => {
             expect(originalBlockEl!.querySelector(".cm-editor")).toBeNull();
 
             const newBlockEl = document.querySelector(
-              `[data-element-id="${newBlockId}"]`,
+              `[data-element-id="${newKhoraId}"]`,
             );
             expect(newBlockEl).not.toBeNull();
 
@@ -2661,11 +2661,11 @@ describe("editor navigation", () => {
           const { frameId, rootNodeId, childNodeIds } =
             yield* Given.A_FRAME_WITH_CHILDREN("Root node", [{ text: "" }]);
 
-          const emptyBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+          const emptyBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
           render(() => <FrameView frameId={frameId} />);
 
-          yield* Given.BLOCK_IS_FOCUSED_AT(emptyBlockId, 0);
+          yield* Given.KHORA_IS_FOCUSED_AT(emptyBlockId, 0);
           yield* When.USER_PRESSES("{Enter}");
 
           yield* Then.BLOCK_COUNT_IS(2);
@@ -2704,8 +2704,8 @@ describe("editor navigation", () => {
           expect(children.length).toBe(1);
           yield* Then.NODE_HAS_TEXT(children[0]!, "");
 
-          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
-          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          const newKhoraId = Id.makeFrameKhoraId(frameId, children[0]!);
+          yield* Then.SELECTION_IS_ON_KHORA(newKhoraId);
           yield* Then.CM_CURSOR_IS_AT(0);
         }).pipe(runtime.runPromise);
       });
@@ -2728,8 +2728,8 @@ describe("editor navigation", () => {
           const children = yield* Node.getNodeChildren(rootNodeId);
           yield* Then.NODE_HAS_TEXT(children[0]!, "Document Title");
 
-          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
-          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          const newKhoraId = Id.makeFrameKhoraId(frameId, children[0]!);
+          yield* Then.SELECTION_IS_ON_KHORA(newKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });
@@ -2752,8 +2752,8 @@ describe("editor navigation", () => {
           const children = yield* Node.getNodeChildren(rootNodeId);
           yield* Then.NODE_HAS_TEXT(children[0]!, " Title");
 
-          const newBlockId = Id.makeFrameBlockId(frameId, children[0]!);
-          yield* Then.SELECTION_IS_ON_BLOCK(newBlockId);
+          const newKhoraId = Id.makeFrameKhoraId(frameId, children[0]!);
+          yield* Then.SELECTION_IS_ON_KHORA(newKhoraId);
           yield* Then.SELECTION_IS_COLLAPSED_AT_OFFSET(0);
         }).pipe(runtime.runPromise);
       });

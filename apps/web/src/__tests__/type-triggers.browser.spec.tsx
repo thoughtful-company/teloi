@@ -42,7 +42,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Buy groceries" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -63,7 +63,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space separately (space is the trigger)
         // Note: [[ escapes to [, but ] is typed literally
@@ -106,7 +106,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Task done" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add checkbox type and IS_CHECKED tuple to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -128,7 +128,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "-" then space separately (space is the trigger)
         yield* When.USER_PRESSES("-");
@@ -177,7 +177,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Item" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -198,7 +198,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "-" then space - should insert literally since node already has list type
         yield* When.USER_PRESSES("-");
@@ -223,7 +223,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add checkbox type to the node
         yield* Type.addType(childNodeId, System.CHECKBOX);
@@ -244,7 +244,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space - should insert literally since node already has checkbox type
         // Note: [[ escapes to [, but ] is typed literally
@@ -273,7 +273,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Important task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -298,7 +298,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[ ]" then space to trigger checkbox replacement
         // Note: [[ escapes to [, but ] is typed literally
@@ -345,7 +345,7 @@ describe("Type Trigger Replacement", () => {
           [{ text: "Completed task" }],
         );
         const childNodeId = childNodeIds[0];
-        const childBlockId = Id.makeFrameBlockId(frameId, childNodeId);
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeId);
 
         // Add list-element type to the node
         yield* Type.addType(childNodeId, System.LIST_ELEMENT);
@@ -366,7 +366,7 @@ describe("Type Trigger Replacement", () => {
         );
 
         // Click the block and move to start
-        yield* Given.BLOCK_IS_FOCUSED_AT(childBlockId, 0);
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
 
         // Type "[x]" then space separately (space is the trigger)
         // Note: [[ escapes to [, but ] is typed literally

@@ -1,7 +1,7 @@
 import { EditorT } from "@/services/ui/Editor";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
-import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
 
 const scope = "editor";
 const commandName = "moveToLineEnd";
@@ -14,7 +14,7 @@ export class MoveToLineEnd extends Data.TaggedClass(tag)<{}> {
   static handle = Effect.fn(tag)(function* (_cmd: MoveToLineEnd) {
     const Editor = yield* EditorT;
     yield* Editor.moveLineBoundaryRight();
-    const ctx = yield* resolveActiveBlockContext();
+    const ctx = yield* resolveActiveKhoraContext();
     if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
   });
 }

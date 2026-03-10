@@ -107,14 +107,14 @@ describe("KeyEventBus — blockSelection keymap", () => {
     await Effect.gen(function* () {
       const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.enterKhoraSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(makeAppKeyEvent("Enter"));
 
       expect(handled).toBe(true);
       expect(dispatched).toHaveLength(1);
-      expect(dispatched[0]!._tag).toBe("frame:editBlock");
+      expect(dispatched[0]!._tag).toBe("frame:editKhora");
     }).pipe(runtime.runPromise);
   });
 
@@ -122,7 +122,7 @@ describe("KeyEventBus — blockSelection keymap", () => {
     await Effect.gen(function* () {
       const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.enterKhoraSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(makeAppKeyEvent("Tab"));
@@ -137,7 +137,7 @@ describe("KeyEventBus — blockSelection keymap", () => {
     await Effect.gen(function* () {
       const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.enterKhoraSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(
@@ -154,7 +154,7 @@ describe("KeyEventBus — blockSelection keymap", () => {
     await Effect.gen(function* () {
       const { frameId } = yield* Given.A_FRAME_WITH_TEXT("hello");
       const Frame = yield* FrameT;
-      yield* Frame.enterBlockSelection(frameId);
+      yield* Frame.enterKhoraSelection(frameId);
 
       const KeyEventBus = yield* KeyEventBusT;
       const handled = yield* KeyEventBus.emit(makeAppKeyEvent(" "));

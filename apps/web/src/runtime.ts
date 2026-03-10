@@ -14,7 +14,7 @@ import { TupleLive } from "./services/domain/Tuple";
 import { TypeLive } from "./services/domain/Type";
 import { getStoreLayer } from "./services/external/Store";
 import { makeAutomergeLive } from "./services/external/Automerge";
-import { BlockLive } from "./services/ui/Block";
+import { KhoraLive } from "./services/ui/Khora";
 import { registerBuiltInTypes } from "./services/ui/BlockType/definitions";
 import { FrameLive } from "./services/ui/Frame";
 import { TitleLive } from "./services/ui/Title";
@@ -87,8 +87,8 @@ const BrowserLayer = pipe(
   Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
   Layer.provideMerge(NavigationLive),
   Layer.provideMerge(EditorViewGroup), // EditorLive + ViewLive
-  // BlockLive needs TypeT, PickerT from layers below
-  Layer.provideMerge(BlockLive),
+  // KhoraLive needs TypeT, PickerT from layers below
+  Layer.provideMerge(KhoraLive),
   Layer.provideMerge(TypePickerGroup),
   Layer.provideMerge(TypeColorLive),
   Layer.provideMerge(FrameLive),

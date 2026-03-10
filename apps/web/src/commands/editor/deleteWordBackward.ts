@@ -2,7 +2,7 @@ import { EditorT } from "@/services/ui/Editor";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
 import { mergeBackward } from "./utils/mergeBackward";
-import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
 
 const scope = "editor";
 const commandName = "deleteWordBackward";
@@ -18,7 +18,7 @@ export class DeleteWordBackward extends Data.TaggedClass(tag)<{}> {
     const isAtStart = yield* Editor.isCursorAtStart();
     if (!isAtStart) {
       yield* Editor.deleteWordBackward();
-      const ctx = yield* resolveActiveBlockContext();
+      const ctx = yield* resolveActiveKhoraContext();
       if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }

@@ -2,7 +2,7 @@ import { EditorT } from "@/services/ui/Editor";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
 import { mergeForward } from "./utils/mergeForward";
-import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
 
 const scope = "editor";
 const commandName = "deleteWordForward";
@@ -18,7 +18,7 @@ export class DeleteWordForward extends Data.TaggedClass(tag)<{}> {
     const isAtEnd = yield* Editor.isCursorAtEnd();
     if (!isAtEnd) {
       yield* Editor.deleteWordForward();
-      const ctx = yield* resolveActiveBlockContext();
+      const ctx = yield* resolveActiveKhoraContext();
       if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }

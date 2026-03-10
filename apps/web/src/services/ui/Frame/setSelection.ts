@@ -8,11 +8,11 @@ import { FrameNotFoundError } from "../errors";
 import { expandAncestors } from "./expandAncestors";
 
 /**
- * Get the nodeId from a BlockContext for expansion purposes.
+ * Get the nodeId from a KhoraContext for expansion purposes.
  * Section blocks (linked blocks in property sections) are flat and don't need
  * ancestor expansion, so we return null for them.
  */
-const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
+const getNodeIdForExpansion = (ctx: Id.KhoraContext): Id.Node | null => {
   if (ctx.type === "frame") {
     return ctx.nodeId;
   }
@@ -22,7 +22,7 @@ const getNodeIdForExpansion = (ctx: Id.BlockContext): Id.Node | null => {
 
 export const setSelection = (
   frameId: Id.Frame,
-  selection: Option.Option<Model.ActiveBlockSelection>,
+  selection: Option.Option<Model.ActiveKhoraSelection>,
 ): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT | AutomergeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
@@ -37,11 +37,11 @@ export const setSelection = (
 
     const currentFrame = frameDoc.value;
     const assignedNodeId = currentFrame.assignedNodeId;
-    let clampedSelection: Option.Option<Model.ActiveBlockSelection> = selection;
+    let clampedSelection: Option.Option<Model.ActiveKhoraSelection> = selection;
 
     if (Option.isSome(selection)) {
-      const blockContext = yield* IdT.parseBlockContext(
-        selection.value.blockId,
+      const blockContext = yield* IdT.parseKhoraContext(
+        selection.value.khoraId,
       ).pipe(Effect.orDie);
       if (assignedNodeId) {
         const rootNodeId = Id.Node.make(assignedNodeId);
@@ -81,33 +81,33 @@ export const setSelection = (
     let nextFrame = currentFrame;
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
-      const targetBlockId = s.blockId;
+      const targetKhoraId = s.khoraId;
 
-      const rootNodeId = currentFrame.rootBlockId ?? assignedNodeId;
-      const rootBlockId =
+      const rootNodeId = currentFrame.rootKhoraId ?? assignedNodeId;
+      const rootKhoraId =
         rootNodeId != null
-          ? Id.makeFrameBlockId(frameId, Id.Node.make(rootNodeId))
+          ? Id.makeFrameKhoraId(frameId, Id.Node.make(rootNodeId))
           : null;
 
       nextFrame = {
         ...currentFrame,
         activePart:
-          rootBlockId != null && targetBlockId === rootBlockId
+          rootKhoraId != null && targetKhoraId === rootKhoraId
             ? ("head" as const)
             : ("body" as const),
         selection: s,
-        selectedBlocks: [],
-        blockSelectionAnchor: null,
-        blockSelectionFocus: null,
+        selectedKhoras: [],
+        khoraSelectionAnchor: null,
+        khoraSelectionFocus: null,
         focusMode: "editing",
       };
     } else {
       nextFrame = {
         ...currentFrame,
         selection: null,
-        selectedBlocks: [],
-        blockSelectionAnchor: null,
-        blockSelectionFocus: null,
+        selectedKhoras: [],
+        khoraSelectionAnchor: null,
+        khoraSelectionFocus: null,
       };
     }
 
@@ -118,7 +118,7 @@ export const setSelection = (
         Effect.succeed({ selection: null } as Record<string, unknown>),
       onSome: (s) =>
         Effect.gen(function* () {
-          const blockContext = yield* IdT.parseBlockContext(s.blockId).pipe(
+          const blockContext = yield* IdT.parseKhoraContext(s.khoraId).pipe(
             Effect.orDie,
           );
           const Automerge = yield* AutomergeT;
@@ -129,7 +129,7 @@ export const setSelection = (
           const text = yield* Automerge.getText(nodeId);
 
           return {
-            "selection.blockId": s.blockId,
+            "selection.khoraId": s.khoraId,
             "selection.anchor": s.selection.anchor,
             "selection.head": s.selection.head,
             "selection.text": text,

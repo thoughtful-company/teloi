@@ -2,8 +2,8 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { getBlockDoc } from "@/services/ui/Block/getBlockDoc";
-import { materialize } from "@/services/ui/Block/materialize";
+import { getKhoraDoc } from "@/services/ui/Khora/getKhoraDoc";
+import { materialize } from "@/services/ui/Khora/materialize";
 import { Effect, Option } from "effect";
 import { findPreviousNode } from "./navigation";
 
@@ -24,7 +24,7 @@ export const getParent = Effect.fn("View.page.getParent")(function* (
 ) {
   const Node = yield* NodeT;
 
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     return Option.some(blockDoc.ghostParentId);
   }
@@ -49,7 +49,7 @@ export const getChildren = Effect.fn("View.page.getChildren")(function* (
   const Node = yield* NodeT;
 
   const children = yield* Node.getNodeChildren(nodeId);
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
 
   if (blockDoc.ghostChildId && children.length === 0) {
     return [blockDoc.ghostChildId] as readonly Id.Node[];
@@ -70,7 +70,7 @@ export const swap = Effect.fn("View.page.swap")(function* (
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
@@ -129,7 +129,7 @@ export const moveToFirst = Effect.fn("View.page.moveToFirst")(function* (
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
@@ -171,7 +171,7 @@ export const moveToLast = Effect.fn("View.page.moveToLast")(function* (
   const Node = yield* NodeT;
 
   // Materialize if ghost
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   if (blockDoc.ghostParentId) {
     yield* materialize({
       ghostNodeId: nodeId,
@@ -218,7 +218,7 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
   const Automerge = yield* AutomergeT;
   const Store = yield* StoreT;
 
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   const frameDoc = yield* Store.getDocument("frame", frameId);
   const rootNodeId = Option.isSome(frameDoc)
     ? (frameDoc.value.assignedNodeId as Id.Node | null)
@@ -237,20 +237,20 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
     yield* Automerge.deleteText(nodeId);
 
     // Clear ghostChildId on parent
-    const parentBlockId = Id.makeFrameBlockId(frameId, blockDoc.ghostParentId);
-    const parentDoc = yield* Store.getDocument("block", parentBlockId);
+    const parentBlockId = Id.makeFrameKhoraId(frameId, blockDoc.ghostParentId);
+    const parentDoc = yield* Store.getDocument("khora", parentBlockId);
     if (Option.isSome(parentDoc)) {
       yield* Store.setDocument(
-        "block",
+        "khora",
         { ...parentDoc.value, ghostChildId: null },
         parentBlockId,
       ).pipe(Effect.catchAll(() => Effect.void));
     }
 
     // Clear own block doc
-    const ghostBlockId = Id.makeFrameBlockId(frameId, nodeId);
+    const ghostBlockId = Id.makeFrameKhoraId(frameId, nodeId);
     yield* Store.setDocument(
-      "block",
+      "khora",
       {
         isExpanded: false,
         activeViewId: null,

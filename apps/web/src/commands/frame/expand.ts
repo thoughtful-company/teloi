@@ -1,5 +1,5 @@
 import { Id } from "@/schema";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { NodeT } from "@/services/domain/Node";
 import { Data, Effect, Option } from "effect";
@@ -13,7 +13,7 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Expand) {
-    const Block = yield* BlockT;
+    const Khora = yield* KhoraT;
     const Frame = yield* FrameT;
     const Node = yield* NodeT;
 
@@ -28,15 +28,15 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
 
       const firstLevelChildren = yield* Node.getNodeChildren(rootNodeId);
       if (firstLevelChildren.length === 0) {
-        const { ghostNodeId } = yield* Block.expandOneLevel(frameId, rootNodeId);
+        const { ghostNodeId } = yield* Khora.expandOneLevel(frameId, rootNodeId);
         yield* focusGhostIfCreated(Frame, frameId, ghostNodeId);
         return;
       }
 
       for (const childNodeId of firstLevelChildren) {
-        const childBlock = yield* Block.get(frameId, childNodeId);
+        const childBlock = yield* Khora.get(frameId, childNodeId);
         if (!childBlock.isExpanded) {
-          const { ghostNodeId } = yield* Block.expandOneLevel(
+          const { ghostNodeId } = yield* Khora.expandOneLevel(
             frameId,
             childNodeId,
           );
@@ -46,7 +46,7 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
       }
 
       for (const childNodeId of firstLevelChildren) {
-        const { expanded, ghostNodeId } = yield* Block.expandOneLevel(
+        const { expanded, ghostNodeId } = yield* Khora.expandOneLevel(
           frameId,
           childNodeId,
         );
@@ -59,7 +59,7 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
     }
 
     for (const nodeId of nodeIds) {
-      const { ghostNodeId } = yield* Block.expandOneLevel(frameId, nodeId);
+      const { ghostNodeId } = yield* Khora.expandOneLevel(frameId, nodeId);
       if (ghostNodeId) {
         yield* focusGhostIfCreated(Frame, frameId, ghostNodeId);
       }
@@ -86,8 +86,8 @@ const resolveExpandTargets = (
     const mode = yield* Frame.getMode();
     if (mode.type === "none") return Option.none();
 
-    if (mode.type === "block") {
-      const ctx = Id.parseBlockContextSync(mode.blockId);
+    if (mode.type === "khora") {
+      const ctx = Id.parseKhoraContextSync(mode.khoraId);
       if (ctx.type !== "frame") return Option.none();
       const assignedNodeId = yield* Frame.getAssignedNodeId(ctx.frameId).pipe(
         Effect.catchAll(() => Effect.succeed<Id.Node | null>(null)),
@@ -106,22 +106,22 @@ const resolveExpandTargets = (
       });
     }
 
-    if (mode.type === "blockSelection") {
-      const { selectedBlocks } = yield* Frame.getBlockSelectionState(
+    if (mode.type === "khoraSelection") {
+      const { selectedKhoras } = yield* Frame.getKhoraSelectionState(
         mode.frameId,
       ).pipe(
         Effect.catchAll(() =>
           Effect.succeed({
-            selectedBlocks: [] as readonly Id.Node[],
+            selectedKhoras: [] as readonly Id.Node[],
             anchor: null,
             focus: null,
           }),
         ),
       );
-      if (selectedBlocks.length === 0) return Option.none();
+      if (selectedKhoras.length === 0) return Option.none();
       return Option.some({
         frameId: mode.frameId,
-        nodeIds: selectedBlocks,
+        nodeIds: selectedKhoras,
         behavior: "multi" as const,
       });
     }
@@ -135,7 +135,7 @@ const focusGhostIfCreated = (
   ghostNodeId: Id.Node | null,
 ) =>
   ghostNodeId
-    ? Frame.enterBlockEditing(Id.makeFrameBlockId(frameId, ghostNodeId), {
+    ? Frame.enterBlockEditing(Id.makeFrameKhoraId(frameId, ghostNodeId), {
         anchor: 0,
         head: 0,
         assoc: 0,

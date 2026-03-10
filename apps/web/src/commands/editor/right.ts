@@ -3,7 +3,7 @@ import { EditorT } from "@/services/ui/Editor";
 import { ViewT } from "@/services/ui/View";
 import { Data, Effect, Option } from "effect";
 import { clearGoalX } from "./utils/clearGoalX";
-import { resolveActiveBlockContext } from "./utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
 
 const scope = "editor";
 const commandName = "right";
@@ -19,7 +19,7 @@ export class Right extends Data.TaggedClass(tag)<{}> {
     const isAtEnd = yield* Editor.isCursorAtEnd();
     if (!isAtEnd) {
       yield* Editor.moveRight();
-      const ctx = yield* resolveActiveBlockContext();
+      const ctx = yield* resolveActiveKhoraContext();
       if (Option.isSome(ctx)) yield* clearGoalX(ctx.value.frameId);
       return;
     }
@@ -27,16 +27,16 @@ export class Right extends Data.TaggedClass(tag)<{}> {
     const View = yield* ViewT;
     const Frame = yield* FrameT;
 
-    const ctx = yield* resolveActiveBlockContext();
+    const ctx = yield* resolveActiveKhoraContext();
     if (Option.isNone(ctx)) return;
-    const { blockId } = ctx.value;
+    const { khoraId } = ctx.value;
 
-    const targetOpt = yield* View.resolveBlockRight(blockId);
+    const targetOpt = yield* View.resolveBlockRight(khoraId);
     if (Option.isNone(targetOpt)) return;
 
-    const targetBlockId = targetOpt.value;
+    const targetKhoraId = targetOpt.value;
 
-    yield* Frame.enterBlockEditing(targetBlockId, {
+    yield* Frame.enterBlockEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
     });

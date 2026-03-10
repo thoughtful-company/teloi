@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "../editor/utils/resolveActiveKhoraContext";
 
 const scope = "frame";
 const commandName = "indent";
@@ -16,8 +16,8 @@ export class Indent extends Data.TaggedClass(tag)<{}> {
     const Frame = yield* FrameT;
     const mode = yield* Frame.getMode();
 
-    if (mode.type === "block") {
-      const ctx = yield* resolveActiveBlockContext();
+    if (mode.type === "khora") {
+      const ctx = yield* resolveActiveKhoraContext();
       if (Option.isNone(ctx)) return;
 
       const { frameId, nodeId } = ctx.value;
@@ -28,16 +28,16 @@ export class Indent extends Data.TaggedClass(tag)<{}> {
       yield* Frame.setSelection(frameId, selection);
     }
 
-    if (mode.type === "blockSelection") {
+    if (mode.type === "khoraSelection") {
       const { frameId } = mode;
-      const state = yield* Frame.getBlockSelectionState(frameId);
-      if (state.selectedBlocks.length === 0 || state.anchor === null) return;
+      const state = yield* Frame.getKhoraSelectionState(frameId);
+      if (state.selectedKhoras.length === 0 || state.anchor === null) return;
 
-      yield* indentNodes(state.selectedBlocks);
+      yield* indentNodes(state.selectedKhoras);
 
-      yield* Frame.setBlockSelection(
+      yield* Frame.setKhoraSelection(
         frameId,
-        state.selectedBlocks,
+        state.selectedKhoras,
         state.anchor,
         state.focus,
       );

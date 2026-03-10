@@ -7,22 +7,22 @@ import { StoreT } from "@/services/external/Store";
 import { withContext } from "@/utils";
 import { Context, Effect, Layer, Option } from "effect";
 import * as ChatNav from "./chat/navigation";
-import * as ChatCreate from "./chat/createBlock";
+import * as ChatCreate from "./chat/createKhora";
 import * as PageNav from "./page/navigation";
-import * as PageCreate from "./page/createBlock";
+import * as PageCreate from "./page/createKhora";
 import * as PageStructural from "./page/structural";
 import { resolveViewType } from "./internal/resolveViewType";
 
 export type { MergeResult } from "./page/structural";
 
 // Re-export view types from Block for backward compatibility
-export type { ViewInfo, ViewType } from "@/services/ui/Block";
-export { resolveActiveViewType } from "@/services/ui/Block";
+export type { ViewInfo, ViewType } from "@/services/ui/Khora";
+export { resolveActiveViewType } from "@/services/ui/Khora";
 
 /**
  * ViewT — Ghost-aware structural operations for block navigation and mutation.
  *
- * All methods take Id.Block (which encapsulates frameId + nodeId) and internally
+ * All methods take Id.Khora (which encapsulates frameId + nodeId) and internally
  * dispatch to the appropriate view-specific implementation (page vs chat).
  *
  * Ghost handling:
@@ -34,51 +34,51 @@ export class ViewT extends Context.Tag("ViewT")<
   {
     /** Find the block visually above (page: previous in tree, chat: previous in tuple order) */
     resolveBlockAbove: (
-      blockId: Id.Block,
-    ) => Effect.Effect<Option.Option<Id.Block>>;
+      khoraId: Id.Khora,
+    ) => Effect.Effect<Option.Option<Id.Khora>>;
 
     /** Find the block visually below (page: next in tree, chat: next in tuple order) */
     resolveBlockBelow: (
-      blockId: Id.Block,
-    ) => Effect.Effect<Option.Option<Id.Block>>;
+      khoraId: Id.Khora,
+    ) => Effect.Effect<Option.Option<Id.Khora>>;
 
     /** Find the block to the left (page: same as above, chat: none) */
     resolveBlockLeft: (
-      blockId: Id.Block,
-    ) => Effect.Effect<Option.Option<Id.Block>>;
+      khoraId: Id.Khora,
+    ) => Effect.Effect<Option.Option<Id.Khora>>;
 
     /** Find the block to the right (page: same as below, chat: none) */
     resolveBlockRight: (
-      blockId: Id.Block,
-    ) => Effect.Effect<Option.Option<Id.Block>>;
+      khoraId: Id.Khora,
+    ) => Effect.Effect<Option.Option<Id.Khora>>;
 
     /** Create a new block before/after the given block */
-    createBlock: (
-      blockId: Id.Block,
+    createKhora: (
+      khoraId: Id.Khora,
       position: "before" | "after",
-    ) => Effect.Effect<Id.Block>;
+    ) => Effect.Effect<Id.Khora>;
 
     /** Get parent block (ghost-aware: checks ghostParentId first) */
-    getParent: (blockId: Id.Block) => Effect.Effect<Option.Option<Id.Block>>;
+    getParent: (khoraId: Id.Khora) => Effect.Effect<Option.Option<Id.Khora>>;
 
     /** Get children blocks (ghost-aware: includes ghostChildId if present) */
-    getChildren: (blockId: Id.Block) => Effect.Effect<readonly Id.Block[]>;
+    getChildren: (khoraId: Id.Khora) => Effect.Effect<readonly Id.Khora[]>;
 
     /** Swap block with sibling (ghost-aware: materializes first) */
     swap: (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       direction: "up" | "down",
     ) => Effect.Effect<boolean>;
 
     /** Move block to first sibling position (ghost-aware: materializes first) */
-    moveToFirst: (blockId: Id.Block) => Effect.Effect<boolean>;
+    moveToFirst: (khoraId: Id.Khora) => Effect.Effect<boolean>;
 
     /** Move block to last sibling position (ghost-aware: materializes first) */
-    moveToLast: (blockId: Id.Block) => Effect.Effect<boolean>;
+    moveToLast: (khoraId: Id.Khora) => Effect.Effect<boolean>;
 
     /** Force delete block and descendants (ghost-aware: handles ghost cleanup) */
     forceDelete: (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) => Effect.Effect<Option.Option<PageStructural.MergeResult>>;
   }
 >() {}
@@ -113,22 +113,22 @@ export const ViewLive = Layer.effect(
     const getViewType = withContext(resolveViewType)(viewTypeContext);
 
     const wrapNodeResult = (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       nodeOpt: Option.Option<Id.Node>,
-    ): Option.Option<Id.Block> => {
+    ): Option.Option<Id.Khora> => {
       if (Option.isNone(nodeOpt)) return Option.none();
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame") return Option.none();
-      return Option.some(Id.makeFrameBlockId(ctx.frameId, nodeOpt.value));
+      return Option.some(Id.makeFrameKhoraId(ctx.frameId, nodeOpt.value));
     };
 
     const resolveBlockAbove = Effect.fn("View.resolveBlockAbove")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "frame") return Option.none<Id.Block>();
+      const ctx = Id.parseKhoraContextSync(khoraId);
+      if (ctx.type !== "frame") return Option.none<Id.Khora>();
 
-      const viewType = yield* getViewType(blockId);
+      const viewType = yield* getViewType(khoraId);
 
       const nodeOpt: Option.Option<Id.Node> =
         viewType === "chat"
@@ -139,16 +139,16 @@ export const ViewLive = Layer.effect(
               Effect.provide(pageContext),
             );
 
-      return wrapNodeResult(blockId, nodeOpt);
+      return wrapNodeResult(khoraId, nodeOpt);
     });
 
     const resolveBlockBelow = Effect.fn("View.resolveBlockBelow")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "frame") return Option.none<Id.Block>();
+      const ctx = Id.parseKhoraContextSync(khoraId);
+      if (ctx.type !== "frame") return Option.none<Id.Khora>();
 
-      const viewType = yield* getViewType(blockId);
+      const viewType = yield* getViewType(khoraId);
 
       const nodeOpt: Option.Option<Id.Node> =
         viewType === "chat"
@@ -160,95 +160,95 @@ export const ViewLive = Layer.effect(
               ctx.frameId,
             ).pipe(Effect.provide(pageContext));
 
-      return wrapNodeResult(blockId, nodeOpt);
+      return wrapNodeResult(khoraId, nodeOpt);
     });
 
     const resolveBlockLeft = Effect.fn("View.resolveBlockLeft")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const viewType = yield* getViewType(blockId);
+      const viewType = yield* getViewType(khoraId);
 
       // Chat view: no left/right navigation
-      if (viewType === "chat") return Option.none<Id.Block>();
+      if (viewType === "chat") return Option.none<Id.Khora>();
 
       // Page view: left is same as up
-      return yield* resolveBlockAbove(blockId);
+      return yield* resolveBlockAbove(khoraId);
     });
 
     const resolveBlockRight = Effect.fn("View.resolveBlockRight")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const viewType = yield* getViewType(blockId);
+      const viewType = yield* getViewType(khoraId);
 
       // Chat view: no left/right navigation
-      if (viewType === "chat") return Option.none<Id.Block>();
+      if (viewType === "chat") return Option.none<Id.Khora>();
 
       // Page view: right is same as down
-      return yield* resolveBlockBelow(blockId);
+      return yield* resolveBlockBelow(khoraId);
     });
 
-    const createBlock = Effect.fn("View.createBlock")(function* (
-      blockId: Id.Block,
+    const createKhora = Effect.fn("View.createKhora")(function* (
+      khoraId: Id.Khora,
       position: "before" | "after",
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame") {
         return yield* Effect.die(
-          new Error("createBlock requires a frame block"),
+          new Error("createKhora requires a frame block"),
         );
       }
 
-      const viewType = yield* getViewType(blockId);
+      const viewType = yield* getViewType(khoraId);
 
       const newNodeId =
         viewType === "chat"
-          ? yield* ChatCreate.createBlock(
+          ? yield* ChatCreate.createKhora(
               ctx.nodeId,
               ctx.frameId,
               position,
             ).pipe(Effect.provide(chatContext), Effect.orDie)
-          : yield* PageCreate.createBlock(
+          : yield* PageCreate.createKhora(
               ctx.nodeId,
               ctx.frameId,
               position,
             ).pipe(Effect.provide(pageContext), Effect.orDie);
 
-      return Id.makeFrameBlockId(ctx.frameId, newNodeId);
+      return Id.makeFrameKhoraId(ctx.frameId, newNodeId);
     });
 
     const getParent = Effect.fn("View.getParent")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "frame") return Option.none<Id.Block>();
+      const ctx = Id.parseKhoraContextSync(khoraId);
+      if (ctx.type !== "frame") return Option.none<Id.Khora>();
 
       const nodeOpt = yield* PageStructural.getParent(
         ctx.nodeId,
         ctx.frameId,
       ).pipe(Effect.provide(pageContext));
 
-      return wrapNodeResult(blockId, nodeOpt);
+      return wrapNodeResult(khoraId, nodeOpt);
     });
 
     const getChildren = Effect.fn("View.getChildren")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
-      if (ctx.type !== "frame") return [] as readonly Id.Block[];
+      const ctx = Id.parseKhoraContextSync(khoraId);
+      if (ctx.type !== "frame") return [] as readonly Id.Khora[];
 
       const children = yield* PageStructural.getChildren(
         ctx.nodeId,
         ctx.frameId,
       ).pipe(Effect.provide(pageContext));
 
-      return children.map((nodeId) => Id.makeFrameBlockId(ctx.frameId, nodeId));
+      return children.map((nodeId) => Id.makeFrameKhoraId(ctx.frameId, nodeId));
     });
 
     const swap = Effect.fn("View.swap")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       direction: "up" | "down",
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame") return false;
 
       return yield* PageStructural.swap(
@@ -262,9 +262,9 @@ export const ViewLive = Layer.effect(
     });
 
     const moveToFirst = Effect.fn("View.moveToFirst")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame") return false;
 
       return yield* PageStructural.moveToFirst(ctx.nodeId, ctx.frameId).pipe(
@@ -274,9 +274,9 @@ export const ViewLive = Layer.effect(
     });
 
     const moveToLast = Effect.fn("View.moveToLast")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame") return false;
 
       return yield* PageStructural.moveToLast(ctx.nodeId, ctx.frameId).pipe(
@@ -286,9 +286,9 @@ export const ViewLive = Layer.effect(
     });
 
     const forceDelete = Effect.fn("View.forceDelete")(function* (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
     ) {
-      const ctx = Id.parseBlockContextSync(blockId);
+      const ctx = Id.parseKhoraContextSync(khoraId);
       if (ctx.type !== "frame")
         return Option.none<PageStructural.MergeResult>();
 
@@ -302,7 +302,7 @@ export const ViewLive = Layer.effect(
       resolveBlockBelow,
       resolveBlockLeft,
       resolveBlockRight,
-      createBlock,
+      createKhora,
       getParent,
       getChildren,
       swap,

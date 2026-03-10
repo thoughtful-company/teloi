@@ -8,21 +8,21 @@ import { waitFor } from "solid-testing-library";
  * Waits for a block element to appear and clicks its text area.
  * Uses .flex to target the text content div (works whether chevron is present or not).
  */
-export const USER_CLICKS_BLOCK = (blockId: Id.Block) =>
+export const USER_CLICKS_KHORA = (khoraId: Id.Khora) =>
   Effect.gen(function* () {
-    const selector = `[data-element-id="${blockId}"] > .flex`;
+    const selector = `[data-element-id="${khoraId}"] > .flex`;
     const element = yield* Effect.promise(() =>
       waitFor(
         () => {
           const el = document.querySelector(selector);
-          if (!el) throw new Error(`Block ${blockId} text area not found`);
+          if (!el) throw new Error(`Block ${khoraId} text area not found`);
           return el as HTMLElement;
         },
         { timeout: 2000 },
       ),
     );
     yield* Effect.promise(() => userEvent.click(element));
-  }).pipe(Effect.withSpan("When.USER_CLICKS_BLOCK"));
+  }).pipe(Effect.withSpan("When.USER_CLICKS_KHORA"));
 
 /**
  * Waits for a title element to appear and clicks it.
@@ -53,19 +53,19 @@ export const USER_PRESSES = (keys: string) =>
 
 /**
  * Focuses a block via model state, then presses Escape
- * to enter block selection mode with that block selected.
+ * to enter khora selection mode with that block selected.
  */
-export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
+export const USER_ENTERS_KHORA_SELECTION = (khoraId: Id.Khora) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
-    const [frameId] = yield* Id.parseBlockId(blockId);
+    const [frameId] = yield* Id.parseKhoraId(khoraId);
 
     // Set selection first, then activate — so CodeMirror mounts with cursor in place
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId,
+        khoraId,
         selection: {
           anchor: 0,
           head: 0,
@@ -79,7 +79,7 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(Frame.enterBlockEditing(blockId));
+          resume(Frame.enterBlockEditing(khoraId));
         }),
       );
       return Effect.sync(() => clearTimeout(timeout));
@@ -97,11 +97,11 @@ export const USER_ENTERS_BLOCK_SELECTION = (blockId: Id.Block) =>
     );
 
     yield* USER_PRESSES("{Escape}");
-  }).pipe(Effect.withSpan("When.USER_ENTERS_BLOCK_SELECTION"));
+  }).pipe(Effect.withSpan("When.USER_ENTERS_KHORA_SELECTION"));
 
 /**
  * Focuses the Frame container for a frame.
- * Use this after programmatically setting up block selection mode
+ * Use this after programmatically setting up khora selection mode
  * so that keyboard events can be received.
  */
 export const FOCUS_FRAME_CONTAINER = (frameId: Id.Frame) =>

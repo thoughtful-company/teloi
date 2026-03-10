@@ -108,7 +108,7 @@ describe("TableView", () => {
             () => {
               // Wait for blocks to render first
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -124,7 +124,7 @@ describe("TableView", () => {
         ).toBeFalsy();
 
         // Then: Normal blocks should be visible
-        const firstChildBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+        const firstChildBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
         const blockElement = document.querySelector(
           `[data-element-id="${firstChildBlockId}"]`,
         );

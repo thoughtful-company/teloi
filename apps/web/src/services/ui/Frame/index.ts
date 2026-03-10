@@ -12,7 +12,7 @@ import { FrameNodeNotAssignedError, FrameNotFoundError } from "../errors";
 import { WorldT } from "../World";
 import { get } from "./get";
 import { setAssignedNodeId } from "./setAssignedNodeId";
-import { setBlockSelection } from "./setBlockSelection";
+import { setKhoraSelection } from "./setKhoraSelection";
 import { setSelection } from "./setSelection";
 import { FrameView, subscribe } from "./subscribe";
 
@@ -20,13 +20,13 @@ import { FrameView, subscribe } from "./subscribe";
  * Editor interaction mode derived from world/frame focus state.
  *
  * - "none": No element focused
- * - "block": A block is focused for text editing
- * - "blockSelection": A frame has block selection mode active
+ * - "khora": A block is focused for text editing
+ * - "khoraSelection": A frame has khora selection mode active
  */
 export type EditorMode =
   | { type: "none" }
-  | { type: "block"; blockId: Id.Block }
-  | { type: "blockSelection"; frameId: Id.Frame };
+  | { type: "khora"; khoraId: Id.Khora }
+  | { type: "khoraSelection"; frameId: Id.Frame };
 
 export class FrameT extends Context.Tag("FrameT")<
   FrameT,
@@ -43,7 +43,7 @@ export class FrameT extends Context.Tag("FrameT")<
     getSelection: (
       frameId: Id.Frame,
     ) => Effect.Effect<
-      Option.Option<Model.ActiveBlockSelection>,
+      Option.Option<Model.ActiveKhoraSelection>,
       FrameNotFoundError
     >;
     getAssignedNodeId: (
@@ -51,25 +51,25 @@ export class FrameT extends Context.Tag("FrameT")<
     ) => Effect.Effect<Id.Node | null, FrameNotFoundError>;
     setSelection: (
       frameId: Id.Frame,
-      selection: Option.Option<Model.ActiveBlockSelection>,
+      selection: Option.Option<Model.ActiveKhoraSelection>,
     ) => Effect.Effect<void, FrameNotFoundError>;
     setAssignedNodeId: (
       frameId: Id.Frame,
       nodeId: Id.Node | null,
     ) => Effect.Effect<void, FrameNotFoundError>;
-    setBlockSelection: (
+    setKhoraSelection: (
       frameId: Id.Frame,
       blocks: readonly Id.Node[],
-      blockSelectionAnchor: Id.Node | null,
-      blockSelectionFocus?: Id.Node | null,
+      khoraSelectionAnchor: Id.Node | null,
+      khoraSelectionFocus?: Id.Node | null,
     ) => Effect.Effect<void, FrameNotFoundError>;
 
     /**
-     * Get block selection state for a frame.
+     * Get khora selection state for a frame.
      */
-    getBlockSelectionState: (frameId: Id.Frame) => Effect.Effect<
+    getKhoraSelectionState: (frameId: Id.Frame) => Effect.Effect<
       {
-        selectedBlocks: readonly Id.Node[];
+        selectedKhoras: readonly Id.Node[];
         anchor: Id.Node | null;
         focus: Id.Node | null;
       },
@@ -82,16 +82,16 @@ export class FrameT extends Context.Tag("FrameT")<
      */
     getMode: () => Effect.Effect<EditorMode>;
     /**
-     * Enter block selection mode for a frame.
+     * Enter khora selection mode for a frame.
      */
-    enterBlockSelection: (frameId: Id.Frame) => Effect.Effect<void>;
+    enterKhoraSelection: (frameId: Id.Frame) => Effect.Effect<void>;
     /**
      * Enter block editing mode for a specific block.
      * When selection is provided, sets selection atomically with the mode change
      * (merged setSelection + enterBlockEditing in a single frame doc write).
      */
     enterBlockEditing: (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       selection?: {
         anchor: number;
         head: number;
@@ -152,7 +152,7 @@ export const FrameLive = Layer.effect(
             return Option.some(frameDoc.value.selection);
           }
 
-          return Option.none<Model.ActiveBlockSelection>();
+          return Option.none<Model.ActiveKhoraSelection>();
         }),
       getAssignedNodeId: (frameId: Id.Frame) =>
         get(frameId, "assignedNodeId").pipe(
@@ -164,30 +164,30 @@ export const FrameLive = Layer.effect(
         setAssignedNodeId(frameId, nodeId).pipe(
           Effect.provideService(StoreT, Store),
         ),
-      setBlockSelection: (
+      setKhoraSelection: (
         frameId: Id.Frame,
         blocks: readonly Id.Node[],
-        blockSelectionAnchor: Id.Node | null,
-        blockSelectionFocus?: Id.Node | null,
+        khoraSelectionAnchor: Id.Node | null,
+        khoraSelectionFocus?: Id.Node | null,
       ) =>
-        setBlockSelection(
+        setKhoraSelection(
           frameId,
           blocks,
-          blockSelectionAnchor,
-          blockSelectionFocus,
+          khoraSelectionAnchor,
+          khoraSelectionFocus,
         ).pipe(Effect.provide(context)),
 
-      getBlockSelectionState: (frameId: Id.Frame) =>
+      getKhoraSelectionState: (frameId: Id.Frame) =>
         Effect.gen(function* () {
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
           if (Option.isSome(frameDoc)) {
-            return deriveBlockSelectionState(frameDoc.value);
+            return deriveKhoraSelectionState(frameDoc.value);
           }
 
           return {
-            selectedBlocks: [] as readonly Id.Node[],
+            selectedKhoras: [] as readonly Id.Node[],
             anchor: null,
             focus: null,
           };
@@ -217,16 +217,16 @@ export const FrameLive = Layer.effect(
 
           const frame = frameDoc.value;
           if (frame.selection != null) {
-            return { type: "block" as const, blockId: frame.selection.blockId };
+            return { type: "khora" as const, khoraId: frame.selection.khoraId };
           }
 
           if (frame.focusMode !== "editing") {
-            return { type: "blockSelection" as const, frameId: activeFrameId };
+            return { type: "khoraSelection" as const, frameId: activeFrameId };
           }
 
           return { type: "none" as const };
         }),
-      enterBlockSelection: (frameId: Id.Frame): Effect.Effect<void> =>
+      enterKhoraSelection: (frameId: Id.Frame): Effect.Effect<void> =>
         Effect.gen(function* () {
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
@@ -234,24 +234,24 @@ export const FrameLive = Layer.effect(
           if (Option.isNone(frameDoc)) return;
 
           const frame = frameDoc.value;
-          const state = deriveBlockSelectionState(frame);
+          const state = deriveKhoraSelectionState(frame);
           const selectionNodeId =
             frame.selection != null
               ? (() => {
-                  const ctx = Id.parseBlockContextSync(frame.selection.blockId);
+                  const ctx = Id.parseKhoraContextSync(frame.selection.khoraId);
                   return ctx.type === "frame" ? ctx.nodeId : null;
                 })()
               : null;
           const fallbackNodeId =
             state.focus ?? state.anchor ?? selectionNodeId ?? null;
-          const selectedBlocks =
-            state.selectedBlocks.length > 0
-              ? state.selectedBlocks
+          const selectedKhoras =
+            state.selectedKhoras.length > 0
+              ? state.selectedKhoras
               : fallbackNodeId != null
                 ? [fallbackNodeId]
                 : [];
-          const normalized = normalizeBlockSelectionState(
-            selectedBlocks,
+          const normalized = normalizeKhoraSelectionState(
+            selectedKhoras,
             state.anchor ?? fallbackNodeId,
             state.focus ?? fallbackNodeId,
           );
@@ -264,10 +264,10 @@ export const FrameLive = Layer.effect(
               ...frame,
               activePart: "body",
               selection: null,
-              selectedBlocks: [...normalized.selectedBlocks],
-              blockSelectionAnchor: normalized.anchor,
-              blockSelectionFocus: normalized.focus,
-              focusMode: "blockSelection",
+              selectedKhoras: [...normalized.selectedKhoras],
+              khoraSelectionAnchor: normalized.anchor,
+              khoraSelectionFocus: normalized.focus,
+              focusMode: "khoraSelection",
             },
             frameId,
           ).pipe(Effect.orDie);
@@ -275,7 +275,7 @@ export const FrameLive = Layer.effect(
           yield* World.setActiveFrameId(frameId);
         }),
       enterBlockEditing: (
-        blockId: Id.Block,
+        khoraId: Id.Khora,
         selection?: {
           anchor: number;
           head: number;
@@ -285,7 +285,7 @@ export const FrameLive = Layer.effect(
         },
       ): Effect.Effect<void> =>
         Effect.gen(function* () {
-          const blockCtx = Id.parseBlockContextSync(blockId);
+          const blockCtx = Id.parseKhoraContextSync(khoraId);
           if (blockCtx.type !== "frame") return;
 
           const frameId = blockCtx.frameId;
@@ -300,7 +300,7 @@ export const FrameLive = Layer.effect(
           yield* setSelection(
             frameId,
             Option.some({
-              blockId,
+              khoraId,
               selection: {
                 anchor: nextSelection.anchor,
                 head: nextSelection.head,
@@ -317,7 +317,7 @@ export const FrameLive = Layer.effect(
             "[Frame.enterBlockEditing] Block editing entered",
           ).pipe(
             Effect.annotateLogs({
-              blockId,
+              khoraId,
               frameId,
               "selection.anchor": nextSelection.anchor,
               "selection.head": nextSelection.head,
@@ -384,35 +384,35 @@ export const FrameLive = Layer.effect(
 
 // ================================ Internal ==================================
 
-const deriveBlockSelectionState = (frame: Model.Frame) => {
-  const normalized = normalizeBlockSelectionState(
-    frame.selectedBlocks ?? [],
-    frame.blockSelectionAnchor ?? null,
-    frame.blockSelectionFocus ?? null,
+const deriveKhoraSelectionState = (frame: Model.Frame) => {
+  const normalized = normalizeKhoraSelectionState(
+    frame.selectedKhoras ?? [],
+    frame.khoraSelectionAnchor ?? null,
+    frame.khoraSelectionFocus ?? null,
   );
-  if (normalized.selectedBlocks.length === 0) {
+  if (normalized.selectedKhoras.length === 0) {
     return {
-      selectedBlocks: [] as readonly Id.Node[],
+      selectedKhoras: [] as readonly Id.Node[],
       anchor: null as Id.Node | null,
       focus: null as Id.Node | null,
     };
   }
 
   return {
-    selectedBlocks: normalized.selectedBlocks,
+    selectedKhoras: normalized.selectedKhoras,
     anchor: normalized.anchor,
     focus: normalized.focus,
   };
 };
 
-const normalizeBlockSelectionState = (
+const normalizeKhoraSelectionState = (
   blocks: readonly Id.Node[],
   anchor: Id.Node | null,
   focus: Id.Node | null,
 ) => {
   if (blocks.length === 0) {
     return {
-      selectedBlocks: [] as readonly Id.Node[],
+      selectedKhoras: [] as readonly Id.Node[],
       anchor: null as Id.Node | null,
       focus: null as Id.Node | null,
     };
@@ -421,7 +421,7 @@ const normalizeBlockSelectionState = (
   if (anchor == null && focus == null) {
     const fallback = blocks[0]!;
     return {
-      selectedBlocks: blocks,
+      selectedKhoras: blocks,
       anchor: fallback,
       focus: fallback,
     };
@@ -429,14 +429,14 @@ const normalizeBlockSelectionState = (
 
   if (anchor == null) {
     return {
-      selectedBlocks: blocks,
+      selectedKhoras: blocks,
       anchor: focus,
       focus,
     };
   }
 
   return {
-    selectedBlocks: blocks,
+    selectedKhoras: blocks,
     anchor,
     focus: focus ?? anchor,
   };

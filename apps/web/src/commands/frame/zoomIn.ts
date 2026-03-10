@@ -2,7 +2,7 @@ import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
 import { NavigationT } from "@/services/ui/Navigation";
 import { Data, Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "../editor/utils/resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "../editor/utils/resolveActiveKhoraContext";
 
 const scope = "frame";
 const commandName = "zoomIn";
@@ -16,7 +16,7 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
     const Navigation = yield* NavigationT;
     const Frame = yield* FrameT;
 
-    const ctx = yield* resolveActiveBlockContext();
+    const ctx = yield* resolveActiveKhoraContext();
     if (Option.isNone(ctx)) return;
 
     const { frameId, nodeId } = ctx.value;
@@ -24,7 +24,7 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
     yield* Navigation.navigateTo(nodeId);
 
     // After navigation, nodeId is the new title
-    const titleBlockId = Id.makeFrameBlockId(frameId, nodeId);
+    const titleBlockId = Id.makeFrameKhoraId(frameId, nodeId);
     yield* Frame.enterBlockEditing(titleBlockId);
   });
 }

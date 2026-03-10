@@ -23,12 +23,12 @@ export const updateEditorSelection = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const elementId = IdT.makeFrameBlockId(frameId, nodeId);
+    const elementId = IdT.makeFrameKhoraId(frameId, nodeId);
 
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId: elementId,
+        khoraId: elementId,
         selection: {
           anchor: selection.anchor,
           head: selection.head,
@@ -42,7 +42,7 @@ export const updateEditorSelection = (
 
 /** Build a collapsed selection (anchor === focus) for Frame.setSelection */
 export const makeCollapsedSelection = (
-  elementId: Id.Block,
+  elementId: Id.Khora,
   offset: number,
   opts?: {
     goalX?: number | null;
@@ -50,7 +50,7 @@ export const makeCollapsedSelection = (
   },
 ) =>
   Option.some({
-    blockId: elementId,
+    khoraId: elementId,
     selection: {
       anchor: offset,
       head: offset,

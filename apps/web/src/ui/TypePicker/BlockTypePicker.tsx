@@ -83,8 +83,8 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
     runtime.runSync(
       Effect.gen(function* () {
         const Frame = yield* FrameT;
-        const state = yield* Frame.getBlockSelectionState(props.frameId);
-        return state.selectedBlocks;
+        const state = yield* Frame.getKhoraSelectionState(props.frameId);
+        return state.selectedKhoras;
       }),
     );
 

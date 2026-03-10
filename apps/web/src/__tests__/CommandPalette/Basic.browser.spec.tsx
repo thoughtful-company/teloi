@@ -155,7 +155,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -193,7 +193,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -244,7 +244,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -304,7 +304,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -374,7 +374,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -444,7 +444,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -505,7 +505,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -549,7 +549,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBeGreaterThan(0);
             },
@@ -597,7 +597,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBe(2);
             },
@@ -773,7 +773,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(
                 blocks.length,
@@ -804,7 +804,7 @@ describe("CommandPalette", () => {
           waitFor(
             () => {
               const blocks = document.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blocks.length).toBe(2);
             },

@@ -159,7 +159,7 @@ describe("PropertySection Linked Blocks", () => {
     });
 
   describe("Block renders with property block ID", () => {
-    it("renders linked blocks with data-element-type='block' attribute", async () => {
+    it("renders linked blocks with data-element-type='khora' attribute", async () => {
       await Effect.gen(function* () {
         const { rootNodeId: pageId, frameId } =
           yield* Given.A_FRAME_WITH_CHILDREN("Test Page", []);
@@ -181,9 +181,9 @@ describe("PropertySection Linked Blocks", () => {
               );
               expect(linkedBlocksArea).toBeTruthy();
 
-              // Should contain a Block component with data-element-type="block"
+              // Should contain a Block component with data-element-type="khora"
               const blockElements = linkedBlocksArea!.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blockElements.length).toBe(1);
             },
@@ -206,7 +206,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const expectedBlockId = Id.makePropertyBlockId(
+        const expectedBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -222,7 +222,7 @@ describe("PropertySection Linked Blocks", () => {
               );
               expect(blockElement).toBeTruthy();
               expect(blockElement?.getAttribute("data-element-type")).toBe(
-                "block",
+                "khora",
               );
             },
             { timeout: 2000 },
@@ -365,7 +365,7 @@ describe("PropertySection Linked Blocks", () => {
               expect(ghostBlock).toBeNull();
 
               const blockElements = document.querySelectorAll(
-                "[data-testid='linked-blocks'] [data-element-type='block']",
+                "[data-testid='linked-blocks'] [data-element-type='khora']",
               );
               expect(blockElements.length).toBe(1);
             },
@@ -733,7 +733,7 @@ describe("PropertySection Linked Blocks", () => {
         yield* Effect.promise(() => userEvent.keyboard("{End}{ArrowRight}"));
 
         // First linked block should now be focused
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -745,7 +745,7 @@ describe("PropertySection Linked Blocks", () => {
             () => {
               // The linked block's editor should be focused
               const linkedBlockEl = document.querySelector(
-                `[data-element-id="${firstBlockId}"] .cm-editor.cm-focused`,
+                `[data-element-id="${firstKhoraId}"] .cm-editor.cm-focused`,
               );
               expect(linkedBlockEl).toBeTruthy();
             },
@@ -827,13 +827,13 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
           tupleIds[0]!,
         );
-        const secondBlockId = Id.makePropertyBlockId(
+        const secondBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -845,7 +845,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -885,13 +885,13 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
           tupleIds[0]!,
         );
-        const secondBlockId = Id.makePropertyBlockId(
+        const secondBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -920,7 +920,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             () => {
               const firstBlockEditor = document.querySelector(
-                `[data-element-id="${firstBlockId}"] .cm-editor.cm-focused`,
+                `[data-element-id="${firstKhoraId}"] .cm-editor.cm-focused`,
               );
               expect(firstBlockEditor).toBeTruthy();
             },
@@ -943,7 +943,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -955,7 +955,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -999,7 +999,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1011,7 +1011,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -1035,7 +1035,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             () => {
               const blockElements = document.querySelectorAll(
-                "[data-testid='linked-blocks'] [data-element-type='block']",
+                "[data-testid='linked-blocks'] [data-element-type='khora']",
               );
               expect(blockElements.length).toBe(2);
             },
@@ -1058,7 +1058,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1070,7 +1070,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -1087,7 +1087,7 @@ describe("PropertySection Linked Blocks", () => {
             () => {
               // Should have 2 blocks
               const blockElements = document.querySelectorAll(
-                "[data-testid='linked-blocks'] [data-element-type='block']",
+                "[data-testid='linked-blocks'] [data-element-type='khora']",
               );
               expect(blockElements.length).toBe(2);
 
@@ -1099,7 +1099,7 @@ describe("PropertySection Linked Blocks", () => {
 
               // The focused editor should NOT be in the first block
               const firstBlockFocused = document.querySelector(
-                `[data-element-id="${firstBlockId}"] .cm-editor.cm-focused`,
+                `[data-element-id="${firstKhoraId}"] .cm-editor.cm-focused`,
               );
               expect(firstBlockFocused).toBeNull();
             },
@@ -1124,7 +1124,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const secondBlockId = Id.makePropertyBlockId(
+        const secondBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1157,7 +1157,7 @@ describe("PropertySection Linked Blocks", () => {
                 "[data-testid='linked-blocks']",
               );
               const nestedBlocks = linkedBlocksArea!.querySelectorAll(
-                "[data-element-type='block'] [data-element-type='block']",
+                "[data-element-type='khora'] [data-element-type='khora']",
               );
               // No nested blocks
               expect(nestedBlocks.length).toBe(0);
@@ -1181,7 +1181,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1193,7 +1193,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -1215,7 +1215,7 @@ describe("PropertySection Linked Blocks", () => {
                 "[data-testid='linked-blocks']",
               );
               const blockElements = linkedBlocksArea!.querySelectorAll(
-                "[data-element-type='block']",
+                "[data-element-type='khora']",
               );
               expect(blockElements.length).toBe(1);
             },
@@ -1239,7 +1239,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1251,7 +1251,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             async () => {
               const firstBlock = document.querySelector(
-                `[data-element-id="${firstBlockId}"]`,
+                `[data-element-id="${firstKhoraId}"]`,
               );
               expect(firstBlock).toBeTruthy();
               await userEvent.click(firstBlock as HTMLElement);
@@ -1297,13 +1297,13 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const firstBlockId = Id.makePropertyBlockId(
+        const firstKhoraId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
           tupleIds[0]!,
         );
-        const secondBlockId = Id.makePropertyBlockId(
+        const secondBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,
@@ -1332,7 +1332,7 @@ describe("PropertySection Linked Blocks", () => {
           waitFor(
             () => {
               const firstBlockEditor = document.querySelector(
-                `[data-element-id="${firstBlockId}"] .cm-editor.cm-focused`,
+                `[data-element-id="${firstKhoraId}"] .cm-editor.cm-focused`,
               );
               expect(firstBlockEditor).toBeTruthy();
             },
@@ -1363,7 +1363,7 @@ describe("PropertySection Linked Blocks", () => {
 
         render(() => renderPropertySection({ propertyId, pageId, frameId }));
 
-        const secondBlockId = Id.makePropertyBlockId(
+        const secondBlockId = Id.makePropertyKhoraId(
           frameId,
           pageId,
           propertyId,

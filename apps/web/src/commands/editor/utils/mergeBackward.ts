@@ -1,19 +1,19 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { AutomergeT } from "@/services/external/Automerge";
-import { BlockT } from "@/services/ui/Block";
-import { getBlockDoc } from "@/services/ui/Block/getBlockDoc";
+import { KhoraT } from "@/services/ui/Khora";
+import { getKhoraDoc } from "@/services/ui/Khora/getKhoraDoc";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
 import { Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./resolveActiveKhoraContext";
 
 export const mergeBackward = Effect.fn("mergeBackward")(function* () {
-  const ctx = yield* resolveActiveBlockContext();
+  const ctx = yield* resolveActiveKhoraContext();
   if (Option.isNone(ctx)) return;
-  const { frameId, nodeId, blockId } = ctx.value;
+  const { frameId, nodeId, khoraId } = ctx.value;
 
-  const blockDoc = yield* getBlockDoc(frameId, nodeId);
+  const blockDoc = yield* getKhoraDoc(frameId, nodeId);
 
   // Ghost block: collapse parent (which cleans up the ghost)
   if (blockDoc.ghostParentId) {
@@ -28,11 +28,11 @@ export const mergeBackward = Effect.fn("mergeBackward")(function* () {
   if (nodeChildren.length > 0) return;
 
   const View = yield* ViewT;
-  const targetOpt = yield* View.resolveBlockAbove(blockId);
+  const targetOpt = yield* View.resolveBlockAbove(khoraId);
   if (Option.isNone(targetOpt)) return;
 
-  const targetBlockId = targetOpt.value;
-  const targetCtx = Id.parseBlockContextSync(targetBlockId);
+  const targetKhoraId = targetOpt.value;
+  const targetCtx = Id.parseKhoraContextSync(targetKhoraId);
   if (targetCtx.type !== "frame") return;
   const targetNodeId = targetCtx.nodeId;
 
@@ -47,7 +47,7 @@ export const mergeBackward = Effect.fn("mergeBackward")(function* () {
 
   const Frame = yield* FrameT;
 
-  yield* Frame.enterBlockEditing(targetBlockId, {
+  yield* Frame.enterBlockEditing(targetKhoraId, {
     anchor: mergePoint,
     head: mergePoint,
   });
@@ -59,14 +59,14 @@ const removeGhost = Effect.fn("mergeBackward:removeGhost")(function* (
   frameId: Id.Frame,
   parentNodeId: Id.Node,
 ) {
-  const Block = yield* BlockT;
+  const Khora = yield* KhoraT;
   const Frame = yield* FrameT;
   const Automerge = yield* AutomergeT;
 
-  const parentBlockId = Id.makeFrameBlockId(frameId, parentNodeId);
+  const parentBlockId = Id.makeFrameKhoraId(frameId, parentNodeId);
   const parentText = yield* Automerge.getText(parentNodeId);
 
-  yield* Block.setExpanded(parentBlockId, false);
+  yield* Khora.setExpanded(parentBlockId, false);
 
   yield* Frame.enterBlockEditing(parentBlockId, {
     anchor: parentText.length,

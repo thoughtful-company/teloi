@@ -16,26 +16,26 @@ export const Node = Schema.Union(SafeIdString, SystemIdString).pipe(
 );
 export const Tuple = SafeIdString.pipe(Schema.brand("TupleId"));
 
-// Block and Section are composite IDs containing : and / delimiters
-export const Block = Schema.String.pipe(Schema.brand("BlockId"));
+// Khora and Section are composite IDs containing : and / delimiters
+export const Khora = Schema.String.pipe(Schema.brand("KhoraId"));
 export const Section = Schema.String.pipe(Schema.brand("SectionId"));
 
 export type World = typeof World.Type;
 export type Pane = typeof Pane.Type;
 export type Frame = typeof Frame.Type;
-export type Block = typeof Block.Type;
+export type Khora = typeof Khora.Type;
 export type Node = typeof Node.Type;
 export type Tuple = typeof Tuple.Type;
 export type Section = typeof Section.Type;
 
 // Block context schemas
-const FrameBlockContext = Schema.Struct({
+const FrameKhoraContext = Schema.Struct({
   type: Schema.Literal("frame"),
   frameId: Frame,
   nodeId: Node,
 });
 
-const SectionBlockContext = Schema.Struct({
+const SectionKhoraContext = Schema.Struct({
   type: Schema.Literal("section"),
   frameId: Frame,
   hostNodeId: Node,
@@ -43,37 +43,37 @@ const SectionBlockContext = Schema.Struct({
   tupleId: Tuple,
 });
 
-const BlockContextSchema = Schema.Union(FrameBlockContext, SectionBlockContext);
-export type BlockContext = typeof BlockContextSchema.Type;
+const KhoraContextSchema = Schema.Union(FrameKhoraContext, SectionKhoraContext);
+export type KhoraContext = typeof KhoraContextSchema.Type;
 
 // Virtual tuple sentinel for bound properties with no linked blocks
 export const VIRTUAL_TUPLE = Tuple.make("__virtual__");
 
 // Block ID format: frame:{frameId}/node:{nodeId}
-export const makeFrameBlockId = (frameId: Frame, nodeId: Node): Block =>
-  Block.make(`frame:${frameId}/node:${nodeId}`);
+export const makeFrameKhoraId = (frameId: Frame, nodeId: Node): Khora =>
+  Khora.make(`frame:${frameId}/node:${nodeId}`);
 
 // Property block ID format: frame:{frameId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}
-export const makePropertyBlockId = (
+export const makePropertyKhoraId = (
   frameId: Frame,
   hostNodeId: Node,
   propertyId: Node,
   tupleId: Tuple,
-): Block =>
-  Block.make(
+): Khora =>
+  Khora.make(
     `frame:${frameId}/node:${hostNodeId}/property:${propertyId}/tuple:${tupleId}`,
   );
 
-/** @deprecated Use makePropertyBlockId instead */
-export const makeSectionBlockId = (sectionId: Section, nodeId: Node): Block =>
-  Block.make(`section:${sectionId}/node:${nodeId}`);
+/** @deprecated Use makePropertyKhoraId instead */
+export const makeSectionKhoraId = (sectionId: Section, nodeId: Node): Khora =>
+  Khora.make(`section:${sectionId}/node:${nodeId}`);
 
-// Section ID format: frame:{frameId}/section:{name} or block:{blockId}/section:{name}
+// Section ID format: frame:{frameId}/section:{name} or block:{khoraId}/section:{name}
 export const makeFrameSectionId = (frameId: Frame, name: string): Section =>
   Section.make(`frame:${frameId}/section:${name}`);
 
-export const makeBlockSectionId = (blockId: Block, name: string): Section =>
-  Section.make(`block:${blockId}/section:${name}`);
+export const makeKhoraSectionId = (khoraId: Khora, name: string): Section =>
+  Section.make(`block:${khoraId}/section:${name}`);
 
 // Property section ID format: frame:{frameId}/node:{hostNodeId}/property:{propertyId}
 export const makePropertySectionId = (
@@ -83,10 +83,10 @@ export const makePropertySectionId = (
 ): Section =>
   Section.make(`frame:${frameId}/node:${hostNodeId}/property:${propertyId}`);
 
-export class InvalidBlockIdError extends Data.TaggedError(
-  "InvalidBlockIdError",
+export class InvalidKhoraIdError extends Data.TaggedError(
+  "InvalidKhoraIdError",
 )<{
-  blockId: string;
+  khoraId: string;
 }> {}
 
 export class InvalidSectionIdError extends Data.TaggedError(
@@ -101,37 +101,36 @@ const PROPERTY_SEGMENT = "/property:";
 const TUPLE_SEGMENT = "/tuple:";
 
 /**
- * Schema that decodes a Block ID string into a BlockContext.
+ * Schema that decodes a Block ID string into a KhoraContext.
  *
  * Handles two formats:
  * - Frame block: `frame:{frameId}/node:{nodeId}`
  * - Section block: `frame:{frameId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}`
  */
-export const BlockContextFromBlockId = Schema.transformOrFail(
-  Block,
-  BlockContextSchema,
+export const KhoraContextFromKhoraId = Schema.transformOrFail(
+  Khora,  KhoraContextSchema,
   {
     strict: true,
-    decode: (blockId, _options, ast) => {
-      if (!blockId.startsWith(FRAME_BLOCK_PREFIX)) {
+    decode: (khoraId, _options, ast) => {
+      if (!khoraId.startsWith(FRAME_BLOCK_PREFIX)) {
         return ParseResult.fail(
           new ParseResult.Type(
             ast,
-            blockId,
+            khoraId,
             "Block ID must start with 'frame:'",
           ),
         );
       }
 
-      const nodeIndex = blockId.indexOf(NODE_SEGMENT);
+      const nodeIndex = khoraId.indexOf(NODE_SEGMENT);
       if (nodeIndex === -1) {
         return ParseResult.fail(
-          new ParseResult.Type(ast, blockId, "Missing '/node:' segment"),
+          new ParseResult.Type(ast, khoraId, "Missing '/node:' segment"),
         );
       }
 
-      const frameId = blockId.slice(FRAME_BLOCK_PREFIX.length, nodeIndex);
-      const afterNode = blockId.slice(nodeIndex + NODE_SEGMENT.length);
+      const frameId = khoraId.slice(FRAME_BLOCK_PREFIX.length, nodeIndex);
+      const afterNode = khoraId.slice(nodeIndex + NODE_SEGMENT.length);
 
       // Check for property block format
       const propertyIndex = afterNode.indexOf(PROPERTY_SEGMENT);
@@ -146,7 +145,7 @@ export const BlockContextFromBlockId = Schema.transformOrFail(
           return ParseResult.fail(
             new ParseResult.Type(
               ast,
-              blockId,
+              khoraId,
               "Missing '/tuple:' segment in property block",
             ),
           );
@@ -174,50 +173,50 @@ export const BlockContextFromBlockId = Schema.transformOrFail(
     encode: (context) => {
       if (context.type === "frame") {
         return ParseResult.succeed(
-          `frame:${context.frameId}/node:${context.nodeId}` as Block,
+          `frame:${context.frameId}/node:${context.nodeId}` as Khora,
         );
       }
       return ParseResult.succeed(
-        `frame:${context.frameId}/node:${context.hostNodeId}/property:${context.propertyId}/tuple:${context.tupleId}` as Block,
+        `frame:${context.frameId}/node:${context.hostNodeId}/property:${context.propertyId}/tuple:${context.tupleId}` as Khora,
       );
     },
   },
 );
 
 /**
- * Parse a Block ID into a BlockContext.
- * Returns an Effect that fails with InvalidBlockIdError on invalid format.
+ * Parse a Block ID into a KhoraContext.
+ * Returns an Effect that fails with InvalidKhoraIdError on invalid format.
  */
-export const parseBlockContext = (
-  blockId: Block,
-): Effect.Effect<BlockContext, InvalidBlockIdError> =>
-  Schema.decode(BlockContextFromBlockId)(blockId).pipe(
-    Effect.mapError(() => new InvalidBlockIdError({ blockId })),
+export const parseKhoraContext = (
+  khoraId: Khora,
+): Effect.Effect<KhoraContext, InvalidKhoraIdError> =>
+  Schema.decode(KhoraContextFromKhoraId)(khoraId).pipe(
+    Effect.mapError(() => new InvalidKhoraIdError({ khoraId })),
   );
 
 /**
  * Parse a Block ID synchronously. Throws on invalid format.
  */
-export const parseBlockContextSync = (blockId: Block): BlockContext =>
-  Schema.decodeUnknownSync(BlockContextFromBlockId)(blockId);
+export const parseKhoraContextSync = (khoraId: Khora): KhoraContext =>
+  Schema.decodeUnknownSync(KhoraContextFromKhoraId)(khoraId);
 
 // Backwards-compatible parser for frame blocks only
-// Returns Effect<[Frame, Node]> like the old parseBlockId
-export const parseBlockId = (
-  blockId: Block,
-): Effect.Effect<[Frame, Node], InvalidBlockIdError> =>
-  parseBlockContext(blockId).pipe(
+// Returns Effect<[Frame, Node]> like the old parseKhoraId
+export const parseKhoraId = (
+  khoraId: Khora,
+): Effect.Effect<[Frame, Node], InvalidKhoraIdError> =>
+  parseKhoraContext(khoraId).pipe(
     Effect.flatMap((context) => {
       if (context.type === "frame") {
         return Effect.succeed([context.frameId, context.nodeId] as const);
       }
-      return Effect.fail(new InvalidBlockIdError({ blockId }));
+      return Effect.fail(new InvalidKhoraIdError({ khoraId }));
     }),
   );
 
 const SECTION_SEGMENT = "/section:";
 
-/** @deprecated Use parseBlockContext instead - section blocks now return frameId directly */
+/** @deprecated Use parseKhoraContext instead - section blocks now return frameId directly */
 // Parse frameId from section ID format: frame:{frameId}/property:{propertyId}
 // Also handles existing frame:{frameId}/section:{name} format
 export const parseSectionFrameId = (

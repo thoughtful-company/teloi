@@ -3,16 +3,16 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
 import { Effect, Option } from "effect";
-import { resolveActiveBlockContext } from "./resolveActiveBlockContext";
+import { resolveActiveKhoraContext } from "./resolveActiveKhoraContext";
 
 export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const View = yield* ViewT;
   const Automerge = yield* AutomergeT;
   const Frame = yield* FrameT;
 
-  const ctx = yield* resolveActiveBlockContext();
+  const ctx = yield* resolveActiveKhoraContext();
   if (Option.isNone(ctx)) return;
-  const { frameId, nodeId, blockId, isTitle } = ctx.value;
+  const { frameId, nodeId, khoraId, isTitle } = ctx.value;
 
   const selection = yield* Frame.getSelection(frameId);
   const cursorPos = Option.isSome(selection)
@@ -25,8 +25,8 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
   const isAtStartOfNonEmpty = clampedPos === 0 && currentText.length > 0;
   const position = isAtStartOfNonEmpty ? "before" : "after";
 
-  const newBlockId = yield* View.createBlock(blockId, position);
-  const newCtx = Id.parseBlockContextSync(newBlockId);
+  const newKhoraId = yield* View.createKhora(khoraId, position);
+  const newCtx = Id.parseKhoraContextSync(newKhoraId);
   if (newCtx.type !== "frame") return;
   const newNodeId = newCtx.nodeId;
 
@@ -35,7 +35,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
     yield* Automerge.setText(newNodeId, currentText.slice(clampedPos));
   }
 
-  yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
+  yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
 
   yield* Effect.logDebug("[splitAtCursor] Split completed").pipe(
     Effect.annotateLogs({

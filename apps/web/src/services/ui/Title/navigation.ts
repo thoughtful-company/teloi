@@ -16,7 +16,7 @@ export const navigateToFirstChild = (
     if (children.length === 0) return;
 
     const firstChildId = children[0]!;
-    const targetBlockId = Id.makeFrameBlockId(frameId, firstChildId);
+    const targetKhoraId = Id.makeFrameKhoraId(frameId, firstChildId);
 
     // Preserve existing goalX if set (for chained arrow navigation)
     const existingSelection = yield* Frame.getSelection(frameId);
@@ -25,7 +25,7 @@ export const navigateToFirstChild = (
         ? existingSelection.value.goalX
         : goalX;
 
-    yield* Frame.enterBlockEditing(targetBlockId, {
+    yield* Frame.enterBlockEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
       ...(finalGoalX != null

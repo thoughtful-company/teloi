@@ -29,11 +29,11 @@ describe("Block blur clears activeElement", () => {
         [{ text: "Some text" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => <FrameView frameId={frameId} />);
 
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       const Window = yield* WindowT;
       const stream1 = yield* Window.subscribeActiveElement();
@@ -42,12 +42,12 @@ describe("Block blur clears activeElement", () => {
       const element1 = Option.getOrNull(activeElement1)!;
       expect(Option.isSome(element1)).toBe(true);
       const elementValue1 = Option.getOrNull(element1)!;
-      expect(elementValue1.type).toBe("block");
-      expect((elementValue1 as { id: string }).id).toBe(blockId);
+      expect(elementValue1.type).toBe("khora");
+      expect((elementValue1 as { id: string }).id).toBe(khoraId);
 
       yield* Effect.promise(async () => {
         const blockEl = document.querySelector(
-          `[data-element-id="${blockId}"]`,
+          `[data-element-id="${khoraId}"]`,
         );
         const cm = blockEl?.querySelector(".cm-content") as HTMLElement;
         if (!cm) throw new Error("Block CodeMirror not found");

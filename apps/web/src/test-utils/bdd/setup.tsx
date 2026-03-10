@@ -12,7 +12,7 @@ import { NavigationLive } from "@/services/ui/Navigation";
 import { getStoreLayer } from "@/services/external/Store";
 import { makeAutomergeLive } from "@/services/external/Automerge";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
-import { BlockLive } from "@/services/ui/Block";
+import { KhoraLive } from "@/services/ui/Khora";
 import { FrameLive } from "@/services/ui/Frame";
 import { TitleLive } from "@/services/ui/Title";
 import { TypeColorLive } from "@/services/ui/TypeColor";
@@ -108,8 +108,8 @@ export const setupClientTest = async (options?: SetupClientTestOptions) => {
     Layer.provideMerge(EventCommandBusGroup), // KeyEventBus + CommandBus
     Layer.provideMerge(NavigationLive),
     Layer.provideMerge(EditorViewGroup), // EditorLive + ViewLive
-    // BlockLive needs TypeT, PickerT from layers below
-    Layer.provideMerge(BlockLive),
+    // KhoraLive needs TypeT, PickerT from layers below
+    Layer.provideMerge(KhoraLive),
     Layer.provideMerge(TypePickerGroup),
     Layer.provideMerge(TypeColorLive),
     Layer.provideMerge(FrameLive),

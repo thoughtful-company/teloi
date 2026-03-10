@@ -45,16 +45,16 @@ export const expandAncestors = (
     yield* Effect.forEach(
       ancestorsToExpand,
       (nodeId) => {
-        const blockId = Id.makeFrameBlockId(frameId, nodeId);
+        const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
         return Store.setDocument(
-          "block",
+          "khora",
           {
             isExpanded: true,
             activeViewId: null,
             ghostChildId: null,
             ghostParentId: null,
           },
-          blockId,
+          khoraId,
         ).pipe(Effect.orDie);
       },
       { concurrency: 1 },
@@ -111,16 +111,16 @@ export const expandAncestorsForNodes = (
     yield* Effect.forEach(
       [...ancestorsToExpand],
       (nodeId) => {
-        const blockId = Id.makeFrameBlockId(frameId, nodeId);
+        const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
         return Store.setDocument(
-          "block",
+          "khora",
           {
             isExpanded: true,
             activeViewId: null,
             ghostChildId: null,
             ghostParentId: null,
           },
-          blockId,
+          khoraId,
         ).pipe(Effect.orDie);
       },
       { concurrency: 1 },

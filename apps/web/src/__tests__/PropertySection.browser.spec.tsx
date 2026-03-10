@@ -402,7 +402,7 @@ describe("PropertySection", () => {
               expect(text).toContain("Target Node");
               // Verify it's a Block component, not a button
               const blockElement = document.querySelector(
-                "[data-testid='linked-blocks'] [data-element-type='block']",
+                "[data-testid='linked-blocks'] [data-element-type='khora']",
               );
               expect(blockElement).toBeTruthy();
             },

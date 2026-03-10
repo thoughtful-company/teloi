@@ -4,7 +4,7 @@ import { ChatT, type ChatMessageEntry } from "@/services/ui/Chat";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
-import Block from "./Block";
+import Khora from "./Khora";
 import { validateMessages, type WrongPlace } from "./chat/validateMessages";
 
 interface ChatViewProps {
@@ -95,8 +95,8 @@ export default function ChatView(props: ChatViewProps) {
                       </div>
                     )}
                   </Show>
-                  <Block
-                    blockId={Id.makeFrameBlockId(props.frameId, msg.nodeId)}
+                  <Khora
+                    khoraId={Id.makeFrameKhoraId(props.frameId, msg.nodeId)}
                   />
                 </div>
               </div>

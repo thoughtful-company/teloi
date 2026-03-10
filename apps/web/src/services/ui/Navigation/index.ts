@@ -123,8 +123,8 @@ export const NavigationLive = Layer.effect(
               );
 
               if (Option.isSome(selection)) {
-                const anchorBlockId = selection.value.blockId;
-                const selContext = yield* IdT.parseBlockContext(
+                const anchorBlockId = selection.value.khoraId;
+                const selContext = yield* IdT.parseKhoraContext(
                   anchorBlockId,
                 ).pipe(Effect.orDie);
 
@@ -133,7 +133,7 @@ export const NavigationLive = Layer.effect(
                   selContext.nodeId === validatedNodeId
                 ) {
                   // Selection is on the title node (title is just a block)
-                  const titleBlockId = Id.makeFrameBlockId(
+                  const titleBlockId = Id.makeFrameKhoraId(
                     frameId,
                     validatedNodeId,
                   );
@@ -141,7 +141,7 @@ export const NavigationLive = Layer.effect(
                   // Title scrolls itself or Frame handles it
                 } else {
                   // Selection is on a block (frame or section block)
-                  // Use the original blockId from selection
+                  // Use the original khoraId from selection
                   yield* Frame.enterBlockEditing(anchorBlockId);
                   // Block scrolls itself on mount when editor mode becomes active
                 }
@@ -171,7 +171,7 @@ export const NavigationLive = Layer.effect(
 
         if (options?.focusTitle && validatedNodeId) {
           // Title is just a block
-          const titleBlockId = Id.makeFrameBlockId(frameId, validatedNodeId);
+          const titleBlockId = Id.makeFrameKhoraId(frameId, validatedNodeId);
           yield* Frame.enterBlockEditing(titleBlockId);
         }
 

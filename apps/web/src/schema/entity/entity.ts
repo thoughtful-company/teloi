@@ -19,11 +19,11 @@ export const Frame = Schema.Struct({
 });
 export type Frame = typeof Frame.Type;
 
-export const Block = Schema.Struct({
-  id: Id.Block,
-  type: Schema.Literal("block"),
+export const Khora = Schema.Struct({
+  id: Id.Khora,
+  type: Schema.Literal("khora"),
 });
-export type Block = typeof Block.Type;
+export type Khora = typeof Khora.Type;
 
 export const Title = Schema.Struct({
   frameId: Id.Frame,
@@ -38,12 +38,5 @@ export const Property = Schema.Struct({
 });
 export type Property = typeof Property.Type;
 
-export const Element = Schema.Union(
-  World,
-  Pane,
-  Frame,
-  Block,
-  Title,
-  Property,
-);
+export const Element = Schema.Union(World, Pane, Frame, Khora, Title, Property);
 export type Element = typeof Element.Type;

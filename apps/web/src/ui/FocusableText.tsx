@@ -2,7 +2,7 @@ import { Show, type JSX } from "solid-js";
 
 /**
  * Selection with optional goalX/goalLine for vertical navigation.
- * Matches BlockSelection and TitleSelection shapes.
+ * Matches KhoraTextSelection and TitleSelection shapes.
  */
 export interface FocusableSelection {
   anchor: number;

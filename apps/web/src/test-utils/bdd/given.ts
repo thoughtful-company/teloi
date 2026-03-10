@@ -387,11 +387,11 @@ export const FRAME_HAS_CURSOR = (
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
-    const elementId = Id.makeFrameBlockId(frameId, nodeId);
+    const elementId = Id.makeFrameKhoraId(frameId, nodeId);
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId: elementId,
+        khoraId: elementId,
         selection: {
           anchor: offset,
           head: offset,
@@ -415,14 +415,14 @@ export const FRAME_HAS_SELECTION = (
     const Frame = yield* FrameT;
     if (anchor.nodeId !== focus.nodeId) {
       throw new Error(
-        "FRAME_HAS_SELECTION only supports one-block selection; use block selection helpers for multi-block state.",
+        "FRAME_HAS_SELECTION only supports one-khora selection; use khora selection helpers for multi-block state.",
       );
     }
-    const blockId = Id.makeFrameBlockId(frameId, anchor.nodeId);
+    const khoraId = Id.makeFrameKhoraId(frameId, anchor.nodeId);
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId,
+        khoraId,
         selection: {
           anchor: anchor.offset,
           head: focus.offset,
@@ -437,24 +437,24 @@ export const FRAME_HAS_SELECTION = (
 /**
  * Sets the window's active element.
  * Use Entity helpers to construct the element:
- * - Block: { id: blockId, type: "block" }
- * - Title: Use Block with title's blockId (Id.makeFrameBlockId(frameId, titleNodeId))
+ * - Block: { id: khoraId, type: "khora" }
+ * - Title: Use Block with title's khoraId (Id.makeFrameKhoraId(frameId, titleNodeId))
  */
 export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
     switch (element.type) {
-      case "block":
+      case "khora":
         yield* Frame.enterBlockEditing(element.id);
         return;
       case "frame":
-        yield* Frame.enterBlockSelection(element.id);
+        yield* Frame.enterKhoraSelection(element.id);
         return;
       case "title": {
         const assignedNodeId = yield* Frame.getAssignedNodeId(element.frameId);
         if (assignedNodeId == null) return;
-        const titleBlockId = Id.makeFrameBlockId(
+        const titleBlockId = Id.makeFrameKhoraId(
           element.frameId,
           assignedNodeId,
         );
@@ -471,8 +471,8 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
  * Combines frame selection + active element setting in one helper.
  * @param assoc - Cursor association at wrap boundaries: -1 = end of prev line, 0 = no preference, 1 = start of next line
  */
-export const BLOCK_IS_FOCUSED_AT = (
-  blockId: Id.Block,
+export const KHORA_IS_FOCUSED_AT = (
+  khoraId: Id.Khora,
   offset: number,
   assoc: -1 | 0 | 1 = 0,
   opts?: { goalX?: number | null },
@@ -484,7 +484,7 @@ export const BLOCK_IS_FOCUSED_AT = (
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           resume(
-            Frame.enterBlockEditing(blockId, {
+            Frame.enterBlockEditing(khoraId, {
               anchor: offset,
               head: offset,
               assoc,
@@ -496,21 +496,21 @@ export const BLOCK_IS_FOCUSED_AT = (
 
       return Effect.sync(() => clearTimeout(timeout));
     });
-  }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT"));
+  }).pipe(Effect.withSpan("Given.KHORA_IS_FOCUSED_AT"));
 
 /**
  * Queries the character offset and assoc at the start or end of a visual line.
  * Uses posAtCoordsInElement so assoc correctly disambiguates wrap boundaries.
  */
 export const VISUAL_LINE_OFFSET = (
-  blockId: Id.Block,
+  khoraId: Id.Khora,
   opts: { line: number; side: "start" | "end" },
 ) =>
   Effect.gen(function* () {
     const blockEl = document.querySelector<HTMLElement>(
-      `[data-element-id="${blockId}"]`,
+      `[data-element-id="${khoraId}"]`,
     );
-    if (!blockEl) throw new Error(`Block element not found: ${blockId}`);
+    if (!blockEl) throw new Error(`Block element not found: ${khoraId}`);
 
     const textEl =
       blockEl.querySelector<HTMLElement>(".cm-line") ??
@@ -543,18 +543,18 @@ export const VISUAL_LINE_OFFSET = (
  * Errors if the block has fewer visual lines than requested.
  * Returns the computed { offset, assoc }.
  */
-export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
-  blockId: Id.Block,
+export const KHORA_IS_FOCUSED_AT_VISUAL_LINE = (
+  khoraId: Id.Khora,
   opts: { line: number; side: "start" | "end" },
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
     // Mount the editor by focusing at offset 0, then wait for CM to render
-    yield* BLOCK_IS_FOCUSED_AT(blockId, 0);
+    yield* KHORA_IS_FOCUSED_AT(khoraId, 0);
     yield* doubleRaf;
 
-    const { offset, assoc } = yield* VISUAL_LINE_OFFSET(blockId, opts);
+    const { offset, assoc } = yield* VISUAL_LINE_OFFSET(khoraId, opts);
 
     // Dispatch directly to CodeMirror so its internal state matches
     const cmContent = document.querySelector<HTMLElement>(".cm-content");
@@ -567,11 +567,11 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
     });
 
     // Keep frame state in sync
-    const [frameId] = yield* Id.parseBlockId(blockId);
+    const [frameId] = yield* Id.parseKhoraId(khoraId);
     yield* Frame.setSelection(
       frameId,
       Option.some({
-        blockId,
+        khoraId,
         selection: {
           anchor: offset,
           head: offset,
@@ -583,7 +583,7 @@ export const BLOCK_IS_FOCUSED_AT_VISUAL_LINE = (
     );
 
     return { offset, assoc };
-  }).pipe(Effect.withSpan("Given.BLOCK_IS_FOCUSED_AT_VISUAL_LINE"));
+  }).pipe(Effect.withSpan("Given.KHORA_IS_FOCUSED_AT_VISUAL_LINE"));
 
 /**
  * Sets up a title as focused with cursor at a specific position.
@@ -597,7 +597,7 @@ export const TITLE_IS_FOCUSED_AT = (
   Effect.gen(function* () {
     const Frame = yield* FrameT;
 
-    const elementId = Id.makeFrameBlockId(frameId, rootNodeId);
+    const elementId = Id.makeFrameKhoraId(frameId, rootNodeId);
 
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>

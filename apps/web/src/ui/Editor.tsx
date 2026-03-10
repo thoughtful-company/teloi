@@ -27,7 +27,7 @@ import { createEffect, For, onCleanup, onMount } from "solid-js";
 import { render } from "solid-js/web";
 import TypeBadge from "./TypeBadge";
 
-export type EditorVariant = "block" | "title";
+export type EditorVariant = "khora" | "title";
 
 interface VariantStyles {
   fontSize: string;
@@ -36,7 +36,7 @@ interface VariantStyles {
 }
 
 const variantStyles: Record<EditorVariant, VariantStyles> = {
-  block: {
+  khora: {
     fontSize: "var(--text-block)",
     lineHeight: "var(--text-block--line-height)",
   },
@@ -76,7 +76,7 @@ const createTheme = (styles: VariantStyles): Extension =>
   });
 
 const variantThemes: Record<EditorVariant, Extension> = {
-  block: createTheme(variantStyles.block),
+  khora: createTheme(variantStyles.khora),
   title: createTheme(variantStyles.title),
 };
 
@@ -121,7 +121,7 @@ const isRoutableKey = (key: string, event: KeyboardEvent): boolean => {
 // ============================================================================
 
 const createKeydownHandler = (
-  blockId: Id.Block,
+  khoraId: Id.Khora,
   runtime: ReturnType<typeof useBrowserRuntime>,
 ): Extension =>
   Prec.high(
@@ -140,7 +140,7 @@ const createKeydownHandler = (
                 alt: event.altKey,
                 shift: event.shiftKey,
               },
-              source: { type: "editor", blockId },
+              source: { type: "editor", khoraId },
             });
           }),
         );
@@ -284,8 +284,8 @@ interface EditorProps {
   handle: DocHandle<WorkspaceTexts>;
   /** Path to the text in the Automerge doc (e.g., ["texts", nodeId]) */
   path: ["texts", string];
-  /** Block ID for action source context */
-  blockId: Id.Block;
+  /** Khora ID for action source context */
+  khoraId: Id.Khora;
   /** Initial selection to apply on mount (from LiveStore) */
   initialSelection?: {
     anchor: number;
@@ -339,11 +339,11 @@ export default function Editor(props: EditorProps) {
       EditorView.lineWrapping,
       drawSelection(),
       placeholder("\u00A0"),
-      variantThemes[props.variant ?? "block"],
+      variantThemes[props.variant ?? "khora"],
       keymap.of(defaultKeymap),
       automergeSyncPlugin({ handle: props.handle, path: props.path }),
-      editor.createExtension(props.blockId, runtime.runSync.bind(runtime)),
-      createKeydownHandler(props.blockId, runtime),
+      editor.createExtension(props.khoraId, runtime.runSync.bind(runtime)),
+      createKeydownHandler(props.khoraId, runtime),
       typeBadgeCompartment.of(
         props.inlineTypes?.length && props.nodeId
           ? EditorView.decorations.compute(["doc"], (state) =>
@@ -391,8 +391,8 @@ export default function Editor(props: EditorProps) {
     runtime.runSync(
       Effect.logDebug("[Editor] Initialized").pipe(
         Effect.annotateLogs({
-          blockId: props.blockId,
-          variant: props.variant ?? "block",
+          khoraId: props.khoraId,
+          variant: props.variant ?? "khora",
           readonly: props.readonly ?? false,
           automergeTextExisted,
           initialTextLength: initialText.length,

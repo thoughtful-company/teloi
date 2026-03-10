@@ -1,6 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
-import { BlockT } from "@/services/ui/Block";
+import { KhoraT } from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 
@@ -20,17 +20,17 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
   static readonly commandName = commandName;
   static readonly tag = tag;
   static handle = Effect.fn(tag)(function* (_cmd: Collapse) {
-    const Block = yield* BlockT;
+    const Khora = yield* KhoraT;
     const Node = yield* NodeT;
     const Frame = yield* FrameT;
 
     const mode = yield* Frame.getMode();
     if (mode.type === "none") return;
 
-    if (mode.type === "block") {
-      yield* handleEditorMode(mode.blockId, { Block, Node, Frame });
-    } else if (mode.type === "blockSelection") {
-      yield* handleBlockSelectionMode(mode.frameId, { Block, Node, Frame });
+    if (mode.type === "khora") {
+      yield* handleEditorMode(mode.khoraId, { Khora, Node, Frame });
+    } else if (mode.type === "khoraSelection") {
+      yield* handleKhoraSelectionMode(mode.frameId, { Khora, Node, Frame });
     }
   });
 }
@@ -38,24 +38,24 @@ export class Collapse extends Data.TaggedClass(tag)<{}> {
 // ================================ Internal ==================================
 
 interface Deps {
-  Block: BlockT["Type"];
+  Khora: KhoraT["Type"];
   Node: NodeT["Type"];
   Frame: FrameT["Type"];
 }
 
 const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
-  blockId: Id.Block,
+  khoraId: Id.Khora,
   deps: Deps,
 ) {
-  const ctx = Id.parseBlockContextSync(blockId);
+  const ctx = Id.parseKhoraContextSync(khoraId);
   if (ctx.type !== "frame") return;
 
   const { frameId, nodeId } = ctx;
-  const blockDoc = yield* deps.Block.get(frameId, nodeId);
+  const blockDoc = yield* deps.Khora.get(frameId, nodeId);
   const children = yield* deps.Node.getNodeChildren(nodeId);
 
   if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
-    yield* deps.Block.setExpanded(blockId, false);
+    yield* deps.Khora.setExpanded(khoraId, false);
     return;
   }
 
@@ -72,7 +72,7 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 
   if (parentId === assignedNodeId) {
     // Parent is title → focus title
-    const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
+    const titleBlockId = Id.makeFrameKhoraId(frameId, parentId);
     yield* deps.Frame.enterBlockEditing(titleBlockId, {
       anchor: 0,
       head: 0,
@@ -81,13 +81,13 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   }
 
   // Navigate to parent block, preserving goalX
-  const parentBlockId = Id.makeFrameBlockId(frameId, parentId);
+  const parentBlockId = Id.makeFrameKhoraId(frameId, parentId);
   const currentSelection = yield* deps.Frame.getSelection(frameId);
   const goalX = Option.isSome(currentSelection)
     ? currentSelection.value.goalX
     : null;
 
-  yield* deps.Block.setExpanded(parentBlockId, false);
+  yield* deps.Khora.setExpanded(parentBlockId, false);
   yield* deps.Frame.enterBlockEditing(parentBlockId, {
     anchor: 0,
     head: 0,
@@ -95,22 +95,22 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
   });
 });
 
-const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
+const handleKhoraSelectionMode = Effect.fn("collapse:blockSelectionMode")(
   function* (frameId: Id.Frame, deps: Deps) {
-    const state = yield* deps.Frame.getBlockSelectionState(frameId);
+    const state = yield* deps.Frame.getKhoraSelectionState(frameId);
     const nodeId =
       state.focus ??
       state.anchor ??
-      (state.selectedBlocks.length > 0 ? state.selectedBlocks[0]! : null);
+      (state.selectedKhoras.length > 0 ? state.selectedKhoras[0]! : null);
     if (nodeId == null) return;
 
     // Use block-selection focus as the progressive collapse cursor.
-    const blockId = Id.makeFrameBlockId(frameId, nodeId);
-    const blockDoc = yield* deps.Block.get(frameId, nodeId);
+    const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
+    const blockDoc = yield* deps.Khora.get(frameId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);
 
     if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
-      yield* deps.Block.setExpanded(blockId, false);
+      yield* deps.Khora.setExpanded(khoraId, false);
       return;
     }
 
@@ -125,7 +125,7 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
 
     if (parentId === assignedNodeId) {
       // Parent is title → focus title
-      const titleBlockId = Id.makeFrameBlockId(frameId, parentId);
+      const titleBlockId = Id.makeFrameKhoraId(frameId, parentId);
       yield* deps.Frame.enterBlockEditing(titleBlockId, {
         anchor: 0,
         head: 0,
@@ -133,10 +133,10 @@ const handleBlockSelectionMode = Effect.fn("collapse:blockSelectionMode")(
       return;
     }
 
-    // Navigate to parent in block selection mode
-    const parentBlockId = Id.makeFrameBlockId(frameId, parentId);
-    yield* deps.Block.setExpanded(parentBlockId, false);
-    yield* deps.Frame.setBlockSelection(
+    // Navigate to parent in khora selection mode
+    const parentBlockId = Id.makeFrameKhoraId(frameId, parentId);
+    yield* deps.Khora.setExpanded(parentBlockId, false);
+    yield* deps.Frame.setKhoraSelection(
       frameId,
       [parentId],
       parentId,

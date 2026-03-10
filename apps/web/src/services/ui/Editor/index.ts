@@ -47,7 +47,7 @@ export class EditorT extends Context.Tag("EditorT")<
      * TODO: Add beforeunload handler to sync selection on tab close.
      */
     createExtension: (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       runSync: <A>(effect: Effect.Effect<A>) => A,
     ) => Extension;
 
@@ -115,23 +115,23 @@ export const EditorLive = Layer.effect(
 
     // Internal effect factories for extension callbacks
     const makeSyncSelectionEffect = (
-      blockId: Id.Block,
+      khoraId: Id.Khora,
       selection: Selection,
     ): Effect.Effect<void> =>
       Effect.gen(function* () {
-        const blockContext = Id.parseBlockContextSync(blockId);
+        const blockContext = Id.parseKhoraContextSync(khoraId);
         const frameId = blockContext.frameId;
 
         const mode = yield* Frame.getMode();
         // Ignore stale writes from editors that are no longer the active editing target.
-        if (mode.type !== "block" || mode.blockId !== blockId) {
+        if (mode.type !== "khora" || mode.khoraId !== khoraId) {
           return;
         }
 
         const existingSelection = yield* Frame.getSelection(frameId);
         if (
           Option.isSome(existingSelection) &&
-          existingSelection.value.blockId !== blockId
+          existingSelection.value.khoraId !== khoraId
         ) {
           return;
         }
@@ -151,7 +151,7 @@ export const EditorLive = Layer.effect(
         yield* Frame.setSelection(
           frameId,
           Option.some({
-            blockId,
+            khoraId,
             selection: {
               anchor: selection.anchor,
               head: selection.head,
@@ -165,7 +165,7 @@ export const EditorLive = Layer.effect(
 
     return {
       createExtension: (
-        blockId: Id.Block,
+        khoraId: Id.Khora,
         runSync: <A>(effect: Effect.Effect<A>) => A,
       ): Extension =>
         EditorView.updateListener.of((update) => {
@@ -174,7 +174,7 @@ export const EditorLive = Layer.effect(
             if (update.selectionSet) {
               const sel = update.view.state.selection.main;
               runSync(
-                makeSyncSelectionEffect(blockId, {
+                makeSyncSelectionEffect(khoraId, {
                   anchor: sel.anchor,
                   head: sel.head,
                   assoc: sel.assoc as -1 | 0 | 1,

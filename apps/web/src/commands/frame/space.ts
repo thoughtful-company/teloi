@@ -1,4 +1,4 @@
-import { EditBlock } from "@/commands/frame/editBlock";
+import { EditBlock } from "@/commands/frame/editKhora";
 import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
 import { ViewT } from "@/services/ui/View";
@@ -18,12 +18,12 @@ export class Space extends Data.TaggedClass(tag)<{}> {
     const View = yield* ViewT;
     const mode = yield* Frame.getMode();
 
-    if (mode.type !== "blockSelection") return;
+    if (mode.type !== "khoraSelection") return;
 
     const { frameId } = mode;
-    const state = yield* Frame.getBlockSelectionState(frameId);
+    const state = yield* Frame.getKhoraSelectionState(frameId);
 
-    if (state.selectedBlocks.length === 0) {
+    if (state.selectedKhoras.length === 0) {
       yield* EditBlock.handle(new EditBlock());
       return;
     }
@@ -31,12 +31,12 @@ export class Space extends Data.TaggedClass(tag)<{}> {
     const sourceNodeId =
       state.focus ??
       state.anchor ??
-      state.selectedBlocks[state.selectedBlocks.length - 1]!;
-    const sourceBlockId = Id.makeFrameBlockId(frameId, sourceNodeId);
-    const newBlockId = yield* View.createBlock(sourceBlockId, "after");
-    const newCtx = Id.parseBlockContextSync(newBlockId);
+      state.selectedKhoras[state.selectedKhoras.length - 1]!;
+    const sourceBlockId = Id.makeFrameKhoraId(frameId, sourceNodeId);
+    const newKhoraId = yield* View.createKhora(sourceBlockId, "after");
+    const newCtx = Id.parseKhoraContextSync(newKhoraId);
     if (newCtx.type !== "frame") return;
 
-    yield* Frame.enterBlockEditing(newBlockId, { anchor: 0, head: 0 });
+    yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
   });
 }

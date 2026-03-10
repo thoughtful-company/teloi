@@ -40,7 +40,7 @@ export class TextBlockB extends Context.Tag("TextBlockB")<
 const getLineByNumber = (lines: Line[], lineNumber: number) =>
   Option.fromNullable(lines.find((line) => line.lineNumber === lineNumber));
 
-export const TextBlockLive = Layer.succeed(TextBlockB, {
+export const TextKhoraLive = Layer.succeed(TextBlockB, {
   getVisualLines,
   getLineAtY,
   getOffsetAtX,

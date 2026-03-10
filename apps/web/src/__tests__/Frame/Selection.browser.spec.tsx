@@ -15,7 +15,7 @@ import {
   type BrowserRuntime,
 } from "@/test-utils/bdd";
 
-describe("Block selection", () => {
+describe("Khora selection", () => {
   let runtime: BrowserRuntime;
   let render: Awaited<ReturnType<typeof setupClientTest>>["render"];
   let cleanup: () => Promise<void>;
@@ -40,20 +40,20 @@ describe("Block selection", () => {
         [{ text: "Block content" }],
       );
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
 
       // Enter text editing, then press Escape to select
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
-      // Then: Block element has selection ring/background
+      // Then: Khora element has selection ring/background
       yield* Effect.promise(() =>
         waitFor(
           () => {
             const blockEl = document.querySelector(
-              `[data-element-id="${blockId}"]`,
+              `[data-element-id="${khoraId}"]`,
             );
             expect(blockEl).not.toBeNull();
             // Check for ring class on a descendant (visual indicator moved to inner content div)
@@ -75,12 +75,12 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click second block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -92,7 +92,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -112,9 +112,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toContain(childNodeIds[0]);
-            expect(win.selectedBlocks).toContain(childNodeIds[1]);
-            expect(win.selectedBlocks).toHaveLength(2);
+            expect(win.selectedKhoras).toContain(childNodeIds[0]);
+            expect(win.selectedKhoras).toContain(childNodeIds[1]);
+            expect(win.selectedKhoras).toHaveLength(2);
           },
           { timeout: 2000 },
         ),
@@ -125,7 +125,7 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlockEl = document.querySelector(
-              `[data-element-id="${firstBlockId}"]`,
+              `[data-element-id="${firstKhoraId}"]`,
             );
             const secondBlockEl = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
@@ -154,11 +154,11 @@ describe("Block selection", () => {
           { text: "C" },
         ]);
 
-      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const blockB = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block B and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -170,7 +170,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -189,9 +189,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(2);
-            expect(win.selectedBlocks).toContain(childNodeIds[0]); // A
-            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
+            expect(win.selectedKhoras).toHaveLength(2);
+            expect(win.selectedKhoras).toContain(childNodeIds[0]); // A
+            expect(win.selectedKhoras).toContain(childNodeIds[1]); // B
           },
           { timeout: 2000 },
         ),
@@ -208,7 +208,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([childNodeIds[1]]); // Only B
+            expect(win.selectedKhoras).toEqual([childNodeIds[1]]); // Only B
           },
           { timeout: 2000 },
         ),
@@ -225,12 +225,12 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click first block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -242,7 +242,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -262,9 +262,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toContain(childNodeIds[0]);
-            expect(win.selectedBlocks).toContain(childNodeIds[1]);
-            expect(win.selectedBlocks).toHaveLength(2);
+            expect(win.selectedKhoras).toContain(childNodeIds[0]);
+            expect(win.selectedKhoras).toContain(childNodeIds[1]);
+            expect(win.selectedKhoras).toHaveLength(2);
           },
           { timeout: 2000 },
         ),
@@ -275,7 +275,7 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlockEl = document.querySelector(
-              `[data-element-id="${firstBlockId}"]`,
+              `[data-element-id="${firstKhoraId}"]`,
             );
             const secondBlockEl = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
@@ -294,7 +294,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowUp moves focus to block above (single block selection)", async () => {
+  it("ArrowUp moves focus to block above (single khora selection)", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, second one is selected
       const { frameId, childNodeIds } =
@@ -303,11 +303,11 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click second block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -319,7 +319,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -339,8 +339,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([childNodeIds[0]]);
-            expect(win.selectedBlocks).toHaveLength(1);
+            expect(win.selectedKhoras).toEqual([childNodeIds[0]]);
+            expect(win.selectedKhoras).toHaveLength(1);
           },
           { timeout: 2000 },
         ),
@@ -348,7 +348,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowDown moves focus to block below (single block selection)", async () => {
+  it("ArrowDown moves focus to block below (single khora selection)", async () => {
     await Effect.gen(function* () {
       // Given: A frame with two blocks, first one is selected
       const { frameId, childNodeIds } =
@@ -357,11 +357,11 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click first block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -373,7 +373,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -393,8 +393,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([childNodeIds[1]]);
-            expect(win.selectedBlocks).toHaveLength(1);
+            expect(win.selectedKhoras).toEqual([childNodeIds[1]]);
+            expect(win.selectedKhoras).toHaveLength(1);
           },
           { timeout: 2000 },
         ),
@@ -402,7 +402,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Shift+ArrowUp contracts 3-block selection to 2 blocks", async () => {
+  it("Shift+ArrowUp contracts 3-khora selection to 2 blocks", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
       const { frameId, childNodeIds } =
@@ -413,11 +413,11 @@ describe("Block selection", () => {
           { text: "D" },
         ]);
 
-      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const blockB = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block B and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -434,10 +434,10 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(3);
-            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
-            expect(win.selectedBlocks).toContain(childNodeIds[3]); // D
+            expect(win.selectedKhoras).toHaveLength(3);
+            expect(win.selectedKhoras).toContain(childNodeIds[1]); // B
+            expect(win.selectedKhoras).toContain(childNodeIds[2]); // C
+            expect(win.selectedKhoras).toContain(childNodeIds[3]); // D
           },
           { timeout: 2000 },
         ),
@@ -455,9 +455,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(2);
-            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(win.selectedKhoras).toHaveLength(2);
+            expect(win.selectedKhoras).toContain(childNodeIds[1]); // B
+            expect(win.selectedKhoras).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -465,7 +465,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowUp collapses 3-block selection to single block", async () => {
+  it("ArrowUp collapses 3-khora selection to single block", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, B, C, D are selected (anchor=B, focus=D)
       const { frameId, childNodeIds } =
@@ -476,11 +476,11 @@ describe("Block selection", () => {
           { text: "D" },
         ]);
 
-      const blockB = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const blockB = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block B and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockB, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(blockB, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -497,7 +497,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(3);
+            expect(win.selectedKhoras).toHaveLength(3);
           },
           { timeout: 2000 },
         ),
@@ -515,8 +515,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(1);
-            expect(win.selectedBlocks).toEqual([childNodeIds[1]]); // B (topmost)
+            expect(win.selectedKhoras).toHaveLength(1);
+            expect(win.selectedKhoras).toEqual([childNodeIds[1]]); // B (topmost)
           },
           { timeout: 2000 },
         ),
@@ -524,7 +524,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Shift+ArrowDown contracts 3-block selection to 2 blocks", async () => {
+  it("Shift+ArrowDown contracts 3-khora selection to 2 blocks", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
       const { frameId, childNodeIds } =
@@ -535,11 +535,11 @@ describe("Block selection", () => {
           { text: "D" },
         ]);
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block C and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(blockC, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -556,10 +556,10 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(3);
-            expect(win.selectedBlocks).toContain(childNodeIds[0]); // A
-            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(win.selectedKhoras).toHaveLength(3);
+            expect(win.selectedKhoras).toContain(childNodeIds[0]); // A
+            expect(win.selectedKhoras).toContain(childNodeIds[1]); // B
+            expect(win.selectedKhoras).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -577,9 +577,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(2);
-            expect(win.selectedBlocks).toContain(childNodeIds[1]); // B
-            expect(win.selectedBlocks).toContain(childNodeIds[2]); // C
+            expect(win.selectedKhoras).toHaveLength(2);
+            expect(win.selectedKhoras).toContain(childNodeIds[1]); // B
+            expect(win.selectedKhoras).toContain(childNodeIds[2]); // C
           },
           { timeout: 2000 },
         ),
@@ -587,7 +587,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("ArrowDown collapses 3-block selection to single block", async () => {
+  it("ArrowDown collapses 3-khora selection to single block", async () => {
     await Effect.gen(function* () {
       // Given: A frame with 4 blocks, A, B, C are selected (anchor=C, focus=A)
       const { frameId, childNodeIds } =
@@ -598,11 +598,11 @@ describe("Block selection", () => {
           { text: "D" },
         ]);
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block C and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockC, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(blockC, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -619,7 +619,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(3);
+            expect(win.selectedKhoras).toHaveLength(3);
           },
           { timeout: 2000 },
         ),
@@ -637,8 +637,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(1);
-            expect(win.selectedBlocks).toEqual([childNodeIds[2]]); // C (bottommost)
+            expect(win.selectedKhoras).toHaveLength(1);
+            expect(win.selectedKhoras).toEqual([childNodeIds[2]]); // C (bottommost)
           },
           { timeout: 2000 },
         ),
@@ -655,12 +655,12 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click first block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -672,7 +672,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toContain(
               childNodeIds[0],
             );
           },
@@ -681,7 +681,7 @@ describe("Block selection", () => {
       );
 
       // When: User clicks second block to edit it
-      yield* When.USER_CLICKS_BLOCK(secondBlockId);
+      yield* When.USER_CLICKS_KHORA(secondBlockId);
 
       // Then: Selection is cleared, first block no longer has ring
       yield* Effect.promise(() =>
@@ -692,7 +692,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -702,7 +702,7 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlockEl = document.querySelector(
-              `[data-element-id="${firstBlockId}"]`,
+              `[data-element-id="${firstKhoraId}"]`,
             );
             expect(firstBlockEl).not.toBeNull();
             // Ring class should be gone from the inner content div
@@ -723,16 +723,16 @@ describe("Block selection", () => {
           { text: "Second block" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Click first block and press Escape to enter block selection mode
-      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+      // Click first block and press Escape to enter khora selection mode
+      yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
-      // Verify we're in block selection mode on first block
+      // Verify we're in khora selection mode on first block
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -740,7 +740,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[0],
             ]);
           },
@@ -751,7 +751,7 @@ describe("Block selection", () => {
       // Navigate down to second block
       yield* When.USER_PRESSES("{ArrowDown}");
 
-      // Verify second block is now selected AND blockSelectionAnchor updated
+      // Verify second block is now selected AND khoraSelectionAnchor updated
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -760,8 +760,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([childNodeIds[1]]);
-            expect(win.blockSelectionAnchor).toBe(childNodeIds[1]);
+            expect(win.selectedKhoras).toEqual([childNodeIds[1]]);
+            expect(win.khoraSelectionAnchor).toBe(childNodeIds[1]);
           },
           { timeout: 2000 },
         ),
@@ -779,8 +779,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const activeEl = Option.getOrThrow(windowDoc).activeElement;
-            expect(activeEl?.type).toBe("block");
-            expect((activeEl as { type: "block"; id: string }).id).toBe(
+            expect(activeEl?.type).toBe("khora");
+            expect((activeEl as { type: "khora"; id: string }).id).toBe(
               secondBlockId,
             );
           },
@@ -789,7 +789,7 @@ describe("Block selection", () => {
       );
 
       // Cursor at end of second block's text ("Second block" = 12 chars)
-      const expectedBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const expectedBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -803,8 +803,8 @@ describe("Block selection", () => {
             expect(win.selection?.anchorOffset).toBe(12);
             expect(win.selection?.focus.elementId).toBe(expectedBlockId);
             expect(win.selection?.focusOffset).toBe(12);
-            // Block selection should be cleared
-            expect(win.selectedBlocks).toEqual([]);
+            // Khora selection should be cleared
+            expect(win.selectedKhoras).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -822,11 +822,11 @@ describe("Block selection", () => {
           { text: "Third" },
         ]);
 
-      const secondBlockId = Id.makeFrameBlockId(frameId, childNodeIds[1]);
+      const secondBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[1]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click second block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(secondBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(secondBlockId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -838,7 +838,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toEqual([
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toEqual([
               childNodeIds[1],
             ]);
           },
@@ -854,7 +854,7 @@ describe("Block selection", () => {
         waitFor(
           async () => {
             const children = document.querySelectorAll(
-              '[data-testid="editor-body"] [data-element-type="block"]',
+              '[data-testid="editor-body"] [data-element-type="khora"]',
             );
             expect(children).toHaveLength(2);
           },
@@ -867,10 +867,10 @@ describe("Block selection", () => {
         waitFor(
           () => {
             const firstBlock = document.querySelector(
-              `[data-element-id="${Id.makeFrameBlockId(frameId, childNodeIds[0])}"]`,
+              `[data-element-id="${Id.makeFrameKhoraId(frameId, childNodeIds[0])}"]`,
             );
             const thirdBlock = document.querySelector(
-              `[data-element-id="${Id.makeFrameBlockId(frameId, childNodeIds[2])}"]`,
+              `[data-element-id="${Id.makeFrameKhoraId(frameId, childNodeIds[2])}"]`,
             );
             const secondBlock = document.querySelector(
               `[data-element-id="${secondBlockId}"]`,
@@ -883,7 +883,7 @@ describe("Block selection", () => {
         ),
       );
 
-      // Verify we stay in block selection mode with First block selected
+      // Verify we stay in khora selection mode with First block selected
       yield* Effect.promise(() =>
         waitFor(
           async () => {
@@ -907,8 +907,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([childNodeIds[2]]); // Third block (next sibling)
-            expect(win.blockSelectionAnchor).toBe(childNodeIds[2]);
+            expect(win.selectedKhoras).toEqual([childNodeIds[2]]); // Third block (next sibling)
+            expect(win.khoraSelectionAnchor).toBe(childNodeIds[2]);
           },
           { timeout: 2000 },
         ),
@@ -916,17 +916,17 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("clicking title clears block selection", async () => {
+  it("clicking title clears khora selection", async () => {
     await Effect.gen(function* () {
       // Given: A frame with a block selected
       const { frameId, childNodeIds } =
         yield* Given.A_FRAME_WITH_CHILDREN("Root", [{ text: "Block content" }]);
 
-      const blockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const khoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(blockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(khoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -938,7 +938,7 @@ describe("Block selection", () => {
               runtime.runPromise,
             );
             expect(Option.isSome(windowDoc)).toBe(true);
-            expect(Option.getOrThrow(windowDoc).selectedBlocks).toContain(
+            expect(Option.getOrThrow(windowDoc).selectedKhoras).toContain(
               childNodeIds[0],
             );
           },
@@ -949,7 +949,7 @@ describe("Block selection", () => {
       // When: User clicks the title
       yield* When.USER_CLICKS_TITLE(frameId);
 
-      // Then: selectedBlocks should be cleared and title should be active
+      // Then: selectedKhoras should be cleared and title should be active
       const Store = yield* StoreT;
       yield* Effect.promise(() =>
         waitFor(
@@ -959,7 +959,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
             // Selection should now be on the title (need assignedNodeId from frame)
             const frameDoc = await Store.getDocument("frame", frameId).pipe(
               runtime.runPromise,
@@ -975,7 +975,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  it("Enter with multi-block selection edits focus block (not anchor)", async () => {
+  it("Enter with multi-khora selection edits focus block (not anchor)", async () => {
     await Effect.gen(function* () {
       // Given: Three blocks, all selected (anchor = first, focus = third)
       const { frameId, childNodeIds } =
@@ -985,12 +985,12 @@ describe("Block selection", () => {
           { text: "Gamma" },
         ]);
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
-      const thirdBlockId = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+      const thirdBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
       // Click first block and press Escape to select it
-      yield* Given.BLOCK_IS_FOCUSED_AT(firstBlockId, 0);
+      yield* Given.KHORA_IS_FOCUSED_AT(firstKhoraId, 0);
 
       yield* When.USER_PRESSES("{Escape}");
 
@@ -1007,9 +1007,9 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toHaveLength(3);
-            expect(win.blockSelectionAnchor).toBe(childNodeIds[0]); // First block is anchor
-            expect(win.blockSelectionFocus).toBe(childNodeIds[2]); // Third block is focus
+            expect(win.selectedKhoras).toHaveLength(3);
+            expect(win.khoraSelectionAnchor).toBe(childNodeIds[0]); // First block is anchor
+            expect(win.khoraSelectionFocus).toBe(childNodeIds[2]); // Third block is focus
           },
           { timeout: 2000 },
         ),
@@ -1027,8 +1027,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const activeEl = Option.getOrThrow(windowDoc).activeElement;
-            expect(activeEl?.type).toBe("block");
-            expect((activeEl as { type: "block"; id: string }).id).toBe(
+            expect(activeEl?.type).toBe("khora");
+            expect((activeEl as { type: "khora"; id: string }).id).toBe(
               thirdBlockId,
             );
           },
@@ -1048,8 +1048,8 @@ describe("Block selection", () => {
             expect(win.selection).not.toBeNull();
             expect(win.selection?.anchor.elementId).toBe(thirdBlockId);
             expect(win.selection?.anchorOffset).toBe(5);
-            // All block selection should be cleared
-            expect(win.selectedBlocks).toEqual([]);
+            // All khora selection should be cleared
+            expect(win.selectedKhoras).toEqual([]);
           },
           { timeout: 2000 },
         ),
@@ -1064,7 +1064,7 @@ describe("Block selection", () => {
         [{ text: "First block" }, { text: "Second block" }],
       );
 
-      const firstBlockId = Id.makeFrameBlockId(frameId, childNodeIds[0]);
+      const firstKhoraId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
 
       render(() => (
         <div class="overflow-y-auto" style={{ height: "500px" }}>
@@ -1072,8 +1072,8 @@ describe("Block selection", () => {
         </div>
       ));
 
-      // Enter block selection mode on the first block
-      yield* When.USER_ENTERS_BLOCK_SELECTION(firstBlockId);
+      // Enter khora selection mode on the first block
+      yield* When.USER_ENTERS_KHORA_SELECTION(firstKhoraId);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[0]]);
 
       // Find the scroll container
@@ -1107,7 +1107,7 @@ describe("Block selection", () => {
 
       // Mock the first block as being visible but with title above viewport
       const firstBlockEl = document.querySelector(
-        `[data-element-id="${firstBlockId}"]`,
+        `[data-element-id="${firstKhoraId}"]`,
       );
       vi.spyOn(
         firstBlockEl as Element,
@@ -1180,8 +1180,8 @@ describe("Block selection", () => {
       ));
 
       // Select A (first child of Parent, which is NOT the frame root's first child)
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockA);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA]);
 
       // Set up scroll mocking
@@ -1265,8 +1265,8 @@ describe("Block selection", () => {
       const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
-      // Set up block selection: A (anchor) -> B -> C (focus)
-      yield* Frame.setBlockSelection(
+      // Set up khora selection: A (anchor) -> B -> C (focus)
+      yield* Frame.setKhoraSelection(
         frameId,
         [nodeA, nodeB, nodeC],
         nodeA,
@@ -1285,8 +1285,8 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
-          expect(win.blockSelectionFocus).toBe(nodeC);
+          expect(win.selectedKhoras).toEqual([nodeA, nodeB, nodeC]);
+          expect(win.khoraSelectionFocus).toBe(nodeC);
         }),
       );
 
@@ -1301,7 +1301,7 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([]);
+          expect(win.selectedKhoras).toEqual([]);
         }),
       );
 
@@ -1316,8 +1316,8 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([nodeC]);
-          expect(win.blockSelectionFocus).toBe(nodeC);
+          expect(win.selectedKhoras).toEqual([nodeC]);
+          expect(win.khoraSelectionFocus).toBe(nodeC);
         }),
       );
     }).pipe(runtime.runPromise);
@@ -1338,8 +1338,8 @@ describe("Block selection", () => {
       const Frame = yield* FrameT;
       const Window = yield* WindowT;
 
-      // Set up block selection: A (anchor) -> B -> C (focus)
-      yield* Frame.setBlockSelection(
+      // Set up khora selection: A (anchor) -> B -> C (focus)
+      yield* Frame.setKhoraSelection(
         frameId,
         [nodeA, nodeB, nodeC],
         nodeA,
@@ -1358,8 +1358,8 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([nodeA, nodeB, nodeC]);
-          expect(win.blockSelectionFocus).toBe(nodeC);
+          expect(win.selectedKhoras).toEqual([nodeA, nodeB, nodeC]);
+          expect(win.khoraSelectionFocus).toBe(nodeC);
         }),
       );
 
@@ -1374,7 +1374,7 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([]);
+          expect(win.selectedKhoras).toEqual([]);
         }),
       );
 
@@ -1389,8 +1389,8 @@ describe("Block selection", () => {
           );
           expect(Option.isSome(windowDoc)).toBe(true);
           const win = Option.getOrThrow(windowDoc);
-          expect(win.selectedBlocks).toEqual([nodeC]);
-          expect(win.blockSelectionFocus).toBe(nodeC);
+          expect(win.selectedKhoras).toEqual([nodeC]);
+          expect(win.khoraSelectionFocus).toBe(nodeC);
         }),
       );
     }).pipe(runtime.runPromise);
@@ -1411,11 +1411,11 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Enter block selection mode on C
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      // Enter khora selection mode on C
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockC);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+Up (Meta+ArrowUp)
@@ -1444,11 +1444,11 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Enter block selection mode on C
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      // Enter khora selection mode on C
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockC);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+Down (Meta+ArrowDown)
@@ -1477,11 +1477,11 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Enter block selection mode on C
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      // Enter khora selection mode on C
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockC);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
         anchor: childNodeIds[2],
         focus: childNodeIds[2],
@@ -1517,11 +1517,11 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Enter block selection mode on C
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      // Enter khora selection mode on C
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockC);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]], {
         anchor: childNodeIds[2],
         focus: childNodeIds[2],
@@ -1580,8 +1580,8 @@ describe("Block selection", () => {
       render(() => <FrameView frameId={frameId} />);
 
       // Select A (first child of Parent, which is at 2nd indentation level)
-      const blockA = Id.makeFrameBlockId(frameId, nodeA);
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockA);
+      const blockA = Id.makeFrameKhoraId(frameId, nodeA);
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockA);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA]);
 
       // When: Press ArrowDown
@@ -1610,11 +1610,11 @@ describe("Block selection", () => {
         ],
       );
 
-      const blockC = Id.makeFrameBlockId(frameId, childNodeIds[2]);
+      const blockC = Id.makeFrameKhoraId(frameId, childNodeIds[2]);
       render(() => <FrameView frameId={frameId} />);
 
-      // Enter block selection mode on C
-      yield* When.USER_ENTERS_BLOCK_SELECTION(blockC);
+      // Enter khora selection mode on C
+      yield* When.USER_ENTERS_KHORA_SELECTION(blockC);
       yield* Then.BLOCKS_ARE_SELECTED(frameId, [childNodeIds[2]]);
 
       // When: User presses Cmd+A
@@ -1638,7 +1638,7 @@ describe("Block selection", () => {
     }).pipe(runtime.runPromise);
   });
 
-  describe("block selection with empty selection and no lastFocusedBlockId", () => {
+  describe("khora selection with empty selection and no lastFocusedBlockId", () => {
     it("ArrowDown selects the first block when there are blocks", async () => {
       await Effect.gen(function* () {
         // Given: A frame with 3 blocks
@@ -1652,14 +1652,14 @@ describe("Block selection", () => {
         render(() => <FrameView frameId={frameId} />);
         const Window = yield* WindowT;
 
-        // Set up block selection mode (activeElement.type = "frame")
+        // Set up khora selection mode (activeElement.type = "frame")
         // but with empty selection and no lastFocusedBlockId
         yield* Window.setActiveElement(
           Option.some({ type: "frame" as const, id: frameId }),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
-        // Verify we're in block selection mode with empty selection
+        // Verify we're in khora selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
             const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
@@ -1667,7 +1667,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
           }),
         );
 
@@ -1695,14 +1695,14 @@ describe("Block selection", () => {
         render(() => <FrameView frameId={frameId} />);
         const Window = yield* WindowT;
 
-        // Set up block selection mode (activeElement.type = "frame")
+        // Set up khora selection mode (activeElement.type = "frame")
         // but with empty selection and no lastFocusedBlockId
         yield* Window.setActiveElement(
           Option.some({ type: "frame" as const, id: frameId }),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
-        // Verify we're in block selection mode with empty selection
+        // Verify we're in khora selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
             const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
@@ -1710,7 +1710,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
           }),
         );
 
@@ -1736,13 +1736,13 @@ describe("Block selection", () => {
         render(() => <FrameView frameId={frameId} />);
         const Window = yield* WindowT;
 
-        // Set up block selection mode with empty selection
+        // Set up khora selection mode with empty selection
         yield* Window.setActiveElement(
           Option.some({ type: "frame" as const, id: frameId }),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
-        // Verify we're in block selection mode with empty selection
+        // Verify we're in khora selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
             const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
@@ -1750,7 +1750,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
           }),
         );
 
@@ -1765,8 +1765,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
-            expect(win.blockSelectionAnchor).toBeNull();
+            expect(win.selectedKhoras).toEqual([]);
+            expect(win.khoraSelectionAnchor).toBeNull();
           }),
         );
       }).pipe(runtime.runPromise);
@@ -1783,13 +1783,13 @@ describe("Block selection", () => {
         render(() => <FrameView frameId={frameId} />);
         const Window = yield* WindowT;
 
-        // Set up block selection mode with empty selection
+        // Set up khora selection mode with empty selection
         yield* Window.setActiveElement(
           Option.some({ type: "frame" as const, id: frameId }),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
-        // Verify we're in block selection mode with empty selection
+        // Verify we're in khora selection mode with empty selection
         yield* Effect.promise(() =>
           waitFor(async () => {
             const windowDoc = await Then.WINDOW_DOC_COMPAT(frameId).pipe(
@@ -1797,7 +1797,7 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
+            expect(win.selectedKhoras).toEqual([]);
           }),
         );
 
@@ -1812,8 +1812,8 @@ describe("Block selection", () => {
             );
             expect(Option.isSome(windowDoc)).toBe(true);
             const win = Option.getOrThrow(windowDoc);
-            expect(win.selectedBlocks).toEqual([]);
-            expect(win.blockSelectionAnchor).toBeNull();
+            expect(win.selectedKhoras).toEqual([]);
+            expect(win.khoraSelectionAnchor).toBeNull();
           }),
         );
       }).pipe(runtime.runPromise);
