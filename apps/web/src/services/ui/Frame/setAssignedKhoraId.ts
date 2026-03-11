@@ -3,7 +3,7 @@ import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
 import { FrameNotFoundError } from "../errors";
 
-export const setAssignedNodeId = (
+export const setAssignedKhoraId = (
   frameId: Id.Frame,
   nodeId: Id.Node | null,
 ): Effect.Effect<void, FrameNotFoundError, StoreT> =>
@@ -24,14 +24,14 @@ export const setAssignedNodeId = (
       "frame",
       {
         ...currentFrame,
-        assignedNodeId: nodeId,
+        assignedKhoraId: nodeId,
         rootKhoraId: nodeId,
         activeViewId: null,
       },
       frameId,
     ).pipe(Effect.orDie);
 
-    yield* Effect.logDebug("[Frame.setAssignedNodeId] Updated").pipe(
+    yield* Effect.logDebug("[Frame.setAssignedKhoraId] Updated").pipe(
       Effect.annotateLogs({ frameId, nodeId }),
     );
   });

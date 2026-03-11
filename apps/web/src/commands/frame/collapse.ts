@@ -68,9 +68,9 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 
   if (!parentId) return;
 
-  const assignedNodeId = yield* deps.Frame.getAssignedNodeId(frameId);
+  const assignedKhoraId = yield* deps.Frame.getAssignedKhoraId(frameId);
 
-  if (parentId === assignedNodeId) {
+  if (parentId === assignedKhoraId) {
     // Parent is title → focus title
     const titleBlockId = Id.makeFrameKhoraId(frameId, parentId);
     yield* deps.Frame.enterBlockEditing(titleBlockId, {
@@ -121,9 +121,9 @@ const handleKhoraSelectionMode = Effect.fn("collapse:blockSelectionMode")(
 
     if (!parentId) return;
 
-    const assignedNodeId = yield* deps.Frame.getAssignedNodeId(frameId);
+    const assignedKhoraId = yield* deps.Frame.getAssignedKhoraId(frameId);
 
-    if (parentId === assignedNodeId) {
+    if (parentId === assignedKhoraId) {
       // Parent is title → focus title
       const titleBlockId = Id.makeFrameKhoraId(frameId, parentId);
       yield* deps.Frame.enterBlockEditing(titleBlockId, {

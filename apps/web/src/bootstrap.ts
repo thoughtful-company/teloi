@@ -18,7 +18,7 @@ export const bootstrap = Effect.gen(function* () {
 
   const worldDoc = yield* Store.getDocument("world", worldId);
 
-  // Already initialized - get existing frame's assignedNodeId as fallback
+  // Already initialized - get existing frame's assignedKhoraId as fallback
   if (Option.isSome(worldDoc) && worldDoc.value.panes.length > 0) {
     const paneDoc = yield* Store.getDocument("pane", worldDoc.value.panes[0]);
     if (Option.isSome(paneDoc) && paneDoc.value.frames.length > 0) {
@@ -26,8 +26,8 @@ export const bootstrap = Effect.gen(function* () {
         "frame",
         paneDoc.value.frames[0],
       );
-      if (Option.isSome(frameDoc) && frameDoc.value.assignedNodeId) {
-        return Id.Node.make(frameDoc.value.assignedNodeId);
+      if (Option.isSome(frameDoc) && frameDoc.value.assignedKhoraId) {
+        return Id.Node.make(frameDoc.value.assignedKhoraId);
       }
     }
     return undefined;
@@ -122,13 +122,13 @@ export const bootstrap = Effect.gen(function* () {
     paneId,
   );
 
-  // Create frame document - let navigation set assignedNodeId from URL
+  // Create frame document - let navigation set assignedKhoraId from URL
   yield* Store.setDocument(
     "frame",
     {
       worldId,
       parent: { id: paneId, type: "pane" },
-      assignedNodeId: null,
+      assignedKhoraId: null,
       rootKhoraId: null,
       toggledNodes: [],
       activeViewId: null,

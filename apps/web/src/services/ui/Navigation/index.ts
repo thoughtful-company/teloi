@@ -87,7 +87,7 @@ export const NavigationLive = Layer.effect(
         const maybeFrameId = yield* World.getActiveFrameId();
         if (Option.isNone(maybeFrameId)) return;
 
-        yield* Frame.setAssignedNodeId(maybeFrameId.value, nodeIdToUse);
+        yield* Frame.setAssignedKhoraId(maybeFrameId.value, nodeIdToUse);
 
         yield* Effect.logDebug("[Navigation.syncUrlToModel] Synced").pipe(
           Effect.annotateLogs({ path, nodeIdToUse }),
@@ -113,7 +113,7 @@ export const NavigationLive = Layer.effect(
 
               const frameId = maybeFrameId.value;
 
-              yield* Frame.setAssignedNodeId(frameId, validatedNodeId);
+              yield* Frame.setAssignedKhoraId(frameId, validatedNodeId);
 
               // Restore frame/block focus based on current selection
               const selection = yield* Frame.getSelection(frameId).pipe(
@@ -166,7 +166,7 @@ export const NavigationLive = Layer.effect(
         const frameId = maybeFrameId.value;
         const validatedNodeId = nodeId ? yield* validateNodeId(nodeId) : null;
 
-        yield* Frame.setAssignedNodeId(frameId, validatedNodeId);
+        yield* Frame.setAssignedKhoraId(frameId, validatedNodeId);
         yield* URL.setPath(makePathFromNodeId(validatedNodeId));
 
         if (options?.focusTitle && validatedNodeId) {

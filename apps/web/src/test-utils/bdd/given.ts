@@ -61,7 +61,7 @@ export const A_FRAME_WITH_TEXT = (textContent: string) =>
       {
         worldId,
         parent: { id: Id.Pane.make("test-pane"), type: "pane" },
-        assignedNodeId: nodeId,
+        assignedKhoraId: nodeId,
         toggledNodes: [],
         activeViewId: null,
         popup: null,
@@ -136,7 +136,7 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
       {
         worldId,
         parent: { id: Id.Pane.make("test-pane"), type: "pane" },
-        assignedNodeId: rootNodeId,
+        assignedKhoraId: rootNodeId,
         toggledNodes: [],
         activeViewId: null,
         popup: null,
@@ -257,13 +257,13 @@ export const A_FULL_HIERARCHY_WITH_TEXT = (textContent: string) =>
       paneId,
     );
 
-    // Create frame document (assignedNodeId starts as null for navigation tests)
+    // Create frame document (assignedKhoraId starts as null for navigation tests)
     yield* Store.setDocument(
       "frame",
       {
         worldId,
         parent: { id: paneId, type: "pane" },
-        assignedNodeId: null,
+        assignedKhoraId: null,
         toggledNodes: [],
         activeViewId: null,
         popup: null,
@@ -346,7 +346,7 @@ export const A_FULL_HIERARCHY_WITH_CHILDREN = <
       {
         worldId,
         parent: { id: paneId, type: "pane" },
-        assignedNodeId: rootNodeId,
+        assignedKhoraId: rootNodeId,
         toggledNodes: [],
         activeViewId: null,
         popup: null,
@@ -452,11 +452,11 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
         yield* Frame.enterKhoraSelection(element.id);
         return;
       case "title": {
-        const assignedNodeId = yield* Frame.getAssignedNodeId(element.frameId);
-        if (assignedNodeId == null) return;
+        const assignedKhoraId = yield* Frame.getAssignedKhoraId(element.frameId);
+        if (assignedKhoraId == null) return;
         const titleBlockId = Id.makeFrameKhoraId(
           element.frameId,
-          assignedNodeId,
+          assignedKhoraId,
         );
         yield* Frame.enterBlockEditing(titleBlockId);
         return;
@@ -667,7 +667,7 @@ export interface FrameWithParentAndChildrenResult<
  * Creates a frame whose root node has a parent (not visible in frame).
  * Structure:
  * - parentNode (not visible in frame)
- *   - rootNode (frame's assignedNodeId)
+ *   - rootNode (frame's assignedKhoraId)
  *     - children...
  *
  * Useful for testing edge cases where frame root is not a top-level node.
@@ -724,13 +724,13 @@ export const A_FRAME_WITH_PARENT_AND_CHILDREN = <
       paneId,
     );
 
-    // Create frame document with assignedNodeId = rootNodeId (not parentNodeId)
+    // Create frame document with assignedKhoraId = rootNodeId (not parentNodeId)
     yield* Store.setDocument(
       "frame",
       {
         worldId,
         parent: { id: paneId, type: "pane" },
-        assignedNodeId: rootNodeId,
+        assignedKhoraId: rootNodeId,
         toggledNodes: [],
         activeViewId: null,
         popup: null,

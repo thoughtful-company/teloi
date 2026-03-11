@@ -62,7 +62,7 @@ export const Frame = Schema.mutable(
   Schema.Struct({
     worldId: Id.World,
     parent: Entity.Pane,
-    assignedNodeId: Schema.NullOr(Schema.String),
+    assignedKhoraId: Schema.NullOr(Schema.String),
     rootKhoraId: Schema.optional(Schema.NullOr(Schema.String)),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
     /** Active view node ID - null means default page/tree view */

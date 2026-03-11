@@ -71,7 +71,7 @@ const App: Component = () => {
         const frameDoc = yield* Store.getDocument("frame", firstFrameId);
         if (Option.isNone(frameDoc)) return;
 
-        const nodeId = frameDoc.value.assignedNodeId;
+        const nodeId = frameDoc.value.assignedKhoraId;
         if (!nodeId) return;
 
         setCommandContext({

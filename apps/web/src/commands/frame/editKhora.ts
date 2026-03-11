@@ -44,12 +44,12 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    const assignedNodeId = yield* Frame.getAssignedNodeId(frameId);
-    if (assignedNodeId == null) return;
+    const assignedKhoraId = yield* Frame.getAssignedKhoraId(frameId);
+    if (assignedKhoraId == null) return;
 
-    const children = yield* Node.getNodeChildren(assignedNodeId);
+    const children = yield* Node.getNodeChildren(assignedKhoraId);
     if (children.length === 0) {
-      const titleBlockId = Id.makeFrameKhoraId(frameId, assignedNodeId);
+      const titleBlockId = Id.makeFrameKhoraId(frameId, assignedKhoraId);
       const newKhoraId = yield* View.createKhora(titleBlockId, "after");
 
       yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });

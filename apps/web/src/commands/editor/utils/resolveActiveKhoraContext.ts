@@ -28,8 +28,8 @@ export const resolveActiveKhoraContext = Effect.fn("resolveActiveKhoraContext")(
       return Option.none<ActiveKhoraContext>();
     }
 
-    const assignedNodeId = yield* Frame.getAssignedNodeId(blockContext.frameId);
-    const isTitle = blockContext.nodeId === assignedNodeId;
+    const assignedKhoraId = yield* Frame.getAssignedKhoraId(blockContext.frameId);
+    const isTitle = blockContext.nodeId === assignedKhoraId;
 
     return Option.some({
       frameId: blockContext.frameId,

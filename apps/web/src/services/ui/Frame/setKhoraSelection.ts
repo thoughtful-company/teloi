@@ -23,15 +23,15 @@ export const setKhoraSelection = (
     }
 
     const currentFrame = frameDoc.value;
-    const assignedNodeId = currentFrame.assignedNodeId;
+    const assignedKhoraId = currentFrame.assignedKhoraId;
     const normalizedSelection = normalizeKhoraSelectionState(
       blocks,
       khoraSelectionAnchor,
       khoraSelectionFocus,
     );
 
-    if (blocks.length > 0 && assignedNodeId) {
-      const rootNodeId = Id.Node.make(assignedNodeId);
+    if (blocks.length > 0 && assignedKhoraId) {
+      const rootNodeId = Id.Node.make(assignedKhoraId);
       yield* expandAncestorsForNodes(frameId, rootNodeId, blocks);
     }
 

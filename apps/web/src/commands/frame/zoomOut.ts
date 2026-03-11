@@ -28,9 +28,9 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
     const { frameId, nodeId } = ctx.value;
 
     const frameDoc = yield* Store.getDocument("frame", frameId);
-    if (Option.isNone(frameDoc) || !frameDoc.value.assignedNodeId) return;
+    if (Option.isNone(frameDoc) || !frameDoc.value.assignedKhoraId) return;
 
-    const rootNodeId = Id.Node.make(frameDoc.value.assignedNodeId);
+    const rootNodeId = Id.Node.make(frameDoc.value.assignedKhoraId);
     const parentId = yield* Node.getParent(rootNodeId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
         Effect.succeed<Id.Node | null>(null),

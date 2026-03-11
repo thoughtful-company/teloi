@@ -36,15 +36,15 @@ export const setSelection = (
     }
 
     const currentFrame = frameDoc.value;
-    const assignedNodeId = currentFrame.assignedNodeId;
+    const assignedKhoraId = currentFrame.assignedKhoraId;
     let clampedSelection: Option.Option<Model.ActiveKhoraSelection> = selection;
 
     if (Option.isSome(selection)) {
       const blockContext = yield* IdT.parseKhoraContext(
         selection.value.khoraId,
       ).pipe(Effect.orDie);
-      if (assignedNodeId) {
-        const rootNodeId = Id.Node.make(assignedNodeId);
+      if (assignedKhoraId) {
+        const rootNodeId = Id.Node.make(assignedKhoraId);
         const nodeId = getNodeIdForExpansion(blockContext);
         if (nodeId) {
           yield* expandAncestors(frameId, rootNodeId, nodeId);
@@ -132,7 +132,7 @@ export const setSelection = (
     yield* Effect.logDebug("[Frame.setSelection]").pipe(
       Effect.annotateLogs({
         frameId,
-        assignedNodeId,
+        assignedKhoraId,
         ...logAnnotations,
       }),
     );

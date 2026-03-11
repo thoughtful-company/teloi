@@ -34,7 +34,7 @@ const resolveNeighbor = Effect.fn("View.chat.resolveNeighbor")(function* (
 
   const frameDoc = yield* Store.getDocument("frame", frameId);
   const chatNodeId = Option.isSome(frameDoc)
-    ? (frameDoc.value.assignedNodeId as Id.Node | null)
+    ? (frameDoc.value.assignedKhoraId as Id.Node | null)
     : null;
   if (!chatNodeId) return Option.none<Id.Node>();
 

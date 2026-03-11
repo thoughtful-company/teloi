@@ -35,7 +35,7 @@ export class Send extends Data.TaggedClass(tag)<{}> {
     const frameDoc = yield* Store.getDocument("frame", frameId);
     if (Option.isNone(frameDoc)) return;
 
-    const nodeId = frameDoc.value.assignedNodeId as Id.Node | null;
+    const nodeId = frameDoc.value.assignedKhoraId as Id.Node | null;
     if (!nodeId) return;
 
     // Only send if page has #chat type

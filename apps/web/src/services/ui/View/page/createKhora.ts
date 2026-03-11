@@ -8,7 +8,7 @@ import { Effect, Option } from "effect";
 /**
  * Page view createKhora: creates a new node in the tree structure.
  *
- * - Title context (nodeId === frame's assignedNodeId): inserts as first child
+ * - Title context (nodeId === frame's assignedKhoraId): inserts as first child
  * - Block context: inserts as sibling with the given position
  * - Ghost context: materializes the ghost first, then inserts as sibling
  */
@@ -21,11 +21,11 @@ export const createKhora = Effect.fn("View.page.createKhora")(function* (
   const Store = yield* StoreT;
 
   const frameDoc = yield* Store.getDocument("frame", frameId);
-  const assignedNodeId = Option.isSome(frameDoc)
-    ? (frameDoc.value.assignedNodeId as Id.Node | null)
+  const assignedKhoraId = Option.isSome(frameDoc)
+    ? (frameDoc.value.assignedKhoraId as Id.Node | null)
     : null;
 
-  const isTitle = nodeId === assignedNodeId;
+  const isTitle = nodeId === assignedKhoraId;
 
   if (isTitle) {
     return yield* Node.insertNode({ parentId: nodeId, insert: "before" });

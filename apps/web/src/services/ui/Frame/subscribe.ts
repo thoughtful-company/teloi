@@ -38,7 +38,7 @@ export const subscribe = (frameId: Id.Frame) =>
       Context.add(AutomergeT, Automerge),
     );
 
-    // Subscribe to frame document to watch for assignedNodeId and activeViewId changes
+    // Subscribe to frame document to watch for assignedKhoraId and activeViewId changes
     const frameQuery = queryDb(
       tables.frame
         .select("value")
@@ -87,7 +87,7 @@ export const subscribe = (frameId: Id.Frame) =>
     // Structural data stream — only nodeId/activeViewId (deduped to avoid unnecessary re-subscriptions)
     const frameDataStream = frameStream.pipe(
       Stream.map((frame) => ({
-        nodeId: frame?.assignedNodeId ?? null,
+        nodeId: frame?.assignedKhoraId ?? null,
         activeViewId: (frame?.activeViewId as Id.Node | null) ?? null,
       })),
       Stream.filterMap(({ nodeId, activeViewId }) =>
@@ -101,7 +101,7 @@ export const subscribe = (frameId: Id.Frame) =>
     );
 
     // For each frame state, create streams for the node and its views
-    // switch: true ensures we cancel the old stream when assignedNodeId changes
+    // switch: true ensures we cancel the old stream when assignedKhoraId changes
     const frameContentStream = Stream.flatMap(
       frameDataStream,
       ({ nodeId, activeViewId }) =>

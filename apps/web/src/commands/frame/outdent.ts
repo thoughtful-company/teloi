@@ -54,7 +54,7 @@ export class Outdent extends Data.TaggedClass(tag)<{}> {
  * Cannot outdent:
  * - Root nodes (no parent)
  * - Nodes whose parent has no parent (would become root)
- * - First-level blocks in frame (parent is frame's assignedNodeId)
+ * - First-level blocks in frame (parent is frame's assignedKhoraId)
  */
 const outdentNodes = Effect.fn("outdentNodes")(function* (
   frameId: Id.Frame,
@@ -75,10 +75,10 @@ const outdentNodes = Effect.fn("outdentNodes")(function* (
 
   // Can't outdent first-level blocks (parent is frame root)
   const frameDoc = yield* Store.getDocument("frame", frameId);
-  const assignedNodeId = Option.isSome(frameDoc)
-    ? frameDoc.value.assignedNodeId
+  const assignedKhoraId = Option.isSome(frameDoc)
+    ? frameDoc.value.assignedKhoraId
     : null;
-  if (assignedNodeId && parentId === assignedNodeId) return false;
+  if (assignedKhoraId && parentId === assignedKhoraId) return false;
 
   const grandparentId = yield* Node.getParent(parentId).pipe(
     Effect.catchTag("NodeHasNoParentError", () =>

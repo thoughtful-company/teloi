@@ -11,7 +11,7 @@ import { NodeT } from "../../domain/Node";
 import { FrameNodeNotAssignedError, FrameNotFoundError } from "../errors";
 import { WorldT } from "../World";
 import { get } from "./get";
-import { setAssignedNodeId } from "./setAssignedNodeId";
+import { setAssignedKhoraId } from "./setAssignedKhoraId";
 import { setKhoraSelection } from "./setKhoraSelection";
 import { setSelection } from "./setSelection";
 import { FrameView, subscribe } from "./subscribe";
@@ -46,14 +46,14 @@ export class FrameT extends Context.Tag("FrameT")<
       Option.Option<Model.ActiveKhoraSelection>,
       FrameNotFoundError
     >;
-    getAssignedNodeId: (
+    getAssignedKhoraId: (
       frameId: Id.Frame,
     ) => Effect.Effect<Id.Node | null, FrameNotFoundError>;
     setSelection: (
       frameId: Id.Frame,
       selection: Option.Option<Model.ActiveKhoraSelection>,
     ) => Effect.Effect<void, FrameNotFoundError>;
-    setAssignedNodeId: (
+    setAssignedKhoraId: (
       frameId: Id.Frame,
       nodeId: Id.Node | null,
     ) => Effect.Effect<void, FrameNotFoundError>;
@@ -154,14 +154,14 @@ export const FrameLive = Layer.effect(
 
           return Option.none<Model.ActiveKhoraSelection>();
         }),
-      getAssignedNodeId: (frameId: Id.Frame) =>
-        get(frameId, "assignedNodeId").pipe(
+      getAssignedKhoraId: (frameId: Id.Frame) =>
+        get(frameId, "assignedKhoraId").pipe(
           Effect.map((id) => (id != null ? Id.Node.make(id) : null)),
           Effect.provideService(StoreT, Store),
         ),
       setSelection: withContext(setSelection)(context),
-      setAssignedNodeId: (frameId: Id.Frame, nodeId: Id.Node | null) =>
-        setAssignedNodeId(frameId, nodeId).pipe(
+      setAssignedKhoraId: (frameId: Id.Frame, nodeId: Id.Node | null) =>
+        setAssignedKhoraId(frameId, nodeId).pipe(
           Effect.provideService(StoreT, Store),
         ),
       setKhoraSelection: (

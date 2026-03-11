@@ -66,13 +66,13 @@ function PageItem(props: PageItemProps) {
 
         const maybeFrameId = yield* World.getActiveFrameId();
         if (Option.isSome(maybeFrameId)) {
-          const assignedNodeId = yield* Frame.getAssignedNodeId(
+          const assignedKhoraId = yield* Frame.getAssignedKhoraId(
             maybeFrameId.value,
           ).pipe(
             Effect.catchTag("FrameNotFoundError", () => Effect.succeed(null)),
           );
 
-          if (assignedNodeId === props.nodeId) {
+          if (assignedKhoraId === props.nodeId) {
             yield* Navigation.navigateTo(System.WORKSPACE);
           }
         }

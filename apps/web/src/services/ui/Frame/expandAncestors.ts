@@ -10,7 +10,7 @@ import { StoreT } from "../../external/Store";
  * - targetNodeId is EXCLUDED (we expand ancestors, not the target itself)
  *
  * @param frameId - The frame ID (needed to construct block IDs)
- * @param rootNodeId - The frame's assignedNodeId (stop here, don't expand)
+ * @param rootNodeId - The frame's assignedKhoraId (stop here, don't expand)
  * @param targetNodeId - The node being selected (start traversal here)
  */
 export const expandAncestors = (

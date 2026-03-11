@@ -221,7 +221,7 @@ export const forceDelete = Effect.fn("View.page.forceDelete")(function* (
   const blockDoc = yield* getKhoraDoc(frameId, nodeId);
   const frameDoc = yield* Store.getDocument("frame", frameId);
   const rootNodeId = Option.isSome(frameDoc)
-    ? (frameDoc.value.assignedNodeId as Id.Node | null)
+    ? (frameDoc.value.assignedKhoraId as Id.Node | null)
     : null;
 
   // Find focus target before deletion

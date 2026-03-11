@@ -89,10 +89,10 @@ const resolveExpandTargets = (
     if (mode.type === "khora") {
       const ctx = Id.parseKhoraContextSync(mode.khoraId);
       if (ctx.type !== "frame") return Option.none();
-      const assignedNodeId = yield* Frame.getAssignedNodeId(ctx.frameId).pipe(
+      const assignedKhoraId = yield* Frame.getAssignedKhoraId(ctx.frameId).pipe(
         Effect.catchAll(() => Effect.succeed<Id.Node | null>(null)),
       );
-      if (assignedNodeId != null && ctx.nodeId === assignedNodeId) {
+      if (assignedKhoraId != null && ctx.nodeId === assignedKhoraId) {
         return Option.some({
           frameId: ctx.frameId,
           nodeIds: [ctx.nodeId],

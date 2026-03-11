@@ -33,9 +33,9 @@ const createBasicMockLayer = () => {
   const MockFrameT = Layer.succeed(FrameT, {
     subscribe: () => Effect.fail(new Error("not implemented")),
     getSelection: () => Effect.succeed(Option.none()),
-    getAssignedNodeId: () => Effect.succeed(null),
+    getAssignedKhoraId: () => Effect.succeed(null),
     setSelection: () => Effect.void,
-    setAssignedNodeId: () => Effect.void,
+    setAssignedKhoraId: () => Effect.void,
     setKhoraSelection: () => Effect.void,
     getKhoraSelectionState: () =>
       Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
@@ -216,9 +216,9 @@ describe("PickerT", () => {
       const MockFrameT = Layer.succeed(FrameT, {
         subscribe: () => Effect.fail(new Error("not implemented")),
         getSelection: () => Effect.succeed(Option.none()),
-        getAssignedNodeId: () => Effect.succeed(null),
+        getAssignedKhoraId: () => Effect.succeed(null),
         setSelection: setSelectionMock,
-        setAssignedNodeId: () => Effect.void,
+        setAssignedKhoraId: () => Effect.void,
         setKhoraSelection: () => Effect.void,
         getKhoraSelectionState: () =>
           Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
@@ -364,9 +364,9 @@ describe("PickerT", () => {
       const MockFrameT = Layer.succeed(FrameT, {
         subscribe: () => Effect.fail(new Error("not implemented")),
         getSelection: () => Effect.succeed(Option.none()),
-        getAssignedNodeId: () => Effect.succeed(null),
+        getAssignedKhoraId: () => Effect.succeed(null),
         setSelection: setSelectionMock,
-        setAssignedNodeId: () => Effect.void,
+        setAssignedKhoraId: () => Effect.void,
         setKhoraSelection: () => Effect.void,
         getKhoraSelectionState: () =>
           Effect.succeed({ selectedKhoras: [], anchor: null, focus: null }),
