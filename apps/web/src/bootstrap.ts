@@ -132,7 +132,7 @@ export const bootstrap = Effect.gen(function* () {
       rootKhoraId: null,
       toggledNodes: [],
       activeViewId: null,
-      activePart: "body",
+      activePart: "khora",
       khoraSelectionAnchor: null,
       khoraSelectionFocus: null,
       selectedKhoras: [],

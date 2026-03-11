@@ -40,9 +40,8 @@ export const setKhoraSelection = (
       selectedKhoras: [...normalizedSelection.selectedKhoras],
       khoraSelectionAnchor: normalizedSelection.anchor,
       khoraSelectionFocus: normalizedSelection.focus,
-      activePart: "body" as const,
+      activePart: "khora" as const,
       selection: null,
-      focusMode: "khoraSelection" as const,
     };
     yield* Store.setDocument("frame", nextFrame, frameId).pipe(Effect.orDie);
 

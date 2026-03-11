@@ -81,25 +81,14 @@ export const setSelection = (
     let nextFrame = currentFrame;
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
-      const targetKhoraId = s.khoraId;
-
-      const rootNodeId = currentFrame.rootKhoraId ?? assignedNodeId;
-      const rootKhoraId =
-        rootNodeId != null
-          ? Id.makeFrameKhoraId(frameId, Id.Node.make(rootNodeId))
-          : null;
 
       nextFrame = {
         ...currentFrame,
-        activePart:
-          rootKhoraId != null && targetKhoraId === rootKhoraId
-            ? ("head" as const)
-            : ("body" as const),
+        activePart: "khora" as const,
         selection: s,
         selectedKhoras: [],
         khoraSelectionAnchor: null,
         khoraSelectionFocus: null,
-        focusMode: "editing",
       };
     } else {
       nextFrame = {

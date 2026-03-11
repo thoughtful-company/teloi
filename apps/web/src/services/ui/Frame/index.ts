@@ -220,7 +220,7 @@ export const FrameLive = Layer.effect(
             return { type: "khora" as const, khoraId: frame.selection.khoraId };
           }
 
-          if (frame.focusMode !== "editing") {
+          if ((frame.selectedKhoras?.length ?? 0) > 0) {
             return { type: "khoraSelection" as const, frameId: activeFrameId };
           }
 
@@ -256,18 +256,15 @@ export const FrameLive = Layer.effect(
             state.focus ?? fallbackNodeId,
           );
 
-          // Write frame doc BEFORE world doc so focusModeStream sees
-          // the correct focusMode when windowStream fires
           yield* Store.setDocument(
             "frame",
             {
               ...frame,
-              activePart: "body",
+              activePart: "khora",
               selection: null,
               selectedKhoras: [...normalized.selectedKhoras],
               khoraSelectionAnchor: normalized.anchor,
               khoraSelectionFocus: normalized.focus,
-              focusMode: "khoraSelection",
             },
             frameId,
           ).pipe(Effect.orDie);

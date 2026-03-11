@@ -69,7 +69,9 @@ export const subscribe = (frameId: Id.Frame) =>
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
         if (!isStageActiveFrame) return { isKhoraSelectionMode: false };
-        return { isKhoraSelectionMode: frame?.focusMode !== "editing" };
+        return {
+          isKhoraSelectionMode: (frame?.selectedKhoras?.length ?? 0) > 0,
+        };
       },
     ).pipe(
       Stream.changesWith(

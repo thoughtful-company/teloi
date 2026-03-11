@@ -54,9 +54,7 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
         const isActive =
-          isStageActiveFrame &&
-          frame?.activePart === "head" &&
-          frame?.selection?.khoraId === titleBlockId;
+          isStageActiveFrame && frame?.selection?.khoraId === titleBlockId;
 
         let selection: TitleSelection | null = null;
         if (frame?.selection?.khoraId === titleBlockId) {
@@ -71,9 +69,7 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
 
         return { isActive, selection };
       },
-    ).pipe(
-      Stream.changesWith(deepEqual),
-    );
+    ).pipe(Stream.changesWith(deepEqual));
 
     // Text content stream
     const textStream = yield* Automerge.subscribeText(nodeId);
