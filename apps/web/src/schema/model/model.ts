@@ -68,7 +68,7 @@ export const Frame = Schema.mutable(
     /** Active view node ID - null means default page/tree view */
     activeViewId: Schema.NullOr(Id.Node),
     activePart: Schema.optional(Schema.Literal("khora")),
-    selection: Schema.optional(Schema.NullOr(ActiveKhoraSelection)),
+    activeKhoraId: Schema.optional(Schema.NullOr(Id.Khora)),
     khoraSelectionAnchor: Schema.optional(Schema.NullOr(Id.Node)),
     khoraSelectionFocus: Schema.optional(Schema.NullOr(Id.Node)),
     selectedKhoras: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
@@ -78,11 +78,21 @@ export const Frame = Schema.mutable(
 );
 export type Frame = typeof Frame.Type;
 
+export const KhoraDocTextSelection = Schema.Struct({
+  anchor: Schema.Number,
+  head: Schema.Number,
+  assoc: Schema.optionalWith(Schema.Literal(-1, 0, 1), { default: () => 0 }),
+  goalX: Schema.NullOr(Schema.Number),
+  goalLine: Schema.NullOr(Schema.Literal("first", "last")),
+});
+export type KhoraDocTextSelection = typeof KhoraDocTextSelection.Type;
+
 export const Khora = Schema.Struct({
   isExpanded: Schema.Boolean,
   activeViewId: Schema.NullOr(Id.Node),
   ghostChildId: Schema.NullOr(Id.Node),
   ghostParentId: Schema.NullOr(Id.Node),
+  textSelection: Schema.optional(Schema.NullOr(KhoraDocTextSelection)),
 });
 export type Khora = typeof Khora.Type;
 

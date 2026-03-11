@@ -148,11 +148,39 @@ export const FrameLive = Layer.effect(
           const frameDoc = yield* Store.getDocument("frame", frameId).pipe(
             Effect.orDie,
           );
-          if (Option.isSome(frameDoc) && frameDoc.value.selection != null) {
-            return Option.some(frameDoc.value.selection);
+          if (Option.isNone(frameDoc)) {
+            return Option.none<Model.ActiveKhoraSelection>();
           }
-
-          return Option.none<Model.ActiveKhoraSelection>();
+          const activeKhoraId = frameDoc.value.activeKhoraId ?? null;
+          if (activeKhoraId == null) {
+            return Option.none<Model.ActiveKhoraSelection>();
+          }
+          const khoraDoc = yield* Store.getDocument(
+            "khora",
+            activeKhoraId,
+          ).pipe(Effect.orDie);
+          const textSel = Option.isSome(khoraDoc)
+            ? (khoraDoc.value.textSelection ?? null)
+            : null;
+          if (textSel == null) {
+            // Active khora but no text selection — still in editing mode
+            return Option.some<Model.ActiveKhoraSelection>({
+              khoraId: activeKhoraId,
+              selection: { anchor: 0, head: 0, assoc: 0 },
+              goalX: null,
+              goalLine: null,
+            });
+          }
+          return Option.some<Model.ActiveKhoraSelection>({
+            khoraId: activeKhoraId,
+            selection: {
+              anchor: textSel.anchor,
+              head: textSel.head,
+              assoc: textSel.assoc,
+            },
+            goalX: textSel.goalX,
+            goalLine: textSel.goalLine,
+          });
         }),
       getAssignedKhoraId: (frameId: Id.Frame) =>
         get(frameId, "assignedKhoraId").pipe(
@@ -216,8 +244,8 @@ export const FrameLive = Layer.effect(
           if (Option.isNone(frameDoc)) return { type: "none" as const };
 
           const frame = frameDoc.value;
-          if (frame.selection != null) {
-            return { type: "khora" as const, khoraId: frame.selection.khoraId };
+          if (frame.activeKhoraId != null) {
+            return { type: "khora" as const, khoraId: frame.activeKhoraId };
           }
 
           if ((frame.selectedKhoras?.length ?? 0) > 0) {
@@ -236,9 +264,9 @@ export const FrameLive = Layer.effect(
           const frame = frameDoc.value;
           const state = deriveKhoraSelectionState(frame);
           const selectionNodeId =
-            frame.selection != null
+            frame.activeKhoraId != null
               ? (() => {
-                  const ctx = Id.parseKhoraContextSync(frame.selection.khoraId);
+                  const ctx = Id.parseKhoraContextSync(frame.activeKhoraId);
                   return ctx.type === "frame" ? ctx.nodeId : null;
                 })()
               : null;
@@ -256,12 +284,28 @@ export const FrameLive = Layer.effect(
             state.focus ?? fallbackNodeId,
           );
 
+          // Clear previous khora's textSelection
+          const prevActiveKhoraId = frame.activeKhoraId ?? null;
+          if (prevActiveKhoraId != null) {
+            const khoraDoc = yield* Store.getDocument(
+              "khora",
+              prevActiveKhoraId,
+            ).pipe(Effect.orDie);
+            if (Option.isSome(khoraDoc)) {
+              yield* Store.setDocument(
+                "khora",
+                { ...khoraDoc.value, textSelection: null },
+                prevActiveKhoraId,
+              ).pipe(Effect.orDie);
+            }
+          }
+
           yield* Store.setDocument(
             "frame",
             {
               ...frame,
               activePart: "khora",
-              selection: null,
+              activeKhoraId: null,
               selectedKhoras: [...normalized.selectedKhoras],
               khoraSelectionAnchor: normalized.anchor,
               khoraSelectionFocus: normalized.focus,

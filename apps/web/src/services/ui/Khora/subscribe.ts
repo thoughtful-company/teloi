@@ -254,12 +254,12 @@ const makeBlockStreamEither = (khoraId: Id.Khora) =>
       Stream.map(
         (b): Either.Either<BlockDoc, never> =>
           Either.right(
-              b ?? {
-                isExpanded: true,
-                activeViewId: null,
-                ghostChildId: null,
-                ghostParentId: null,
-              },
+            b ?? {
+              isExpanded: true,
+              activeViewId: null,
+              ghostChildId: null,
+              ghostParentId: null,
+            },
           ),
       ),
     );
@@ -319,34 +319,41 @@ const makeWindowDerivedStream = (
     const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
       Effect.orDie,
     );
+    // Subscribe to this khora's doc for text selection
+    const khoraQuery = queryDb(
+      tables.khora
+        .select("value")
+        .where("id", "=", khoraId)
+        .first({ fallback: () => null }),
+    );
+    const khoraStream = yield* Store.subscribeStream(khoraQuery).pipe(
+      Effect.orDie,
+    );
 
-    return Stream.zipLatestWith(
-      windowStream,
-      frameStream,
-      (window, frame): WindowDerived => {
+    return Stream.zipLatestAll(windowStream, frameStream, khoraStream).pipe(
+      Stream.map(([window, frame, khoraDocs]): WindowDerived => {
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
-        const isActive =
-          isStageActiveFrame && frame?.selection?.khoraId === khoraId;
+        const isActive = isStageActiveFrame && frame?.activeKhoraId === khoraId;
 
         const selectedKhoras = frame?.selectedKhoras ?? [];
         const isSelected = selectedKhoras.includes(nodeId);
 
-        const selection =
-          frame?.selection?.khoraId === khoraId
+        const ts = khoraDocs?.textSelection;
+        const selection: KhoraTextSelection | null =
+          ts != null
             ? {
-                anchor: frame.selection.selection.anchor,
-                head: frame.selection.selection.head,
-                goalX: frame.selection.goalX,
-                goalLine: frame.selection.goalLine,
-                assoc: frame.selection.selection.assoc,
+                anchor: ts.anchor,
+                head: ts.head,
+                goalX: ts.goalX,
+                goalLine: ts.goalLine,
+                assoc: ts.assoc,
               }
             : null;
 
         return { isActive, isSelected, selection };
-      },
-    ).pipe(
+      }),
       Stream.changesWith(deepEqual),
       Stream.tap(({ isActive }) =>
         Effect.logDebug("[Khora.Subscribe] World-derived stream emitted").pipe(

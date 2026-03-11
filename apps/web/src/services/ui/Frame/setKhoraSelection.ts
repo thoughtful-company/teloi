@@ -35,13 +35,29 @@ export const setKhoraSelection = (
       yield* expandAncestorsForNodes(frameId, rootNodeId, blocks);
     }
 
+    // Clear previous khora's textSelection
+    const prevActiveKhoraId = currentFrame.activeKhoraId ?? null;
+    if (prevActiveKhoraId != null) {
+      const khoraDoc = yield* Store.getDocument(
+        "khora",
+        prevActiveKhoraId,
+      ).pipe(Effect.orDie);
+      if (Option.isSome(khoraDoc)) {
+        yield* Store.setDocument(
+          "khora",
+          { ...khoraDoc.value, textSelection: null },
+          prevActiveKhoraId,
+        ).pipe(Effect.orDie);
+      }
+    }
+
     const nextFrame = {
       ...currentFrame,
       selectedKhoras: [...normalizedSelection.selectedKhoras],
       khoraSelectionAnchor: normalizedSelection.anchor,
       khoraSelectionFocus: normalizedSelection.focus,
       activePart: "khora" as const,
-      selection: null,
+      activeKhoraId: null,
     };
     yield* Store.setDocument("frame", nextFrame, frameId).pipe(Effect.orDie);
 

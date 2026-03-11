@@ -78,29 +78,58 @@ export const setSelection = (
       });
     }
 
-    let nextFrame = currentFrame;
+    // Determine previous and next active khora
+    const prevActiveKhoraId = currentFrame.activeKhoraId ?? null;
+
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
+      const nextKhoraId = s.khoraId;
 
-      nextFrame = {
-        ...currentFrame,
-        activePart: "khora" as const,
-        selection: s,
-        selectedKhoras: [],
-        khoraSelectionAnchor: null,
-        khoraSelectionFocus: null,
-      };
+      // Clear previous khora's textSelection if switching khoras
+      if (prevActiveKhoraId != null && prevActiveKhoraId !== nextKhoraId) {
+        yield* clearKhoraTextSelection(Store, prevActiveKhoraId);
+      }
+
+      // Write textSelection to target khora doc
+      yield* writeKhoraTextSelection(Store, nextKhoraId, {
+        anchor: s.selection.anchor,
+        head: s.selection.head,
+        assoc: s.selection.assoc,
+        goalX: s.goalX,
+        goalLine: s.goalLine,
+      });
+
+      // Write activeKhoraId to frame doc
+      yield* Store.setDocument(
+        "frame",
+        {
+          ...currentFrame,
+          activePart: "khora" as const,
+          activeKhoraId: nextKhoraId,
+          selectedKhoras: [],
+          khoraSelectionAnchor: null,
+          khoraSelectionFocus: null,
+        },
+        frameId,
+      ).pipe(Effect.orDie);
     } else {
-      nextFrame = {
-        ...currentFrame,
-        selection: null,
-        selectedKhoras: [],
-        khoraSelectionAnchor: null,
-        khoraSelectionFocus: null,
-      };
-    }
+      // Clear selection: clear previous khora's textSelection and frame's activeKhoraId
+      if (prevActiveKhoraId != null) {
+        yield* clearKhoraTextSelection(Store, prevActiveKhoraId);
+      }
 
-    yield* Store.setDocument("frame", nextFrame, frameId).pipe(Effect.orDie);
+      yield* Store.setDocument(
+        "frame",
+        {
+          ...currentFrame,
+          activeKhoraId: null,
+          selectedKhoras: [],
+          khoraSelectionAnchor: null,
+          khoraSelectionFocus: null,
+        },
+        frameId,
+      ).pipe(Effect.orDie);
+    }
 
     const logAnnotations = yield* Option.match(clampedSelection, {
       onNone: () =>
@@ -136,4 +165,40 @@ export const setSelection = (
         ...logAnnotations,
       }),
     );
+  });
+
+// ================================ Internal ==================================
+
+const clearKhoraTextSelection = (Store: StoreT["Type"], khoraId: Id.Khora) =>
+  Effect.gen(function* () {
+    const doc = yield* Store.getDocument("khora", khoraId).pipe(Effect.orDie);
+    if (Option.isSome(doc)) {
+      yield* Store.setDocument(
+        "khora",
+        { ...doc.value, textSelection: null },
+        khoraId,
+      ).pipe(Effect.orDie);
+    }
+  });
+
+const writeKhoraTextSelection = (
+  Store: StoreT["Type"],
+  khoraId: Id.Khora,
+  textSelection: Model.KhoraDocTextSelection,
+) =>
+  Effect.gen(function* () {
+    const doc = yield* Store.getDocument("khora", khoraId).pipe(Effect.orDie);
+    const existing = Option.isSome(doc)
+      ? doc.value
+      : {
+          isExpanded: true,
+          activeViewId: null,
+          ghostChildId: null,
+          ghostParentId: null,
+        };
+    yield* Store.setDocument(
+      "khora",
+      { ...existing, textSelection },
+      khoraId,
+    ).pipe(Effect.orDie);
   });

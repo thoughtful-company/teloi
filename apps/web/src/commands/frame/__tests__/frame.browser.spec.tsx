@@ -972,13 +972,13 @@ describe("Khora selection focus ownership", () => {
       const Store = yield* StoreT;
       const frameDoc = yield* Store.getDocument("frame", frameId);
       const frameValue = Option.getOrThrow(frameDoc) as unknown as {
-        selection: { khoraId: Id.Khora } | null;
+        activeKhoraId: Id.Khora | null;
         selectedKhoras: readonly Id.Node[];
         khoraSelectionAnchor: Id.Node | null;
         khoraSelectionFocus: Id.Node | null;
       };
 
-      expect(frameValue.selection?.khoraId).toBe(blockB);
+      expect(frameValue.activeKhoraId).toBe(blockB);
       expect(frameValue.selectedKhoras).toHaveLength(0);
       expect(frameValue.khoraSelectionAnchor).toBeNull();
       expect(frameValue.khoraSelectionFocus).toBeNull();

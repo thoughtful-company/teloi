@@ -46,30 +46,46 @@ export const subscribe = (frameId: Id.Frame, nodeId: Id.Node) =>
     const frameStream = yield* Store.subscribeStream(frameQuery).pipe(
       Effect.orDie,
     );
-    const windowDerived$ = Stream.zipLatestWith(
+    // Subscribe to the title's khora doc for text selection
+    const khoraQuery = queryDb(
+      tables.khora
+        .select("value")
+        .where("id", "=", titleBlockId)
+        .first({ fallback: () => null }),
+    );
+    const khoraStream = yield* Store.subscribeStream(khoraQuery).pipe(
+      Effect.orDie,
+    );
+
+    // Combine all three doc streams so isActive and selection arrive atomically
+    const windowDerived$ = Stream.zipLatestAll(
       windowStream,
       frameStream,
-      (window, frame) => {
+      khoraStream,
+    ).pipe(
+      Stream.map(([window, frame, khoraDoc]) => {
         const isStageActiveFrame =
           (window?.activeRegion ?? "stage") === "stage" &&
           window?.activeFrameId === frameId;
         const isActive =
-          isStageActiveFrame && frame?.selection?.khoraId === titleBlockId;
+          isStageActiveFrame && frame?.activeKhoraId === titleBlockId;
 
-        let selection: TitleSelection | null = null;
-        if (frame?.selection?.khoraId === titleBlockId) {
-          selection = {
-            anchor: frame.selection.selection.anchor,
-            head: frame.selection.selection.head,
-            goalX: frame.selection.goalX,
-            goalLine: frame.selection.goalLine,
-            assoc: frame.selection.selection.assoc,
-          };
-        }
+        const ts = khoraDoc?.textSelection;
+        const selection: TitleSelection | null =
+          ts != null
+            ? {
+                anchor: ts.anchor,
+                head: ts.head,
+                goalX: ts.goalX,
+                goalLine: ts.goalLine,
+                assoc: ts.assoc,
+              }
+            : null;
 
         return { isActive, selection };
-      },
-    ).pipe(Stream.changesWith(deepEqual));
+      }),
+      Stream.changesWith(deepEqual),
+    );
 
     // Text content stream
     const textStream = yield* Automerge.subscribeText(nodeId);
