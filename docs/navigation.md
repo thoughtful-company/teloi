@@ -69,7 +69,7 @@ Cross-parent range selection is not yet supported - the selection stays within s
 
 ## Navigation Helpers
 
-Implementation in `services/ui/Block/navigation.ts`:
+Implementation in `services/ui/View/page/navigation.ts`:
 
 | Function | Purpose |
 |----------|---------|

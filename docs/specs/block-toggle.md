@@ -5,12 +5,12 @@
 ### `frame:collapse`
 Progressive collapse. If the block is expanded with children, collapse it and stay. If collapsed or childless, navigate to parent (preserving mode). If at root level, focus title.
 
-In block selection mode, currently operates on `selectedBlocks[0]` only. Multi-block collapse is not yet implemented (tracked by a `it.fails` test).
+In khora selection mode, currently operates on `selectedKhoras[0]` only. Multi-block collapse is not yet implemented (tracked by a `it.fails` test).
 
 ### `frame:expand`
-Calls `Block.expandOneLevel(frameId, nodeId)` — DFS-based: if the block itself is collapsed, expand it; if already expanded, find the first collapsed descendant and expand that. Returns false if everything is already expanded.
+Calls `Khora.expandOneLevel(frameId, nodeId)` — DFS-based: if the block itself is collapsed, expand it; if already expanded, find the first collapsed descendant and expand that. Returns false if everything is already expanded.
 
-In block selection mode, expands all selected blocks (iterates the full selection).
+In khora selection mode, expands all selected khoras (iterates the full selection).
 
 ## Routing
 
@@ -20,16 +20,16 @@ Unconditionally dispatches `Collapse`. The progressive behavior (collapse vs nav
 ### KeyEventBus (`Cmd+ArrowDown`)
 Dispatch `Expand` (expandOneLevel handles both collapsed and already-expanded cases internally).
 
-### Click (triangle button in Block.tsx)
+### Click (triangle button in Khora.tsx)
 - Expanded → dispatch `Collapse`
 - Collapsed → dispatch `Expand`
 
-Dispatched through CommandBus, not directly calling `Block.setExpanded`.
+Dispatched through CommandBus, not directly calling `Khora.setExpanded`.
 
 ## Modes
 Both `Cmd+Up`/`Cmd+Down` work in:
 - Editor mode (cursor in a block)
-- Block selection mode (block highlighted, no cursor)
+- Khora selection mode (khora highlighted, no cursor)
 - Title (Cmd+Down expands children DFS from frame root)
 
 ## Navigate-to-parent fallback (`Cmd+Up` when collapsed)
@@ -40,7 +40,7 @@ When `Cmd+Up` is pressed and block is already collapsed (or has no children):
 
 ## Auto-expand ancestors on selection
 
-When `Frame.setBlockSelection` targets a node whose ancestor is collapsed, all ancestors up to the frame root are automatically expanded. This ensures selected blocks are always visible.
+When `Frame.setKhoraSelection` targets a node whose ancestor is collapsed, all ancestors up to the frame root are automatically expanded. This ensures selected khoras are always visible.
 
 Tested scenarios:
 - Single collapsed parent expands when child is selected

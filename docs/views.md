@@ -50,15 +50,15 @@ Views are created through commands or UI actions. For example, the "Create Table
 
 ## Service API
 
-View entity management lives in `BlockT` (`services/ui/Block/`):
+View entity management lives in `KhoraT` (`services/ui/Khora/`):
 
-- `Block.getViewsForNode(nodeId)` — returns all view node IDs linked via `HAS_VIEW`
-- `Block.getOrCreateView(nodeId)` — finds or creates a default view for a node
-- `Block.getActiveView(frameId)` — returns the active view ID from frame state
-- `Block.setActiveView(blockId, viewId)` — sets the active view on a block document
-- `Block.subscribeViewsForNode(nodeId)` — reactive stream of view node IDs
-- `Block.subscribeViewInfo(nodeId)` — reactive stream of `ViewInfo[]` (includes type resolution)
+- `Khora.getViewsForNode(nodeId)` — returns all view node IDs linked via `HAS_VIEW`
+- `Khora.getOrCreateView(nodeId)` — finds or creates a default view for a node
+- `Khora.getActiveView(frameId)` — returns the active view ID from frame state
+- `Khora.setActiveView(khoraId, viewId)` — sets the active view on a khora document
+- `Khora.subscribeViewsForNode(nodeId)` — reactive stream of view node IDs
+- `Khora.subscribeViewInfo(nodeId)` — reactive stream of `ViewInfo[]` (includes type resolution)
 
-Type resolution helpers (`services/ui/Block/views/types.ts`):
+Type resolution helpers (`services/ui/Khora/views/types.ts`):
 - `resolveViewType(viewNodeId)` — returns `"page" | "table" | "chat"` based on node's type
 - `resolveActiveViewType(activeViewId, views)` — determines effective view type (auto-detects when `activeViewId` is null)

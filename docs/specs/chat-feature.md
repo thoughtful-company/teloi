@@ -179,7 +179,7 @@ When a frame navigates to a node (`activeViewId` starts as null), `FrameView` ch
 
 Flow: `FrameView.createEffect` → query `View.getViewsForPage` → check each for `CHAT_VIEW` type → `Frame.setActiveView`.
 
-When a frame changes to a different node (`setAssignedNodeId`), `activeViewId` is cleared to null, restarting the detection cycle.
+When a frame changes to a different node (`setAssignedKhoraId`), `activeViewId` is cleared to null, restarting the detection cycle.
 
 ### Message List Reactivity
 

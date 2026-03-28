@@ -37,18 +37,33 @@ The body is entirely owned by the active view. Each view type implements its own
 
 A frame is divided into **parts** — regions that can independently hold focus. The frame tracks which part is active via `activePart`.
 
-Currently the only part is `"khora"` — the body region rooted at the frame's assigned khora. Widgets (e.g., side panels) will be additional parts in the future.
+The only part is `"khora"` — the body region rooted at the frame's assigned khora. Widgets (e.g., side panels) will be additional parts in the future; the parts model supports them but they are deferred.
+
+`activePart` works the same way as the world's `activeFrameId` — it's a reference to which region has focus, not a mode enum.
+
+## Focus
+
+There is no `focusMode` field. Mode is derived from state:
+
+- **Editing** — a khora has text selection (`textSelection != null`)
+- **Khora selection** — one or more khoras are selected (`selectedKhoras.length > 0`)
+
+These are mutually exclusive. If multiple khoras are selected, none is "active" in the editing sense.
 
 ### Khora Part
 
-The khora part owns the selection state for the body region:
+The khora part owns selection state for the body region:
 
-- **`selectedKhoraIds`** — which khoras are currently selected (one for single selection, multiple for range selection)
+- **`selectedKhoras`** — which khoras are currently selected (one for single selection, multiple for contiguous range selection)
 - **`anchor` / `focus`** — define the endpoints of a range selection
 
-Text selection (cursor position within an active khora) lives on the individual block document, not on the part.
+Text selection lives on individual khora (block) documents, not on the frame. Each khora tracks its own cursor state (`anchor`, `head`, `assoc`, `goalX`, `goalLine`).
 
 See `docs/concepts/khora.md` for what a khora is and how khora URIs work.
+
+## Assigned Khora
+
+`assignedKhoraId` identifies the top-level khora the frame is a container for. Both frame and khora are containers for a node, but at different levels — the frame is the interaction shell, the khora is the selectable vessel.
 
 ## Views
 

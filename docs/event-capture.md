@@ -165,7 +165,7 @@ Passes raw events to callbacks. Does NOT interpret them.
 
 ### Layer 2: Component (Block/Title)
 
-**Location:** `ui/Block.tsx`, `ui/Title.tsx`
+**Location:** `ui/Khora.tsx`, `ui/Title.tsx`
 
 Receives callbacks from Editor:
 - Builds `CursorContext` from EditorView

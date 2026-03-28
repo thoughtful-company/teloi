@@ -132,7 +132,7 @@ This is a pnpm monorepo with:
 **New system** — `KeyEventBus` → `CommandBus` → Commands (`commands/`):
 - `KeyEventBus` maps key events to `Command` objects via layered keymaps (plain, meta, shift, alt, blockSelection)
 - `CommandBus` dispatches commands to static `handle` methods
-- Sources: `"editor"` (from CodeMirror), `"app"` (from `window.keydown` in block selection mode)
+- Sources: `"editor"` (from CodeMirror), `"app"` (from `window.keydown` in khora selection mode)
 - New keyboard shortcuts should be added as commands here
 
 **Legacy system** — `ActionT` (`services/ui/Action/`):
@@ -143,34 +143,34 @@ This is a pnpm monorepo with:
 
 **Focus Architecture** (reactive, not imperative):
 Focus is driven by state propagation, never by direct DOM `.focus()` calls:
-1. Handler calls `Frame.enterBlockEditing(blockId)` (or `Frame.enterBlockSelection(frameId)`)
-2. `BlockT.subscribe` emits updated view with `isActive: true`
-3. Block component renders `<Editor>` when active
+1. Handler calls `Frame.enterBlockEditing(khoraId)` (or `Frame.enterKhoraSelection(frameId)`)
+2. `KhoraT.subscribe` emits updated view with `isActive: true`
+3. Khora component renders `<Editor>` when active
 4. Editor calls `view.focus()` on mount
 
-This means: to focus a block, update frame/world focus state. The UI reacts and focus happens as a consequence.
+This means: to focus a khora, update frame/world focus state. The UI reacts and focus happens as a consequence.
 
 **Text selection invariant**:
-- Text selection is strictly one-block-only. `Frame.getSelection` / `Frame.setSelection` now work with `{ blockId, selection: { anchor, head, assoc }, goalX, goalLine }`.
-- Selection metadata is stored only on the frame document (`frame.selection`), not on block documents.
-- Multi-block operations use `Frame.setBlockSelection` / `Frame.getBlockSelectionState` only.
+- Text selection is strictly one-khora-only. `Frame.getSelection` / `Frame.setSelection` work with `ActiveKhoraSelection` (`{ khoraId, selection: { anchor, head, assoc }, goalX, goalLine }`).
+- The frame stores `activeKhoraId` (which khora is being edited). The actual cursor position (`textSelection`) lives on individual khora documents.
+- Multi-khora operations use `Frame.setKhoraSelection` / `Frame.getKhoraSelectionState` only.
 
 **Focus ownership invariant**:
-- Editing focus source of truth is `frame.selection.blockId`.
-- Block-selection focus source of truth is `frame.blockSelectionAnchor` + `frame.blockSelectionFocus`.
-- `frame.selectedBlocks` is persisted as a derived cache (not authoritative focus state).
+- Editing focus source of truth is `frame.activeKhoraId` + the khora doc's `textSelection`.
+- Khora-selection focus source of truth is `frame.khoraSelectionAnchor` + `frame.khoraSelectionFocus`.
+- `frame.selectedKhoras` is persisted as a derived cache (not authoritative focus state).
 
 Key services:
 - `KeyEventBusT` — Routes keyboard events to commands via keymaps
 - `CommandBusT` — Dispatches command objects to their handlers
 - `ActionT` — Legacy keyboard/mouse action interpretation (being migrated)
 - `PickerT` — Type picker state (open/close, query)
-- `BlockT.subscribe` — Unified view stream (combines all block state into one subscription)
+- `KhoraT.subscribe` — Unified view stream (combines all khora state into one subscription)
 - `ViewT` — View queries and creation (`services/ui/View/`)
 - `ChatT` — Chat message collection and role mapping (`services/ui/Chat/`)
 
 **Text Content Architecture**:
-- **LiveStore**: Structure (nodes, parent_links, ordering), selection state, UI state
+- **LiveStore**: Structure (nodes, parent_links, ordering), focus state (activeKhoraId, khora selection), UI state
 - **Automerge**: Text content per node (`AutomergeT` service, synced via `automerge-repo`)
 - Split/merge update both; typing only touches Automerge
 
@@ -181,16 +181,16 @@ Two use cases share this pattern:
 
 1. **PropertySection ghosts** (`ui/PropertySection.tsx`): Empty property editor that materializes on first keystroke (debounced 50ms). See `services/ui/Property/addLinkedBlock.ts`.
 
-2. **Expand/collapse ghosts** (`services/ui/Block/expand.ts`): When expanding a childless block, a ghost child appears for typing. Created via `expandOneLevel`, materialized via `Block.materialize`.
+2. **Expand/collapse ghosts** (`services/ui/Khora/expand.ts`): When expanding a childless block, a ghost child appears for typing. Created via `expandOneLevel`, materialized via `Khora.materialize`.
 
 **Ghost invariants**:
 - A ghost only exists when its parent has **zero real children** (created when `children.length === 0`)
-- Ghost state lives on block documents: parent has `ghostChildId`, ghost has `ghostParentId`
+- Ghost state lives on khora documents: parent has `ghostChildId`, ghost has `ghostParentId`
 - Ghosts have **no LiveStore rows** (`nodes`, `parent_links`)—`Node.getParent(ghostId)` fails
 - Any tree mutation on a ghost (except deletion) **materializes first**, then proceeds normally
 - Collapsing a parent with a ghost cleans up the ghost (deletes Automerge text, clears block docs)
 
-Key files: `services/ui/Block/materialize.ts`, `services/ui/Block/getBlockDoc.ts`, `services/ui/Block/expand.ts`
+Key files: `services/ui/Khora/materialize.ts`, `services/ui/Khora/getKhoraDoc.ts`, `services/ui/Khora/expand.ts`
 
 ### LiveStore Integration
 Local-first SQLite database with event sourcing:
@@ -200,13 +200,13 @@ Local-first SQLite database with event sourcing:
 
 ### Schema System (`apps/web/src/schema/`)
 Typed domain models using Effect Schema:
-- `Model.DocumentName` enum defines document types (Window, Pane, Frame, Block, Selection)
+- `Model.DocumentName` enum defines document types (World, Pane, Frame, Khora)
 - `Id` module provides branded ID types for type-safe entity references
 - `Entity` module defines reusable entity structures
 
 ### Runtime
 `apps/web/src/runtime.ts` - Creates a `ManagedRuntime` with full service layer composition:
-- BlockLive → FrameLive → WorldLive → NodeLive → StoreLive (via `Layer.provideMerge`)
+- KhoraLive → FrameLive → WorldLive → NodeLive → StoreLive (via `Layer.provideMerge`)
 - LiveStore initialized from `livestore/store.ts`
 - Exported as `BrowserRuntime` and provided via SolidJS context
 

@@ -9,11 +9,13 @@ Three adjacent systems need to be designed together:
 2. **Selected Khora System** — tracks which selectable units are highlighted
 3. **Text Selection System** — tracks cursor position within a khora's text content
 
-The current model stores all selection state (`selection`, `selectedBlocks`, `focusMode`, `activePart`) flat on the frame document. This breaks down because:
+The previous model stored all selection state (`selection`, `selectedBlocks`, `focusMode`, `activePart`) flat on the frame document. This broke down because:
 
-- `activePart: "head" | "body"` is too coarse — can't scope keymaps to property sections or widgets
-- Block selection uses `Id.Node[]`, which can't distinguish between selecting a node as a table row vs as a title cell — both resolve to the same node ID
-- Text selection and block selection are entangled on the same frame-level fields
+- `activePart: "head" | "body"` was too coarse — couldn't scope keymaps to property sections or widgets
+- Block selection used `Id.Node[]`, which couldn't distinguish between selecting a node as a table row vs as a title cell — both resolved to the same node ID
+- Text selection and block selection were entangled on the same frame-level fields
+
+These issues have been addressed: `focusMode` is removed (derived from state), `activePart` is simplified to `"khora"`, text selection moved to khora documents, and `assignedNodeId` renamed to `assignedKhoraId`.
 
 ## Khora
 
@@ -85,21 +87,24 @@ The frame is decomposed into **parts**. Each part is a vessel that holds a root 
 
 ```
 Frame
-  activePart: string          // which part has focus (keymap scope)
+  activePart: "khora"         // which part has focus (keymap scope)
+  activeKhoraId: Id.Khora     // which khora is being edited (null if none)
   parts:
     body:
       rootKhoraId             // the assigned node
-      selectedKhora: Id.Khora[]
-      anchor: Id.Khora | null
-      focus: Id.Khora | null
-      textSelection: { khoraId, anchor, head, assoc, goalX, goalLine } | null
-      // focusMode is removed — mode is derived:
-      //   textSelection != null → editing
-      //   selectedKhora.length > 0 → block selection
+      selectedKhoras: Id.Node[]
+      khoraSelectionAnchor: Id.Node | null
+      khoraSelectionFocus: Id.Node | null
+      // mode is derived:
+      //   activeKhoraId != null → editing
+      //   selectedKhoras.length > 0 → khora selection
     widget_left:
-      (own root khora, own selection state)
+      (own root khora, own selection state — deferred)
     widget_right:
       ...
+
+Khora document (per khora):
+  textSelection: { anchor, head, assoc, goalX, goalLine } | null
 ```
 
 ### What this solves
@@ -114,13 +119,22 @@ Not directly visible to the user, but determines **scope**. Focus flows from the
 
 The flow: Frame → `activePart` → part's selection state → active khora within that part.
 
-This replaces the current `activeRegion` (world level) + `activePart` (frame level) + `focusMode` (frame level) with a cleaner hierarchy: world → frame → part → khora.
+This replaced the old `activeRegion` (world level) + `activePart` (frame level) + `focusMode` (frame level) with a cleaner hierarchy: world → frame → part → khora.
 
 ## Strategic Decisions
 
 - **Widgets are deferred.** The parts model supports them, but for now only `body` exists. This keeps the implementation simple while the core selection systems are established.
 - **View composition is constrained.** Different view types (outline, table, card) render differently but all use khora as the selectable unit. This ensures cross-view operations (move block from table to outline) work without translation — the underlying unit is the same.
 - **Block remains the default khora type.** In outline/page view, khora = block. The concept only diverges in views where a node can be selected at multiple granularities (table rows vs cells).
+- **Selection is contiguous, not scatter-select.** You can only select a contiguous range within one context — never arbitrary elements across different contexts. Scatter-select (e.g., 3 blocks + a property value) makes operations ambiguous and unpredictable ("what does Tab do?"). Type badges, command nodes, and similar non-block components get single-active-element only — no multi-selection.
+- **Selection is always flat.** Selecting a node selects only that node, never implicitly includes its children. Copy depth (node only, full subtree, visible subtree) is controlled explicitly via Cmd+Alt+C menu.
+
+### Selection Topology
+
+- A table (or any non-outline view embedded in the body) is **one khora** in the outline traversal — shift+down from the block above selects the whole table, not its first row.
+- **Entering a nested context:** when a container khora (e.g., table) is selected, pressing down again enters it and selects the first element (first row).
+- **Exiting a nested context:** shift+down past the last row exits back into the outline below.
+- **Property section** sits above the outline/doc view in the vertical traversal order.
 
 ## Prior Art
 
@@ -130,8 +144,4 @@ The delegation model (each parent tracks its own children's selection) was consi
 
 ## Open Questions
 
-- Exact delimiter syntax for khora URIs (`:` vs `/` within segments)
-- Whether `anchor`/`focus` on the part level should use khora IDs or remain node IDs
-- How block selection keyboard navigation (shift+arrow) works across khora types within a single part (e.g., navigating from a row into a cell)
-- How the data model for parts is stored — flat fields on the frame document, or a nested structure
 - What the sentinel value for title column is (`column:title`? `column:__title__`?)
