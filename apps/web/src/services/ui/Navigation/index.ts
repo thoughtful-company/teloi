@@ -137,12 +137,12 @@ export const NavigationLive = Layer.effect(
                     frameId,
                     validatedNodeId,
                   );
-                  yield* Frame.enterBlockEditing(titleBlockId);
+                  yield* Frame.enterKhoraEditing(titleBlockId);
                   // Title scrolls itself or Frame handles it
                 } else {
                   // Selection is on a block (frame or section block)
                   // Use the original khoraId from selection
-                  yield* Frame.enterBlockEditing(anchorBlockId);
+                  yield* Frame.enterKhoraEditing(anchorBlockId);
                   // Block scrolls itself on mount when editor mode becomes active
                 }
               }
@@ -172,7 +172,7 @@ export const NavigationLive = Layer.effect(
         if (options?.focusTitle && validatedNodeId) {
           // Title is just a block
           const titleBlockId = Id.makeFrameKhoraId(frameId, validatedNodeId);
-          yield* Frame.enterBlockEditing(titleBlockId);
+          yield* Frame.enterKhoraEditing(titleBlockId);
         }
 
         yield* Effect.logDebug("[Navigation.navigateTo] Navigated").pipe(

@@ -105,7 +105,7 @@ const altKeymap: Record<string, () => Command> = {
 };
 
 /** Keymap for khora selection mode (app-level events). */
-const blockSelectionKeymap: Record<string, () => Command> = {
+const khoraSelectionKeymap: Record<string, () => Command> = {
   "#": () => new OpenTypePicker(),
   Enter: () => new EditBlock(),
   " ": () => new Space(),
@@ -113,12 +113,12 @@ const blockSelectionKeymap: Record<string, () => Command> = {
 };
 
 /** Shift+ keymap for khora selection mode. */
-const blockSelectionShiftKeymap: Record<string, () => Command> = {
+const khoraSelectionShiftKeymap: Record<string, () => Command> = {
   Tab: () => new Outdent(),
 };
 
 /** Cmd+ keymap for khora selection mode. */
-const blockSelectionMetaKeymap: Record<string, () => Command> = {
+const khoraSelectionMetaKeymap: Record<string, () => Command> = {
   ArrowUp: () => new Collapse(),
   ArrowDown: () => new Expand(),
 };
@@ -140,15 +140,15 @@ const lookupKeymap = (
   // Khora selection mode: check khora selection keymaps only
   if (mode === "khoraSelection") {
     if (meta && !ctrl && !alt && !shift) {
-      const factory = blockSelectionMetaKeymap[key];
+      const factory = khoraSelectionMetaKeymap[key];
       if (factory) return Option.some(factory());
     }
     if (shift && !meta && !ctrl && !alt) {
-      const factory = blockSelectionShiftKeymap[key];
+      const factory = khoraSelectionShiftKeymap[key];
       if (factory) return Option.some(factory());
     }
     if (!meta && !ctrl && !alt && !shift) {
-      const factory = blockSelectionKeymap[key];
+      const factory = khoraSelectionKeymap[key];
       if (factory) return Option.some(factory());
     }
     return Option.none();

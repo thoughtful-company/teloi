@@ -38,7 +38,7 @@ export class Down extends Data.TaggedClass(tag)<{}> {
     const goalX = yield* resolveGoalX(frameId);
     const targetKhoraId = targetOpt.value;
 
-    yield* Frame.enterBlockEditing(targetKhoraId, {
+    yield* Frame.enterKhoraEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
       goalX,

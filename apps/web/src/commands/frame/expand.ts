@@ -135,7 +135,7 @@ const focusGhostIfCreated = (
   ghostNodeId: Id.Node | null,
 ) =>
   ghostNodeId
-    ? Frame.enterBlockEditing(Id.makeFrameKhoraId(frameId, ghostNodeId), {
+    ? Frame.enterKhoraEditing(Id.makeFrameKhoraId(frameId, ghostNodeId), {
         anchor: 0,
         head: 0,
         assoc: 0,

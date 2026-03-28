@@ -37,7 +37,7 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
       const textLength = text.length;
       const khoraId = Id.makeFrameKhoraId(frameId, targetBlock);
 
-      yield* Frame.enterBlockEditing(khoraId, {
+      yield* Frame.enterKhoraEditing(khoraId, {
         anchor: textLength,
         head: textLength,
       });
@@ -52,7 +52,7 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
       const titleBlockId = Id.makeFrameKhoraId(frameId, assignedKhoraId);
       const newKhoraId = yield* View.createKhora(titleBlockId, "after");
 
-      yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
+      yield* Frame.enterKhoraEditing(newKhoraId, { anchor: 0, head: 0 });
       return;
     }
 
@@ -61,7 +61,7 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
     const lastText = yield* Automerge.getText(lastNodeId);
 
     if (lastText.length === 0) {
-      yield* Frame.enterBlockEditing(lastKhoraId, {
+      yield* Frame.enterKhoraEditing(lastKhoraId, {
         anchor: lastText.length,
         head: lastText.length,
       });
@@ -72,6 +72,6 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
     const newCtx = Id.parseKhoraContextSync(newKhoraId);
     if (newCtx.type !== "frame") return;
 
-    yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
+    yield* Frame.enterKhoraEditing(newKhoraId, { anchor: 0, head: 0 });
   });
 }

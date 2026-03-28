@@ -1,13 +1,11 @@
 import { events } from "@/livestore/schema";
-import { Id } from "@/schema";
+import { Id, System } from "@/schema";
+import { addType } from "@/services/domain/Type/addType";
 import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { Effect, Option } from "effect";
 import { nanoid } from "nanoid";
-
-/** Well-known tuple type for linking nodes to views */
-const HAS_VIEW_TUPLE_TYPE = "sys:tuple-type:has-view" as Id.Node;
 
 export interface CommandContext {
   frameId: Id.Frame;
@@ -32,6 +30,14 @@ const addTableViewAction = (ctx: CommandContext) =>
     const Tuple = yield* TupleT;
     const Automerge = yield* AutomergeT;
 
+    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
+    if (Option.isNone(frameDoc)) {
+      yield* Effect.logError(
+        "[Command.addTableView] Frame document not found",
+      ).pipe(Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }));
+      return;
+    }
+
     const viewNodeId = Id.Node.make(nanoid());
     yield* Store.commit(
       events.nodeCreated({
@@ -40,11 +46,9 @@ const addTableViewAction = (ctx: CommandContext) =>
       }),
     );
     yield* Automerge.setText(viewNodeId, "Table View");
+    yield* addType(viewNodeId, System.TABLE_VIEW);
 
-    yield* Tuple.create(HAS_VIEW_TUPLE_TYPE, [ctx.nodeId, viewNodeId]);
-
-    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
-    if (Option.isNone(frameDoc)) return;
+    yield* Tuple.create(System.HAS_VIEW, [ctx.nodeId, viewNodeId]);
 
     yield* Store.setDocument(
       "frame",
@@ -53,6 +57,14 @@ const addTableViewAction = (ctx: CommandContext) =>
         activeViewId: viewNodeId,
       },
       ctx.frameId,
+    );
+
+    yield* Effect.logDebug("[Command.addTableView] Table view created").pipe(
+      Effect.annotateLogs({
+        frameId: ctx.frameId,
+        nodeId: ctx.nodeId,
+        viewNodeId,
+      }),
     );
   });
 
@@ -64,7 +76,12 @@ const addPageViewAction = (ctx: CommandContext) =>
     const Store = yield* StoreT;
 
     const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
-    if (Option.isNone(frameDoc)) return;
+    if (Option.isNone(frameDoc)) {
+      yield* Effect.logError(
+        "[Command.addPageView] Frame document not found",
+      ).pipe(Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }));
+      return;
+    }
 
     yield* Store.setDocument(
       "frame",
@@ -73,6 +90,10 @@ const addPageViewAction = (ctx: CommandContext) =>
         activeViewId: null,
       },
       ctx.frameId,
+    );
+
+    yield* Effect.logDebug("[Command.addPageView] Switched to page view").pipe(
+      Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }),
     );
   });
 

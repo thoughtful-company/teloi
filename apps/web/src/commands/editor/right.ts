@@ -36,7 +36,7 @@ export class Right extends Data.TaggedClass(tag)<{}> {
 
     const targetKhoraId = targetOpt.value;
 
-    yield* Frame.enterBlockEditing(targetKhoraId, {
+    yield* Frame.enterKhoraEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
     });

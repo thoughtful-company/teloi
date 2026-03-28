@@ -25,6 +25,6 @@ export class ZoomIn extends Data.TaggedClass(tag)<{}> {
 
     // After navigation, nodeId is the new title
     const titleBlockId = Id.makeFrameKhoraId(frameId, nodeId);
-    yield* Frame.enterBlockEditing(titleBlockId);
+    yield* Frame.enterKhoraEditing(titleBlockId);
   });
 }

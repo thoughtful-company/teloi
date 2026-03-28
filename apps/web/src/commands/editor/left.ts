@@ -44,7 +44,7 @@ export class Left extends Data.TaggedClass(tag)<{}> {
     const targetText = yield* Automerge.getText(targetCtx.nodeId);
     const endPos = targetText.length;
 
-    yield* Frame.enterBlockEditing(targetKhoraId, {
+    yield* Frame.enterKhoraEditing(targetKhoraId, {
       anchor: endPos,
       head: endPos,
     });

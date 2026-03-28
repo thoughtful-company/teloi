@@ -446,7 +446,7 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
 
     switch (element.type) {
       case "khora":
-        yield* Frame.enterBlockEditing(element.id);
+        yield* Frame.enterKhoraEditing(element.id);
         return;
       case "frame":
         yield* Frame.enterKhoraSelection(element.id);
@@ -458,7 +458,7 @@ export const ACTIVE_ELEMENT_IS = (element: Entity.Element) =>
           element.frameId,
           assignedKhoraId,
         );
-        yield* Frame.enterBlockEditing(titleBlockId);
+        yield* Frame.enterKhoraEditing(titleBlockId);
         return;
       }
       default:
@@ -484,7 +484,7 @@ export const KHORA_IS_FOCUSED_AT = (
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           resume(
-            Frame.enterBlockEditing(khoraId, {
+            Frame.enterKhoraEditing(khoraId, {
               anchor: offset,
               head: offset,
               assoc,
@@ -603,7 +603,7 @@ export const TITLE_IS_FOCUSED_AT = (
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           resume(
-            Frame.enterBlockEditing(elementId, {
+            Frame.enterKhoraEditing(elementId, {
               anchor: offset,
               head: offset,
             }),

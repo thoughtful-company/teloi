@@ -86,11 +86,11 @@ export class FrameT extends Context.Tag("FrameT")<
      */
     enterKhoraSelection: (frameId: Id.Frame) => Effect.Effect<void>;
     /**
-     * Enter block editing mode for a specific block.
+     * Enter khora editing mode for a specific khora.
      * When selection is provided, sets selection atomically with the mode change
-     * (merged setSelection + enterBlockEditing in a single frame doc write).
+     * (merged setSelection + enterKhoraEditing in a single frame doc write).
      */
-    enterBlockEditing: (
+    enterKhoraEditing: (
       khoraId: Id.Khora,
       selection?: {
         anchor: number;
@@ -315,7 +315,7 @@ export const FrameLive = Layer.effect(
 
           yield* World.setActiveFrameId(frameId);
         }),
-      enterBlockEditing: (
+      enterKhoraEditing: (
         khoraId: Id.Khora,
         selection?: {
           anchor: number;
@@ -355,7 +355,7 @@ export const FrameLive = Layer.effect(
           yield* World.setActiveFrameId(frameId);
 
           yield* Effect.logDebug(
-            "[Frame.enterBlockEditing] Block editing entered",
+            "[Frame.enterKhoraEditing] Khora editing entered",
           ).pipe(
             Effect.annotateLogs({
               khoraId,

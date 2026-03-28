@@ -37,6 +37,6 @@ export class Space extends Data.TaggedClass(tag)<{}> {
     const newCtx = Id.parseKhoraContextSync(newKhoraId);
     if (newCtx.type !== "frame") return;
 
-    yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
+    yield* Frame.enterKhoraEditing(newKhoraId, { anchor: 0, head: 0 });
   });
 }

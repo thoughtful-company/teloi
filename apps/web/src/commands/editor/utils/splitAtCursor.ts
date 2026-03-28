@@ -35,7 +35,7 @@ export const splitAtCursor = Effect.fn("splitAtCursor")(function* () {
     yield* Automerge.setText(newNodeId, currentText.slice(clampedPos));
   }
 
-  yield* Frame.enterBlockEditing(newKhoraId, { anchor: 0, head: 0 });
+  yield* Frame.enterKhoraEditing(newKhoraId, { anchor: 0, head: 0 });
 
   yield* Effect.logDebug("[splitAtCursor] Split completed").pipe(
     Effect.annotateLogs({

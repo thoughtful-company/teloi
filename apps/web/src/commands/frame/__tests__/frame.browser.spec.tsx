@@ -966,7 +966,7 @@ describe("Khora selection focus ownership", () => {
       });
 
       // Transition to editing should clear block-selection focus fields.
-      yield* Frame.enterBlockEditing(blockB, { anchor: 0, head: 0 });
+      yield* Frame.enterKhoraEditing(blockB, { anchor: 0, head: 0 });
       yield* Then.SELECTION_IS_ON_KHORA(blockB);
 
       const Store = yield* StoreT;

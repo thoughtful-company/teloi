@@ -25,7 +25,7 @@ export const navigateToFirstChild = (
         ? existingSelection.value.goalX
         : goalX;
 
-    yield* Frame.enterBlockEditing(targetKhoraId, {
+    yield* Frame.enterKhoraEditing(targetKhoraId, {
       anchor: 0,
       head: 0,
       ...(finalGoalX != null

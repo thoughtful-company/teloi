@@ -26,9 +26,10 @@ export default function CommandPalette(props: CommandPaletteProps) {
   const executeCommand = (cmd: Command) => {
     if (!props.context) return;
 
-    runtime.runPromise(cmd.action(props.context)).then(() => {
-      props.onClose();
-    });
+    runtime.runPromise(cmd.action(props.context)).then(
+      () => props.onClose(),
+      (error) => console.error("[CommandPalette] command failed:", error),
+    );
   };
 
   const executeSelectedCommand = () => {
@@ -76,7 +77,9 @@ export default function CommandPalette(props: CommandPaletteProps) {
       // Focus input after render and add capture listener
       setTimeout(() => {
         inputRef?.focus();
-        const dialogContent = document.querySelector('[data-testid="command-palette"]');
+        const dialogContent = document.querySelector(
+          '[data-testid="command-palette"]',
+        );
         if (dialogContent instanceof HTMLElement) {
           dialogContent.addEventListener("keydown", captureKeyHandler, true);
         }
@@ -85,7 +88,9 @@ export default function CommandPalette(props: CommandPaletteProps) {
   });
 
   onCleanup(() => {
-    const dialogContent = document.querySelector('[data-testid="command-palette"]');
+    const dialogContent = document.querySelector(
+      '[data-testid="command-palette"]',
+    );
     if (dialogContent instanceof HTMLElement) {
       dialogContent.removeEventListener("keydown", captureKeyHandler, true);
     }

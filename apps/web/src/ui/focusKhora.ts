@@ -16,7 +16,7 @@ export const focusKhora = Effect.fn("focusKhora")(function* (params: {
   const { khoraId, anchor, head, assoc } = params;
   const Frame = yield* FrameT;
 
-  yield* Frame.enterBlockEditing(khoraId, {
+  yield* Frame.enterKhoraEditing(khoraId, {
     anchor: anchor ?? 0,
     head: head ?? anchor ?? 0,
     assoc: assoc ?? 0,

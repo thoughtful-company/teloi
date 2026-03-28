@@ -79,7 +79,7 @@ export const USER_ENTERS_KHORA_SELECTION = (khoraId: Id.Khora) =>
     yield* Effect.async<void>((resume) => {
       const timeout = requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          resume(Frame.enterBlockEditing(khoraId));
+          resume(Frame.enterKhoraEditing(khoraId));
         }),
       );
       return Effect.sync(() => clearTimeout(timeout));

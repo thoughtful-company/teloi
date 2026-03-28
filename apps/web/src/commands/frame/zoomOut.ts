@@ -50,6 +50,6 @@ export class ZoomOut extends Data.TaggedClass(tag)<{}> {
       ? Id.makeFrameKhoraId(frameId, nodeId)
       : rootKhoraId;
 
-    yield* Frame.enterBlockEditing(targetKhoraId);
+    yield* Frame.enterKhoraEditing(targetKhoraId);
   });
 }

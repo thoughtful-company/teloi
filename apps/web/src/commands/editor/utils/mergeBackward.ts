@@ -47,7 +47,7 @@ export const mergeBackward = Effect.fn("mergeBackward")(function* () {
 
   const Frame = yield* FrameT;
 
-  yield* Frame.enterBlockEditing(targetKhoraId, {
+  yield* Frame.enterKhoraEditing(targetKhoraId, {
     anchor: mergePoint,
     head: mergePoint,
   });
@@ -68,7 +68,7 @@ const removeGhost = Effect.fn("mergeBackward:removeGhost")(function* (
 
   yield* Khora.setExpanded(parentBlockId, false);
 
-  yield* Frame.enterBlockEditing(parentBlockId, {
+  yield* Frame.enterKhoraEditing(parentBlockId, {
     anchor: parentText.length,
     head: parentText.length,
   });
