@@ -6,6 +6,7 @@ import { AutomergeT } from "@/services/external/Automerge";
 import { KhoraT, type KhoraView } from "@/services/ui/Khora";
 import * as BlockType from "@/services/ui/BlockType";
 import { CommandBusT } from "@/services/ui/CommandBus";
+import { propertyTrigger } from "@/services/ui/Property/trigger";
 import type { ViewInfo } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
@@ -181,7 +182,11 @@ export default function Khora({ khoraId }: KhoraProps) {
       );
       if (anchor != null && head != null) {
         if (anchor === head) {
-          const resolved = posAtCoordsInElement(container, e.clientX, e.clientY);
+          const resolved = posAtCoordsInElement(
+            container,
+            e.clientX,
+            e.clientY,
+          );
           return { anchor, head, assoc: resolved?.assoc ?? 0 };
         }
         return { anchor, head, assoc: 0 };
@@ -285,6 +290,7 @@ export default function Khora({ khoraId }: KhoraProps) {
               khoraId={khoraId}
               inlineTypes={store.userTypes}
               nodeId={nodeId}
+              textTriggers={[propertyTrigger]}
               {...(store.selection
                 ? { initialSelection: store.selection }
                 : {})}

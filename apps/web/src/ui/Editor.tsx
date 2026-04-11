@@ -3,6 +3,10 @@ import { Id } from "@/schema";
 import type { WorkspaceTexts } from "@/services/external/Automerge";
 import { EditorT } from "@/services/ui/Editor";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
+import {
+  createTextTriggerExtension,
+  type TextTrigger,
+} from "@/services/ui/TextTrigger";
 import { automergeSyncPlugin } from "@automerge/automerge-codemirror";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { defaultKeymap } from "@codemirror/commands";
@@ -304,6 +308,8 @@ interface EditorProps {
   inlineTypes?: readonly Id.Node[];
   /** Node ID for type badge operations (remove, navigate) */
   nodeId?: Id.Node;
+  /** Text triggers to fire on matching line-prefix input (e.g. "> " opens a property). */
+  textTriggers?: readonly TextTrigger[];
 }
 
 /**
@@ -356,6 +362,18 @@ export default function Editor(props: EditorProps) {
           : [],
       ),
     ];
+
+    if (props.textTriggers?.length) {
+      extensions.push(
+        createTextTriggerExtension(
+          props.textTriggers,
+          props.khoraId,
+          (action) => {
+            runtime.runFork(action);
+          },
+        ),
+      );
+    }
 
     if (props.readonly) {
       extensions.push(EditorState.readOnly.of(true));

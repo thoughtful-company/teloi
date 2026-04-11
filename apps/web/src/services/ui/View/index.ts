@@ -11,6 +11,7 @@ import * as ChatCreate from "./chat/createKhora";
 import * as PageNav from "./page/navigation";
 import * as PageCreate from "./page/createKhora";
 import * as PageStructural from "./page/structural";
+import { getOrCreateView as getOrCreateViewImpl } from "./getOrCreateView";
 import { resolveViewType } from "./internal/resolveViewType";
 
 export type { MergeResult } from "./page/structural";
@@ -80,6 +81,13 @@ export class ViewT extends Context.Tag("ViewT")<
     forceDelete: (
       khoraId: Id.Khora,
     ) => Effect.Effect<Option.Option<PageStructural.MergeResult>>;
+
+    /**
+     * Get or create the default view for a page.
+     * Idempotent: returns the first existing view, or creates a new shadow-child view
+     * with a HAS_VIEW tuple linking the page.
+     */
+    getOrCreateView: (pageId: Id.Node) => Effect.Effect<Id.Node>;
   }
 >() {}
 
@@ -297,6 +305,10 @@ export const ViewLive = Layer.effect(
       );
     });
 
+    const getOrCreateViewContext = Context.make(StoreT, Store).pipe(
+      Context.add(TupleT, Tuple),
+    );
+
     return {
       resolveBlockAbove,
       resolveBlockBelow,
@@ -309,6 +321,7 @@ export const ViewLive = Layer.effect(
       moveToFirst,
       moveToLast,
       forceDelete,
+      getOrCreateView: withContext(getOrCreateViewImpl)(getOrCreateViewContext),
     };
   }),
 );
