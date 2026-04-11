@@ -2,19 +2,12 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, System } from "@/schema";
 import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
+import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type LinkedTuple } from "@/services/ui/Property";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
-import {
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import Khora from "./Khora";
-// TODO: Re-enable Editor import once khoraId support is added
-// import Editor from "./Editor";
 
 interface PropertySectionProps {
   propertyId: Id.Node;
@@ -161,13 +154,6 @@ function GhostBlock(props: GhostKhoraProps) {
  */
 export default function PropertySection(props: PropertySectionProps) {
   const runtime = useBrowserRuntime();
-  const Automerge = runtime.runSync(AutomergeT);
-
-  // Property name from Automerge
-  const [propertyName, setPropertyName] = createSignal("");
-
-  // Local focus state for property name
-  const [isActive, setIsActive] = createSignal(false);
 
   // Linked tuples (tuple instances for property relationships)
   const [linkedTuples, setLinkedTuples] = createSignal<readonly LinkedTuple[]>(
@@ -179,6 +165,12 @@ export default function PropertySection(props: PropertySectionProps) {
 
   // Signal to request focus on ghost block (for ArrowRight navigation)
   const [ghostFocusRequested, setGhostFocusRequested] = createSignal(false);
+
+  const titleKhoraId = Id.makePropertyTitleKhoraId(
+    props.frameId,
+    props.pageId,
+    props.propertyId,
+  );
 
   // Create property block ID for a linked tuple
   const makePropertyKhoraId = (tupleId: Id.Tuple) =>
@@ -220,40 +212,22 @@ export default function PropertySection(props: PropertySectionProps) {
       }),
     );
 
-  // Focus the property name
-  const focusPropertyName = () => {
-    setIsActive(true);
-    // Selection is handled by CodeMirror internally now
-  };
+  // Focus the property name by writing focus state to LiveStore.
+  // The Khora component reacts via KhoraT.subscribe and mounts its Editor.
+  const focusPropertyName = () =>
+    runtime.runSync(
+      Effect.gen(function* () {
+        const Frame = yield* FrameT;
+        yield* Frame.enterKhoraEditing(titleKhoraId, {
+          anchor: 0,
+          head: 0,
+        });
+      }),
+    );
 
   onMount(() => {
-    // Load initial property name from Automerge
-    runtime
-      .runPromise(Automerge.getText(props.propertyId))
-      .then(setPropertyName);
-
-    // Subscribe to Automerge changes for property name
-    const onChange = () => {
-      runtime
-        .runPromise(Automerge.getText(props.propertyId))
-        .then(setPropertyName);
-    };
-    Automerge.handle.on("change", onChange);
-
-    // Load linked tuples
     loadLinkedTuples();
-
-    onCleanup(() => {
-      Automerge.handle.off("change", onChange);
-    });
   });
-
-  const handleFocus = () => {
-    setIsActive(true);
-  };
-
-  // TODO: handleBlur/handleSelectionChange needs khoraId support.
-  // For now, focus/blur state is broken.
 
   return (
     <div
@@ -263,21 +237,8 @@ export default function PropertySection(props: PropertySectionProps) {
       {/* Left side: Property name */}
       <div class="flex items-center gap-2 min-w-[120px]">
         <span class="text-neutral-400 select-none">›</span>
-        <div class="property-name flex-1" onClick={handleFocus}>
-          <Show
-            when={isActive()}
-            fallback={
-              <span class="font-medium text-neutral-700 cursor-text">
-                {propertyName() || (
-                  <span class="text-neutral-400 italic">untitled</span>
-                )}
-              </span>
-            }
-          >
-            {/* TODO: Pre-generate khoraId for property header and pass to Editor.
-                Editor requires khoraId for KeyEventBus integration. */}
-            <div class="text-neutral-400">[Property editor placeholder]</div>
-          </Show>
+        <div class="property-name flex-1">
+          <Khora khoraId={titleKhoraId} />
         </div>
       </div>
 

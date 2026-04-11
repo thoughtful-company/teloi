@@ -35,12 +35,17 @@ export default function Khora({ khoraId }: KhoraProps) {
   const runtime = useBrowserRuntime();
 
   const blockContext = Id.parseKhoraContextSync(khoraId);
-  // TODO: tuple case should be resolved in ViewModel, not here
-  const nodeId =
-    blockContext.type === "frame"
-      ? blockContext.nodeId
-      : blockContext.hostNodeId; // section or tuple case
-  const frameId = blockContext.type === "frame" ? blockContext.frameId : null;
+  const nodeId = ((): Id.Node => {
+    switch (blockContext.type) {
+      case "frame":
+        return blockContext.nodeId;
+      case "section":
+        return blockContext.hostNodeId;
+      case "propertyTitle":
+        return blockContext.propertyId;
+    }
+  })();
+  const frameId = blockContext.frameId;
 
   const Automerge = runtime.runSync(AutomergeT);
 
@@ -94,7 +99,7 @@ export default function Khora({ khoraId }: KhoraProps) {
   // keystroke and convert it into a real LiveStore node.
   createEffect(() => {
     const ghostParentId = store.ghostParentId;
-    if (!ghostParentId || !frameId) return;
+    if (!ghostParentId) return;
 
     let materialized = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -206,7 +211,7 @@ export default function Khora({ khoraId }: KhoraProps) {
 
     runtime.runSync(
       focusKhora({
-        frameId: blockContext.frameId,
+        frameId,
         nodeId,
         khoraId,
         anchor: initialSelection.anchor,
@@ -319,7 +324,7 @@ export default function Khora({ khoraId }: KhoraProps) {
           />
           <ViewRenderer
             viewType={store.activeViewType}
-            frameId={blockContext.frameId}
+            frameId={frameId}
             nodeId={nodeId}
             inline
           />
