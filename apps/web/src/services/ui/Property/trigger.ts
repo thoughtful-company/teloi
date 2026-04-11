@@ -1,3 +1,4 @@
+import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
 import { FrameT } from "@/services/ui/Frame";
 import { PropertyT } from "@/services/ui/Property";
@@ -29,6 +30,16 @@ export const propertyTrigger: TextTrigger = {
 
       const viewId = yield* View.getOrCreateView(pageId);
       const propertyId = yield* Property.createProperty(viewId);
+
+      const titleKhoraId = Id.makePropertyTitleKhoraId(
+        ctx.frameId,
+        pageId,
+        propertyId,
+      );
+      // Transfer focus before deleting the source khora so activeKhoraId never
+      // points at a node that's about to vanish.
+      yield* Frame.enterKhoraEditing(titleKhoraId);
+
       yield* Node.deleteNode(ctx.nodeId);
 
       yield* Effect.logDebug("[propertyTrigger] Property created").pipe(

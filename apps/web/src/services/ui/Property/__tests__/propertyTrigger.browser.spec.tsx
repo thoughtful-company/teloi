@@ -128,6 +128,25 @@ describe("Property Creation Trigger", () => {
         );
       }).pipe(runtime.runPromise);
     });
+
+    it("focuses the new property title editor after creation", async () => {
+      await Effect.gen(function* () {
+        const { frameId, childNodeIds } = yield* Given.A_FRAME_WITH_CHILDREN(
+          "Page Title",
+          [{ text: "" }],
+        );
+        const childBlockId = Id.makeFrameKhoraId(frameId, childNodeIds[0]);
+
+        render(() => <FrameView frameId={frameId} />);
+        yield* waitForElement(`[data-element-id="${childBlockId}"]`);
+
+        yield* Given.KHORA_IS_FOCUSED_AT(childBlockId, 0);
+        yield* When.USER_PRESSES(">");
+        yield* When.USER_PRESSES(" ");
+
+        yield* waitForElement(".property-name .cm-editor.cm-focused");
+      }).pipe(runtime.runPromise);
+    });
   });
 
   describe("trigger does NOT fire in invalid contexts", () => {
