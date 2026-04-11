@@ -9,15 +9,33 @@ import { expandAncestors } from "./expandAncestors";
 
 /**
  * Get the nodeId from a KhoraContext for expansion purposes.
- * Section blocks (linked blocks in property sections) are flat and don't need
- * ancestor expansion, so we return null for them.
+ * Only frame khoras live in the outline tree. Section blocks are flat, and
+ * property titles live under workspace:schema — neither has ancestors to expand.
  */
 const getNodeIdForExpansion = (ctx: Id.KhoraContext): Id.Node | null => {
-  if (ctx.type === "frame") {
-    return ctx.nodeId;
+  switch (ctx.type) {
+    case "frame":
+      return ctx.nodeId;
+    case "section":
+    case "propertyTitle":
+      return null;
   }
-  // Section blocks don't have tree hierarchy - skip ancestor expansion
-  return null;
+};
+
+/**
+ * Get the node whose Automerge text a khora's offsets should be clamped against.
+ * Frame khoras point at their node; section blocks clamp against the host page's
+ * text (legacy behavior); property titles clamp against the property node itself.
+ */
+const getTextNodeId = (ctx: Id.KhoraContext): Id.Node => {
+  switch (ctx.type) {
+    case "frame":
+      return ctx.nodeId;
+    case "section":
+      return ctx.hostNodeId;
+    case "propertyTitle":
+      return ctx.propertyId;
+  }
 };
 
 export const setSelection = (
@@ -54,10 +72,7 @@ export const setSelection = (
       // Clamp offsets to text length — click position resolution can overshoot
       // when non-content DOM nodes (e.g. type badges) are inside the container
       const Automerge = yield* AutomergeT;
-      const blockNodeId =
-        blockContext.type === "frame"
-          ? blockContext.nodeId
-          : blockContext.hostNodeId;
+      const blockNodeId = getTextNodeId(blockContext);
       const blockText = yield* Automerge.getText(blockNodeId);
       const clampedAnchor = Math.min(
         selection.value.selection.anchor,
@@ -140,10 +155,7 @@ export const setSelection = (
             Effect.orDie,
           );
           const Automerge = yield* AutomergeT;
-          const nodeId =
-            blockContext.type === "frame"
-              ? blockContext.nodeId
-              : blockContext.hostNodeId;
+          const nodeId = getTextNodeId(blockContext);
           const text = yield* Automerge.getText(nodeId);
 
           return {

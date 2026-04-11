@@ -165,6 +165,28 @@ export const A_FRAME_WITH_CHILDREN = <const T extends readonly ChildSpec[]>(
   }).pipe(Effect.withSpan("Given.A_FRAME_WITH_CHILDREN"));
 
 /**
+ * Creates a property node under System.SCHEMA with the given Automerge text.
+ * Mirrors the real Property.createProperty shape minus tuple wiring — which
+ * callers of this helper (setSelection, enterKhoraEditing, Khora.subscribe —
+ * propertyTitle variant) don't exercise.
+ */
+export const A_PROPERTY_WITH_TEXT = (text: string) =>
+  Effect.gen(function* () {
+    const Store = yield* StoreT;
+    const Automerge = yield* AutomergeT;
+
+    const propertyId = Id.Node.make(nanoid());
+    yield* Store.commit(
+      events.nodeCreated({
+        timestamp: Date.now(),
+        data: { nodeId: propertyId, parentId: System.SCHEMA, position: "a0" },
+      }),
+    );
+    yield* Automerge.setText(propertyId, text);
+    return propertyId;
+  }).pipe(Effect.withSpan("Given.A_PROPERTY_WITH_TEXT"));
+
+/**
  * Sets the frame container to a specific width.
  * Useful for testing line wrapping behavior.
  */

@@ -55,16 +55,18 @@ export const subscribe = (khoraId: Id.Khora) =>
     const Picker = yield* PickerT;
     const Automerge = yield* AutomergeT;
 
+    // Property titles are leaf nodes under workspace:schema — no views, no
+    // children, no picker. Short-circuit into a minimal pipeline and return
+    // early so the rest of the builder doesn't subscribe streams that would
+    // always be empty anyway.
+    if (ctx.type === "propertyTitle") {
+      return yield* subscribePropertyTitle(ctx, khoraId);
+    }
+
     // Extract nodeId based on block type
     let nodeId: Id.Node;
 
-    if (ctx.type === "propertyTitle") {
-      // Phase 1 stub: propertyTitle subscription is wired in Phase 2.
-      // No production caller produces this variant yet.
-      return yield* Effect.die(
-        "Khora.subscribe: propertyTitle variant not yet implemented",
-      );
-    } else if (ctx.type === "frame") {
+    if (ctx.type === "frame") {
       nodeId = ctx.nodeId;
     } else {
       // Section block: derive nodeId from tuple lookup
@@ -200,22 +202,7 @@ export const subscribe = (khoraId: Id.Khora) =>
           } satisfies KhoraView);
         },
       ),
-      Stream.tap((either) =>
-        Either.match(either, {
-          onLeft: (error) =>
-            Effect.logError("[Khora.Subscribe] Stream error").pipe(
-              Effect.annotateLogs({ error: error._tag, khoraId }),
-            ),
-          onRight: () => Effect.void,
-        }),
-      ),
-
-      Stream.mapEffect((either) =>
-        Either.match(either, {
-          onLeft: (error) => Effect.fail(error),
-          onRight: (value) => Effect.succeed(value),
-        }),
-      ),
+      finalizeKhoraViewStream(khoraId),
     );
 
     return view$;
@@ -365,3 +352,114 @@ const makeWindowDerivedStream = (
       ),
     );
   });
+
+/**
+ * Property-title subscription pipeline.
+ *
+ * Property titles are leaves that live under workspace:schema, so they skip
+ * the view/picker/childCount subscriptions that frame khoras need. The backing
+ * Automerge text is keyed on `ctx.propertyId`, not any hostNode — getting that
+ * wrong would clamp/display against the host page's text.
+ */
+const subscribePropertyTitle = (
+  ctx: Extract<Id.KhoraContext, { type: "propertyTitle" }>,
+  khoraId: Id.Khora,
+) =>
+  Effect.gen(function* () {
+    const Node = yield* NodeT;
+    const Type = yield* TypeT;
+    const Automerge = yield* AutomergeT;
+    const Store = yield* StoreT;
+
+    const nodeId = ctx.propertyId;
+
+    yield* Node.attestExistence(nodeId);
+
+    const sessionId = yield* Store.getSessionId();
+    const worldId = Id.World.make(sessionId);
+
+    const block$ = yield* makeBlockStreamEither(khoraId);
+    const node$ = yield* makeNodeStreamEither(nodeId);
+    const window$ = yield* makeWindowDerivedStream(
+      worldId,
+      ctx.frameId,
+      khoraId,
+    );
+    const typesStream = yield* Type.subscribeTypes(nodeId);
+    const textStream = yield* Automerge.subscribeText(nodeId);
+    const textContentStream = textStream.pipe(
+      Stream.map((textData) => textData.content),
+    );
+
+    return Stream.zipLatestAll(
+      block$,
+      node$,
+      window$,
+      typesStream,
+      textContentStream,
+    ).pipe(
+      Stream.map(
+        ([
+          blockEither,
+          nodeEither,
+          { isActive, isSelected, selection },
+          activeTypes,
+          textContent,
+        ]): Either.Either<KhoraView, KhoraGoneError> => {
+          const block = Either.getOrThrow(blockEither);
+
+          if (Either.isLeft(nodeEither)) {
+            return Either.left(new KhoraGoneError({ khoraId, nodeId }));
+          }
+          const nodeData = Either.getOrThrow(nodeEither);
+
+          return Either.right({
+            nodeData,
+            isActive,
+            isSelected,
+            isExpanded: block.isExpanded,
+            selection,
+            activeViewId: null,
+            activeViewType: "page",
+            availableViews: [],
+            activeTypes,
+            userTypes: activeTypes.filter((t) => !isSystemType(t)),
+            textContent,
+            picker: null,
+            childCount: 0,
+            ghostChildId: null,
+            ghostParentId: null,
+          } satisfies KhoraView);
+        },
+      ),
+      finalizeKhoraViewStream(khoraId),
+    );
+  });
+
+/**
+ * Shared error-handling tail for both the main and propertyTitle pipelines:
+ * logs KhoraGoneError on the left branch, then unwraps the Either into a
+ * failing Effect so downstream consumers see a clean Stream<KhoraView, KhoraGoneError>.
+ */
+const finalizeKhoraViewStream =
+  (khoraId: Id.Khora) =>
+  <R>(
+    stream: Stream.Stream<Either.Either<KhoraView, KhoraGoneError>, never, R>,
+  ): Stream.Stream<KhoraView, KhoraGoneError, R> =>
+    stream.pipe(
+      Stream.tap((either) =>
+        Either.match(either, {
+          onLeft: (error) =>
+            Effect.logError("[Khora.Subscribe] Stream error").pipe(
+              Effect.annotateLogs({ error: error._tag, khoraId }),
+            ),
+          onRight: () => Effect.void,
+        }),
+      ),
+      Stream.mapEffect((either) =>
+        Either.match(either, {
+          onLeft: Effect.fail,
+          onRight: Effect.succeed,
+        }),
+      ),
+    );

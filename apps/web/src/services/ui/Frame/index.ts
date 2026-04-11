@@ -320,7 +320,11 @@ export const FrameLive = Layer.effect(
       ): Effect.Effect<void> =>
         Effect.gen(function* () {
           const blockCtx = Id.parseKhoraContextSync(khoraId);
-          if (blockCtx.type !== "frame") return;
+          // Section variants (linked blocks) don't participate in khora editing;
+          // only frame khoras and property titles can be focused as text editors.
+          if (blockCtx.type !== "frame" && blockCtx.type !== "propertyTitle") {
+            return;
+          }
 
           const frameId = blockCtx.frameId;
           const nextSelection = selection ?? {
