@@ -28,7 +28,10 @@ export class Expand extends Data.TaggedClass(tag)<{}> {
 
       const firstLevelChildren = yield* Node.getNodeChildren(rootNodeId);
       if (firstLevelChildren.length === 0) {
-        const { ghostNodeId } = yield* Khora.expandOneLevel(frameId, rootNodeId);
+        const { ghostNodeId } = yield* Khora.expandOneLevel(
+          frameId,
+          rootNodeId,
+        );
         yield* focusGhostIfCreated(Frame, frameId, ghostNodeId);
         return;
       }
@@ -112,7 +115,7 @@ const resolveExpandTargets = (
       ).pipe(
         Effect.catchAll(() =>
           Effect.succeed({
-            selectedKhoras: [] as readonly Id.Node[],
+            selectedKhoras: [] as readonly Id.Khora[],
             anchor: null,
             focus: null,
           }),
@@ -121,7 +124,7 @@ const resolveExpandTargets = (
       if (selectedKhoras.length === 0) return Option.none();
       return Option.some({
         frameId: mode.frameId,
-        nodeIds: selectedKhoras,
+        nodeIds: Id.khoraIdsToNodeIds(selectedKhoras),
         behavior: "multi" as const,
       });
     }

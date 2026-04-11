@@ -98,19 +98,18 @@ const handleEditorMode = Effect.fn("collapse:editorMode")(function* (
 const handleKhoraSelectionMode = Effect.fn("collapse:blockSelectionMode")(
   function* (frameId: Id.Frame, deps: Deps) {
     const state = yield* deps.Frame.getKhoraSelectionState(frameId);
-    const nodeId =
+    const targetKhoraId =
       state.focus ??
       state.anchor ??
       (state.selectedKhoras.length > 0 ? state.selectedKhoras[0]! : null);
-    if (nodeId == null) return;
+    if (targetKhoraId == null) return;
 
-    // Use block-selection focus as the progressive collapse cursor.
-    const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
+    const nodeId = Id.khoraIdToNodeId(targetKhoraId);
     const blockDoc = yield* deps.Khora.get(frameId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);
 
     if (blockDoc.isExpanded && (children.length > 0 || blockDoc.ghostChildId)) {
-      yield* deps.Khora.setExpanded(khoraId, false);
+      yield* deps.Khora.setExpanded(targetKhoraId, false);
       return;
     }
 
@@ -134,13 +133,13 @@ const handleKhoraSelectionMode = Effect.fn("collapse:blockSelectionMode")(
     }
 
     // Navigate to parent in khora selection mode
-    const parentBlockId = Id.makeFrameKhoraId(frameId, parentId);
-    yield* deps.Khora.setExpanded(parentBlockId, false);
+    const parentKhoraId = Id.makeFrameKhoraId(frameId, parentId);
+    yield* deps.Khora.setExpanded(parentKhoraId, false);
     yield* deps.Frame.setKhoraSelection(
       frameId,
-      [parentId],
-      parentId,
-      parentId,
+      [parentKhoraId],
+      parentKhoraId,
+      parentKhoraId,
     );
   },
 );

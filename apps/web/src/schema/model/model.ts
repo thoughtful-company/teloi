@@ -69,9 +69,9 @@ export const Frame = Schema.mutable(
     activeViewId: Schema.NullOr(Id.Node),
     activePart: Schema.optional(Schema.Literal("khora")),
     activeKhoraId: Schema.optional(Schema.NullOr(Id.Khora)),
-    khoraSelectionAnchor: Schema.optional(Schema.NullOr(Id.Node)),
-    khoraSelectionFocus: Schema.optional(Schema.NullOr(Id.Node)),
-    selectedKhoras: Schema.optional(Schema.mutable(Schema.Array(Id.Node))),
+    khoraSelectionAnchor: Schema.optional(Schema.NullOr(Id.Khora)),
+    khoraSelectionFocus: Schema.optional(Schema.NullOr(Id.Khora)),
+    selectedKhoras: Schema.optional(Schema.mutable(Schema.Array(Id.Khora))),
     /** Active popup state - null means no popup open */
     popup: Schema.NullOr(FramePopup),
   }),

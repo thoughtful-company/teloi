@@ -25,19 +25,18 @@ export class EditBlock extends Data.TaggedClass(tag)<{}> {
 
     const { frameId } = mode;
     const state = yield* Frame.getKhoraSelectionState(frameId);
-    const targetBlock =
+    const targetKhoraId =
       state.focus ??
       state.anchor ??
       (state.selectedKhoras.length > 0
         ? state.selectedKhoras[state.selectedKhoras.length - 1]!
         : null);
 
-    if (targetBlock != null) {
-      const text = yield* Automerge.getText(targetBlock);
+    if (targetKhoraId != null) {
+      const text = yield* Automerge.getText(Id.khoraIdToNodeId(targetKhoraId));
       const textLength = text.length;
-      const khoraId = Id.makeFrameKhoraId(frameId, targetBlock);
 
-      yield* Frame.enterKhoraEditing(khoraId, {
+      yield* Frame.enterKhoraEditing(targetKhoraId, {
         anchor: textLength,
         head: textLength,
       });

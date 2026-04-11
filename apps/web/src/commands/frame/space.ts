@@ -28,12 +28,11 @@ export class Space extends Data.TaggedClass(tag)<{}> {
       return;
     }
 
-    const sourceNodeId =
+    const sourceKhoraId =
       state.focus ??
       state.anchor ??
       state.selectedKhoras[state.selectedKhoras.length - 1]!;
-    const sourceBlockId = Id.makeFrameKhoraId(frameId, sourceNodeId);
-    const newKhoraId = yield* View.createKhora(sourceBlockId, "after");
+    const newKhoraId = yield* View.createKhora(sourceKhoraId, "after");
     const newCtx = Id.parseKhoraContextSync(newKhoraId);
     if (newCtx.type !== "frame") return;
 

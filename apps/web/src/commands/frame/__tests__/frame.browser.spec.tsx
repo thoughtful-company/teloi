@@ -295,9 +295,12 @@ describe("BlockTypePicker", () => {
         yield* Frame.enterKhoraSelection(frameId);
         yield* Frame.setKhoraSelection(
           frameId,
-          [childNodeIds[0]!, childNodeIds[1]!],
-          childNodeIds[0]!,
-          childNodeIds[1]!,
+          [
+            Id.makeFrameKhoraId(frameId, childNodeIds[0]!),
+            Id.makeFrameKhoraId(frameId, childNodeIds[1]!),
+          ],
+          Id.makeFrameKhoraId(frameId, childNodeIds[0]!),
+          Id.makeFrameKhoraId(frameId, childNodeIds[1]!),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
@@ -389,9 +392,12 @@ describe("BlockTypePicker", () => {
         yield* Frame.enterKhoraSelection(frameId);
         yield* Frame.setKhoraSelection(
           frameId,
-          [childNodeIds[0]!, childNodeIds[1]!],
-          childNodeIds[0]!,
-          childNodeIds[1]!,
+          [
+            Id.makeFrameKhoraId(frameId, childNodeIds[0]!),
+            Id.makeFrameKhoraId(frameId, childNodeIds[1]!),
+          ],
+          Id.makeFrameKhoraId(frameId, childNodeIds[0]!),
+          Id.makeFrameKhoraId(frameId, childNodeIds[1]!),
         );
         yield* When.FOCUS_FRAME_CONTAINER(frameId);
 
@@ -862,10 +868,12 @@ describe("Collapse (Mod+Up) — Khora selection mode", () => {
       yield* Then.KHORA_IS_EXPANDED(blockB);
 
       const Frame = yield* FrameT;
+      const khoraA = Id.makeFrameKhoraId(frameId, nodeA);
+      const khoraB = Id.makeFrameKhoraId(frameId, nodeB);
       yield* Frame.enterKhoraSelection(frameId);
-      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.setKhoraSelection(frameId, [khoraA, khoraB], khoraA, khoraB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
@@ -882,14 +890,16 @@ describe("Collapse (Mod+Up) — Khora selection mode", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
+      const khoraA = Id.makeFrameKhoraId(frameId, nodeA);
+      const khoraB = Id.makeFrameKhoraId(frameId, nodeB);
 
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
       yield* Frame.enterKhoraSelection(frameId);
-      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.setKhoraSelection(frameId, [khoraA, khoraB], khoraA, khoraB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowUp}{/Meta}");
 
@@ -920,27 +930,29 @@ describe("Khora selection focus ownership", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
+      const khoraA = Id.makeFrameKhoraId(frameId, nodeA);
+      const khoraB = Id.makeFrameKhoraId(frameId, nodeB);
 
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
       yield* Frame.enterKhoraSelection(frameId);
-      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.setKhoraSelection(frameId, [khoraA, khoraB], khoraA, khoraB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
-        anchor: nodeA,
-        focus: nodeB,
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB], {
+        anchor: khoraA,
+        focus: khoraB,
       });
 
       const Store = yield* StoreT;
       const frameDoc = yield* Store.getDocument("frame", frameId);
       const frameValue = Option.getOrThrow(frameDoc) as unknown as {
-        khoraSelectionAnchor: Id.Node | null;
-        khoraSelectionFocus: Id.Node | null;
+        khoraSelectionAnchor: Id.Khora | null;
+        khoraSelectionFocus: Id.Khora | null;
       };
 
-      expect(frameValue.khoraSelectionAnchor).toBe(nodeA);
-      expect(frameValue.khoraSelectionFocus).toBe(nodeB);
+      expect(frameValue.khoraSelectionAnchor).toBe(khoraA);
+      expect(frameValue.khoraSelectionFocus).toBe(khoraB);
     }).pipe(runtime.runPromise);
   });
 
@@ -952,33 +964,34 @@ describe("Khora selection focus ownership", () => {
       );
 
       const [nodeA, nodeB] = childNodeIds;
-      const blockB = Id.makeFrameKhoraId(frameId, nodeB);
+      const khoraA = Id.makeFrameKhoraId(frameId, nodeA);
+      const khoraB = Id.makeFrameKhoraId(frameId, nodeB);
 
       render(() => <FrameView frameId={frameId} />);
 
       const Frame = yield* FrameT;
       yield* Frame.enterKhoraSelection(frameId);
-      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.setKhoraSelection(frameId, [khoraA, khoraB], khoraA, khoraB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB], {
-        anchor: nodeA,
-        focus: nodeB,
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB], {
+        anchor: khoraA,
+        focus: khoraB,
       });
 
       // Transition to editing should clear block-selection focus fields.
-      yield* Frame.enterKhoraEditing(blockB, { anchor: 0, head: 0 });
-      yield* Then.SELECTION_IS_ON_KHORA(blockB);
+      yield* Frame.enterKhoraEditing(khoraB, { anchor: 0, head: 0 });
+      yield* Then.SELECTION_IS_ON_KHORA(khoraB);
 
       const Store = yield* StoreT;
       const frameDoc = yield* Store.getDocument("frame", frameId);
       const frameValue = Option.getOrThrow(frameDoc) as unknown as {
         activeKhoraId: Id.Khora | null;
-        selectedKhoras: readonly Id.Node[];
-        khoraSelectionAnchor: Id.Node | null;
-        khoraSelectionFocus: Id.Node | null;
+        selectedKhoras: readonly Id.Khora[];
+        khoraSelectionAnchor: Id.Khora | null;
+        khoraSelectionFocus: Id.Khora | null;
       };
 
-      expect(frameValue.activeKhoraId).toBe(blockB);
+      expect(frameValue.activeKhoraId).toBe(khoraB);
       expect(frameValue.selectedKhoras).toHaveLength(0);
       expect(frameValue.khoraSelectionAnchor).toBeNull();
       expect(frameValue.khoraSelectionFocus).toBeNull();
@@ -1113,17 +1126,19 @@ describe("Expand (Mod+Down) — Khora selection mode", () => {
       yield* Then.KHORA_IS_COLLAPSED(blockA);
       yield* Then.KHORA_IS_COLLAPSED(blockB);
 
+      const khoraA = Id.makeFrameKhoraId(frameId, nodeA);
+      const khoraB = Id.makeFrameKhoraId(frameId, nodeB);
       const Frame = yield* FrameT;
       yield* Frame.enterKhoraSelection(frameId);
-      yield* Frame.setKhoraSelection(frameId, [nodeA, nodeB], nodeA, nodeB);
+      yield* Frame.setKhoraSelection(frameId, [khoraA, khoraB], khoraA, khoraB);
       yield* When.FOCUS_FRAME_CONTAINER(frameId);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB]);
 
       yield* When.USER_PRESSES("{Meta>}{ArrowDown}{/Meta}");
 
       yield* Then.KHORA_IS_EXPANDED(blockA);
       yield* Then.KHORA_IS_EXPANDED(blockB);
-      yield* Then.BLOCKS_ARE_SELECTED(frameId, [nodeA, nodeB]);
+      yield* Then.BLOCKS_ARE_SELECTED(frameId, [khoraA, khoraB]);
     }).pipe(runtime.runPromise);
   });
 
@@ -1313,11 +1328,12 @@ describe("Auto-expand ancestors on selection", () => {
       yield* Then.KHORA_IS_COLLAPSED(parentBlockId);
 
       const Frame = yield* FrameT;
+      const childKhoraId = Id.makeFrameKhoraId(frameId, childNodeId);
       yield* Frame.setKhoraSelection(
         frameId,
-        [childNodeId],
-        childNodeId,
-        childNodeId,
+        [childKhoraId],
+        childKhoraId,
+        childKhoraId,
       );
 
       yield* Then.KHORA_IS_EXPANDED(parentBlockId);
@@ -1365,11 +1381,13 @@ describe("Auto-expand ancestors on selection", () => {
       yield* Then.KHORA_IS_COLLAPSED(blockB1);
 
       const Frame = yield* FrameT;
+      const khoraA1 = Id.makeFrameKhoraId(frameId, nodeA1);
+      const khoraB1a = Id.makeFrameKhoraId(frameId, nodeB1a);
       yield* Frame.setKhoraSelection(
         frameId,
-        [nodeA1, nodeB1a],
-        nodeA1,
-        nodeB1a,
+        [khoraA1, khoraB1a],
+        khoraA1,
+        khoraB1a,
       );
 
       yield* Then.KHORA_IS_EXPANDED(blockA);

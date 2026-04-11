@@ -95,8 +95,8 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
         Effect.gen(function* () {
           const TypePicker = yield* TypePickerT;
           const Frame = yield* FrameT;
-          for (const nodeId of blocks) {
-            yield* TypePicker.applyType(nodeId, typeId);
+          for (const khoraId of blocks) {
+            yield* TypePicker.applyType(Id.khoraIdToNodeId(khoraId), typeId);
           }
           yield* Frame.closePopup(props.frameId);
         }),
@@ -114,8 +114,8 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
           const TypePicker = yield* TypePickerT;
           const Frame = yield* FrameT;
           const typeId = yield* TypePicker.createType(q);
-          for (const nodeId of blocks) {
-            yield* TypePicker.applyType(nodeId, typeId);
+          for (const khoraId of blocks) {
+            yield* TypePicker.applyType(Id.khoraIdToNodeId(khoraId), typeId);
           }
           yield* Frame.closePopup(props.frameId);
         }),

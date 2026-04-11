@@ -108,12 +108,7 @@ export const subscribe = (khoraId: Id.Khora) =>
 
     const block$ = yield* makeBlockStreamEither(khoraId);
     const node$ = yield* makeNodeStreamEither(nodeId);
-    const window$ = yield* makeWindowDerivedStream(
-      worldId,
-      frameId,
-      nodeId,
-      khoraId,
-    );
+    const window$ = yield* makeWindowDerivedStream(worldId, frameId, khoraId);
 
     const viewInfo$ = yield* subscribeViewInfo(nodeId);
 
@@ -298,7 +293,6 @@ interface WindowDerived {
 const makeWindowDerivedStream = (
   worldId: Id.World,
   frameId: Id.Frame,
-  nodeId: Id.Node,
   khoraId: Id.Khora,
 ) =>
   Effect.gen(function* () {
@@ -338,7 +332,7 @@ const makeWindowDerivedStream = (
         const isActive = isStageActiveFrame && frame?.activeKhoraId === khoraId;
 
         const selectedKhoras = frame?.selectedKhoras ?? [];
-        const isSelected = selectedKhoras.includes(nodeId);
+        const isSelected = selectedKhoras.includes(khoraId);
 
         const ts = khoraDocs?.textSelection;
         const selection: KhoraTextSelection | null =

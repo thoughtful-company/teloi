@@ -7,9 +7,9 @@ import { expandAncestorsForNodes } from "./expandAncestors";
 
 export const setKhoraSelection = (
   frameId: Id.Frame,
-  blocks: readonly Id.Node[],
-  khoraSelectionAnchor: Id.Node | null,
-  khoraSelectionFocus?: Id.Node | null,
+  blocks: readonly Id.Khora[],
+  khoraSelectionAnchor: Id.Khora | null,
+  khoraSelectionFocus?: Id.Khora | null,
 ): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
@@ -32,7 +32,11 @@ export const setKhoraSelection = (
 
     if (blocks.length > 0 && assignedKhoraId) {
       const rootNodeId = Id.Node.make(assignedKhoraId);
-      yield* expandAncestorsForNodes(frameId, rootNodeId, blocks);
+      yield* expandAncestorsForNodes(
+        frameId,
+        rootNodeId,
+        Id.khoraIdsToNodeIds(blocks),
+      );
     }
 
     // Clear previous khora's textSelection
@@ -76,15 +80,15 @@ export const setKhoraSelection = (
 // ================================ Internal ==================================
 
 const normalizeKhoraSelectionState = (
-  blocks: readonly Id.Node[],
-  anchor: Id.Node | null,
-  focus?: Id.Node | null,
+  blocks: readonly Id.Khora[],
+  anchor: Id.Khora | null,
+  focus?: Id.Khora | null,
 ) => {
   if (blocks.length === 0) {
     return {
-      selectedKhoras: [] as readonly Id.Node[],
-      anchor: null as Id.Node | null,
-      focus: null as Id.Node | null,
+      selectedKhoras: [] as readonly Id.Khora[],
+      anchor: null as Id.Khora | null,
+      focus: null as Id.Khora | null,
     };
   }
 

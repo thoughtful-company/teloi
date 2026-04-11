@@ -108,7 +108,8 @@ const TUPLE_SEGMENT = "/tuple:";
  * - Section block: `frame:{frameId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}`
  */
 export const KhoraContextFromKhoraId = Schema.transformOrFail(
-  Khora,  KhoraContextSchema,
+  Khora,
+  KhoraContextSchema,
   {
     strict: true,
     decode: (khoraId, _options, ast) => {
@@ -200,8 +201,14 @@ export const parseKhoraContext = (
 export const parseKhoraContextSync = (khoraId: Khora): KhoraContext =>
   Schema.decodeUnknownSync(KhoraContextFromKhoraId)(khoraId);
 
-// Backwards-compatible parser for frame blocks only
-// Returns Effect<[Frame, Node]> like the old parseKhoraId
+export const khoraIdToNodeId = (khoraId: Khora): Node => {
+  const ctx = parseKhoraContextSync(khoraId);
+  return ctx.type === "frame" ? ctx.nodeId : ctx.hostNodeId;
+};
+
+export const khoraIdsToNodeIds = (khoraIds: readonly Khora[]): Node[] =>
+  khoraIds.map(khoraIdToNodeId);
+
 export const parseKhoraId = (
   khoraId: Khora,
 ): Effect.Effect<[Frame, Node], InvalidKhoraIdError> =>

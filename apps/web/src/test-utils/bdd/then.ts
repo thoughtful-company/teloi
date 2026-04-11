@@ -203,19 +203,22 @@ class AssertionError extends Data.TaggedError("AssertionError")<{
 
 interface WindowCompatDoc {
   selection: Model.ActiveKhoraSelection | null;
-  selectedKhoras: readonly Id.Node[];
-  khoraSelectionAnchor: Id.Node | null;
-  khoraSelectionFocus: Id.Node | null;
+  selectedKhoras: readonly Id.Khora[];
+  khoraSelectionAnchor: Id.Khora | null;
+  khoraSelectionFocus: Id.Khora | null;
 }
 
 const normalizeSelectedBlocks = (
   state: {
-    selectedKhoras: readonly Id.Node[];
-    anchor: Id.Node | null;
-    focus: Id.Node | null;
+    selectedKhoras: readonly Id.Khora[];
+    anchor: Id.Khora | null;
+    focus: Id.Khora | null;
   },
-  mode: { type: "none" } | { type: "khora"; khoraId: Id.Khora } | { type: "khoraSelection"; frameId: Id.Frame },
-): readonly Id.Node[] => {
+  mode:
+    | { type: "none" }
+    | { type: "khora"; khoraId: Id.Khora }
+    | { type: "khoraSelection"; frameId: Id.Frame },
+): readonly Id.Khora[] => {
   if (state.selectedKhoras.length > 0) {
     return state.selectedKhoras;
   }
@@ -255,8 +258,8 @@ export const WINDOW_DOC_COMPAT = (frameId: Id.Frame) =>
  */
 export const BLOCKS_ARE_SELECTED = (
   frameId: Id.Frame,
-  expectedNodeIds: Id.Node[],
-  options?: { anchor?: Id.Node; focus?: Id.Node },
+  expectedKhoraIds: Id.Khora[],
+  options?: { anchor?: Id.Khora; focus?: Id.Khora },
 ) =>
   Effect.gen(function* () {
     const Frame = yield* FrameT;
@@ -265,9 +268,9 @@ export const BLOCKS_ARE_SELECTED = (
     const selectedKhoras = normalizeSelectedBlocks(state, mode);
 
     yield* Effect.sync(() => {
-      expect(selectedKhoras).toHaveLength(expectedNodeIds.length);
-      for (const nodeId of expectedNodeIds) {
-        expect(selectedKhoras).toContain(nodeId);
+      expect(selectedKhoras).toHaveLength(expectedKhoraIds.length);
+      for (const khoraId of expectedKhoraIds) {
+        expect(selectedKhoras).toContain(khoraId);
       }
 
       if (options?.anchor !== undefined) {

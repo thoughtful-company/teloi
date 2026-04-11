@@ -59,9 +59,9 @@ export class FrameT extends Context.Tag("FrameT")<
     ) => Effect.Effect<void, FrameNotFoundError>;
     setKhoraSelection: (
       frameId: Id.Frame,
-      blocks: readonly Id.Node[],
-      khoraSelectionAnchor: Id.Node | null,
-      khoraSelectionFocus?: Id.Node | null,
+      blocks: readonly Id.Khora[],
+      khoraSelectionAnchor: Id.Khora | null,
+      khoraSelectionFocus?: Id.Khora | null,
     ) => Effect.Effect<void, FrameNotFoundError>;
 
     /**
@@ -69,9 +69,9 @@ export class FrameT extends Context.Tag("FrameT")<
      */
     getKhoraSelectionState: (frameId: Id.Frame) => Effect.Effect<
       {
-        selectedKhoras: readonly Id.Node[];
-        anchor: Id.Node | null;
-        focus: Id.Node | null;
+        selectedKhoras: readonly Id.Khora[];
+        anchor: Id.Khora | null;
+        focus: Id.Khora | null;
       },
       FrameNotFoundError
     >;
@@ -194,9 +194,9 @@ export const FrameLive = Layer.effect(
         ),
       setKhoraSelection: (
         frameId: Id.Frame,
-        blocks: readonly Id.Node[],
-        khoraSelectionAnchor: Id.Node | null,
-        khoraSelectionFocus?: Id.Node | null,
+        blocks: readonly Id.Khora[],
+        khoraSelectionAnchor: Id.Khora | null,
+        khoraSelectionFocus?: Id.Khora | null,
       ) =>
         setKhoraSelection(
           frameId,
@@ -263,25 +263,18 @@ export const FrameLive = Layer.effect(
 
           const frame = frameDoc.value;
           const state = deriveKhoraSelectionState(frame);
-          const selectionNodeId =
-            frame.activeKhoraId != null
-              ? (() => {
-                  const ctx = Id.parseKhoraContextSync(frame.activeKhoraId);
-                  return ctx.type === "frame" ? ctx.nodeId : null;
-                })()
-              : null;
-          const fallbackNodeId =
-            state.focus ?? state.anchor ?? selectionNodeId ?? null;
+          const fallbackKhoraId =
+            state.focus ?? state.anchor ?? frame.activeKhoraId ?? null;
           const selectedKhoras =
             state.selectedKhoras.length > 0
               ? state.selectedKhoras
-              : fallbackNodeId != null
-                ? [fallbackNodeId]
+              : fallbackKhoraId != null
+                ? [fallbackKhoraId]
                 : [];
           const normalized = normalizeKhoraSelectionState(
             selectedKhoras,
-            state.anchor ?? fallbackNodeId,
-            state.focus ?? fallbackNodeId,
+            state.anchor ?? fallbackKhoraId,
+            state.focus ?? fallbackKhoraId,
           );
 
           // Clear previous khora's textSelection
@@ -433,9 +426,9 @@ const deriveKhoraSelectionState = (frame: Model.Frame) => {
   );
   if (normalized.selectedKhoras.length === 0) {
     return {
-      selectedKhoras: [] as readonly Id.Node[],
-      anchor: null as Id.Node | null,
-      focus: null as Id.Node | null,
+      selectedKhoras: [] as readonly Id.Khora[],
+      anchor: null as Id.Khora | null,
+      focus: null as Id.Khora | null,
     };
   }
 
@@ -447,15 +440,15 @@ const deriveKhoraSelectionState = (frame: Model.Frame) => {
 };
 
 const normalizeKhoraSelectionState = (
-  blocks: readonly Id.Node[],
-  anchor: Id.Node | null,
-  focus: Id.Node | null,
+  blocks: readonly Id.Khora[],
+  anchor: Id.Khora | null,
+  focus: Id.Khora | null,
 ) => {
   if (blocks.length === 0) {
     return {
-      selectedKhoras: [] as readonly Id.Node[],
-      anchor: null as Id.Node | null,
-      focus: null as Id.Node | null,
+      selectedKhoras: [] as readonly Id.Khora[],
+      anchor: null as Id.Khora | null,
+      focus: null as Id.Khora | null,
     };
   }
 

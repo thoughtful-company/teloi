@@ -1,3 +1,4 @@
+import { Id } from "@/schema";
 import { FrameT } from "@/services/ui/Frame";
 import { Data, Effect, Option } from "effect";
 import { resolveActiveKhoraContext } from "./utils/resolveActiveKhoraContext";
@@ -16,9 +17,10 @@ export class SelectBlock extends Data.TaggedClass(tag)<{}> {
 
     const { frameId, nodeId } = ctxOpt.value;
     const Frame = yield* FrameT;
+    const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
 
     yield* Frame.enterKhoraSelection(frameId);
     yield* Frame.setSelection(frameId, Option.none());
-    yield* Frame.setKhoraSelection(frameId, [nodeId], nodeId);
+    yield* Frame.setKhoraSelection(frameId, [khoraId], khoraId);
   });
 }

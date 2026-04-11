@@ -33,7 +33,7 @@ export class Indent extends Data.TaggedClass(tag)<{}> {
       const state = yield* Frame.getKhoraSelectionState(frameId);
       if (state.selectedKhoras.length === 0 || state.anchor === null) return;
 
-      yield* indentNodes(state.selectedKhoras);
+      yield* indentNodes(Id.khoraIdsToNodeIds(state.selectedKhoras));
 
       yield* Frame.setKhoraSelection(
         frameId,
