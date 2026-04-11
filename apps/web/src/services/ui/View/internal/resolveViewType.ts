@@ -16,6 +16,10 @@ export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
   const Store = yield* StoreT;
   const Type = yield* TypeT;
 
+  // Non-frame khoras (section, propertyTitle) don't participate in frame-
+  // level view selection. Callers in View/index.ts already gate on
+  // ctx.type === "frame" before reaching here, so this return is defensive
+  // rather than load-bearing — "page" is just the inert default.
   const ctx = Id.parseKhoraContextSync(khoraId);
   if (ctx.type !== "frame") return "page";
 

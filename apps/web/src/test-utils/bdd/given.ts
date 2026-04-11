@@ -186,6 +186,72 @@ export const A_PROPERTY_WITH_TEXT = (text: string) =>
     return propertyId;
   }).pipe(Effect.withSpan("Given.A_PROPERTY_WITH_TEXT"));
 
+export interface FrameWithPropertyTitleSelectedResult {
+  frameId: Id.Frame;
+  hostNodeId: Id.Node;
+  propertyId: Id.Node;
+  propertyTitleKhoraId: Id.Khora;
+  worldId: Id.World;
+}
+
+/**
+ * Creates a frame + property and drives world/frame state directly into
+ * khora-selection mode with the propertyTitle as the anchor/focus.
+ *
+ * Writes the docs via StoreT instead of going through Frame.setKhoraSelection
+ * because the latter runs ancestor expansion on the selected node — irrelevant
+ * noise when the selection is a property that lives outside the outline tree.
+ */
+export const A_FRAME_WITH_PROPERTY_TITLE_SELECTED = (opts: {
+  hostText: string;
+  titleText: string;
+}) =>
+  Effect.gen(function* () {
+    const { frameId, nodeId: hostNodeId, worldId } =
+      yield* A_FRAME_WITH_TEXT(opts.hostText);
+    const propertyId = yield* A_PROPERTY_WITH_TEXT(opts.titleText);
+    const propertyTitleKhoraId = Id.makePropertyTitleKhoraId(
+      frameId,
+      hostNodeId,
+      propertyId,
+    );
+
+    const Store = yield* StoreT;
+
+    const currentWorld = yield* Store.getDocument("world", worldId);
+    yield* Store.setDocument(
+      "world",
+      {
+        ...Option.getOrThrow(currentWorld),
+        activeRegion: "stage",
+        activeFrameId: frameId,
+      },
+      worldId,
+    );
+
+    const currentFrame = yield* Store.getDocument("frame", frameId);
+    yield* Store.setDocument(
+      "frame",
+      {
+        ...Option.getOrThrow(currentFrame),
+        activePart: "khora" as const,
+        activeKhoraId: null,
+        selectedKhoras: [propertyTitleKhoraId],
+        khoraSelectionAnchor: propertyTitleKhoraId,
+        khoraSelectionFocus: propertyTitleKhoraId,
+      },
+      frameId,
+    );
+
+    return {
+      frameId,
+      hostNodeId,
+      propertyId,
+      propertyTitleKhoraId,
+      worldId,
+    } satisfies FrameWithPropertyTitleSelectedResult;
+  }).pipe(Effect.withSpan("Given.A_FRAME_WITH_PROPERTY_TITLE_SELECTED"));
+
 /**
  * Sets the frame container to a specific width.
  * Useful for testing line wrapping behavior.

@@ -120,6 +120,12 @@ export const ViewLive = Layer.effect(
 
     const getViewType = withContext(resolveViewType)(viewTypeContext);
 
+    // Every method below short-circuits for non-frame khoras (section,
+    // propertyTitle). These are outline-tree operations, and section/
+    // propertyTitle khoras simply don't live in the outline — the empty
+    // no-op is the semantically correct answer for them, not a bug to be
+    // tightened into an exhaustive switch.
+
     const wrapNodeResult = (
       khoraId: Id.Khora,
       nodeOpt: Option.Option<Id.Node>,

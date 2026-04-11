@@ -153,38 +153,43 @@ export const KhoraLive = Layer.effect(
               ghostParentId: null as Id.Node | null,
             }));
 
-            // When collapsing a block with a ghost, clean up the ghost
+            // When collapsing a block with a ghost, clean up the ghost.
+            // Ghosts are an outline-tree feature, so a non-frame khora carrying
+            // ghostChildId is an invariant violation — die loudly instead of
+            // silently leaking the half-materialized ghost.
             if (!isExpanded && current.ghostChildId) {
               const ctx = Id.parseKhoraContextSync(khoraId);
-              if (ctx.type === "frame") {
-                const ghostBlockId = Id.makeFrameKhoraId(
-                  ctx.frameId,
-                  current.ghostChildId,
+              if (ctx.type !== "frame") {
+                return Effect.die(
+                  new Error(
+                    `Invariant violation: ghostChildId set on non-frame khora (${ctx.type}). Ghosts only belong on outline-tree khoras.`,
+                  ),
                 );
-                return Effect.all([
-                  // Delete ghost's Automerge text
-                  Automerge.deleteText(current.ghostChildId).pipe(
-                    Effect.catchAll(() => Effect.void),
-                  ),
-                  // Clear ghost's block doc
-                  Store.setDocument(
-                    "khora",
-                    {
-                      isExpanded: false,
-                      activeViewId: null,
-                      ghostChildId: null,
-                      ghostParentId: null,
-                    },
-                    ghostBlockId,
-                  ).pipe(Effect.catchAll(() => Effect.void)),
-                  // Collapse parent and clear ghostChildId
-                  Store.setDocument(
-                    "khora",
-                    { ...current, isExpanded: false, ghostChildId: null },
-                    khoraId,
-                  ),
-                ]).pipe(Effect.asVoid);
               }
+              const ghostBlockId = Id.makeFrameKhoraId(
+                ctx.frameId,
+                current.ghostChildId,
+              );
+              return Effect.all([
+                Automerge.deleteText(current.ghostChildId).pipe(
+                  Effect.catchAll(() => Effect.void),
+                ),
+                Store.setDocument(
+                  "khora",
+                  {
+                    isExpanded: false,
+                    activeViewId: null,
+                    ghostChildId: null,
+                    ghostParentId: null,
+                  },
+                  ghostBlockId,
+                ).pipe(Effect.catchAll(() => Effect.void)),
+                Store.setDocument(
+                  "khora",
+                  { ...current, isExpanded: false, ghostChildId: null },
+                  khoraId,
+                ),
+              ]).pipe(Effect.asVoid);
             }
 
             return Store.setDocument(

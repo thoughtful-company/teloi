@@ -32,9 +32,9 @@ export class Space extends Data.TaggedClass(tag)<{}> {
       state.focus ??
       state.anchor ??
       state.selectedKhoras[state.selectedKhoras.length - 1]!;
+    const sourceCtx = Id.parseKhoraContextSync(sourceKhoraId);
+    if (sourceCtx.type !== "frame") return;
     const newKhoraId = yield* View.createKhora(sourceKhoraId, "after");
-    const newCtx = Id.parseKhoraContextSync(newKhoraId);
-    if (newCtx.type !== "frame") return;
 
     yield* Frame.enterKhoraEditing(newKhoraId, { anchor: 0, head: 0 });
   });

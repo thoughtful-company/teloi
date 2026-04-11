@@ -97,13 +97,9 @@ const finishPickerAction = (
     const Frame = yield* FrameT;
     const Automerge = yield* AutomergeT;
 
-    // Parse khoraId to get frameId and nodeId
     const blockContext = Id.parseKhoraContextSync(state.elementId);
     const frameId = blockContext.frameId;
-    const nodeId =
-      blockContext.type === "frame"
-        ? blockContext.nodeId
-        : blockContext.hostNodeId;
+    const nodeId = Id.khoraIdToNodeId(state.elementId);
 
     // Delete trigger text: from position to from + query.length + 1 (for the "#" trigger char)
     const currentText = yield* Automerge.getText(nodeId);
@@ -187,12 +183,7 @@ export const PickerLive = Layer.effect(
 
           const TypePicker = yield* TypePickerT;
 
-          // Parse khoraId to get nodeId
-          const blockContext = Id.parseKhoraContextSync(state.elementId);
-          const nodeId =
-            blockContext.type === "frame"
-              ? blockContext.nodeId
-              : blockContext.hostNodeId;
+          const nodeId = Id.khoraIdToNodeId(state.elementId);
 
           // Apply the type (view switching handled by TypePicker if needed)
           yield* TypePicker.applyType(nodeId, typeId);
@@ -211,12 +202,7 @@ export const PickerLive = Layer.effect(
 
           const TypePicker = yield* TypePickerT;
 
-          // Parse khoraId to get nodeId
-          const blockContext = Id.parseKhoraContextSync(state.elementId);
-          const nodeId =
-            blockContext.type === "frame"
-              ? blockContext.nodeId
-              : blockContext.hostNodeId;
+          const nodeId = Id.khoraIdToNodeId(state.elementId);
 
           // Create the type
           const typeId = yield* TypePicker.createType(name);

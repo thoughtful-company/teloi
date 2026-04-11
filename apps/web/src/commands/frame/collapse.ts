@@ -104,6 +104,9 @@ const handleKhoraSelectionMode = Effect.fn("collapse:blockSelectionMode")(
       (state.selectedKhoras.length > 0 ? state.selectedKhoras[0]! : null);
     if (targetKhoraId == null) return;
 
+    const targetCtx = Id.parseKhoraContextSync(targetKhoraId);
+    if (targetCtx.type !== "frame") return;
+
     const nodeId = Id.khoraIdToNodeId(targetKhoraId);
     const blockDoc = yield* deps.Khora.get(frameId, nodeId);
     const children = yield* deps.Node.getNodeChildren(nodeId);
