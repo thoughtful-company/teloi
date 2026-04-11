@@ -80,3 +80,43 @@ Implementation in `services/ui/View/page/navigation.ts`:
 | `isBlockExpanded(frameId, nodeId)` | Check if block shows children. Collapsed blocks skip child navigation. |
 
 All functions respect collapsed state - they never navigate into hidden children.
+
+## Architecture
+
+Motion commands are view-agnostic verbs (`Up`, `Down`, `Left`, `Right`, ...). The *meaning* of each motion key depends on two things: which view type is active, and which region within the view is focused.
+
+### Motion delegation
+
+Per-view motion logic lives in `services/ui/View/{type}/navigation.ts`:
+
+- `View/page/navigation.ts` — outline tree walk in document order
+- `View/chat/navigation.ts` — tuple-ordered message list
+
+`services/ui/View/index.ts` exposes `resolveBlockAbove/Below/Left/Right(khoraId)`, which reads the active view type and dispatches to the right module. Motion commands call this and focus the returned khora.
+
+### Region-specific overrides
+
+Some regions need key semantics that aren't pure motion. For example, `ArrowDown` in a property name field opens an existing-properties picker — it does not move focus to the khora below. These overrides live **inline in the command handler**, branching on `KhoraContext.type` before falling through to generic motion:
+
+```ts
+// Up.handle — simplified
+const ctx = parseKhoraContextSync(khoraId);
+if (ctx.type === "propertyTitle" && atBottomEdge) {
+  return openExistingPropertiesPopup();
+}
+const next = yield* View.resolveBlockAbove(khoraId);
+// focus if Some, noop if None
+```
+
+Regions recognized today (from `KhoraContext`):
+
+| Context | Region | Overrides |
+|---|---|---|
+| `frame` | Outline block | None — default motion |
+| `section` | Property value | None — default motion |
+| `propertyTitle` | Property name editor | Arrow keys at text edges open property-configuration popups (see `docs/specs/properties.md` § Navigation and Selection) |
+
+### Rejected alternatives
+
+- **Dedicated override layer** (`commands/editor/contextOverrides/{region}.ts`) grouping all of a region's key behaviors in one file. Rejected as premature: today only `propertyTitle` has overrides, and splitting across files costs indirection for little gain. Revisit if a second region grows 3+ overrides.
+- **Richer resolver return type** (`{ focus } | { openPopup } | ...`). Rejected because it would leak UI affordances (popups, mode switches) into `View` services, which should stay focused on "where is the next focusable thing," not "what UI action fires."
