@@ -43,7 +43,18 @@ const SectionKhoraContext = Schema.Struct({
   tupleId: Tuple,
 });
 
-const KhoraContextSchema = Schema.Union(FrameKhoraContext, SectionKhoraContext);
+const PropertyTitleKhoraContext = Schema.Struct({
+  type: Schema.Literal("propertyTitle"),
+  frameId: Frame,
+  hostNodeId: Node,
+  propertyId: Node,
+});
+
+const KhoraContextSchema = Schema.Union(
+  FrameKhoraContext,
+  SectionKhoraContext,
+  PropertyTitleKhoraContext,
+);
 export type KhoraContext = typeof KhoraContextSchema.Type;
 
 // Virtual tuple sentinel for bound properties with no linked blocks
@@ -62,6 +73,16 @@ export const makePropertyKhoraId = (
 ): Khora =>
   Khora.make(
     `frame:${frameId}/node:${hostNodeId}/property:${propertyId}/tuple:${tupleId}`,
+  );
+
+// Property title block ID format: frame:{frameId}/node:{hostNodeId}/property:{propertyId}/title
+export const makePropertyTitleKhoraId = (
+  frameId: Frame,
+  hostNodeId: Node,
+  propertyId: Node,
+): Khora =>
+  Khora.make(
+    `frame:${frameId}/node:${hostNodeId}/property:${propertyId}/title`,
   );
 
 /** @deprecated Use makePropertyKhoraId instead */
@@ -99,13 +120,15 @@ const FRAME_BLOCK_PREFIX = "frame:";
 const NODE_SEGMENT = "/node:";
 const PROPERTY_SEGMENT = "/property:";
 const TUPLE_SEGMENT = "/tuple:";
+const TITLE_SEGMENT = "/title";
 
 /**
  * Schema that decodes a Block ID string into a KhoraContext.
  *
- * Handles two formats:
+ * Handles three formats:
  * - Frame block: `frame:{frameId}/node:{nodeId}`
  * - Section block: `frame:{frameId}/node:{hostNodeId}/property:{propertyId}/tuple:{tupleId}`
+ * - Property title: `frame:{frameId}/node:{hostNodeId}/property:{propertyId}/title`
  */
 export const KhoraContextFromKhoraId = Schema.transformOrFail(
   Khora,
@@ -141,27 +164,46 @@ export const KhoraContextFromKhoraId = Schema.transformOrFail(
           propertyIndex + PROPERTY_SEGMENT.length,
         );
 
+        // Section variant: /property:{propertyId}/tuple:{tupleId}
         const tupleIndex = afterProperty.indexOf(TUPLE_SEGMENT);
-        if (tupleIndex === -1) {
-          return ParseResult.fail(
-            new ParseResult.Type(
-              ast,
-              khoraId,
-              "Missing '/tuple:' segment in property block",
-            ),
+        if (tupleIndex !== -1) {
+          const propertyId = afterProperty.slice(0, tupleIndex);
+          const tupleId = afterProperty.slice(
+            tupleIndex + TUPLE_SEGMENT.length,
           );
+
+          return ParseResult.succeed({
+            type: "section" as const,
+            frameId: frameId as Frame,
+            hostNodeId: hostNodeId as Node,
+            propertyId: propertyId as Node,
+            tupleId: tupleId as Tuple,
+          });
         }
 
-        const propertyId = afterProperty.slice(0, tupleIndex);
-        const tupleId = afterProperty.slice(tupleIndex + TUPLE_SEGMENT.length);
+        // PropertyTitle variant: strict tail — remainder after /property:{propertyId}
+        // must be exactly "/title", nothing more.
+        if (afterProperty.endsWith(TITLE_SEGMENT)) {
+          const propertyId = afterProperty.slice(
+            0,
+            afterProperty.length - TITLE_SEGMENT.length,
+          );
 
-        return ParseResult.succeed({
-          type: "section" as const,
-          frameId: frameId as Frame,
-          hostNodeId: hostNodeId as Node,
-          propertyId: propertyId as Node,
-          tupleId: tupleId as Tuple,
-        });
+          return ParseResult.succeed({
+            type: "propertyTitle" as const,
+            frameId: frameId as Frame,
+            hostNodeId: hostNodeId as Node,
+            propertyId: propertyId as Node,
+          });
+        }
+
+        return ParseResult.fail(
+          new ParseResult.Type(
+            ast,
+            khoraId,
+            "Missing '/title' or '/tuple:' segment in property block",
+          ),
+        );
       }
 
       // Simple frame block format
@@ -172,14 +214,22 @@ export const KhoraContextFromKhoraId = Schema.transformOrFail(
       });
     },
     encode: (context) => {
-      if (context.type === "frame") {
-        return ParseResult.succeed(
-          `frame:${context.frameId}/node:${context.nodeId}` as Khora,
-        );
+      switch (context.type) {
+        case "frame":
+          return ParseResult.succeed(
+            `frame:${context.frameId}/node:${context.nodeId}` as Khora,
+          );
+        case "section":
+          return ParseResult.succeed(
+            `frame:${context.frameId}/node:${context.hostNodeId}/property:${context.propertyId}/tuple:${context.tupleId}` as Khora,
+          );
+        case "propertyTitle":
+          return ParseResult.succeed(
+            `frame:${context.frameId}/node:${context.hostNodeId}/property:${context.propertyId}/title` as Khora,
+          );
+        default:
+          return absurd(context);
       }
-      return ParseResult.succeed(
-        `frame:${context.frameId}/node:${context.hostNodeId}/property:${context.propertyId}/tuple:${context.tupleId}` as Khora,
-      );
     },
   },
 );
@@ -203,7 +253,16 @@ export const parseKhoraContextSync = (khoraId: Khora): KhoraContext =>
 
 export const khoraIdToNodeId = (khoraId: Khora): Node => {
   const ctx = parseKhoraContextSync(khoraId);
-  return ctx.type === "frame" ? ctx.nodeId : ctx.hostNodeId;
+  switch (ctx.type) {
+    case "frame":
+      return ctx.nodeId;
+    case "section":
+      return ctx.hostNodeId;
+    case "propertyTitle":
+      return ctx.propertyId;
+    default:
+      return absurd(ctx);
+  }
 };
 
 export const khoraIdsToNodeIds = (khoraIds: readonly Khora[]): Node[] =>
@@ -245,3 +304,8 @@ export const parseSectionFrameId = (
   }
   return Effect.fail(new InvalidSectionIdError({ sectionId }));
 };
+
+// Compile-time exhaustiveness guard for KhoraContext switches.
+function absurd(x: never): never {
+  throw new Error(`Unreachable KhoraContext variant: ${JSON.stringify(x)}`);
+}

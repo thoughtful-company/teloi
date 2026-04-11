@@ -58,7 +58,13 @@ export const subscribe = (khoraId: Id.Khora) =>
     // Extract nodeId based on block type
     let nodeId: Id.Node;
 
-    if (ctx.type === "frame") {
+    if (ctx.type === "propertyTitle") {
+      // Phase 1 stub: propertyTitle subscription is wired in Phase 2.
+      // No production caller produces this variant yet.
+      return yield* Effect.die(
+        "Khora.subscribe: propertyTitle variant not yet implemented",
+      );
+    } else if (ctx.type === "frame") {
       nodeId = ctx.nodeId;
     } else {
       // Section block: derive nodeId from tuple lookup
