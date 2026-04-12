@@ -23,14 +23,6 @@ interface KhoraProps {
   khoraId: Id.Khora;
 }
 
-/**
- * Renders an editable hierarchical block and keeps it synchronized with the application runtime and Automerge document state.
- *
- * The component displays read-only text when inactive and a rich text editor when active; it manages focus, selection, document stream subscription, Automerge text observation, and user editing/navigation behaviors (split/merge, indent/outdent, arrow navigation, zoom) for the given block.
- *
- * @param khoraId - The block identifier to render and synchronize (Id.Khora)
- * @returns The block's rendered TSX element containing the editor or read-only view and its child blocks
- */
 export default function Khora({ khoraId }: KhoraProps) {
   const runtime = useBrowserRuntime();
 
@@ -46,6 +38,7 @@ export default function Khora({ khoraId }: KhoraProps) {
     }
   })();
   const frameId = blockContext.frameId;
+  const isFrameKhora = blockContext.type === "frame";
 
   const Automerge = runtime.runSync(AutomergeT);
 
@@ -95,9 +88,10 @@ export default function Khora({ khoraId }: KhoraProps) {
     onCleanup(() => dispose());
   });
 
-  // Ghost materialization: when this block is a ghost, listen for the first
-  // keystroke and convert it into a real LiveStore node.
+  // Materialization only applies to frame ghosts because section/property-title
+  // khoras do not own tree structure in LiveStore.
   createEffect(() => {
+    if (!isFrameKhora) return;
     const ghostParentId = store.ghostParentId;
     if (!ghostParentId) return;
 
@@ -223,24 +217,26 @@ export default function Khora({ khoraId }: KhoraProps) {
 
   return (
     <div data-element-id={khoraId} data-element-type="khora" class="relative">
-      {/* Expand/collapse toggle */}
-      <button
-        type="button"
-        class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none transition-opacity"
-        classList={{
-          "opacity-0 hover:opacity-100":
-            store.childCount === 0 && !store.ghostChildId,
-        }}
-        onClick={handleToggleExpand}
-        tabIndex={-1}
-      >
-        <span
-          class="block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[6px] border-l-gray-400 hover:border-l-gray-600"
+      {/* Only frame khoras participate in outline expand/collapse. */}
+      <Show when={isFrameKhora}>
+        <button
+          type="button"
+          class="absolute -left-5 top-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2)] w-5 h-[var(--text-block)] flex items-center justify-center select-none transition-opacity"
           classList={{
-            "rotate-90": store.isExpanded,
+            "opacity-0 hover:opacity-100":
+              store.childCount === 0 && !store.ghostChildId,
           }}
-        />
-      </button>
+          onClick={handleToggleExpand}
+          tabIndex={-1}
+        >
+          <span
+            class="block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[6px] border-l-gray-400 hover:border-l-gray-600"
+            classList={{
+              "rotate-90": store.isExpanded,
+            }}
+          />
+        </button>
+      </Show>
       <div
         onClick={handleClick}
         data-block-content
@@ -303,7 +299,7 @@ export default function Khora({ khoraId }: KhoraProps) {
           </Show>
         </div>
       </div>
-      <Show when={store.isExpanded}>
+      <Show when={isFrameKhora && store.isExpanded}>
         <div
           class="pl-4 flex flex-col gap-1.5"
           classList={{
