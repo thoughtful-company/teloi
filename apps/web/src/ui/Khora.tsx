@@ -39,6 +39,7 @@ export default function Khora({ khoraId }: KhoraProps) {
   })();
   const frameId = blockContext.frameId;
   const isFrameKhora = blockContext.type === "frame";
+  const isPropertyTitle = blockContext.type === "propertyTitle";
 
   const Automerge = runtime.runSync(AutomergeT);
 
@@ -217,7 +218,6 @@ export default function Khora({ khoraId }: KhoraProps) {
 
   return (
     <div data-element-id={khoraId} data-element-type="khora" class="relative">
-      {/* Only frame khoras participate in outline expand/collapse. */}
       <Show when={isFrameKhora}>
         <button
           type="button"
@@ -273,7 +273,7 @@ export default function Khora({ khoraId }: KhoraProps) {
                 <Show when={store.textContent} fallback={"\u00A0"}>
                   <FormattedText text={store.textContent} />
                 </Show>
-                <Show when={store.userTypes.length > 0}>
+                <Show when={!isPropertyTitle && store.userTypes.length > 0}>
                   <span class="inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]">
                     <For each={store.userTypes}>
                       {(typeId) => (
@@ -289,7 +289,7 @@ export default function Khora({ khoraId }: KhoraProps) {
               handle={Automerge.handle}
               path={Automerge.getTextPath(nodeId)}
               khoraId={khoraId}
-              inlineTypes={store.userTypes}
+              inlineTypes={isPropertyTitle ? [] : store.userTypes}
               nodeId={nodeId}
               textTriggers={[propertyTrigger]}
               {...(store.selection

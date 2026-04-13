@@ -1,5 +1,6 @@
 import "@/index.css";
 import { Id } from "@/schema";
+import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import PropertySection from "@/ui/PropertySection";
 import {
@@ -73,6 +74,40 @@ describe("PropertySection — property title editor", () => {
         ".property-name .cm-editor.cm-focused",
       );
       expect(editor).toBeTruthy();
+    }).pipe(runtime.runPromise);
+  });
+
+  it("does not render inline type badges for a typed property title", async () => {
+    await Effect.gen(function* () {
+      const Type = yield* TypeT;
+
+      const { frameId, rootNodeId } = yield* Given.A_FRAME_WITH_CHILDREN(
+        "Page",
+        [],
+      );
+      const propertyId = yield* Given.A_PROPERTY_WITH_TEXT("name");
+      const { typeId } = yield* Given.A_TYPE_WITHOUT_COLOR();
+      yield* Type.addType(propertyId, typeId);
+      const titleKhoraId = Id.makePropertyTitleKhoraId(
+        frameId,
+        rootNodeId,
+        propertyId,
+      );
+
+      render(() => (
+        <PropertySection
+          propertyId={propertyId}
+          pageId={rootNodeId}
+          frameId={frameId}
+        />
+      ));
+
+      yield* waitForElement(`[data-element-id="${titleKhoraId}"]`);
+      yield* doubleRaf;
+
+      expect(
+        document.querySelector(".property-name .group.inline-flex.items-baseline"),
+      ).toBeNull();
     }).pipe(runtime.runPromise);
   });
 

@@ -2,7 +2,7 @@ import { schema } from "@/livestore/schema";
 import { Id } from "@/schema";
 import { NodeLive } from "@/services/domain/Node";
 import { TupleLive } from "@/services/domain/Tuple";
-import { TypeLive } from "@/services/domain/Type";
+import { TypeLive, TypeT } from "@/services/domain/Type";
 import { makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
 import { FrameLive } from "@/services/ui/Frame";
@@ -71,6 +71,31 @@ describe("Khora.subscribe — propertyTitle variant", () => {
 
       expect(view.childCount).toBe(0);
       expect(view.availableViews).toHaveLength(0);
+    }).pipe(runtime.runPromise);
+  });
+
+  it("emits userTypes from the property node for a propertyTitle khora", async () => {
+    await Effect.gen(function* () {
+      const { frameId, rootNodeId: hostNodeId } =
+        yield* Given.A_FRAME_WITH_CHILDREN("Host", []);
+
+      const propertyId = yield* Given.A_PROPERTY_WITH_TEXT("Price");
+      const { typeId } = yield* Given.A_TYPE_WITHOUT_COLOR();
+      const Type = yield* TypeT;
+      yield* Type.addType(propertyId, typeId);
+
+      const khoraId = Id.makePropertyTitleKhoraId(
+        frameId,
+        hostNodeId,
+        propertyId,
+      );
+
+      const Khora = yield* KhoraT;
+      const stream = yield* Khora.subscribe(khoraId);
+      const firstEmission = yield* Stream.runHead(stream);
+      const view = Option.getOrThrow(firstEmission);
+
+      expect(view.userTypes).toEqual([typeId]);
     }).pipe(runtime.runPromise);
   });
 
