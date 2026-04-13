@@ -35,6 +35,7 @@ export const getLinkedTuples = (propertyId: Id.Node, pageId: Id.Node) =>
       tupleTypeId,
       hostPosition,
       pageId,
+      displayPosition,
     );
 
     return tupleInstances.map((tuple) => {

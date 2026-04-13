@@ -39,6 +39,7 @@ export const subscribeLinkedTuples = (propertyId: Id.Node, pageId: Id.Node) =>
               tupleTypeId,
               hostPosition,
               pageId,
+              displayPosition,
             );
 
             return Stream.map(tupleStream, (tuples) =>
