@@ -215,7 +215,7 @@ export const FrameLive = Layer.effect(
           }
 
           return {
-            selectedKhoras: [] as readonly Id.Node[],
+            selectedKhoras: [] as readonly Id.Khora[],
             anchor: null,
             focus: null,
           };

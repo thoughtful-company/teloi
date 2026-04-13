@@ -10,7 +10,7 @@ import { ViewT } from "@/services/ui/View";
 import { queryDb } from "@livestore/livestore";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 /**
@@ -23,16 +23,13 @@ import { setupClientTest, type BrowserRuntime } from "@/test-utils/bdd";
 
 describe("PropertyT", () => {
   let runtime: BrowserRuntime;
-  let cleanup: () => Promise<void>;
+  let cleanup: (() => Promise<void>) | undefined;
 
   beforeEach(async () => {
+    await cleanup?.();
     const setup = await setupClientTest();
     runtime = setup.runtime;
     cleanup = setup.cleanup;
-  });
-
-  afterEach(async () => {
-    await cleanup();
   });
 
   /** Creates a page node for testing */

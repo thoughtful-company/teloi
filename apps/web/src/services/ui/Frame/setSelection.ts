@@ -93,19 +93,16 @@ export const setSelection = (
       });
     }
 
-    // Determine previous and next active khora
     const prevActiveKhoraId = currentFrame.activeKhoraId ?? null;
 
     if (Option.isSome(clampedSelection)) {
       const s = clampedSelection.value;
       const nextKhoraId = s.khoraId;
 
-      // Clear previous khora's textSelection if switching khoras
       if (prevActiveKhoraId != null && prevActiveKhoraId !== nextKhoraId) {
         yield* clearKhoraTextSelection(Store, prevActiveKhoraId);
       }
 
-      // Write textSelection to target khora doc
       yield* writeKhoraTextSelection(Store, nextKhoraId, {
         anchor: s.selection.anchor,
         head: s.selection.head,
@@ -114,7 +111,6 @@ export const setSelection = (
         goalLine: s.goalLine,
       });
 
-      // Write activeKhoraId to frame doc
       yield* Store.setDocument(
         "frame",
         {
@@ -128,7 +124,6 @@ export const setSelection = (
         frameId,
       ).pipe(Effect.orDie);
     } else {
-      // Clear selection: clear previous khora's textSelection and frame's activeKhoraId
       if (prevActiveKhoraId != null) {
         yield* clearKhoraTextSelection(Store, prevActiveKhoraId);
       }

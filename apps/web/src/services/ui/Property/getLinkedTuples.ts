@@ -30,14 +30,12 @@ export const getLinkedTuples = (propertyId: Id.Node, pageId: Id.Node) =>
 
     const { tupleTypeId, hostPosition, displayPosition } = configOpt.value;
 
-    // Query tuple instances where page is at hostPosition
     const tupleInstances = yield* Tuple.findByPosition(
       tupleTypeId,
       hostPosition,
       pageId,
     );
 
-    // Return both tupleId and displayNodeId
     return tupleInstances.map((tuple) => ({
       tupleId: tuple.id,
       displayNodeId: tuple.members[displayPosition] as Id.Node,

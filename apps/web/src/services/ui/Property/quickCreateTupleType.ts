@@ -33,10 +33,8 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
     const Tuple = yield* TupleT;
     const Automerge = yield* AutomergeT;
 
-    // 1. Get property name from Automerge
     const propertyName = (yield* Automerge.getText(propertyId)) || "Untitled";
 
-    // 2. Create tuple type node as shadow child of SCHEMA
     const tupleTypeId = Id.Node.make(nanoid());
     yield* Store.commit(
       events.nodeCreated({
@@ -44,7 +42,6 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
         data: { nodeId: tupleTypeId },
       }),
     );
-    // Move to shadow
     yield* Store.commit(
       events.nodeMoved({
         timestamp: Date.now(),
@@ -57,13 +54,10 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
       }),
     );
 
-    // 3. Add TUPLE_TYPE type to tuple type node
     yield* Type.addType(tupleTypeId, System.TUPLE_TYPE);
 
-    // 4. Set tuple type title to "{propertyName}_Tuple"
     yield* Automerge.setText(tupleTypeId, `${propertyName}_Tuple`);
 
-    // 5. Create position 0 node (shadow child of tuple type), title = property name
     const position0Id = Id.Node.make(nanoid());
     yield* Store.commit(
       events.nodeCreated({
@@ -84,7 +78,6 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
     );
     yield* Automerge.setText(position0Id, propertyName);
 
-    // 6. Create position 1 node (shadow child of tuple type), title = "Is {name} For"
     const position1Id = Id.Node.make(nanoid());
     yield* Store.commit(
       events.nodeCreated({
@@ -105,13 +98,10 @@ export const quickCreateTupleType = (propertyId: Id.Node) =>
     );
     yield* Automerge.setText(position1Id, `Is ${propertyName} For`);
 
-    // 7. Add roles via Tuple.addRole for both positions
     yield* Tuple.addRole(tupleTypeId, 0, propertyName, true);
     yield* Tuple.addRole(tupleTypeId, 1, `Is ${propertyName} For`, true);
 
-    // 8. Bind property to tuple type (hostPosition=1, displayPosition=0)
     yield* bindToTupleType(propertyId, tupleTypeId, 1, 0);
 
-    // Ghost block will appear in PropertySection, user types to create first linked block
     return tupleTypeId;
   });
