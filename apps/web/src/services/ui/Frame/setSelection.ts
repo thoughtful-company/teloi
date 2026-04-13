@@ -1,6 +1,7 @@
 import { Id, Model } from "@/schema";
 import * as IdT from "@/schema/id/id";
 import { NodeT } from "@/services/domain/Node";
+import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
 import { Effect, Option } from "effect";
 import { StoreT } from "../../external/Store";
@@ -22,26 +23,37 @@ const getNodeIdForExpansion = (ctx: Id.KhoraContext): Id.Node | null => {
   }
 };
 
+const getSectionDisplayNodeId = (
+  ctx: Extract<Id.KhoraContext, { type: "section" }>,
+) =>
+  Effect.gen(function* () {
+    const Tuple = yield* TupleT;
+
+    return yield* Tuple.getDisplayNode(ctx.tupleId, ctx.hostNodeId).pipe(
+      Effect.catchTag("TupleNotFoundError", () => Effect.succeed(ctx.hostNodeId)),
+    );
+  });
+
 /**
  * Get the node whose Automerge text a khora's offsets should be clamped against.
- * Frame khoras point at their node; section blocks clamp against the host page's
- * text (legacy behavior); property titles clamp against the property node itself.
+ * Frame khoras point at their node; section blocks clamp against the linked
+ * display node; property titles clamp against the property node itself.
  */
-const getTextNodeId = (ctx: Id.KhoraContext): Id.Node => {
+const getTextNodeId = (ctx: Id.KhoraContext) => {
   switch (ctx.type) {
     case "frame":
-      return ctx.nodeId;
+      return Effect.succeed(ctx.nodeId);
     case "section":
-      return ctx.hostNodeId;
+      return getSectionDisplayNodeId(ctx);
     case "propertyTitle":
-      return ctx.propertyId;
+      return Effect.succeed(ctx.propertyId);
   }
 };
 
 export const setSelection = (
   frameId: Id.Frame,
   selection: Option.Option<Model.ActiveKhoraSelection>,
-): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT | AutomergeT> =>
+): Effect.Effect<void, FrameNotFoundError, StoreT | NodeT | TupleT | AutomergeT> =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
@@ -72,7 +84,7 @@ export const setSelection = (
       // Clamp offsets to text length — click position resolution can overshoot
       // when non-content DOM nodes (e.g. type badges) are inside the container
       const Automerge = yield* AutomergeT;
-      const blockNodeId = getTextNodeId(blockContext);
+      const blockNodeId = yield* getTextNodeId(blockContext);
       const blockText = yield* Automerge.getText(blockNodeId);
       const clampedAnchor = Math.min(
         selection.value.selection.anchor,
@@ -142,18 +154,20 @@ export const setSelection = (
     }
 
     const logAnnotations = yield* Option.match(clampedSelection, {
-      onNone: () =>
-        Effect.succeed({ selection: null } as Record<string, unknown>),
+      onNone: () => {
+        const annotations: Record<string, unknown> = { selection: null };
+        return Effect.succeed(annotations);
+      },
       onSome: (s) =>
         Effect.gen(function* () {
           const blockContext = yield* IdT.parseKhoraContext(s.khoraId).pipe(
             Effect.orDie,
           );
           const Automerge = yield* AutomergeT;
-          const nodeId = getTextNodeId(blockContext);
+          const nodeId = yield* getTextNodeId(blockContext);
           const text = yield* Automerge.getText(nodeId);
 
-          return {
+          const annotations: Record<string, unknown> = {
             "selection.khoraId": s.khoraId,
             "selection.anchor": s.selection.anchor,
             "selection.head": s.selection.head,
@@ -161,7 +175,9 @@ export const setSelection = (
             "selection.assoc": s.selection.assoc,
             "selection.goalX": s.goalX,
             "selection.goalLine": s.goalLine,
-          } as Record<string, unknown>;
+          };
+
+          return annotations;
         }),
     });
 

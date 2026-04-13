@@ -320,9 +320,14 @@ export const FrameLive = Layer.effect(
       ): Effect.Effect<void> =>
         Effect.gen(function* () {
           const blockCtx = Id.parseKhoraContextSync(khoraId);
-          // Section variants (linked blocks) don't participate in khora editing;
-          // only frame khoras and property titles can be focused as text editors.
-          if (blockCtx.type !== "frame" && blockCtx.type !== "propertyTitle") {
+          // Linked property blocks are real editable khoras, even though they
+          // don't live in the outline tree. setSelection already handles their
+          // clamping/selection storage, so focus should not reject them here.
+          if (
+            blockCtx.type !== "frame" &&
+            blockCtx.type !== "propertyTitle" &&
+            blockCtx.type !== "section"
+          ) {
             return;
           }
 

@@ -25,7 +25,8 @@ export const getLinkedTuples = (propertyId: Id.Node, pageId: Id.Node) =>
 
     const configOpt = yield* getPropertyConfig(propertyId, Tuple);
     if (Option.isNone(configOpt)) {
-      return [] as readonly LinkedTuple[];
+      const empty: readonly LinkedTuple[] = [];
+      return empty;
     }
 
     const { tupleTypeId, hostPosition, displayPosition } = configOpt.value;
@@ -36,8 +37,17 @@ export const getLinkedTuples = (propertyId: Id.Node, pageId: Id.Node) =>
       pageId,
     );
 
-    return tupleInstances.map((tuple) => ({
-      tupleId: tuple.id,
-      displayNodeId: tuple.members[displayPosition] as Id.Node,
-    }));
+    return tupleInstances.map((tuple) => {
+      const displayNodeId = tuple.members[displayPosition];
+      if (!displayNodeId) {
+        throw new Error(
+          `Tuple ${tuple.id} is missing display member at position ${displayPosition}`,
+        );
+      }
+
+      return {
+        tupleId: tuple.id,
+        displayNodeId,
+      };
+    });
   });

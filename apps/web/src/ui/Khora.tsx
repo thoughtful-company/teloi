@@ -27,7 +27,7 @@ export default function Khora({ khoraId }: KhoraProps) {
   const runtime = useBrowserRuntime();
 
   const blockContext = Id.parseKhoraContextSync(khoraId);
-  const nodeId = ((): Id.Node => {
+  const fallbackNodeId = ((): Id.Node => {
     switch (blockContext.type) {
       case "frame":
         return blockContext.nodeId;
@@ -72,6 +72,9 @@ export default function Khora({ khoraId }: KhoraProps) {
     } satisfies KhoraView,
   });
 
+  const nodeId = (): Id.Node =>
+    store.nodeData.id ? Id.Node.make(store.nodeData.id) : fallbackNodeId;
+
   const getActiveDefinitions = () =>
     store.activeTypes
       .map(BlockType.get)
@@ -101,7 +104,7 @@ export default function Khora({ khoraId }: KhoraProps) {
 
     const onChange = () => {
       if (materialized) return;
-      runtime.runPromise(Automerge.getText(nodeId)).then((text) => {
+      runtime.runPromise(Automerge.getText(nodeId())).then((text) => {
         if (text.length > 0 && !materialized) {
           if (timeout) clearTimeout(timeout);
           timeout = setTimeout(() => {
@@ -111,7 +114,7 @@ export default function Khora({ khoraId }: KhoraProps) {
                 Effect.gen(function* () {
                   const Khora = yield* KhoraT;
                   yield* Khora.materialize({
-                    ghostNodeId: nodeId,
+                    ghostNodeId: nodeId(),
                     parentNodeId: ghostParentId,
                     frameId,
                   });
@@ -207,7 +210,7 @@ export default function Khora({ khoraId }: KhoraProps) {
     runtime.runSync(
       focusKhora({
         frameId,
-        nodeId,
+        nodeId: nodeId(),
         khoraId,
         anchor: initialSelection.anchor,
         head: initialSelection.head,
@@ -257,7 +260,7 @@ export default function Khora({ khoraId }: KhoraProps) {
           <Show when={getPrimaryDecoration()}>
             {(renderDecoration) => (
               <span class="w-4 shrink-0 pt-[calc((var(--text-block)*var(--text-block--line-height)-var(--text-block))/2+var(--text-block)*0.025)] mr-1 select-none origin-center overflow-hidden">
-                {renderDecoration()({ nodeId })}
+                {renderDecoration()({ nodeId: nodeId() })}
               </span>
             )}
           </Show>
@@ -277,7 +280,7 @@ export default function Khora({ khoraId }: KhoraProps) {
                   <span class="inline-flex gap-[var(--type-badge-spacing)] ml-[var(--inline-type-gap)]">
                     <For each={store.userTypes}>
                       {(typeId) => (
-                        <TypeBadge typeId={typeId} nodeId={nodeId} />
+                        <TypeBadge typeId={typeId} nodeId={nodeId()} />
                       )}
                     </For>
                   </span>
@@ -287,7 +290,7 @@ export default function Khora({ khoraId }: KhoraProps) {
           >
             <Editor
               handle={Automerge.handle}
-              path={Automerge.getTextPath(nodeId)}
+              path={Automerge.getTextPath(nodeId())}
               khoraId={khoraId}
               inlineTypes={isPropertyTitle ? [] : store.userTypes}
               nodeId={nodeId}
@@ -321,7 +324,7 @@ export default function Khora({ khoraId }: KhoraProps) {
           <ViewRenderer
             viewType={store.activeViewType}
             frameId={frameId}
-            nodeId={nodeId}
+            nodeId={nodeId()}
             inline
           />
         </div>

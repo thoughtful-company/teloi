@@ -35,7 +35,6 @@ This document outlines the implementation phases for the Properties feature. See
 - Created `apps/web/src/ui/PropertySection.tsx`
 - PropertySection renders property name (editable via Editor) on left
 - Linked blocks display on right as full Block components
-- Ghost block shown when property bound but no linked blocks
 - Integrated into Frame via PropertyList component
 - Tests: `apps/web/src/__tests__/PropertySection.browser.spec.tsx` (8 tests)
 
@@ -46,13 +45,18 @@ This document outlines the implementation phases for the Properties feature. See
 - Tests: Part of PropertySection tests
 
 ### Phase 5a: Quick-Create Flow ✅
-- ArrowRight at end of unbound property name triggers quick-create
+Implemented:
+- ArrowRight from `propertyTitle` context
 - Creates tuple type `{propertyName}_Tuple` as shadow child of SCHEMA
 - Creates position nodes with proper titles
 - Binds property with `hostPosition: 1`, `displayPosition: 0`
-- Creates initial linked block with title "untitled"
-- Focus moves to new linked block
-- Tests: `apps/web/src/__tests__/PropertyQuickCreate.browser.spec.tsx` (8 tests)
+- Creates the first linked block as a real node + tuple instance
+- Focus moves to the new linked block
+- Tests: `apps/web/src/commands/editor/__tests__/right.propertyTitle.browser.spec.tsx` (5 tests)
+
+Decision:
+- We explicitly skipped the ghost path for quick-create.
+- Bound-empty and unbound property-title `ArrowRight` both create real linked blocks directly.
 
 ### Phase 6a: Linked Blocks Display ✅
 - Linked blocks render as full Block components (not buttons)
@@ -61,7 +65,7 @@ This document outlines the implementation phases for the Properties feature. See
 - ArrowUp/Down navigates between linked blocks
 - ArrowLeft returns to property name
 - Backspace at start navigates back (no merge)
-- Ghost block clickable to create first linked block
+- Bound-empty property-title `ArrowRight` now creates a real linked block directly and focuses it.
 - Tests: `apps/web/src/__tests__/PropertySectionLinkedBlocks.browser.spec.tsx` (18 tests)
 
 ### Phase 6b: Tuple-Based Block ID Scheme ✅
@@ -153,7 +157,7 @@ Phase 3 (UI) ✅ ──────────┘
     ↓
 Phase 4 (Creation) ✅
     ↓
-Phase 5a (Quick-Create) ✅
+Phase 5a (Quick-Create) partial
     ↓
 Phase 6a (Linked Blocks) ✅
     ↓

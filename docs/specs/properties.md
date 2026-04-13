@@ -204,6 +204,8 @@ Pressing `→` at the end of the property name text:
 5. Initial linked block is created
 6. Focus moves to the new linked block
 
+**Current status:** Implemented. Quick-create now creates the tuple type, binds the property, creates the first linked block as a real node, and moves focus to that linked block.
+
 ## Adding Linked Blocks
 
 When a property is bound and the user adds a block to the right side:
@@ -315,6 +317,14 @@ Links a view to a property.
 |----------|------|
 | 0 | View node |
 | 1 | Property node |
+
+## Known Implementation Gap: Property Ghosts
+
+Property ghosts remain a hard identity problem for the same reason as before: the final khora identity includes the tuple instance (`…/tuple:{tupleId}`), which does not exist until the tuple is created.
+
+For the current quick-create flow, we explicitly sidestep that complexity by creating a real linked block node + tuple immediately when the user presses `→` at the end of the property title. So ghost identity is **not** blocking quick-create anymore.
+
+A future click-to-type ghost experience on the right-hand side would still need a temporary khora identity plus focus-transfer machinery, but that is out of scope for the current implementation.
 
 ## Related Documentation
 

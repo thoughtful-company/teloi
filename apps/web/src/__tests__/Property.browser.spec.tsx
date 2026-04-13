@@ -391,7 +391,10 @@ describe("PropertyT", () => {
         const propertyId = yield* Property.createProperty(viewId);
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
-        const newNodeId = yield* Property.addLinkedBlock(propertyId, pageId);
+        const { nodeId: newNodeId } = yield* Property.addLinkedBlock(
+          propertyId,
+          pageId,
+        );
 
         // Verify node exists
         const node = yield* Store.query(
@@ -413,7 +416,10 @@ describe("PropertyT", () => {
         // hostPosition 0, displayPosition 1 means: (page, newNode)
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
-        const newNodeId = yield* Property.addLinkedBlock(propertyId, pageId);
+        const { nodeId: newNodeId } = yield* Property.addLinkedBlock(
+          propertyId,
+          pageId,
+        );
 
         // Verify tuple was created with the correct structure
         const tuples = yield* Tuple.findByPosition(tupleTypeId, 0, pageId);
@@ -435,7 +441,10 @@ describe("PropertyT", () => {
         // hostPosition 1, displayPosition 0 means: (newNode, page)
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 1, 0);
 
-        const newNodeId = yield* Property.addLinkedBlock(propertyId, pageId);
+        const { nodeId: newNodeId } = yield* Property.addLinkedBlock(
+          propertyId,
+          pageId,
+        );
 
         // Verify tuple was created with the correct structure
         const tuples = yield* Tuple.findByPosition(tupleTypeId, 1, pageId);
@@ -455,7 +464,10 @@ describe("PropertyT", () => {
         const propertyId = yield* Property.createProperty(viewId);
         yield* Property.bindToTupleType(propertyId, tupleTypeId, 0, 1);
 
-        const newNodeId = yield* Property.addLinkedBlock(propertyId, pageId);
+        const { nodeId: newNodeId } = yield* Property.addLinkedBlock(
+          propertyId,
+          pageId,
+        );
 
         // Verify it appears in getLinkedBlocks
         const linkedBlocks = yield* Property.getLinkedBlocks(

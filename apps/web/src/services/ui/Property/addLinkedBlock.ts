@@ -22,7 +22,7 @@ export interface AddLinkedBlockOptions {
  * - Creates a tuple instance with the bound tuple type,
  *   placing pageId at hostPosition and newNodeId at displayPosition
  *
- * @returns The ID of the newly created node
+ * @returns The node ID and tuple instance ID of the newly created linked block
  */
 export const addLinkedBlock = (
   propertyId: Id.Node,
@@ -72,5 +72,5 @@ export const addLinkedBlock = (
       }),
     );
 
-    return newNodeId;
+    return { nodeId: newNodeId, tupleId };
   });

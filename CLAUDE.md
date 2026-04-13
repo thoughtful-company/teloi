@@ -177,9 +177,9 @@ Key services:
 **Ghost Block Pattern**:
 Automerge text is independent of LiveStore—we can bind an Editor to a pre-generated nodeId's Automerge text before creating the LiveStore node. On first structural mutation, we "materialize" the ghost by creating the LiveStore node with the same ID. The typed content is preserved because the real Block binds to the same Automerge text.
 
-Two use cases share this pattern:
+Two use cases previously shared this pattern:
 
-1. **PropertySection ghosts** (`ui/PropertySection.tsx`): Empty property editor that materializes on first keystroke (debounced 50ms). See `services/ui/Property/addLinkedBlock.ts`.
+1. **PropertySection ghosts** (`ui/PropertySection.tsx`) used to be a planned ghost-based path, but property quick-create now skips ghosts and creates a real linked block immediately from `ArrowRight` on the property title.
 
 2. **Expand/collapse ghosts** (`services/ui/Khora/expand.ts`): When expanding a childless block, a ghost child appears for typing. Created via `expandOneLevel`, materialized via `Khora.materialize`.
 

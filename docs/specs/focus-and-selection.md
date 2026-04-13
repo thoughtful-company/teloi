@@ -57,6 +57,8 @@ The URI is compositional — it traces the path through the containment hierarch
 | Property title | `frame:{fid}/khora:{hostId}/property:{propId}` |
 | Property value | `frame:{fid}/khora:{hostId}/property:{propId}/khora:{valueId}` |
 
+> **Caveat:** Node-only property value identity (`khora:{valueId}`) is insufficient in the general case. Tuples can have more than two members, and the same displayed node may appear in multiple tuple instances. Real property values need relationship (tuple) identity, not just display node identity. The current implementation uses `…/tuple:{tupleId}`. Ghost property values — which exist before the tuple — likely need a separate temporary identity form.
+
 Note: `property:{propId}` and `column:{propId}` are structurally similar — both address a property relationship from a host node — but they remain separate concepts with distinct UI semantics.
 
 ### Selection rules
