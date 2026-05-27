@@ -5,7 +5,11 @@ import { TupleLive, TupleT } from "@/services/domain/Tuple";
 import { TypeLive, TypeT } from "@/services/domain/Type";
 import { AutomergeT, makeAutomergeLive } from "@/services/external/Automerge";
 import { getStoreLayer, StoreT } from "@/services/external/Store";
-import { KhoraLive, KhoraT } from "@/services/ui/Khora";
+import {
+  KhoraLive,
+  KhoraT,
+  resolveEffectiveActiveViewId,
+} from "@/services/ui/Khora";
 import { FrameLive } from "@/services/ui/Frame";
 import { PickerLive } from "@/services/ui/Picker";
 import { TypePickerLive } from "@/services/ui/TypePicker";
@@ -84,6 +88,41 @@ const createViewNode = (
   });
 
 // ============================================================================
+
+describe("resolveEffectiveActiveViewId", () => {
+  it("returns the explicit active view when it exists", () => {
+    const tableViewId = Id.Node.make("table-view");
+    const chatViewId = Id.Node.make("chat-view");
+
+    expect(
+      resolveEffectiveActiveViewId(chatViewId, [
+        { id: tableViewId, name: "Table", type: "table" },
+        { id: chatViewId, name: "Chat", type: "chat" },
+      ]),
+    ).toBe(chatViewId);
+  });
+
+  it("falls back to the first typed view when the explicit view is missing", () => {
+    const missingViewId = Id.Node.make("missing-view");
+    const tableViewId = Id.Node.make("table-view");
+
+    expect(
+      resolveEffectiveActiveViewId(missingViewId, [
+        { id: tableViewId, name: "Table", type: "table" },
+      ]),
+    ).toBe(tableViewId);
+  });
+
+  it("falls back to the first available page view when no typed view exists", () => {
+    const pageViewId = Id.Node.make("page-view");
+
+    expect(
+      resolveEffectiveActiveViewId(null, [
+        { id: pageViewId, name: "Page", type: "page" },
+      ]),
+    ).toBe(pageViewId);
+  });
+});
 
 describe("Khora subscribe - view system", () => {
   let runtime: Awaited<ReturnType<typeof makeTestRuntime>>["runtime"];

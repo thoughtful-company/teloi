@@ -4,7 +4,6 @@ import { LiveStoreError, StoreT } from "../../external/Store";
 import { Id, Model } from "@/schema";
 import { NodeNotFoundError } from "@/services/domain/errors";
 import { TupleT } from "@/services/domain/Tuple";
-import { TypeT } from "@/services/domain/Type";
 import { AutomergeT } from "@/services/external/Automerge";
 import { withContext } from "@/utils";
 import { NodeT } from "../../domain/Node";
@@ -116,10 +115,6 @@ export class FrameT extends Context.Tag("FrameT")<
       frameId: Id.Frame,
       query: string,
     ) => Effect.Effect<void, FrameNotFoundError>;
-    setActiveView: (
-      frameId: Id.Frame,
-      viewId: Id.Node | null,
-    ) => Effect.Effect<void, FrameNotFoundError>;
   }
 >() {}
 
@@ -129,14 +124,12 @@ export const FrameLive = Layer.effect(
     const Store = yield* StoreT;
     const Node = yield* NodeT;
     const Tuple = yield* TupleT;
-    const Type = yield* TypeT;
     const Automerge = yield* AutomergeT;
     const World = yield* WorldT;
 
     const context = Context.make(StoreT, Store).pipe(
       Context.add(NodeT, Node),
       Context.add(TupleT, Tuple),
-      Context.add(TypeT, Type),
       Context.add(AutomergeT, Automerge),
       Context.add(WorldT, World),
     );
@@ -406,19 +399,6 @@ export const FrameLive = Layer.effect(
               frameId,
             ).pipe(Effect.asVoid, Effect.orDie);
           }),
-          Effect.provideService(StoreT, Store),
-        ),
-      setActiveView: (frameId: Id.Frame, viewId: Id.Node | null) =>
-        get(frameId).pipe(
-          Effect.flatMap((frame) =>
-            Store.setDocument(
-              "frame",
-              { ...frame, activeViewId: viewId },
-              frameId,
-            ),
-          ),
-          Effect.asVoid,
-          Effect.orDie,
           Effect.provideService(StoreT, Store),
         ),
     };

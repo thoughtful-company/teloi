@@ -1,11 +1,24 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id, Model } from "@/schema";
-import { KhoraT, type ViewInfo } from "@/services/ui/Khora";
+import {
+  KhoraT,
+  resolveEffectiveActiveViewId,
+  type ViewInfo,
+  type ViewType,
+} from "@/services/ui/Khora";
 import { FrameT } from "@/services/ui/Frame";
 import { PropertyT, type PropertyInfo } from "@/services/ui/Property";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Fiber, Stream } from "effect";
-import { createSignal, Index, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  Index,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import PropertySection from "./PropertySection";
 import Title from "./Title";
 import TypeList from "./TypeList";
@@ -13,44 +26,48 @@ import { BlockTypePicker } from "./TypePicker";
 import ViewRenderer from "./ViewRenderer";
 import ViewTabs from "./ViewTabs";
 
-/** Helper component to render properties for a page's view */
-function PropertyList(props: { pageId: Id.Node; frameId: Id.Frame }) {
+/** Helper component to render properties for the active view of a page. */
+function PropertyList(props: {
+  pageId: Id.Node;
+  frameId: Id.Frame;
+  activeViewId: Id.Node | null;
+}) {
   const runtime = useBrowserRuntime();
   const [properties, setProperties] = createSignal<PropertyInfo[]>([]);
 
-  onMount(() => {
-    // Subscribe to views for the page, then subscribe to properties when a view exists
-    const fiber = runtime.runFork(
+  let fiber: Fiber.RuntimeFiber<void, unknown> | null = null;
+
+  createEffect(() => {
+    const activeViewId = props.activeViewId;
+
+    if (fiber) {
+      runtime.runFork(Fiber.interrupt(fiber));
+      fiber = null;
+    }
+
+    if (!activeViewId) {
+      setProperties([]);
+      return;
+    }
+
+    fiber = runtime.runFork(
       Effect.gen(function* () {
-        const Khora = yield* KhoraT;
         const Property = yield* PropertyT;
+        const propertiesStream = yield* Property.subscribePropertiesForView(
+          activeViewId,
+        );
 
-        // Subscribe to views for the node
-        const viewsStream = yield* Khora.subscribeViewsForNode(props.pageId);
-
-        // When views change, subscribe to properties of the first view
-        yield* Stream.runForEach(
-          Stream.flatMap(
-            viewsStream,
-            (viewIds): Stream.Stream<readonly PropertyInfo[]> => {
-              if (viewIds.length === 0) {
-                // No views yet - emit empty properties
-                return Stream.succeed<readonly PropertyInfo[]>([]);
-              }
-              // Subscribe to properties of first view
-              const viewId = viewIds[0]!;
-              return Stream.unwrap(Property.subscribePropertiesForView(viewId));
-            },
-            { switch: true }, // Cancel previous subscription when views change
-          ),
-          (props_) => Effect.sync(() => setProperties([...props_])),
+        yield* Stream.runForEach(propertiesStream, (props_) =>
+          Effect.sync(() => setProperties([...props_])),
         );
       }),
     );
+  });
 
-    onCleanup(() => {
+  onCleanup(() => {
+    if (fiber) {
       runtime.runFork(Fiber.interrupt(fiber));
-    });
+    }
   });
 
   return (
@@ -74,11 +91,38 @@ interface FrameViewProps {
   frameId: Id.Frame;
 }
 
+type FrameShellState = {
+  nodeId: Id.Node | null;
+  isKhoraSelectionMode: boolean;
+  popup: Model.FramePopup | null;
+};
+
+type RootKhoraViewState = {
+  nodeId: Id.Node | null;
+  activeViewId: Id.Node | null;
+  activeViewType: ViewType;
+  availableViews: readonly ViewInfo[];
+};
+
+const INITIAL_FRAME_SHELL_STATE: FrameShellState = {
+  nodeId: null,
+  isKhoraSelectionMode: false,
+  popup: null,
+};
+
+const INITIAL_ROOT_KHORA_VIEW_STATE: RootKhoraViewState = {
+  nodeId: null,
+  activeViewId: null,
+  activeViewType: "page",
+  availableViews: [],
+};
+
 /**
  * Render the editor UI for a single frame.
  *
- * Subscribes to the frame identified by `frameId`, binds its updates to local state, and renders
- * the frame header (Title) and the active view when a root node is present.
+ * Subscribes to the frame shell for node/focus state and to the root khora for
+ * view state, then renders the frame header and active view when a root node is
+ * present.
  */
 export default function FrameView({ frameId }: FrameViewProps) {
   const runtime = useBrowserRuntime();
@@ -90,33 +134,83 @@ export default function FrameView({ frameId }: FrameViewProps) {
     }),
   );
 
+  const rootKhoraViewStream = Stream.unwrap(
+    Effect.gen(function* () {
+      const Khora = yield* KhoraT;
+
+      return Stream.flatMap(
+        frameStream.pipe(
+          Stream.map((frame) => Id.Node.make(frame.nodeData.id)),
+          Stream.changesWith((a, b) => a === b),
+        ),
+        (nodeId) => {
+          // Emit an inert snapshot immediately so the frame shell can render
+          // before the khora subscription produces its first value.
+          return Stream.concat(
+            Stream.make({ ...INITIAL_ROOT_KHORA_VIEW_STATE, nodeId }),
+            Stream.unwrap(
+              Khora.subscribe(Id.makeFrameKhoraId(frameId, nodeId)).pipe(
+                Effect.map((stream) =>
+                  stream.pipe(
+                    Stream.map((view) => ({
+                      nodeId,
+                      activeViewId: view.activeViewId,
+                      activeViewType: view.activeViewType,
+                      availableViews: view.availableViews,
+                    })),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        { switch: true },
+      );
+    }),
+  );
+
   const { store, start } = bindStreamToStore({
     stream: frameStream,
-    project: (v) => ({
-      nodeId: Id.Node.make(v.nodeData.id) as Id.Node | null,
-      activeViewId: v.activeViewId,
-      activeViewType: v.activeViewType,
-      availableViews: v.availableViews as ViewInfo[],
+    project: (v): FrameShellState => ({
+      nodeId: Id.Node.make(v.nodeData.id),
       isKhoraSelectionMode: v.isKhoraSelectionMode,
       popup: v.popup,
     }),
-    initial: {
-      nodeId: null as Id.Node | null,
-      activeViewId: null as Id.Node | null,
-      activeViewType: "page" as const,
-      availableViews: [] as ViewInfo[],
-      isKhoraSelectionMode: false,
-      popup: null as Model.FramePopup | null,
-    },
+    initial: INITIAL_FRAME_SHELL_STATE,
+  });
+
+  const { store: rootKhoraStore, start: startRootKhora } = bindStreamToStore({
+    stream: rootKhoraViewStream,
+    project: (v): RootKhoraViewState => ({
+      nodeId: v.nodeId,
+      activeViewId: v.activeViewId,
+      activeViewType: v.activeViewType,
+      availableViews: v.availableViews,
+    }),
+    initial: INITIAL_ROOT_KHORA_VIEW_STATE,
+  });
+
+  const effectiveActiveViewId = createMemo(() =>
+    resolveEffectiveActiveViewId(
+      rootKhoraStore.activeViewId,
+      rootKhoraStore.availableViews,
+    ),
+  );
+
+  const typePickerPopup = createMemo(() => {
+    const popup = store.popup;
+    return popup?.type === "typePicker" ? popup : null;
   });
 
   let containerRef!: HTMLDivElement;
 
   onMount(() => {
-    const dispose = start(runtime);
+    const disposeFrame = start(runtime);
+    const disposeRootKhora = startRootKhora(runtime);
 
     onCleanup(() => {
-      dispose();
+      disposeFrame();
+      disposeRootKhora();
     });
   });
 
@@ -128,16 +222,8 @@ export default function FrameView({ frameId }: FrameViewProps) {
       tabIndex={0}
       class="h-full flex flex-col outline-none"
     >
-      <Show
-        when={store.popup?.type === "typePicker" ? store.popup : null}
-        keyed
-      >
-        {(popup) => (
-          <BlockTypePicker
-            frameId={frameId}
-            popup={popup as Model.FramePopup & { type: "typePicker" }}
-          />
-        )}
+      <Show when={typePickerPopup()} keyed>
+        {(popup) => <BlockTypePicker frameId={frameId} popup={popup} />}
       </Show>
       <Show when={store.nodeId} keyed>
         {(nodeId) => (
@@ -147,21 +233,28 @@ export default function FrameView({ frameId }: FrameViewProps) {
               <TypeList nodeId={nodeId} />
             </header>
             <ViewTabs
-              availableViews={store.availableViews}
-              activeViewId={store.activeViewId}
+              availableViews={rootKhoraStore.availableViews}
+              activeViewId={effectiveActiveViewId()}
               onTabClick={(viewId) => {
                 runtime.runPromise(
                   Effect.gen(function* () {
-                    const Frame = yield* FrameT;
-                    yield* Frame.setActiveView(frameId, viewId);
+                    const Khora = yield* KhoraT;
+                    yield* Khora.setActiveView(
+                      Id.makeFrameKhoraId(frameId, nodeId),
+                      viewId,
+                    );
                   }),
                 );
               }}
             />
-            <PropertyList pageId={nodeId} frameId={frameId} />
+            <PropertyList
+              pageId={nodeId}
+              frameId={frameId}
+              activeViewId={effectiveActiveViewId()}
+            />
             <div class="flex-1 flex flex-col pt-4">
               <ViewRenderer
-                viewType={store.activeViewType}
+                viewType={rootKhoraStore.activeViewType}
                 frameId={frameId}
                 nodeId={nodeId}
               />

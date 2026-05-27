@@ -116,8 +116,8 @@ This is a pnpm monorepo with:
 **Component Hierarchy**:
 - **App**
   - **Sidebar** (navigation, page list)
-  - **FrameView**: Renders a node. Subscribes to frame, renders title, view tabs, properties, and content.
-    Conditionally renders **page view** (default outline) or an alternate view (e.g., **TableView**) based on `activeViewId`.
+  - **FrameView**: Renders a node. Subscribes to frame shell state and the root khora's view state, then renders title, view tabs, properties, and content.
+    Conditionally renders **page view** (default outline) or an alternate view (e.g., **TableView**) based on the root khora's `activeViewId`.
     See `docs/views.md` for the view system design.
     - **Title**
       Unfocused/focused same as Block

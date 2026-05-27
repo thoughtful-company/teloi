@@ -61,6 +61,12 @@ Operations (copy, delete, move) match on the context type and dispatch to the ap
 - `Id.Khora` replaces `Id.Block` entirely. `KhoraContext` replaces `BlockContext`.
 - The current `tuple:{tupleId}` segment in Block IDs does not carry over — it was a Block ID addressing a tuple, not the tuple itself. In the khora scheme, individual property values are addressed by `khora:{valueId}` within a `property:{propId}` path.
 
+## Views
+
+A khora can have an `activeViewId` that determines how its content is presented (as an outline, table, or conversation) when the khora is expanded or serves as the frame's assigned khora. This field lives on the khora document, not on the frame — the view is a property of the vessel, not the interaction shell.
+
+See `docs/views.md` for the full data model and service API.
+
 ## Selection
 
 - Selection at different granularities is mutually exclusive — selecting a row and a cell within that row cannot coexist

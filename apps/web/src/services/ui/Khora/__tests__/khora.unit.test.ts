@@ -2,6 +2,7 @@ import { Id } from "@/schema";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
 import { expandOneLevel } from "@/services/ui/Khora/expand";
+import { withKhoraDocDefaults } from "@/services/ui/Khora/getKhoraDoc";
 import { materialize } from "@/services/ui/Khora/materialize";
 import { NodeT } from "@/services/domain/Node";
 import * as Given from "@/test-utils/bdd/given";
@@ -37,6 +38,28 @@ const GET_BLOCK_DOC = (frameId: Id.Frame, nodeId: Id.Node) =>
 
 // ============================================================================
 
+describe("withKhoraDocDefaults", () => {
+  it("preserves existing khora fields while filling missing defaults", () => {
+    const activeViewId = Id.Node.make("view-id");
+    const ghostChildId = Id.Node.make("ghost-child");
+    const ghostParentId = Id.Node.make("ghost-parent");
+
+    expect(
+      withKhoraDocDefaults({
+        isExpanded: false,
+        activeViewId,
+        ghostChildId,
+        ghostParentId,
+      }),
+    ).toEqual({
+      isExpanded: false,
+      activeViewId,
+      ghostChildId,
+      ghostParentId,
+    });
+  });
+});
+
 describe("expandOneLevel — ghost block creation", () => {
   let runtime: UnitRuntime;
   let cleanup: (() => Promise<void>) | undefined;
@@ -71,8 +94,9 @@ describe("expandOneLevel — ghost block creation", () => {
       expect(blockDocA.ghostChildId).not.toBeNull();
 
       // Ghost's block doc should have ghostParentId pointing back to A
-      const ghostNodeId = blockDocA.ghostChildId!;
-      const docGhost = yield* GET_BLOCK_DOC(frameId, ghostNodeId as Id.Node);
+      const ghostNodeId = blockDocA.ghostChildId;
+      expect(ghostNodeId).not.toBeNull();
+      const docGhost = yield* GET_BLOCK_DOC(frameId, ghostNodeId!);
       expect(Option.isSome(docGhost)).toBe(true);
       expect(Option.getOrThrow(docGhost).ghostParentId).toBe(nodeA);
     }).pipe(runtime.runPromise);
@@ -122,7 +146,7 @@ describe("expandOneLevel — ghost block creation", () => {
       const docA = yield* GET_BLOCK_DOC(frameId, nodeA);
       const blockDocA = Option.getOrThrow(docA);
       expect(blockDocA.ghostChildId).not.toBeNull();
-      const ghostNodeId = blockDocA.ghostChildId! as Id.Node;
+      const ghostNodeId = blockDocA.ghostChildId!;
 
       // Ghost's Automerge text should be initialized as empty string
       const Automerge = yield* AutomergeT;
@@ -213,7 +237,7 @@ describe("materialize — ghost to real node", () => {
       const docA = yield* GET_BLOCK_DOC(frameId, nodeA);
       expect(Option.getOrThrow(docA).ghostChildId).toBeNull();
 
-      const docGhost = yield* GET_BLOCK_DOC(frameId, ghostNodeId! as Id.Node);
+      const docGhost = yield* GET_BLOCK_DOC(frameId, ghostNodeId!);
       expect(Option.getOrThrow(docGhost).ghostParentId).toBeNull();
 
       const text = yield* Automerge.getText(ghostNodeId!);

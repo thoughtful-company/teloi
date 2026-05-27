@@ -69,6 +69,6 @@ See `docs/concepts/khora.md` for what a khora is and how khora URIs work.
 
 A frame can display its node in different views. The frame always has at least the default page view. Additional views (table, chat) are created explicitly and stored as view nodes linked to the page via `HAS_VIEW` tuples.
 
-The frame tracks which view is active. When no specific view is selected, the page view is shown. Switching views changes only the body — the header remains the same.
+The active view is tracked per-khora, not per-frame — the khora's `activeViewId` determines how its content is presented. The frame provides the interaction shell; the khora decides the view. Switching views changes only the body — the header remains the same.
 
 See `docs/views.md` for the data model and service API behind views.

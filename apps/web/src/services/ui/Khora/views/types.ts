@@ -16,15 +16,28 @@ export const resolveViewType = (typeIds: readonly Id.Node[]): ViewType => {
   return "page";
 };
 
+export const resolveEffectiveActiveViewId = (
+  activeViewId: Id.Node | null,
+  availableViews: readonly ViewInfo[],
+): Id.Node | null => {
+  const activeView = availableViews.find((view) => view.id === activeViewId);
+  if (activeView) return activeView.id;
+
+  return (
+    availableViews.find((view) => view.type === "chat" || view.type === "table")
+      ?.id ?? availableViews[0]?.id ?? null
+  );
+};
+
 /** Resolve the active view type from explicit selection or auto-detection. */
 export const resolveActiveViewType = (
   activeViewId: Id.Node | null,
   availableViews: readonly ViewInfo[],
 ): ViewType => {
-  const activeView = availableViews.find((v) => v.id === activeViewId);
-  if (activeView) return activeView.type;
-  return (
-    availableViews.find((v) => v.type === "chat" || v.type === "table")?.type ??
-    "page"
+  const effectiveActiveViewId = resolveEffectiveActiveViewId(
+    activeViewId,
+    availableViews,
   );
+  const activeView = availableViews.find((view) => view.id === effectiveActiveViewId);
+  return activeView?.type ?? "page";
 };

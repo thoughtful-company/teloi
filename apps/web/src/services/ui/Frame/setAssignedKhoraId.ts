@@ -26,7 +26,6 @@ export const setAssignedKhoraId = (
         ...currentFrame,
         assignedKhoraId: nodeId,
         rootKhoraId: nodeId,
-        activeViewId: null,
       },
       frameId,
     ).pipe(Effect.orDie);

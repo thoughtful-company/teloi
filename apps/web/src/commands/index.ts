@@ -4,7 +4,8 @@ import { addType } from "@/services/domain/Type/addType";
 import { TupleT } from "@/services/domain/Tuple";
 import { AutomergeT } from "@/services/external/Automerge";
 import { StoreT } from "@/services/external/Store";
-import { Effect, Option } from "effect";
+import { getKhoraDocById } from "@/services/ui/Khora/getKhoraDoc";
+import { Effect } from "effect";
 import { nanoid } from "nanoid";
 
 export interface CommandContext {
@@ -22,7 +23,7 @@ export interface Command {
 
 /**
  * Creates a TableView node and links it to the target node via HAS_VIEW tuple.
- * Sets the new view as the frame's activeViewId.
+ * Sets the new view as the root khora's activeViewId.
  */
 const addTableViewAction = (ctx: CommandContext) =>
   Effect.gen(function* () {
@@ -30,13 +31,8 @@ const addTableViewAction = (ctx: CommandContext) =>
     const Tuple = yield* TupleT;
     const Automerge = yield* AutomergeT;
 
-    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
-    if (Option.isNone(frameDoc)) {
-      yield* Effect.logError(
-        "[Command.addTableView] Frame document not found",
-      ).pipe(Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }));
-      return;
-    }
+    const rootKhoraId = Id.makeFrameKhoraId(ctx.frameId, ctx.nodeId);
+    const rootKhoraDoc = yield* getKhoraDocById(rootKhoraId);
 
     const viewNodeId = Id.Node.make(nanoid());
     yield* Store.commit(
@@ -51,49 +47,41 @@ const addTableViewAction = (ctx: CommandContext) =>
     yield* Tuple.create(System.HAS_VIEW, [ctx.nodeId, viewNodeId]);
 
     yield* Store.setDocument(
-      "frame",
-      {
-        ...frameDoc.value,
-        activeViewId: viewNodeId,
-      },
-      ctx.frameId,
+      "khora",
+      { ...rootKhoraDoc, activeViewId: viewNodeId },
+      rootKhoraId,
     );
 
     yield* Effect.logDebug("[Command.addTableView] Table view created").pipe(
       Effect.annotateLogs({
         frameId: ctx.frameId,
         nodeId: ctx.nodeId,
+        rootKhoraId,
         viewNodeId,
       }),
     );
   });
 
-/**
- * Resets the frame to show the default page view by clearing activeViewId.
- */
+/** Clears any explicit view selection on the root khora. */
 const addPageViewAction = (ctx: CommandContext) =>
   Effect.gen(function* () {
     const Store = yield* StoreT;
 
-    const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
-    if (Option.isNone(frameDoc)) {
-      yield* Effect.logError(
-        "[Command.addPageView] Frame document not found",
-      ).pipe(Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }));
-      return;
-    }
+    const rootKhoraId = Id.makeFrameKhoraId(ctx.frameId, ctx.nodeId);
+    const rootKhoraDoc = yield* getKhoraDocById(rootKhoraId);
 
     yield* Store.setDocument(
-      "frame",
-      {
-        ...frameDoc.value,
-        activeViewId: null,
-      },
-      ctx.frameId,
+      "khora",
+      { ...rootKhoraDoc, activeViewId: null },
+      rootKhoraId,
     );
 
     yield* Effect.logDebug("[Command.addPageView] Switched to page view").pipe(
-      Effect.annotateLogs({ frameId: ctx.frameId, nodeId: ctx.nodeId }),
+      Effect.annotateLogs({
+        frameId: ctx.frameId,
+        nodeId: ctx.nodeId,
+        rootKhoraId,
+      }),
     );
   });
 

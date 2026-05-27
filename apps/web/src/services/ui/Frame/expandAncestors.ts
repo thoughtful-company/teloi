@@ -1,5 +1,6 @@
 import { Id } from "@/schema";
 import { NodeT } from "@/services/domain/Node";
+import { getKhoraDocById } from "@/services/ui/Khora/getKhoraDoc";
 import { Effect } from "effect";
 import { StoreT } from "../../external/Store";
 
@@ -22,11 +23,9 @@ export const expandAncestors = (
     const Store = yield* StoreT;
     const Node = yield* NodeT;
 
-    // Collect ancestors from targetNodeId up to (but not including) rootNodeId
     const ancestorsToExpand: Id.Node[] = [];
     let currentId: Id.Node | null = targetNodeId;
 
-    // Start by getting parent of target (we don't expand target itself)
     currentId = yield* Node.getParent(currentId).pipe(
       Effect.catchTag("NodeHasNoParentError", () =>
         Effect.succeed<Id.Node | null>(null),
@@ -44,19 +43,8 @@ export const expandAncestors = (
 
     yield* Effect.forEach(
       ancestorsToExpand,
-      (nodeId) => {
-        const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
-        return Store.setDocument(
-          "khora",
-          {
-            isExpanded: true,
-            activeViewId: null,
-            ghostChildId: null,
-            ghostParentId: null,
-          },
-          khoraId,
-        ).pipe(Effect.orDie);
-      },
+      (nodeId) =>
+        setExpandedKhoraDoc(Store, Id.makeFrameKhoraId(frameId, nodeId)),
       { concurrency: 1 },
     );
 
@@ -86,7 +74,6 @@ export const expandAncestorsForNodes = (
     const Store = yield* StoreT;
     const Node = yield* NodeT;
 
-    // Use Set to deduplicate
     const ancestorsToExpand = new Set<Id.Node>();
 
     for (const targetNodeId of targetNodeIds) {
@@ -110,19 +97,8 @@ export const expandAncestorsForNodes = (
 
     yield* Effect.forEach(
       [...ancestorsToExpand],
-      (nodeId) => {
-        const khoraId = Id.makeFrameKhoraId(frameId, nodeId);
-        return Store.setDocument(
-          "khora",
-          {
-            isExpanded: true,
-            activeViewId: null,
-            ghostChildId: null,
-            ghostParentId: null,
-          },
-          khoraId,
-        ).pipe(Effect.orDie);
-      },
+      (nodeId) =>
+        setExpandedKhoraDoc(Store, Id.makeFrameKhoraId(frameId, nodeId)),
       { concurrency: 1 },
     );
 
@@ -138,4 +114,17 @@ export const expandAncestorsForNodes = (
         }),
       );
     }
+  });
+
+// ================================ Internal ==================================
+
+const setExpandedKhoraDoc = (Store: StoreT["Type"], khoraId: Id.Khora) =>
+  Effect.gen(function* () {
+    const khoraDoc = yield* getKhoraDocById(khoraId);
+
+    yield* Store.setDocument(
+      "khora",
+      { ...khoraDoc, isExpanded: true },
+      khoraId,
+    ).pipe(Effect.orDie);
   });

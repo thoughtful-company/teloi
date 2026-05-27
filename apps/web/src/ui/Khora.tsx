@@ -3,14 +3,24 @@ import { useBrowserRuntime } from "@/context/useBrowserRuntime";
 import { Id } from "@/schema";
 import { posAtCoordsInElement } from "@/services/browser/TextBlock";
 import { AutomergeT } from "@/services/external/Automerge";
-import { KhoraT, type KhoraView } from "@/services/ui/Khora";
+import {
+  KhoraT,
+  resolveEffectiveActiveViewId,
+  type KhoraView,
+} from "@/services/ui/Khora";
 import * as BlockType from "@/services/ui/BlockType";
 import { CommandBusT } from "@/services/ui/CommandBus";
 import { propertyTrigger } from "@/services/ui/Property/trigger";
-import type { ViewInfo } from "@/services/ui/View";
 import { bindStreamToStore } from "@/utils/bindStreamToStore";
 import { Effect, Stream } from "effect";
-import { createEffect, For, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { Transition } from "solid-transition-group";
 import Editor from "./Editor";
 import { focusKhora } from "./focusKhora";
@@ -54,14 +64,14 @@ export default function Khora({ khoraId }: KhoraProps) {
     stream: blockStream,
     project: (v) => v,
     initial: {
-      nodeData: { id: "" as Id.Node, createdAt: 0, modifiedAt: 0 },
+      nodeData: { id: fallbackNodeId, createdAt: 0, modifiedAt: 0 },
       isActive: false,
       isSelected: false,
       isExpanded: false,
       selection: null,
       activeViewId: null,
-      activeViewType: "page" as const,
-      availableViews: [] as ViewInfo[],
+      activeViewType: "page",
+      availableViews: [],
       activeTypes: [],
       userTypes: [],
       textContent: "",
@@ -74,6 +84,10 @@ export default function Khora({ khoraId }: KhoraProps) {
 
   const nodeId = (): Id.Node =>
     store.nodeData.id ? Id.Node.make(store.nodeData.id) : fallbackNodeId;
+
+  const effectiveActiveViewId = createMemo(() =>
+    resolveEffectiveActiveViewId(store.activeViewId, store.availableViews),
+  );
 
   const getActiveDefinitions = () =>
     store.activeTypes
@@ -293,7 +307,7 @@ export default function Khora({ khoraId }: KhoraProps) {
               path={Automerge.getTextPath(nodeId())}
               khoraId={khoraId}
               inlineTypes={isPropertyTitle ? [] : store.userTypes}
-              nodeId={nodeId}
+              nodeId={nodeId()}
               textTriggers={[propertyTrigger]}
               {...(store.selection
                 ? { initialSelection: store.selection }
@@ -311,7 +325,7 @@ export default function Khora({ khoraId }: KhoraProps) {
         >
           <ViewTabs
             availableViews={store.availableViews}
-            activeViewId={store.activeViewId}
+            activeViewId={effectiveActiveViewId()}
             onTabClick={(viewId) => {
               runtime.runPromise(
                 Effect.gen(function* () {

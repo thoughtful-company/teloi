@@ -143,5 +143,9 @@ vite.config.ts.timestamp-*
 
 # Test screenshots
 __screenshots__/
+
+# Local editor state
+docs/.obsidian/
+
 WIP.md
 handoff.md

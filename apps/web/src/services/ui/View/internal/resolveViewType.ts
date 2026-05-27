@@ -7,7 +7,7 @@ import { Effect, Option } from "effect";
 export type { ViewType };
 
 /**
- * Resolve the view type for a block based on its frame's activeViewId.
+ * Resolve the view type for a block based on that khora's activeViewId.
  * Returns "chat" if the active view has CHAT_VIEW type, otherwise "page".
  */
 export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
@@ -16,17 +16,17 @@ export const resolveViewType = Effect.fn("View.resolveViewType")(function* (
   const Store = yield* StoreT;
   const Type = yield* TypeT;
 
-  // Non-frame khoras (section, propertyTitle) don't participate in frame-
-  // level view selection. Callers in View/index.ts already gate on
+  // Non-frame khoras (section, propertyTitle) don't participate in khora-
+  // local view selection here. Callers in View/index.ts already gate on
   // ctx.type === "frame" before reaching here, so this return is defensive
   // rather than load-bearing — "page" is just the inert default.
   const ctx = Id.parseKhoraContextSync(khoraId);
   if (ctx.type !== "frame") return "page";
 
-  const frameDoc = yield* Store.getDocument("frame", ctx.frameId);
-  if (Option.isNone(frameDoc)) return "page";
+  const khoraDoc = yield* Store.getDocument("khora", khoraId);
+  if (Option.isNone(khoraDoc)) return "page";
 
-  const activeViewId = frameDoc.value.activeViewId as Id.Node | null;
+  const activeViewId = khoraDoc.value.activeViewId;
   if (!activeViewId) return "page";
 
   const isChatView = yield* Type.hasType(activeViewId, System.CHAT_VIEW);

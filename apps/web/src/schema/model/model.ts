@@ -65,8 +65,6 @@ export const Frame = Schema.mutable(
     assignedKhoraId: Schema.NullOr(Schema.String),
     rootKhoraId: Schema.optional(Schema.NullOr(Schema.String)),
     toggledNodes: Schema.mutable(Schema.Array(Schema.String)),
-    /** Active view node ID - null means default page/tree view */
-    activeViewId: Schema.NullOr(Id.Node),
     activePart: Schema.optional(Schema.Literal("khora")),
     activeKhoraId: Schema.optional(Schema.NullOr(Id.Khora)),
     khoraSelectionAnchor: Schema.optional(Schema.NullOr(Id.Khora)),

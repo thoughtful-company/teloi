@@ -23,11 +23,10 @@ import {
   findNextNodeInDocumentOrder,
   findPreviousNode,
 } from "@/services/ui/View/page/navigation";
-import { getKhoraDoc } from "./getKhoraDoc";
+import { getKhoraDoc, getKhoraDocById } from "./getKhoraDoc";
 import { isKhoraExpanded } from "./isKhoraExpanded";
 import { KhoraView, subscribe } from "./subscribe";
 import {
-  getActiveView,
   getOrCreateView,
   getViewsForNode,
   subscribeViewInfo,
@@ -44,6 +43,7 @@ export type { KhoraView } from "./subscribe";
 export type { MaterializeParams } from "./materialize";
 export {
   resolveActiveViewType,
+  resolveEffectiveActiveViewId,
   resolveViewType,
   type ViewInfo,
   type ViewType,
@@ -107,7 +107,6 @@ export class KhoraT extends Context.Tag("KhoraT")<
       khoraId: Id.Khora,
       viewId: Id.Node | null,
     ) => Effect.Effect<void, never>;
-    getActiveView: (frameId: Id.Frame) => Effect.Effect<Option.Option<Id.Node>>;
     getViewsForNode: (nodeId: Id.Node) => Effect.Effect<readonly Id.Node[]>;
     getOrCreateView: (nodeId: Id.Node) => Effect.Effect<Id.Node>;
     subscribeViewsForNode: (
@@ -144,15 +143,9 @@ export const KhoraLive = Layer.effect(
       attestExistence: withContext(attestExistence)(context),
       get: withContext(getKhoraDoc)(context),
       setExpanded: (khoraId: Id.Khora, isExpanded: boolean) =>
-        Store.getDocument("khora", khoraId).pipe(
-          Effect.flatMap((doc) => {
-            const current = Option.getOrElse(doc, () => ({
-              isExpanded: true,
-              activeViewId: null,
-              ghostChildId: null as Id.Node | null,
-              ghostParentId: null as Id.Node | null,
-            }));
-
+        getKhoraDocById(khoraId).pipe(
+          Effect.provideService(StoreT, Store),
+          Effect.flatMap((current) => {
             // When collapsing a block with a ghost, clean up the ghost.
             // Ghosts are an outline-tree feature, so a non-frame khora carrying
             // ghostChildId is an invariant violation — die loudly instead of
@@ -221,23 +214,17 @@ export const KhoraLive = Layer.effect(
 
       // View entity management
       setActiveView: (khoraId: Id.Khora, viewId: Id.Node | null) =>
-        Store.getDocument("khora", khoraId).pipe(
-          Effect.flatMap((doc) => {
-            const current = Option.getOrElse(doc, () => ({
-              isExpanded: true,
-              activeViewId: null,
-              ghostChildId: null,
-              ghostParentId: null,
-            }));
-            return Store.setDocument(
+        getKhoraDocById(khoraId).pipe(
+          Effect.provideService(StoreT, Store),
+          Effect.flatMap((current) =>
+            Store.setDocument(
               "khora",
               { ...current, activeViewId: viewId },
               khoraId,
-            );
-          }),
+            ),
+          ),
           Effect.catchAll(() => Effect.void),
         ),
-      getActiveView: withContext(getActiveView)(context),
       getViewsForNode: withContext(getViewsForNode)(context),
       getOrCreateView: withContext(getOrCreateView)(context),
       subscribeViewsForNode: withContext(subscribeViewsForNode)(context),

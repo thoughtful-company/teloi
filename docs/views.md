@@ -6,9 +6,9 @@ Views control how a node's content is displayed. A node can have multiple views 
 
 A view is a node linked to a page via `HAS_VIEW(page, viewNode)` tuple. View nodes live as shadow children of the page by default. The view node stores configuration like column order, visibility settings, and which properties to display.
 
-The frame tracks which view is active via `activeViewId`. When `activeViewId` is null, the default page/tree view is shown.
+Each khora tracks which view is active via its `activeViewId` field on the khora document. When `activeViewId` is null, the default page/tree view is shown. The view determines how a khora's content is presented — as an outline, table, or conversation — when the khora is expanded or serves as the frame's assigned khora.
 
-View tabs appear automatically when a node has 2+ views. Clicking a tab updates the frame's `activeViewId`.
+View tabs appear automatically when a node has 2+ views. Clicking a tab updates the khora's `activeViewId`.
 
 ## View Types
 
@@ -35,10 +35,12 @@ The `HAS_VIEW` tuple links pages to views:
 - Position 0: The page node
 - Position 1: The view node
 
-Frame documents store the active view:
+Khora documents store the active view:
 - `activeViewId: Id.Node | null`
 - null means default page view
 - Otherwise references a view node
+
+The frame does not participate in view selection — it provides the interaction shell, while the khora decides how its content renders.
 
 ## Creating Views
 
@@ -46,7 +48,7 @@ Views are created through commands or UI actions. For example, the "Create Table
 1. Creates a view node as a shadow child of the current page
 2. Sets its type to `system:table-view`
 3. Creates `HAS_VIEW(currentPage, viewNode)` tuple
-4. Sets frame's `activeViewId` to the new view
+4. Sets the khora's `activeViewId` to the new view
 
 ## Service API
 
@@ -54,7 +56,6 @@ View entity management lives in `KhoraT` (`services/ui/Khora/`):
 
 - `Khora.getViewsForNode(nodeId)` — returns all view node IDs linked via `HAS_VIEW`
 - `Khora.getOrCreateView(nodeId)` — finds or creates a default view for a node
-- `Khora.getActiveView(frameId)` — returns the active view ID from frame state
 - `Khora.setActiveView(khoraId, viewId)` — sets the active view on a khora document
 - `Khora.subscribeViewsForNode(nodeId)` — reactive stream of view node IDs
 - `Khora.subscribeViewInfo(nodeId)` — reactive stream of `ViewInfo[]` (includes type resolution)

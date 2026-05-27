@@ -175,11 +175,11 @@ This mirrors how `#table` could trigger table view creation.
 
 ### View Auto-Activation on Navigation
 
-When a frame navigates to a node (`activeViewId` starts as null), `FrameView` checks if the node has a view typed with `CHAT_VIEW`. If found, it auto-activates that view via `Frame.setActiveView`. This ensures navigating to a chat node shows the chat view without requiring the user to click the tab.
+When a frame navigates to a node, the root khora starts with `activeViewId: null`. `FrameView` derives the effective view from that khora's available views, so a typed chat view can become the rendered view without storing frame-local view state.
 
-Flow: `FrameView.createEffect` → query `View.getViewsForPage` → check each for `CHAT_VIEW` type → `Frame.setActiveView`.
+Flow: `FrameView` subscribes to the frame shell for the root node, then subscribes to the root khora and resolves the effective view from `khora.activeViewId` + available views.
 
-When a frame changes to a different node (`setAssignedKhoraId`), `activeViewId` is cleared to null, restarting the detection cycle.
+When a frame changes to a different node (`setAssignedKhoraId`), the new root khora starts with `activeViewId: null` unless that khora doc is updated explicitly.
 
 ### Message List Reactivity
 
@@ -195,7 +195,7 @@ Chat Node (has type #chat)
 ├── CHAT_HAS_MESSAGE tuple → Message Node 3 (has type #msg:aengel)
 └── ... ordered by position-1 fractional index
 
-Frame Document
+Root Khora Document
 └── activeViewId → Chat View Node ID
 ```
 
