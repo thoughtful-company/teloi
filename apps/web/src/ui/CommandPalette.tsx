@@ -136,7 +136,7 @@ export default function CommandPalette(props: CommandPaletteProps) {
                     data-testid="command-item"
                     class={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary ${
                       index() === selectedIndex()
-                        ? "bg-surface-hover"
+                        ? "bg-surface-active"
                         : "hover:bg-surface-hover"
                     }`}
                     onClick={() => executeCommand(cmd)}

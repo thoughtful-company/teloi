@@ -1,9 +1,8 @@
 import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id, System } from "@/schema";
+import { Id } from "@/schema";
 import { BootstrapT } from "@/services/domain/Bootstrap";
 import { StoreT } from "@/services/external/Store";
 import { KeyEventBusT } from "@/services/ui/KeyEventBus";
-import { NavigationT } from "@/services/ui/Navigation";
 import { Effect, Fiber, Option } from "effect";
 import {
   Component,
@@ -17,6 +16,7 @@ import CommandPalette from "./ui/CommandPalette";
 import FrameView from "./ui/FrameView";
 import PaneWrapper from "./ui/PaneWrapper";
 import { Sidebar } from "./ui/Sidebar";
+import TopBar from "./ui/TopBar";
 import type { CommandContext } from "./commands";
 
 const STORAGE_KEY = "teloi:sidebar:collapsed";
@@ -89,15 +89,6 @@ const App: Component = () => {
     localStorage.setItem(STORAGE_KEY, String(next));
   };
 
-  const handleHomeClick = () => {
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Navigation = yield* NavigationT;
-        yield* Navigation.navigateTo(System.WORKSPACE);
-      }),
-    );
-  };
-
   const { panes, framesByPane } = runtime.runSync(
     Effect.gen(function* () {
       // Ensure system nodes exist before anything else
@@ -138,57 +129,16 @@ const App: Component = () => {
       </Show>
 
       {/* Main area */}
-      <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {/* Header - always visible, button only when sidebar closed */}
-        <header class="flex items-center h-12 px-2 shrink-0 gap-1 text-text-primary">
-          {/* Home button - always visible */}
-          <button
-            onClick={handleHomeClick}
-            class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-hover text-text-primary"
-            aria-label="Go to home"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="w-5 h-5"
-            >
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </button>
-          <Show when={sidebarCollapsed()}>
-            <button
-              onClick={toggleSidebar}
-              class="w-10 h-6 flex items-center justify-center gap-0.5 rounded hover:bg-surface-hover text-text-primary"
-              aria-label="Show sidebar"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="w-6 h-6"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-              </svg>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="w-4 h-4"
-              >
-                <polyline points="6,9 12,15 18,9" />
-              </svg>
-            </button>
-          </Show>
-        </header>
+      <div class="flex-1 min-w-0 flex flex-col">
+        <TopBar
+          sidebarCollapsed={sidebarCollapsed()}
+          onToggleSidebar={toggleSidebar}
+          panes={panes}
+          framesByPane={framesByPane}
+        />
 
         {/* Panes */}
-        <main class="flex-1 flex gap-[var(--gap-pane)] overflow-hidden">
+        <main class="flex-1 flex gap-[var(--gap-pane)]">
           <For each={panes}>
             {(paneId) => (
               <PaneWrapper>

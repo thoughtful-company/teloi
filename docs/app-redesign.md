@@ -401,6 +401,11 @@ decided independently.
   needed when we build this for real — the prototype works
   but is not airtight across all cases (e.g. split panes, hover,
   reordering).
+- **Current one-tab bridge** — until the persisted Tab model exists,
+  render the current `Window.panes` as a single active tab. The first
+  pane's first buffer supplies the tab identity; remaining panes render
+  as attached pips. This is a compatibility mapping for the existing
+  window model, not a competing tab model.
 - **Back / Forward** — lean is **per-pane history**, not unified
   app-wide. Each pane keeps its own visit stack; the topbar's
   back/forward acts on the currently-focused pane. **Not in scope
@@ -418,6 +423,36 @@ decided independently.
   re-position them. (Whether we render custom traffic lights or
   defer to native is a separate Electron-side decision; the
   redesign doesn't ask us to relocate them.)
+
+### Open
+
+- **Tab + pane unified shadow.** The active tab and the pane below
+  it read as one elevated card; ideally their elevation comes from a
+  single soft shadow tracing the combined tab+feet+pane silhouette.
+  Today they're separate elements with separate shadows: the pane
+  carries the elevation via `--shadow-pane`, the tab carries only an
+  inset top-edge highlight, and the feet (curved nested-div arcs)
+  cast no shadow of their own. This works visually because the pane's
+  shadow alone is enough to lift the composite, and we sidestepped
+  every attempt to give the tab its own outer drop shadow — every
+  multi-element shadow technique we tried (per-element `box-shadow`,
+  `corner-shape: scoop`/`superellipse`, dedicated shadow-caster
+  spans) ran into cross-element bleeding because each element casts
+  its own shadow and they paint on top of each other.
+
+  Future approach: **shadow ghost layer.** An absolutely-positioned
+  div behind everything, sized and shaped to the combined
+  (tab + feet + pane) silhouette, carrying the elevation shadow on
+  behalf of all three. The tab and pane themselves cast no shadow;
+  the ghost casts one. Two viable shapings: (a) `filter:
+  drop-shadow(...)` on a wrapper whose children's combined alpha
+  forms the silhouette, or (b) a single shaped element
+  (`corner-shape` + `box-shadow`, or SVG path + `feDropShadow`)
+  sized to the union shape. Requires either CSS anchor positioning
+  (`position: anchor()`, Chromium-only) or JS-measured geometry to
+  size the ghost dynamically as the tab moves / the pane resizes —
+  defer until the simpler "pane-shadow only" approach proves
+  insufficient.
 
 ---
 

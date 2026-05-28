@@ -160,7 +160,7 @@ export default function TypePicker(props: TypePickerProps) {
                 type="button"
                 class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                   index() === selectedIndex()
-                    ? "bg-surface-hover"
+                    ? "bg-surface-active"
                     : "hover:bg-surface-hover"
                 }`}
                 onClick={() => props.onSelect(type.id)}
@@ -188,7 +188,7 @@ export default function TypePicker(props: TypePickerProps) {
               type="button"
               class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                 selectedIndex() === filteredTypes().length
-                  ? "bg-surface-hover"
+                  ? "bg-surface-active"
                   : "hover:bg-surface-hover"
               }`}
               onClick={() => props.onCreate(props.query)}
