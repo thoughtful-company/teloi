@@ -102,10 +102,10 @@ export default function CommandPalette(props: CommandPaletteProps) {
         <Dialog.Overlay class="fixed inset-0 bg-black/50 z-40" />
         <Dialog.Content
           data-testid="command-palette"
-          class="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-sidebar/95 backdrop-blur-md border border-sidebar-border rounded-lg shadow-daiichi overflow-hidden"
+          class="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-surface-pane/95 backdrop-blur-md border border-border-pane rounded-lg shadow-daiichi overflow-hidden"
         >
           {/* Search input */}
-          <div class="p-3 border-b border-sidebar-border">
+          <div class="p-3 border-b border-border-pane">
             <input
               ref={inputRef}
               type="text"
@@ -115,7 +115,7 @@ export default function CommandPalette(props: CommandPaletteProps) {
                 setQuery(e.currentTarget.value);
                 setSelectedIndex(0);
               }}
-              class="w-full bg-transparent text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none text-sm"
+              class="w-full bg-transparent text-text-primary placeholder:text-text-primary/50 outline-none text-sm"
             />
           </div>
 
@@ -124,7 +124,7 @@ export default function CommandPalette(props: CommandPaletteProps) {
             <Show
               when={filteredCommands().length > 0}
               fallback={
-                <div class="px-3 py-2 text-sm text-sidebar-foreground/60">
+                <div class="px-3 py-2 text-sm text-text-primary/60">
                   No commands found
                 </div>
               }
@@ -134,10 +134,10 @@ export default function CommandPalette(props: CommandPaletteProps) {
                   <button
                     type="button"
                     data-testid="command-item"
-                    class={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-sidebar-foreground ${
+                    class={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left text-text-primary ${
                       index() === selectedIndex()
-                        ? "bg-sidebar-accent"
-                        : "hover:bg-sidebar-accent"
+                        ? "bg-surface-hover"
+                        : "hover:bg-surface-hover"
                     }`}
                     onClick={() => executeCommand(cmd)}
                     onMouseEnter={() => setSelectedIndex(index())}

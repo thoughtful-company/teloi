@@ -46,7 +46,7 @@ export default function SidebarNav() {
         {(item) => (
           <button
             onClick={(e) => handleNavClick(item.nodeId, e)}
-            class="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm text-left"
+            class="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-surface-hover text-text-primary text-sm text-left"
           >
             <span class="w-5 h-5 flex items-center justify-center opacity-60">
               {item.icon === "inbox" && (

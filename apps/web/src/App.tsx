@@ -144,7 +144,7 @@ const App: Component = () => {
           {/* Home button - always visible */}
           <button
             onClick={handleHomeClick}
-            class="w-8 h-8 flex items-center justify-center rounded hover:bg-sidebar-accent text-sidebar-foreground"
+            class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-hover text-text-primary"
             aria-label="Go to home"
           >
             <svg
@@ -161,7 +161,7 @@ const App: Component = () => {
           <Show when={sidebarCollapsed()}>
             <button
               onClick={toggleSidebar}
-              class="w-10 h-6 flex items-center justify-center gap-0.5 rounded hover:bg-sidebar-accent text-sidebar-foreground"
+              class="w-10 h-6 flex items-center justify-center gap-0.5 rounded hover:bg-surface-hover text-text-primary"
               aria-label="Show sidebar"
             >
               <svg

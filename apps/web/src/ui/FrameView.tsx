@@ -228,7 +228,7 @@ export default function FrameView({ frameId }: FrameViewProps) {
       <Show when={store.nodeId} keyed>
         {(nodeId) => (
           <>
-            <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-foreground-lighter pb-3 pt-7">
+            <header class="mx-auto max-w-[var(--max-line-width)] w-full border-b-[1.5px] border-rule-subtle pb-3 pt-7">
               <Title frameId={frameId} nodeId={nodeId} />
               <TypeList nodeId={nodeId} />
             </header>

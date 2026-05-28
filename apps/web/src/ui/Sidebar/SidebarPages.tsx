@@ -83,10 +83,10 @@ function PageItem(props: PageItemProps) {
   };
 
   return (
-    <div class="group relative rounded hover:bg-sidebar-accent">
+    <div class="group relative rounded hover:bg-surface-hover">
       <button
         onClick={handleClick}
-        class="w-full text-left px-1.5 py-1 text-sidebar-foreground text-sm truncate flex items-center gap-2"
+        class="w-full text-left px-1.5 py-1 text-text-primary text-sm truncate flex items-center gap-2"
       >
         <span class="w-4 h-4 flex items-center justify-center opacity-60">
           <svg
@@ -107,7 +107,7 @@ function PageItem(props: PageItemProps) {
       </button>
       <button
         onClick={handleDelete}
-        class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-60 focus:opacity-100 hover:!opacity-100 text-sidebar-foreground"
+        class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-60 focus:opacity-100 hover:!opacity-100 text-text-primary"
         aria-label="Delete page"
       >
         <svg
@@ -159,13 +159,13 @@ export default function SidebarPages() {
 
   return (
     <div class="flex-1 overflow-y-auto px-1">
-      <h3 class="px-1.5 py-0.5 text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide">
+      <h3 class="px-1.5 py-0.5 text-xs font-medium text-text-primary/60 uppercase tracking-wide">
         Pages
       </h3>
       <For each={store.nodeIds}>{(nodeId) => <PageItem nodeId={nodeId} />}</For>
       <button
         onClick={handleNewPage}
-        class="w-full text-left px-1.5 py-1 rounded hover:bg-sidebar-accent text-sidebar-foreground text-sm flex items-center gap-2"
+        class="w-full text-left px-1.5 py-1 rounded hover:bg-surface-hover text-text-primary text-sm flex items-center gap-2"
       >
         <span class="w-4 h-4 flex items-center justify-center opacity-60">
           <svg

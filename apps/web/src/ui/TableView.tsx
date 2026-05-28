@@ -179,7 +179,7 @@ export default function TableView(props: TableViewProps) {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th class="text-left p-2 border-b border-foreground-lighter font-medium">
+                    <th class="text-left p-2 border-b border-rule-subtle font-medium">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -196,10 +196,10 @@ export default function TableView(props: TableViewProps) {
         <tbody>
           <For each={table.getRowModel().rows}>
             {(row) => (
-              <tr class="hover:bg-foreground-lighter/10">
+              <tr class="hover:bg-rule-subtle/10">
                 <For each={row.getVisibleCells()}>
                   {(cell) => (
-                    <td class="p-2 border-b border-foreground-lighter/50">
+                    <td class="p-2 border-b border-rule-subtle/50">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

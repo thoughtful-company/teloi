@@ -189,7 +189,7 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
       <div
         ref={containerRef}
         data-testid="block-type-picker"
-        class="fixed z-50 min-w-48 max-h-80 overflow-y-auto bg-sidebar/95 backdrop-blur-md border border-sidebar-border rounded-lg shadow-daiichi"
+        class="fixed z-50 min-w-48 max-h-80 overflow-y-auto bg-surface-pane/95 backdrop-blur-md border border-border-pane rounded-lg shadow-daiichi"
         style={{
           top: "50%",
           left: "50%",
@@ -201,7 +201,7 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
             ref={inputRef}
             data-testid="block-type-picker-input"
             type="text"
-            class="w-full px-2 py-1.5 text-sm bg-transparent border border-sidebar-border rounded outline-none focus:border-sidebar-accent text-sidebar-foreground placeholder:text-sidebar-foreground/40"
+            class="w-full px-2 py-1.5 text-sm bg-transparent border border-border-pane rounded outline-none focus:border-surface-hover text-text-primary placeholder:text-text-primary/40"
             placeholder="Type to filter..."
             value={query()}
             onInput={handleInput}
@@ -213,10 +213,10 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
             {(type, index) => (
               <button
                 type="button"
-                class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
+                class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                   index() === selectedIndex()
-                    ? "bg-sidebar-accent"
-                    : "hover:bg-sidebar-accent"
+                    ? "bg-surface-hover"
+                    : "hover:bg-surface-hover"
                 }`}
                 onClick={() => applyTypeToAllSelected(type.id)}
                 onMouseEnter={() => setSelectedIndex(index())}
@@ -242,10 +242,10 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
             <button
               type="button"
               data-testid="block-type-picker-create"
-              class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
+              class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                 selectedIndex() === createIndex()
-                  ? "bg-sidebar-accent"
-                  : "hover:bg-sidebar-accent"
+                  ? "bg-surface-hover"
+                  : "hover:bg-surface-hover"
               }`}
               onClick={createAndApply}
               onMouseEnter={() => setSelectedIndex(createIndex())}
@@ -269,7 +269,7 @@ export default function BlockTypePicker(props: BlockTypePickerProps) {
           </Show>
 
           <Show when={filteredTypes().length === 0 && !query()}>
-            <div class="px-3 py-2 text-sm text-sidebar-foreground/60">
+            <div class="px-3 py-2 text-sm text-text-primary/60">
               No types yet. Type a name to create one.
             </div>
           </Show>

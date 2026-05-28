@@ -18,7 +18,7 @@ export default function ViewTabs(props: ViewTabsProps) {
     <Show when={props.availableViews.length >= 2}>
       <div
         data-testid="view-tabs"
-        class="mx-auto max-w-[var(--max-line-width)] w-full flex gap-1 border-b border-foreground-lighter mb-2"
+        class="mx-auto max-w-[var(--max-line-width)] w-full flex gap-1 border-b border-rule-subtle mb-2"
       >
         <For each={props.availableViews}>
           {(view) => (
@@ -27,8 +27,8 @@ export default function ViewTabs(props: ViewTabsProps) {
               data-active={view.id === props.activeViewId ? "true" : undefined}
               class={`px-3 py-1.5 text-sm rounded-t transition-colors ${
                 view.id === props.activeViewId
-                  ? "bg-foreground-lighter/20 border-b-2 border-foreground font-medium"
-                  : "hover:bg-foreground-lighter/10 text-foreground-light"
+                  ? "bg-rule-subtle/20 border-b-2 border-text-primary font-medium"
+                  : "hover:bg-rule-subtle/10 text-text-secondary"
               }`}
               onClick={() => props.onTabClick(view.id)}
             >

@@ -45,7 +45,7 @@ export default function ChatView(props: ChatViewProps) {
     <div class="mx-auto max-w-[var(--max-line-width)] w-full">
       <div class="py-2">
         <button
-          class="px-3 py-1 text-sm rounded border border-foreground-lighter hover:bg-foreground-lighter/10"
+          class="px-3 py-1 text-sm rounded border border-rule-subtle hover:bg-rule-subtle/10"
           onClick={() => {
             // chat:send command will be wired here in task #6
           }}
@@ -75,7 +75,7 @@ export default function ChatView(props: ChatViewProps) {
               <div>
                 <Show when={isGroupStart()}>
                   <div
-                    class="text-xs font-medium text-foreground-lighter px-1 pb-1"
+                    class="text-xs font-medium text-text-tertiary px-1 pb-1"
                     classList={{ "pt-4": i() !== 0 }}
                   >
                     {msg.role === "assistant" ? "aengel" : msg.role}

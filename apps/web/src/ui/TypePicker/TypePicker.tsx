@@ -141,7 +141,7 @@ export default function TypePicker(props: TypePickerProps) {
       <div
         ref={containerRef}
         data-testid="type-picker"
-        class="fixed z-50 min-w-48 max-h-64 overflow-y-auto bg-sidebar/95 backdrop-blur-md border border-sidebar-border rounded-lg shadow-daiichi"
+        class="fixed z-50 min-w-48 max-h-64 overflow-y-auto bg-surface-pane/95 backdrop-blur-md border border-border-pane rounded-lg shadow-daiichi"
         style={{
           left: `${props.position.x}px`,
           top: `${props.position.y}px`,
@@ -149,7 +149,7 @@ export default function TypePicker(props: TypePickerProps) {
       >
         <div class="py-1">
           <Show when={filteredTypes().length === 0 && !props.query}>
-            <div class="px-3 py-2 text-sm text-sidebar-foreground/60">
+            <div class="px-3 py-2 text-sm text-text-primary/60">
               No types yet. Type a name to create one.
             </div>
           </Show>
@@ -158,10 +158,10 @@ export default function TypePicker(props: TypePickerProps) {
             {(type, index) => (
               <button
                 type="button"
-                class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
+                class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                   index() === selectedIndex()
-                    ? "bg-sidebar-accent"
-                    : "hover:bg-sidebar-accent"
+                    ? "bg-surface-hover"
+                    : "hover:bg-surface-hover"
                 }`}
                 onClick={() => props.onSelect(type.id)}
                 onMouseEnter={() => setSelectedIndex(index())}
@@ -186,10 +186,10 @@ export default function TypePicker(props: TypePickerProps) {
           <Show when={!hasExactMatch() && props.query}>
             <button
               type="button"
-              class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-sidebar-foreground ${
+              class={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left text-text-primary ${
                 selectedIndex() === filteredTypes().length
-                  ? "bg-sidebar-accent"
-                  : "hover:bg-sidebar-accent"
+                  ? "bg-surface-hover"
+                  : "hover:bg-surface-hover"
               }`}
               onClick={() => props.onCreate(props.query)}
               onMouseEnter={() => setSelectedIndex(filteredTypes().length)}
