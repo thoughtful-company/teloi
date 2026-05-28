@@ -447,6 +447,16 @@ from the structure, design our own.
   serve as the starting point. The final ladder is ours to tune;
   the prototype's comfy-density variant (13 / 15 / 18) is set aside
   with density itself.
+- **Shadow tokens** are semantic material roles, not ordinal names or
+  component aliases:
+  - `--shadow-pane` — lifted panes, including the sidebar and main
+    panes.
+  - `--shadow-overlay` — floating surfaces such as command palettes,
+    pickers, and menus.
+  - `--shadow-control` — elevated controls when needed.
+  Shadow colors derive from a semantic helper (`--shadow-color`) that
+  can differ between light and dark mode; components should not use
+  raw black/white shadow literals.
 - **One font: Fixel Variable.** UI, body, headings — everything.
   No Geist, no Geist Mono. (Monospace, if needed for inline code,
   is a separate question to revisit when it comes up.)
@@ -537,11 +547,19 @@ scope here and live in their own designs / specs / TODOs.
 - Adjacent panes inside `<main>` are separated by a **uniform gap**.
 - Panes are separated from the backdrop by both a small inset
   margin and a faint shadow / chromatic step — the "lift" effect.
-  One consistent value across the app, not user-toggleable.
+  One consistent value across the app, not user-toggleable. The lift
+  is expressed through semantic shadow tokens (`--shadow-pane` for
+  panes and `--shadow-overlay` for floating surfaces), not ordinal
+  names or component-specific aliases.
 - All panes share the same chrome — same radius, same lift,
   regardless of pane kind.
 - The **left sidebar is also a lifted pane** — materially the same
   object as panes in `<main>`, just living in the chrome region.
+- Lifted panes and overlays may use slight translucency with backdrop
+  blur when it supports the material effect. The token role still
+  remains the semantic surface (`--surface-pane` / `--surface-overlay`);
+  the alpha/backdrop treatment is a visual material treatment, not a
+  new color role.
 - Sub-pane visual details (e.g., how the property block frames
   itself inside a note pane) are tuning details, not part of the
   redesign contract.

@@ -141,7 +141,7 @@ export default function TypePicker(props: TypePickerProps) {
       <div
         ref={containerRef}
         data-testid="type-picker"
-        class="fixed z-50 min-w-48 max-h-64 overflow-y-auto bg-surface-pane/95 backdrop-blur-md border border-border-pane rounded-lg shadow-daiichi"
+        class="fixed z-50 min-w-48 max-h-64 overflow-y-auto bg-surface-overlay/95 backdrop-blur-md border border-border-pane rounded-[var(--radius-control)] shadow-overlay"
         style={{
           left: `${props.position.x}px`,
           top: `${props.position.y}px`,

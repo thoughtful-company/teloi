@@ -102,7 +102,7 @@ export default function CommandPalette(props: CommandPaletteProps) {
         <Dialog.Overlay class="fixed inset-0 bg-black/50 z-40" />
         <Dialog.Content
           data-testid="command-palette"
-          class="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-surface-pane/95 backdrop-blur-md border border-border-pane rounded-lg shadow-daiichi overflow-hidden"
+          class="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md bg-surface-overlay/95 backdrop-blur-md border border-border-pane rounded-[var(--radius-pane)] shadow-overlay overflow-hidden"
         >
           {/* Search input */}
           <div class="p-3 border-b border-border-pane">

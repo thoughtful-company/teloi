@@ -124,7 +124,7 @@ const App: Component = () => {
   );
 
   return (
-    <div class="flex h-full w-full">
+    <div class="flex h-full w-full gap-[var(--gap-pane)] bg-surface-app p-[var(--inset-app)]">
       {/* Command Palette */}
       <CommandPalette
         open={commandPaletteOpen()}
@@ -138,9 +138,9 @@ const App: Component = () => {
       </Show>
 
       {/* Main area */}
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Header - always visible, button only when sidebar closed */}
-        <header class="flex items-center h-12 px-2 shrink-0 gap-1">
+        <header class="flex items-center h-12 px-2 shrink-0 gap-1 text-text-primary">
           {/* Home button - always visible */}
           <button
             onClick={handleHomeClick}
@@ -188,7 +188,7 @@ const App: Component = () => {
         </header>
 
         {/* Panes */}
-        <main class="flex-1 flex p-1 overflow-hidden">
+        <main class="flex-1 flex gap-[var(--gap-pane)] overflow-hidden">
           <For each={panes}>
             {(paneId) => (
               <PaneWrapper>

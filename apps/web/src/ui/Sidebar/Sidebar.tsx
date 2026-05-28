@@ -7,7 +7,7 @@ interface SidebarProps {
 
 export default function Sidebar(props: SidebarProps) {
   return (
-    <aside class="flex flex-col h-full w-64 bg-surface-pane/80 backdrop-blur-md border border-border-pane rounded-lg m-1">
+    <aside class="flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface-pane/90 backdrop-blur-md border border-border-pane rounded-[var(--radius-pane)] shadow-pane">
       {/* Header with toggle on right — draggable for Electron window move */}
       <div class="electron-mac:pl-18 electron-mac:pt-1 flex items-center justify-between p-2 app-region-drag">
         <span class="text-sm font-medium text-text-primary px-1">
