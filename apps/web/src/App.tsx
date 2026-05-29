@@ -125,7 +125,7 @@ const App: Component = () => {
 
       {/* Sidebar - full height when open */}
       <Show when={!sidebarCollapsed()}>
-        <Sidebar onToggle={toggleSidebar} />
+        <Sidebar />
       </Show>
 
       {/* Main area */}

@@ -11,6 +11,7 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
+import Icon from "./Icon";
 
 interface TopBarProps {
   sidebarCollapsed: boolean;
@@ -36,50 +37,6 @@ const resolveFrameNodeId = (frameId: Id.Frame) =>
       onSome: (doc) => (doc.assignedKhoraId as Id.Node | null) ?? null,
     });
   });
-
-function DocumentIcon() {
-  // Custom glyph from the redesign prototype: a central node wired out to four
-  // small endpoint nodes. Matches `I.doc` in teloi-handoff/project/icons.jsx.
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="7" cy="7" r="1.9" fill="currentColor" stroke="none" />
-      <circle cx="2.2" cy="2.2" r="1" />
-      <circle cx="11.8" cy="2.2" r="1" />
-      <circle cx="2.2" cy="11.8" r="1" />
-      <circle cx="11.8" cy="11.8" r="1" />
-      <line x1="3" y1="3" x2="5.7" y2="5.7" />
-      <line x1="11" y1="3" x2="8.3" y2="5.7" />
-      <line x1="3" y1="11" x2="5.7" y2="8.3" />
-      <line x1="11" y1="11" x2="8.3" y2="8.3" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.4"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" />
-    </svg>
-  );
-}
 
 function TabTitle(props: { nodeId: Id.Node | null }) {
   const runtime = useBrowserRuntime();
@@ -118,12 +75,15 @@ function PanePip(props: { identity: TabPaneIdentity; index: number }) {
       aria-label={`Attached pane ${props.index + 1}`}
     >
       <span class="absolute inset-0 flex items-center justify-center opacity-100 transition-opacity group-hover:opacity-0 group-hover/pip:opacity-0">
-        <Show when={props.identity.nodeId} fallback={<DocumentIcon />}>
+        <Show
+          when={props.identity.nodeId}
+          fallback={<Icon name="node" class="size-[15px]" />}
+        >
           {(nodeId) => <TabInitial nodeId={nodeId()} fallback={props.index + 1} />}
         </Show>
       </span>
       <span class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-        <CloseIcon />
+        <Icon name="x" class="size-3" />
       </span>
     </button>
   );
@@ -159,62 +119,6 @@ function TabInitial(props: { nodeId: Id.Node; fallback: number }) {
   return <span class="text-[11px] font-medium leading-none">{initial()}</span>;
 }
 
-function SidebarPanelIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 256 256"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="16"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="40" y="48" width="176" height="160" rx="12" />
-      <line x1="96" y1="48" x2="96" y2="208" />
-    </svg>
-  );
-}
-
-function NavIcon(props: { direction: "back" | "forward" }) {
-  const path = props.direction === "back" ? "M11 4l-4 4 4 4" : "M7 4l4 4-4 4";
-
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d={path} />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <path d="M7 3v8M3 7h8" />
-    </svg>
-  );
-}
-
 const topbarIconButton =
   "flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-control)] text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary active:bg-surface-active active:text-text-primary";
 
@@ -243,7 +147,7 @@ export default function TopBar(props: TopBarProps) {
           class={topbarIconButton}
           aria-label={props.sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
         >
-          <SidebarPanelIcon />
+          <Icon name="sidebar-simple" class="size-5" />
         </button>
         <button
           type="button"
@@ -251,7 +155,7 @@ export default function TopBar(props: TopBarProps) {
           aria-label="Back"
           aria-disabled="true"
         >
-          <NavIcon direction="back" />
+          <Icon name="caret-left" class="size-5" />
         </button>
         <button
           type="button"
@@ -259,7 +163,7 @@ export default function TopBar(props: TopBarProps) {
           aria-label="Forward"
           aria-disabled="true"
         >
-          <NavIcon direction="forward" />
+          <Icon name="caret-right" class="size-5" />
         </button>
       </div>
 
@@ -269,7 +173,7 @@ export default function TopBar(props: TopBarProps) {
           fallback={
             <div class="app-top-tab is-active group self-end">
               <span class="app-top-tab-inner">
-                <DocumentIcon />
+                <Icon name="node" class="size-[15px]" />
                 <span class="app-top-tab-title">{System.WORKSPACE}</span>
               </span>
               <span
@@ -294,12 +198,12 @@ export default function TopBar(props: TopBarProps) {
           {(identity) => (
             <div class="app-top-tab is-active group self-end">
               <span class="app-top-tab-inner">
-                <DocumentIcon />
+                <Icon name="node" class="size-[15px]" />
                 <span class="app-top-tab-title">
                   <TabTitle nodeId={identity().nodeId} />
                 </span>
                 <button class="app-top-tab-close" aria-label="Close tab">
-                  <CloseIcon />
+                  <Icon name="x" class="size-3" />
                 </button>
                 <Show when={attachedIdentities().length > 0}>
                   <span class="ml-1.5 flex shrink-0 items-center gap-0.5 border-l border-border-subtle pl-1.5">
@@ -343,7 +247,7 @@ export default function TopBar(props: TopBarProps) {
             class={`${topbarIconButton} ml-1`}
             aria-label="New tab"
           >
-            <PlusIcon />
+            <Icon name="plus" class="size-5" />
           </button>
         </div>
       </div>

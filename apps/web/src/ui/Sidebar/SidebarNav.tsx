@@ -1,110 +1,49 @@
-import { useBrowserRuntime } from "@/context/useBrowserRuntime";
-import { Id, System } from "@/schema";
-import { NavigationT } from "@/services/ui/Navigation";
-import { Effect } from "effect";
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
+import Icon, { type IconName } from "../Icon";
 
-interface NavItem {
+export type SidebarView = "home" | "chat" | "search";
+
+interface NavPill {
+  view: SidebarView;
   label: string;
-  nodeId: Id.Node;
-  icon: "inbox" | "box" | "calendar" | "tag";
+  icon: IconName;
 }
 
-const navItems: NavItem[] = [
-  { label: "Inbox", nodeId: System.INBOX, icon: "inbox" },
-  { label: "The Box", nodeId: System.THE_BOX, icon: "box" },
-  { label: "Calendar", nodeId: System.CALENDAR, icon: "calendar" },
-  { label: "Schema", nodeId: System.SCHEMA, icon: "tag" },
+const pills: NavPill[] = [
+  { view: "home", label: "Home", icon: "house" },
+  { view: "chat", label: "Chat", icon: "chats-circle" },
+  { view: "search", label: "Search", icon: "magnifying-glass" },
 ];
 
-const nodeToPath: Record<string, string> = {
-  [System.INBOX]: "/inbox",
-  [System.THE_BOX]: "/box",
-  [System.CALENDAR]: "/calendar",
-  [System.SCHEMA]: "/schema",
-};
+interface SidebarNavProps {
+  active: SidebarView;
+  onPick: (view: SidebarView) => void;
+}
 
-export default function SidebarNav() {
-  const runtime = useBrowserRuntime();
-
-  const handleNavClick = (nodeId: Id.Node, e: MouseEvent) => {
-    if (e.metaKey || e.ctrlKey) {
-      window.open(nodeToPath[nodeId], "_blank");
-      return;
-    }
-    runtime.runPromise(
-      Effect.gen(function* () {
-        const Navigation = yield* NavigationT;
-        yield* Navigation.navigateTo(nodeId);
-      }),
-    );
-  };
-
+export default function SidebarNav(props: SidebarNavProps) {
   return (
-    <nav class="px-1 py-1">
-      <For each={navItems}>
-        {(item) => (
-          <button
-            onClick={(e) => handleNavClick(item.nodeId, e)}
-            class="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-surface-hover text-text-primary text-sm text-left"
-          >
-            <span class="w-5 h-5 flex items-center justify-center opacity-60">
-              {item.icon === "inbox" && (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="w-5 h-5"
-                >
-                  <polyline points="22,12 16,12 14,15 10,15 8,12 2,12" />
-                  <path d="M5.45,5.11L2,12v6a2,2,0,0,0,2,2H20a2,2,0,0,0,2-2V12l-3.45-6.89A2,2,0,0,0,16.76,4H7.24A2,2,0,0,0,5.45,5.11Z" />
-                </svg>
-              )}
-              {item.icon === "box" && (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="w-5 h-5"
-                >
-                  <path d="M21,16V8a2,2,0,0,0-1-1.73l-7-4a2,2,0,0,0-2,0l-7,4A2,2,0,0,0,3,8v8a2,2,0,0,0,1,1.73l7,4a2,2,0,0,0,2,0l7-4A2,2,0,0,0,21,16Z" />
-                  <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-              )}
-              {item.icon === "calendar" && (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="w-5 h-5"
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              )}
-              {item.icon === "tag" && (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="w-5 h-5"
-                >
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
-                  <line x1="7" y1="7" x2="7.01" y2="7" />
-                </svg>
-              )}
-            </span>
-            <span>{item.label}</span>
-          </button>
-        )}
+    <div class="flex items-center gap-0.5 px-3 pb-2.5 pt-1">
+      <For each={pills}>
+        {(pill) => {
+          const isActive = () => props.active === pill.view;
+          return (
+            <button
+              onClick={() => props.onPick(pill.view)}
+              aria-label={pill.label}
+              aria-pressed={isActive()}
+              class="inline-flex h-[30px] min-w-[30px] items-center justify-center gap-1.5 rounded-lg px-2.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary data-[active=true]:bg-surface-active data-[active=true]:text-text-primary"
+              data-active={isActive()}
+            >
+              <Icon name={pill.icon} class="size-5" />
+              <Show when={isActive()}>
+                <span class="text-sm font-label tracking-tight">
+                  {pill.label}
+                </span>
+              </Show>
+            </button>
+          );
+        }}
       </For>
-    </nav>
+    </div>
   );
 }

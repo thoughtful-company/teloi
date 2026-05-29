@@ -148,4 +148,10 @@ __screenshots__/
 docs/.obsidian/
 
 WIP.md
-handoff.md
+
+# Local-only design reference bundle (handoff prototype, not for commit)
+.design-ref/
+
+# Local-only session handoff notes (kept out of the committed tree)
+/handoff.md
+/docs/handoff/
