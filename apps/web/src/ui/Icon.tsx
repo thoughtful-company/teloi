@@ -76,7 +76,7 @@ const GLYPHS = {
       <g
         fill="none"
         stroke="currentColor"
-        stroke-width="1"
+        stroke-width="0.9"
         stroke-linecap="round"
       >
         <circle cx="7" cy="7" r="2.5" />
