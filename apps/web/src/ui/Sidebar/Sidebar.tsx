@@ -15,8 +15,10 @@ export default function Sidebar() {
     <aside class="flex h-full w-64 shrink-0 flex-col overflow-hidden rounded-[var(--radius-pane)] border border-border-pane bg-surface-pane/90 shadow-pane backdrop-blur-md">
       {/* Header: workspace switcher + settings. The collapse toggle lives in the
           top bar (§12); traffic lights are native OS chrome — not rendered here.
-          The header bar is draggable for Electron window move. */}
-      <div class="app-region-drag flex h-[34px] shrink-0 items-center gap-1 pl-3 pr-1.5">
+          The header bar is draggable for Electron window move. On macOS Electron
+          we inset the content (pl-18) so it clears the native traffic lights
+          (positioned at x:16; the cluster ends ~x:72). */}
+      <div class="app-region-drag flex h-[34px] shrink-0 items-center gap-1 pl-3 pr-1.5 electron-mac:pl-18">
         <WorkspaceSwitcher />
         <button
           class={`${HEAD_ACTION} app-region-no-drag`}

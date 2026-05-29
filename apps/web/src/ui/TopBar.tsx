@@ -140,7 +140,10 @@ export default function TopBar(props: TopBarProps) {
 
   return (
     <header class="relative z-10 flex h-[34px] shrink-0 items-center gap-1 bg-transparent pr-2 text-text-primary">
-      <div class="flex h-full items-center gap-0.5 pb-1 pl-1">
+      <div
+        class="flex h-full items-center gap-0.5 pb-1 pl-1"
+        classList={{ "electron-mac:pl-18": props.sidebarCollapsed }}
+      >
         <button
           type="button"
           onClick={props.onToggleSidebar}
