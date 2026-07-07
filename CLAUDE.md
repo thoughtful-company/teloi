@@ -99,7 +99,7 @@ This is a pnpm monorepo with:
 
 ### Tech Stack
 - **Framework**: SolidJS
-- **Styling**: Tailwind CSS v4
+- **Styling**: Tailwind CSS v4. Color theming is pluggable: each theme in `apps/web/src/themes/` defines the semantic tokens (contract documented in `themes/ivory.css`); default is Catppuccin Latte/Mocha, activated via `data-theme`/`data-dark` on `<html>`. Components must consume semantic tokens (`surface-*`, `text-*`, `border-*`), never raw palette values.
 - **Editor**: CodeMirror 6
 - **Build**: Vite
 - **Testing**: Vitest with Playwright for browser tests

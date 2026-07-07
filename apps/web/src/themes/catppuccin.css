@@ -1,0 +1,126 @@
+/*
+  Catppuccin theme — Latte (light, default) + Mocha (dark).
+
+  Upstream palette: https://catppuccin.com/palette — published in hex, kept
+  verbatim rather than hand-converted to OKLCH so values stay auditable
+  against upstream. Derived tints use color-mix(in oklch, ...) which accepts
+  hex inputs.
+
+  A theme defines only the semantic tokens listed in themes/ivory.css — the
+  raw Catppuccin palette vars (--ctp-*) are private to this file.
+*/
+
+:root {
+  /* ------------------------------ Latte ------------------------------- */
+  --ctp-base: #eff1f5;
+  --ctp-mantle: #e6e9ef;
+  --ctp-crust: #dce0e8;
+  --ctp-surface0: #ccd0da;
+  --ctp-surface1: #bcc0cc;
+  --ctp-overlay0: #9ca0b0;
+  --ctp-subtext0: #6c6f85;
+  --ctp-subtext1: #5c5f77;
+  --ctp-text: #4c4f69;
+  --ctp-blue: #1e66f5;
+  --ctp-lavender: #7287fd;
+  --ctp-red: #d20f39;
+  --ctp-maroon: #e64553;
+  --ctp-green: #40a02b;
+  --ctp-yellow: #df8e1d;
+  --ctp-mauve: #8839ef;
+  --ctp-ink: #11111b; /* mocha crust — near-black anchor for shadows/mixes */
+
+  /* Surfaces */
+  --surface-app: var(--ctp-crust);
+  --surface-pane: var(--ctp-base);
+  --surface-pane-muted: var(--ctp-mantle);
+  --surface-overlay: var(--ctp-base);
+  --surface-sidebar: var(--ctp-mantle);
+  --surface-sidebar-glow: var(--ctp-base);
+  --surface-hover: oklch(0 0 0 / 0.045);
+  --surface-active: oklch(0 0 0 / 0.065);
+  --surface-selected: color-mix(in oklch, var(--ctp-blue) 10%, var(--ctp-base));
+
+  /* Text */
+  --text-primary: var(--ctp-text);
+  --text-secondary: var(--ctp-subtext1);
+  --text-tertiary: var(--ctp-subtext0);
+  --text-placeholder: var(--ctp-overlay0);
+  --text-on-accent: var(--ctp-base);
+
+  /* Borders / focus / shadows */
+  --border-subtle: var(--ctp-surface0);
+  --border-pane: var(--ctp-surface0);
+  --border-control: var(--ctp-surface0);
+  --rule-subtle: var(--ctp-surface0);
+  --ring-focus: var(--ctp-blue);
+  --shadow-color: var(--ctp-ink);
+
+  /* Accent ramps consumed as Tailwind utilities */
+  --blue-50: color-mix(in oklch, var(--ctp-blue) 6%, var(--ctp-base));
+  --blue-100: color-mix(in oklch, var(--ctp-blue) 13%, var(--ctp-base));
+  --blue-200: color-mix(in oklch, var(--ctp-blue) 26%, var(--ctp-base));
+  --blue-500: var(--ctp-blue);
+  --blue-700: color-mix(in oklch, var(--ctp-blue) 75%, var(--ctp-ink));
+
+  --red-500: var(--ctp-red);
+  --red-700: color-mix(in oklch, var(--ctp-red) 70%, var(--ctp-ink));
+  --green-500: var(--ctp-green);
+  --amber-500: var(--ctp-yellow);
+  --purple-500: var(--ctp-mauve);
+
+  --type-badge: color-mix(in oklch, var(--ctp-green) 16%, var(--ctp-base));
+  --type-badge-foreground: color-mix(
+    in oklch,
+    var(--ctp-green) 70%,
+    var(--ctp-ink)
+  );
+
+  /* Selection */
+  --selection-ring: var(--blue-200);
+  --selection-bg: var(--surface-selected);
+  --selection-children-bg: var(--blue-50);
+}
+
+:root:is([data-dark], .dark) {
+  /* ------------------------------ Mocha ------------------------------- */
+  --ctp-base: #1e1e2e;
+  --ctp-mantle: #181825;
+  --ctp-crust: #11111b;
+  --ctp-surface0: #313244;
+  --ctp-surface1: #45475a;
+  --ctp-overlay0: #6c7086;
+  --ctp-subtext0: #a6adc8;
+  --ctp-subtext1: #bac2de;
+  --ctp-text: #cdd6f4;
+  --ctp-blue: #89b4fa;
+  --ctp-lavender: #b4befe;
+  --ctp-red: #f38ba8;
+  --ctp-maroon: #eba0ac;
+  --ctp-green: #a6e3a1;
+  --ctp-yellow: #f9e2af;
+  --ctp-mauve: #cba6f7;
+
+  --surface-app: var(--ctp-crust);
+  --surface-sidebar: var(--ctp-mantle);
+  --surface-sidebar-glow: var(--ctp-base);
+  --surface-hover: oklch(1 0 0 / 0.06);
+  --surface-active: oklch(1 0 0 / 0.09);
+  --surface-selected: color-mix(
+    in oklch,
+    var(--ctp-blue) 18%,
+    var(--ctp-base)
+  );
+
+  --text-on-accent: var(--ctp-crust);
+
+  /* Dark shadows sit on dark surfaces — keep them, just quieter. */
+  --shadow-color: var(--ctp-crust);
+
+  /* In dark, the "darker" accent steps flip lighter (matches ivory dark). */
+  --blue-700: var(--ctp-lavender);
+  --red-700: var(--ctp-maroon);
+
+  --type-badge: color-mix(in oklch, var(--ctp-green) 22%, var(--ctp-base));
+  --type-badge-foreground: var(--ctp-green);
+}

@@ -477,6 +477,16 @@ from the structure, design our own.
   than being re-derived. (An earlier draft said to design our own
   values from scratch; that drifted the palette off the prototype's
   hue and flattened the sidebar — corrected.)
+- **Themes are pluggable.** Semantic color tokens are defined per
+  theme in `apps/web/src/themes/` (the token contract is documented
+  in `themes/ivory.css`); `index.css` keeps only theme-agnostic
+  structure (radii, spacing, shadow/gradient composition, Tailwind
+  `@theme` mapping). A theme activates via `data-theme` on `<html>`,
+  its dark variant via `data-dark`/`.dark`. The ivory palette above
+  lives as `data-theme="ivory"`; the app currently defaults to
+  Catppuccin (Latte/Mocha) — a stock palette adopted so day-to-day
+  UI work doesn't spend decisions on shade design. Ivory remains the
+  redesign's target look and is switchable at any time.
 - **Token layering** — colors are defined as `primitive palette →
   semantic roles`. Primitive names use familiar numeric scales such
   as `--ivory-100`, not one-off literals scattered through semantic
