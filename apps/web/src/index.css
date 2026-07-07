@@ -76,19 +76,20 @@ tfoot th {
 }
 
 :root {
-  /* Primitive palette */
-  --ivory-50: oklch(0.995 0.006 95);
-  --ivory-100: oklch(0.982 0.01 95);
-  --ivory-200: oklch(0.956 0.014 92);
-  --ivory-300: oklch(0.914 0.018 88);
-  --ivory-400: oklch(0.842 0.02 86);
+  /* Primitive palette — ivory family on the prototype's hue (106.75).
+     Values mirror .design-ref styles.css surface/border/text tokens. */
+  --ivory-50: oklch(0.995 0.004 106.75); /* near-white doc surface (c-doc) */
+  --ivory-100: oklch(0.972 0.011 106.75); /* soft raised (c-bg-2) */
+  --ivory-200: oklch(0.948 0.015 106.75); /* app backdrop (c-bg) */
+  --ivory-300: oklch(0.905 0.014 106.75); /* subtle border (c-border-soft) */
+  --ivory-400: oklch(0.86 0.017 106.75); /* control border (c-border) */
 
-  --ink-400: oklch(0.62 0.02 80);
-  --ink-500: oklch(0.51 0.022 80);
-  --ink-600: oklch(0.41 0.024 80);
-  --ink-700: oklch(0.32 0.022 80);
-  --ink-800: oklch(0.24 0.02 80);
-  --ink-900: oklch(0.17 0.018 80);
+  --ink-400: oklch(0.62 0.006 106.75); /* c-faint */
+  --ink-500: oklch(0.5 0.007 106.75); /* c-muted */
+  --ink-600: oklch(0.41 0.007 106.75);
+  --ink-700: oklch(0.32 0.007 106.75);
+  --ink-800: oklch(0.24 0.007 106.75); /* c-text */
+  --ink-900: oklch(0.17 0.007 106.75);
 
   --blue-50: oklch(0.972 0.018 250);
   --blue-100: oklch(0.936 0.036 250);
@@ -103,13 +104,34 @@ tfoot th {
   --purple-500: oklch(0.627 0.265 303.9);
 
   /* Semantic color roles */
-  --surface-app: var(--ivory-200);
-  --surface-chrome: var(--ivory-100);
+  /* App backdrop — a greener ivory (hue 120), intentionally off the ivory
+     ramp; kept as a standalone literal so the ramp stays hue-consistent. */
+  --surface-app: oklch(0.96 0.016 120);
   /* "Pane" means the app's editor pane: the primary document surface rendered
      by PaneWrapper. Do not use this as a generic surface/card token. */
   --surface-pane: var(--ivory-50);
   --surface-pane-muted: var(--ivory-100);
   --surface-overlay: var(--ivory-50);
+  /* The sidebar is its own surface: the most-saturated ivory, distinct from the
+     near-white doc pane, rendered as a soft radial corner glow (prototype
+     .sidebar). Not a flat fill — consume via --gradient-sidebar. */
+  --surface-sidebar: oklch(0.996 0.015 106.75);
+  --surface-sidebar-glow: oklch(0.99 0.008 140);
+  /* A soft glow reaching ~15% in from each bottom corner over the ivory base.
+     `circle` (not `ellipse`) so the glow spreads equally horizontally and
+     vertically — an ellipse stretches with the tall/narrow panel. */
+  --gradient-sidebar:
+    radial-gradient(
+      circle at 0% 100%,
+      var(--surface-sidebar-glow) 0%,
+      transparent 15%
+    ),
+    radial-gradient(
+      circle at 100% 100%,
+      var(--surface-sidebar-glow) 0%,
+      transparent 15%
+    ),
+    linear-gradient(var(--surface-sidebar), var(--surface-sidebar));
   --surface-hover: oklch(0 0 0 / 0.045);
   --surface-active: oklch(0 0 0 / 0.065);
   --surface-selected: var(--blue-50);
@@ -161,19 +183,19 @@ tfoot th {
 
 [data-dark],
 .dark {
-  /* Primitive palette */
-  --ivory-50: oklch(0.2 0.01 80);
-  --ivory-100: oklch(0.17 0.01 80);
-  --ivory-200: oklch(0.145 0.01 80);
-  --ivory-300: oklch(0.27 0.012 80);
-  --ivory-400: oklch(0.36 0.014 80);
+  /* Primitive palette — prototype dark surfaces (hue 106.75). */
+  --ivory-50: oklch(0.22 0.005 106.75); /* doc pane (c-doc) */
+  --ivory-100: oklch(0.24 0.005 106.75); /* soft raised (c-bg-2) */
+  --ivory-200: oklch(0.21 0.005 106.75); /* app backdrop (c-bg) */
+  --ivory-300: oklch(0.27 0.006 106.75); /* subtle border (c-border-soft) */
+  --ivory-400: oklch(0.32 0.007 106.75); /* control border (c-border) */
 
-  --ink-400: oklch(0.62 0.018 80);
-  --ink-500: oklch(0.7 0.016 80);
-  --ink-600: oklch(0.78 0.014 80);
-  --ink-700: oklch(0.86 0.012 80);
-  --ink-800: oklch(0.93 0.01 80);
-  --ink-900: oklch(0.985 0.006 80);
+  --ink-400: oklch(0.5 0.005 106.75); /* c-faint */
+  --ink-500: oklch(0.62 0.006 106.75); /* c-muted */
+  --ink-600: oklch(0.72 0.005 106.75);
+  --ink-700: oklch(0.84 0.004 106.75);
+  --ink-800: oklch(0.93 0.004 106.75); /* c-text */
+  --ink-900: oklch(0.985 0.004 106.75);
 
   --blue-50: oklch(0.22 0.03 250);
   --blue-100: oklch(0.27 0.045 250);
@@ -182,6 +204,14 @@ tfoot th {
   --blue-700: oklch(0.74 0.12 250);
 
   --red-500: var(--red-700);
+
+  /* Keep the dark backdrop on the ivory ramp (the light :root override is a
+     standalone literal that must not leak into dark mode). */
+  --surface-app: var(--ivory-200);
+
+  /* Sidebar: a quiet raised slate slab with a barely-tinted corner glow. */
+  --surface-sidebar: oklch(0.225 0.004 106.75);
+  --surface-sidebar-glow: oklch(0.245 0.006 110);
 
   --surface-hover: oklch(1 0 0 / 0.06);
   --surface-active: oklch(1 0 0 / 0.09);
@@ -208,7 +238,7 @@ tfoot th {
   --color-blue-700: var(--blue-700);
 
   --color-surface-app: var(--surface-app);
-  --color-surface-chrome: var(--surface-chrome);
+  --color-surface-sidebar: var(--surface-sidebar);
   --color-surface-pane: var(--surface-pane);
   --color-surface-pane-muted: var(--surface-pane-muted);
   --color-surface-overlay: var(--surface-overlay);
@@ -316,8 +346,6 @@ tfoot th {
   }
 
   .app-top-tab.is-active {
-    border: 0.5px solid var(--border-pane);
-    border-bottom: 0;
     border-radius: 10px 10px 0 0;
     background: var(--surface-pane);
     color: var(--text-primary);
@@ -360,7 +388,6 @@ tfoot th {
     width: 20px;
     height: 20px;
     box-sizing: border-box;
-    border: 0.5px solid var(--border-pane);
     border-radius: 50%;
     box-shadow: 0 0 0 10px var(--surface-pane);
     pointer-events: none;

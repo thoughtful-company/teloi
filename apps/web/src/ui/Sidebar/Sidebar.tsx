@@ -12,7 +12,10 @@ export default function Sidebar() {
   const [view, setView] = createSignal<SidebarView>("home");
 
   return (
-    <aside class="flex h-full w-64 shrink-0 flex-col overflow-hidden rounded-[var(--radius-pane)] border border-border-pane bg-surface-pane/90 shadow-pane backdrop-blur-md">
+    <aside
+      class="flex h-full w-64 shrink-0 flex-col overflow-hidden rounded-[var(--radius-pane)] border border-border-pane shadow-pane"
+      style={{ "background-image": "var(--gradient-sidebar)" }}
+    >
       {/* Header: workspace switcher + settings. The collapse toggle lives in the
           top bar (§12); traffic lights are native OS chrome — not rendered here.
           The header bar is draggable for Electron window move. On macOS Electron

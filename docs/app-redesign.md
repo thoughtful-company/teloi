@@ -465,11 +465,18 @@ from the structure, design our own.
 
 - **OKLCH is the canonical color space.** All color tokens use the
   full `oklch(L C H)` form, no HSL fallback.
-- **Color tokens** — we design our own. We do **not** directly port
-  the prototype's `--app-bg` / `--c-outer-pane` / `--c-doc` triple
-  or its specific OKLCH values. The prototype's three-surface idea
-  is reasonable inspiration but the actual token set is ours to
-  define from scratch.
+- **Color tokens** — we **adopt the prototype's surface model and its
+  OKLCH values directly** (the ivory family on hue `106.75`), mapped
+  onto our primitive `--ivory-*` / `--ink-*` ramp plus a dedicated
+  `--surface-sidebar`. The prototype deliberately distinguishes
+  several surfaces — near-white doc (`--c-doc` → `--surface-pane`),
+  darker ivory backdrop (`--c-bg` → `--surface-app`), and the
+  most-saturated ivory sidebar (`--c-sidebar` → `--surface-sidebar`,
+  rendered as a radial corner gradient). We keep the primitive →
+  semantic layering, but the *values* come from the prototype rather
+  than being re-derived. (An earlier draft said to design our own
+  values from scratch; that drifted the palette off the prototype's
+  hue and flattened the sidebar — corrected.)
 - **Token layering** — colors are defined as `primitive palette →
   semantic roles`. Primitive names use familiar numeric scales such
   as `--ivory-100`, not one-off literals scattered through semantic
@@ -588,8 +595,16 @@ scope here and live in their own designs / specs / TODOs.
   names or component-specific aliases.
 - All panes share the same chrome — same radius, same lift,
   regardless of pane kind.
-- The **left sidebar is also a lifted pane** — materially the same
-  object as panes in `<main>`, just living in the chrome region.
+- The **left sidebar is a lifted pane** sharing the same radius,
+  inset, and shadow lift as panes in `<main>` — but it is **not the
+  same surface**. The sidebar is its own ivory surface
+  (`--surface-sidebar`, the most-saturated ivory) painted as a soft
+  **radial corner gradient** (`--gradient-sidebar`), deliberately
+  distinct from the near-white document surface (`--surface-pane`)
+  used by `<main>` panes and the active tab. (An earlier draft
+  collapsed these into one flat material — wrong: the prototype's
+  `.sidebar` is a saturated-ivory gradient while `--c-doc` is
+  near-white.)
 - Lifted panes and overlays may use slight translucency with backdrop
   blur when it supports the material effect. The token role still
   remains the semantic surface (`--surface-pane` / `--surface-overlay`);
