@@ -7,6 +7,7 @@
     "prepare": "husky",
     "dev:web": "pnpm -F @teloi/web dev",
     "dev:electron": "pnpm -F @teloi/electron dev",
+    "dev:entel": "pnpm -F @teloi/entel dev",
     "typecheck": "pnpm -r typecheck"
   },
   "lint-staged": {

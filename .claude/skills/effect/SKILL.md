@@ -7,6 +7,8 @@ description: How Effect-TS is used in this repo. Load when writing or changing s
 
 Effect is used for all program structure, not only for async. Reach for its utilities before writing your own.
 
+Two majors are in use. apps/web is on Effect v3 and this skill describes v3 idioms. apps/entel is on Effect v4, where Context.Tag became Context.Service, Data.TaggedError became Schema.TaggedError and the HTTP modules live in effect/unstable/http and effect/unstable/httpapi. For entel work, read apps/entel/CLAUDE.md and the AGENTS.md shipped inside apps/entel/node_modules/effect instead of the sections below.
+
 ## Services
 
 A service is a Context.Tag with an explicit interface. Services replace modules as the unit of abstraction. In apps/web they sit in src/services/ in three tiers, external/ for integrations such as the LiveStore wrapper StoreT, domain/ for business logic such as NodeT, and ui/ for UI state such as FrameT. A new package should keep the same split.

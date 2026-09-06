@@ -126,7 +126,7 @@ Major things get a Greek word, one word per thing. Teloi is the product. Entelec
 
 ## Stack
 
-TypeScript throughout. Effect for services, layers, errors and schemas. LiveStore for structure and the event log. Automerge for text content. SolidJS with Tailwind v4 for the web app. Vitest, with Playwright for browser tests. The same stack applies to entel.
+TypeScript throughout. Effect for services, layers, errors and schemas. LiveStore for structure and the event log. Automerge for text content. SolidJS with Tailwind v4 for the web app. Vitest, with Playwright for browser tests. The same stack applies to entel, with one difference. entel is on Effect v4 and the web app is still on Effect v3. The two majors live side by side in the monorepo, each package resolves its own. apps/web lists @effect/platform-node ~0.81 as a devDependency although nothing in it imports that package. The line exists because pnpm hoists, and without it LiveStore 0.3.1's peer resolution drifted to the v4 copy that entel pulls in, which breaks the web unit tests. The web app moves to v4 when LiveStore's v4 line is stable, tracked in Linear as THC-145, and the pin goes with it.
 
 ## Layout
 
@@ -134,7 +134,8 @@ A pnpm monorepo.
 
 - apps/web, the SolidJS web app, package @teloi/web. It has its own CLAUDE.md.
 - apps/electron, the desktop shell around the web app.
+- apps/entel, the server, package @teloi/entel. It has its own CLAUDE.md.
 - packages/typescript-config, shared TypeScript config.
-- entel and the CLI do not exist yet. They are the next thing to build.
+- The CLI does not exist yet.
 
 Lint the whole repo with pnpm eslint . from the root.
