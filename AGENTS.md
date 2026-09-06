@@ -94,7 +94,7 @@ That closes the questions. What follows is what I carried over from the old AGEN
 
 ## Working rules
 
-Work is tracked in Linear, in the Thoughtful Company workspace. Issues go there, not to GitHub. The Linear MCP is connected in this folder only.
+Work is tracked in Linear, in the Teloi workspace. Issues go there, not to GitHub. The Linear MCP is registered in .mcp.json at the repo root, so it is available only inside this folder.
 
 Branch before every feature. Never commit to main. Never mix unrelated work into one branch.
 
