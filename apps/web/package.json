@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@effect/language-service": "^0.20.1",
+    "@effect/platform-node": "~0.81.5",
     "@effect/vitest": "^0.25.1",
     "@livestore/adapter-node": "0.3.1",
     "@tailwindcss/vite": "^4.1.7",

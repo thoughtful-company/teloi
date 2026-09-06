@@ -14,7 +14,7 @@ But life doesn't come with a schema. What matters to you — the projects you tr
 
 ## What It Is
 
-A local-first block-based text editor. Data lives in the browser via SQLite with event sourcing (LiveStore) and text content synced through Yjs CRDT. Built with SolidJS and CodeMirror.
+A local-first block-based text editor. Data lives in the browser via SQLite with event sourcing (LiveStore) and text content synced through Automerge CRDT. Built with SolidJS and CodeMirror.
 
 ## Getting Started
 
