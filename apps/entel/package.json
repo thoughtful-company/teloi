@@ -19,6 +19,7 @@
   "devDependencies": {
     "@effect/language-service": "^0.87.2",
     "@effect/vitest": "4.0.0-rc.112",
+    "@types/node": "^24.3.1",
     "vitest": "^4.1.0"
   },
   "engines": {

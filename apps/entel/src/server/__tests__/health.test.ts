@@ -23,7 +23,7 @@ layer(Layer.mergeAll(SystemHandlers, HttpServer.layerServices))(
         // `system` is a top-level group, so its endpoints sit on the client root.
         const health = yield* client.health();
 
-        // Spread to a plain object so the comparison also catches extra fields.
+        // Health is a class, and deepStrictEqual compares prototypes too.
         assert.deepStrictEqual({ ...health }, { status: "ok" });
       }),
     );
