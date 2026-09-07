@@ -26,6 +26,8 @@ Handlers hold no state and no logic beyond decoding a request into a service cal
 
 Every store call goes through the StoreCalls bundle from src/services/StoreCalls.ts, never through store.commit or store.query directly, so the wait for persistence and the StoreUnavailable translation happen in one place. A service that touches a workspace's data gets that bundle from WorkspaceStores.open, or from WorkspaceStores.openAll for a read that spans workspaces, and never builds a store itself.
 
+Objects and signs are two levels of one model. The Objects service owns every write to a workspace, including signs, because a sign is a sign of some object and is created with it. The Signs service only reads. A rule that needs to look at the store, that a place exists or that an element's kind fits the set, is checked in the service before the commit, since a materializer cannot refuse an event and a failing one shuts the store down. A rule about the payload alone goes in the payload schema.
+
 A workspace id from a request is a directory name under ENTEL_DATA_DIR once it reaches the adapter. Only WorkspaceStores may hand an id to LiveStore, and only after the registry confirmed it.
 
 Config comes from the environment through Effect Config, keys prefixed `ENTEL_`. Never read process.env directly.
@@ -42,4 +44,4 @@ A `layer(...)` block whose tests commit to the store passes `{ excludeTestServic
 
 ## Where things are described
 
-- docs/architecture.md, how the package is put together: the api and server split, why HttpApi, request flow, config, logging, entry point.
+- docs/architecture.md, how the package is put together: the api and server split, why HttpApi, request flow, the model inside a workspace, config, logging, entry point.

@@ -1,4 +1,5 @@
 import { Layer } from "effect";
+import { Objects, ObjectsLive } from "./Objects.ts";
 import { RegistryLive } from "./Registry.ts";
 import { Signs, SignsLive } from "./Signs.ts";
 import { StoreAdapterLive } from "./StoreAdapter.ts";
@@ -10,9 +11,13 @@ import { WorkspaceStores, WorkspaceStoresLive } from "./WorkspaceStores.ts";
 // test can reach the stores underneath. The type is spelled out for the same
 // reason as RegistryLive's.
 export const ServicesLive: Layer.Layer<
-  Signs | Workspaces | WorkspaceStores | Layer.Success<typeof RegistryLive>,
+  | Objects
+  | Signs
+  | Workspaces
+  | WorkspaceStores
+  | Layer.Success<typeof RegistryLive>,
   Layer.Error<typeof RegistryLive> | Layer.Error<typeof StoreAdapterLive>
-> = Layer.mergeAll(SignsLive, WorkspacesLive).pipe(
+> = Layer.mergeAll(ObjectsLive, SignsLive, WorkspacesLive).pipe(
   Layer.provideMerge(WorkspaceStoresLive),
   Layer.provideMerge(RegistryLive),
   Layer.provide(StoreAdapterLive),

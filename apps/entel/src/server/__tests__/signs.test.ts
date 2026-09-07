@@ -10,7 +10,8 @@ import {
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { Api } from "../../api/Api.ts";
 import { StoreUnavailable } from "../../api/Errors.ts";
-import { Sign, SignTitle, WorkspaceSign } from "../../api/Signs.ts";
+import { ModelObject } from "../../api/Objects.ts";
+import { SignTitle, WorkspaceSign } from "../../api/Signs.ts";
 import {
   Workspace,
   WorkspaceId,
@@ -21,46 +22,37 @@ import { ServicesLive } from "../../services/Services.ts";
 import { WorkspaceStores } from "../../services/WorkspaceStores.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
 import { HttpLive } from "../Http.ts";
+import { ObjectsHandlers } from "../Objects.ts";
 import { SignsHandlers } from "../Signs.ts";
 import { WorkspacesHandlers } from "../Workspaces.ts";
 
 // The typed client routes, encodes and decodes exactly as a real server does,
 // so this covers the handlers, the schemas and the service without a socket.
-// Workspaces comes along because a sign needs a workspace to live in.
-const makeClient = HttpApiTest.groups(Api, ["workspaces", "signs"]);
+// Workspaces comes along because a sign needs a workspace to live in, and
+// objects because a sign is only ever written as the name of an object.
+const makeClient = HttpApiTest.groups(Api, ["workspaces", "objects", "signs"]);
 
 // One registry and its workspace stores for the whole block, on a temp
 // directory that goes away with the layer. Tests therefore see each other's
 // workspaces and each one works in a workspace it created itself.
 const TestLayer = Layer.mergeAll(
-  Layer.mergeAll(WorkspacesHandlers, SignsHandlers).pipe(
+  Layer.mergeAll(WorkspacesHandlers, ObjectsHandlers, SignsHandlers).pipe(
     Layer.provide(ServicesLive),
     Layer.provide(TempDataDir),
   ),
   HttpServer.layerServices,
 );
 
+// The signs endpoints only read, so every sign these tests list had to be
+// written through the objects group first. Individuals, because nothing here
+// cares which kind the object behind a sign is.
+const individual = (title: string) =>
+  ({ kind: "individual", title: SignTitle.make(title) }) as const;
+
 // Blocks that create anything run on the real clock. The service polls the
 // store until the leader has the event, and under the TestClock that poll
 // never ticks.
 layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
-  it.effect("create answers with the stored sign", () =>
-    Effect.gen(function* () {
-      const client = yield* makeClient;
-      const workspace = yield* client.workspaces.create({
-        payload: { name: WorkspaceName.make("atlas") },
-      });
-
-      const created = yield* client.signs.create({
-        params: { workspaceId: workspace.id },
-        payload: { title: SignTitle.make("Atlas") },
-      });
-
-      assert.strictEqual(created.title, "Atlas");
-      assert.isAbove(created.id.length, 0);
-    }),
-  );
-
   it.effect("list answers with every sign in creation order", () =>
     Effect.gen(function* () {
       const client = yield* makeClient;
@@ -68,13 +60,19 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
         payload: { name: WorkspaceName.make("beta") },
       });
 
-      const ship = yield* client.signs.create({
+      const ship = yield* client.objects.create({
         params: { workspaceId: workspace.id },
-        payload: { title: SignTitle.make("Ship") },
+        payload: individual("Ship"),
       });
-      const voyage = yield* client.signs.create({
+      const voyage = yield* client.objects.create({
         params: { workspaceId: workspace.id },
-        payload: { title: SignTitle.make("Voyage") },
+        payload: individual("Voyage"),
+      });
+      // A second name for the first object, written between no two creates, so
+      // the answer follows sign order and not object order.
+      const vessel = yield* client.objects.addSign({
+        params: { workspaceId: workspace.id, objectId: ship.id },
+        payload: { title: SignTitle.make("Vessel") },
       });
 
       const listed = yield* client.signs.list({
@@ -84,7 +82,7 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
       // Sign is a class, and deepStrictEqual compares prototypes too.
       assert.deepStrictEqual(
         listed.map((sign) => ({ ...sign })),
-        [{ ...ship }, { ...voyage }],
+        [{ ...ship.signs[0] }, { ...voyage.signs[0] }, { ...vessel }],
       );
     }),
   );
@@ -99,13 +97,13 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
         payload: { name: WorkspaceName.make("delta") },
       });
 
-      const ship = yield* client.signs.create({
+      const ship = yield* client.objects.create({
         params: { workspaceId: first.id },
-        payload: { title: SignTitle.make("Ship") },
+        payload: individual("Ship"),
       });
-      const voyage = yield* client.signs.create({
+      const voyage = yield* client.objects.create({
         params: { workspaceId: second.id },
-        payload: { title: SignTitle.make("Voyage") },
+        payload: individual("Voyage"),
       });
 
       // The block shares its registry, so the other tests' workspaces come
@@ -121,8 +119,8 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
           sign: { ...row.sign },
         })),
         [
-          { workspaceId: first.id, sign: { ...ship } },
-          { workspaceId: second.id, sign: { ...voyage } },
+          { workspaceId: first.id, sign: { ...ship.signs[0] } },
+          { workspaceId: second.id, sign: { ...voyage.signs[0] } },
         ],
       );
     }),
@@ -135,17 +133,10 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
         const client = yield* makeClient;
         const workspaceId = WorkspaceId.make("does-not-exist");
 
-        const onCreate = yield* client.signs
-          .create({
-            params: { workspaceId },
-            payload: { title: SignTitle.make("Atlas") },
-          })
-          .pipe(Effect.flip);
         const onList = yield* client.signs
           .list({ params: { workspaceId } })
           .pipe(Effect.flip);
 
-        assert.strictEqual(onCreate._tag, "WorkspaceNotFound");
         assert.strictEqual(onList._tag, "WorkspaceNotFound");
       }),
   );
@@ -171,75 +162,17 @@ layer(
       return yield* HttpClientResponse.schemaBodyJson(Workspace)(response);
     });
 
-  it.effect("create answers 201 over the socket", () =>
-    Effect.gen(function* () {
-      const workspace = yield* openWorkspace("atlas");
-
-      const response = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: "Atlas" }) },
-      );
-
-      assert.strictEqual(response.status, 201);
-
-      // Decoded with the contract schema, so this pins the wire shape and not
-      // just the two fields read below.
-      const created = yield* HttpClientResponse.schemaBodyJson(Sign)(response);
-
-      assert.strictEqual(created.title, "Atlas");
-      assert.isAbove(created.id.length, 0);
-    }),
-  );
-
-  it.effect("rejects an empty title with 400 over the socket", () =>
-    Effect.gen(function* () {
-      const workspace = yield* openWorkspace("beta");
-
-      const response = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: "" }) },
-      );
-
-      assert.strictEqual(response.status, 400);
-    }),
-  );
-
-  it.effect("rejects a title over 200 characters with 400", () =>
-    Effect.gen(function* () {
-      const workspace = yield* openWorkspace("gamma");
-
-      const response = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: "a".repeat(201) }) },
-      );
-
-      assert.strictEqual(response.status, 400);
-    }),
-  );
-
-  // Surrounding whitespace would go into the event log, which nothing trims
-  // after the fact.
-  it.effect("rejects a title with surrounding whitespace with 400", () =>
-    Effect.gen(function* () {
-      const workspace = yield* openWorkspace("delta");
-
-      const response = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: " Atlas " }) },
-      );
-
-      assert.strictEqual(response.status, 400);
-    }),
-  );
-
+  // Titles are checked where they are written, which is the objects group, so
+  // the 400s for a bad title live in that group's socket block now.
   it.effect("listAll answers 200 over the socket", () =>
     Effect.gen(function* () {
       const workspace = yield* openWorkspace("epsilon");
       const created = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: "Atlas" }) },
+        `/workspaces/${workspace.id}/objects`,
+        { body: HttpBody.jsonUnsafe({ kind: "individual", title: "Atlas" }) },
       );
-      const sign = yield* HttpClientResponse.schemaBodyJson(Sign)(created);
+      const object =
+        yield* HttpClientResponse.schemaBodyJson(ModelObject)(created);
 
       const response = yield* HttpClient.get("/signs");
 
@@ -256,26 +189,21 @@ layer(
         rows
           .filter((row) => row.workspaceId === workspace.id)
           .map((row) => ({ ...row.sign })),
-        [{ ...sign }],
+        [{ ...object.signs[0] }],
       );
     }),
   );
 
   it.effect("answers 404 for a workspace that is not there", () =>
     Effect.gen(function* () {
-      const created = yield* HttpClient.post(
-        "/workspaces/does-not-exist/signs",
-        { body: HttpBody.jsonUnsafe({ title: "Atlas" }) },
-      );
       const listed = yield* HttpClient.get("/workspaces/does-not-exist/signs");
 
-      assert.strictEqual(created.status, 404);
       assert.strictEqual(listed.status, 404);
 
       // Decoded with the contract's error schema, so a 404 from anything other
       // than the declared failure would not pass.
       const error =
-        yield* HttpClientResponse.schemaBodyJson(WorkspaceNotFound)(created);
+        yield* HttpClientResponse.schemaBodyJson(WorkspaceNotFound)(listed);
 
       assert.strictEqual(error._tag, "WorkspaceNotFound");
       assert.strictEqual(error.workspaceId, "does-not-exist");
@@ -306,18 +234,15 @@ layer(
 
       yield* store.shutdown();
 
-      const created = yield* HttpClient.post(
-        `/workspaces/${workspace.id}/signs`,
-        { body: HttpBody.jsonUnsafe({ title: "Atlas" }) },
-      );
+      const listed = yield* HttpClient.get(`/workspaces/${workspace.id}/signs`);
 
-      assert.strictEqual(created.status, 503);
+      assert.strictEqual(listed.status, 503);
 
       // Decoded with the contract's error schema, so a 503 from anything other
       // than the declared failure would not pass, and the store field has to
       // point at the workspace, not at the registry.
       const error =
-        yield* HttpClientResponse.schemaBodyJson(StoreUnavailable)(created);
+        yield* HttpClientResponse.schemaBodyJson(StoreUnavailable)(listed);
 
       assert.strictEqual(error.store, workspace.id);
 
