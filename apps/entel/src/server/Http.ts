@@ -2,6 +2,7 @@ import { Layer } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { Api } from "../api/Api.ts";
+import { ObjectsHandlers } from "./Objects.ts";
 import { SignsHandlers } from "./Signs.ts";
 import { SystemHandlers } from "./System.ts";
 import { WorkspacesHandlers } from "./Workspaces.ts";
@@ -11,7 +12,12 @@ import { WorkspacesHandlers } from "./Workspaces.ts";
 export const HttpLive = HttpRouter.serve(
   HttpApiBuilder.layer(Api).pipe(
     Layer.provide(
-      Layer.mergeAll(SystemHandlers, WorkspacesHandlers, SignsHandlers),
+      Layer.mergeAll(
+        SystemHandlers,
+        WorkspacesHandlers,
+        ObjectsHandlers,
+        SignsHandlers,
+      ),
     ),
   ),
 );

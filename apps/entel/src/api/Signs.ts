@@ -1,10 +1,7 @@
 import { Schema } from "effect";
-import {
-  HttpApiEndpoint,
-  HttpApiGroup,
-  HttpApiSchema,
-} from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import { StoreUnavailable } from "./Errors.ts";
+import { ObjectId } from "./ObjectId.ts";
 import { ShortText } from "./Text.ts";
 import { WorkspaceId, WorkspaceNotFound } from "./Workspaces.ts";
 
@@ -16,13 +13,14 @@ export type SignId = typeof SignId.Type;
 export const SignTitle = ShortText.pipe(Schema.brand("SignTitle"));
 export type SignTitle = typeof SignTitle.Type;
 
+// The semantic level. A sign refers to exactly one object and has one title;
+// a second name for the same object is a second sign. Signs are made through
+// the objects group, since a sign for nothing is not a thing.
 export class Sign extends Schema.Class<Sign>("Sign")({
   id: SignId,
+  objectId: ObjectId,
   title: SignTitle,
 }) {}
-
-// A struct, not a class, so a client can send a plain object.
-export const CreateSign = Schema.Struct({ title: SignTitle });
 
 // A sign seen from outside its workspace. The pair of workspace id and sign
 // is how one workspace refers into another, so a read that spans workspaces
@@ -35,12 +33,6 @@ export class WorkspaceSign extends Schema.Class<WorkspaceSign>("WorkspaceSign")(
 ) {}
 
 export class SignsApi extends HttpApiGroup.make("signs").add(
-  HttpApiEndpoint.post("create", "/workspaces/:workspaceId/signs", {
-    params: { workspaceId: WorkspaceId },
-    payload: CreateSign,
-    success: Sign.pipe(HttpApiSchema.status(201)),
-    error: [WorkspaceNotFound, StoreUnavailable],
-  }),
   HttpApiEndpoint.get("list", "/workspaces/:workspaceId/signs", {
     params: { workspaceId: WorkspaceId },
     success: Schema.Array(Sign),

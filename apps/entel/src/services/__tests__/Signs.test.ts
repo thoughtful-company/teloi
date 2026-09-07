@@ -5,6 +5,7 @@ import { SignTitle } from "../../api/Signs.ts";
 import { WorkspaceId, WorkspaceName } from "../../api/Workspaces.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
 import { runAgainst as runServicesAgainst } from "../../test/Services.ts";
+import { Objects } from "../Objects.ts";
 import { Registry } from "../Registry.ts";
 import { ServicesLive } from "../Services.ts";
 import { Signs } from "../Signs.ts";
@@ -12,6 +13,7 @@ import { Workspaces } from "../Workspaces.ts";
 import { WorkspaceStores } from "../WorkspaceStores.ts";
 
 type Run = {
+  readonly objects: typeof Objects.Service;
   readonly signs: typeof Signs.Service;
   readonly workspaces: typeof Workspaces.Service;
 };
@@ -22,6 +24,7 @@ const runAgainst = <A, E, R>(
 ) =>
   runServicesAgainst(dir, (services) =>
     use({
+      objects: Context.get(services, Objects),
       signs: Context.get(services, Signs),
       workspaces: Context.get(services, Workspaces),
     }),
@@ -29,6 +32,12 @@ const runAgainst = <A, E, R>(
 
 const titles = (signs: ReadonlyArray<{ readonly title: string }>) =>
   signs.map((sign) => sign.title);
+
+// A sign is only ever made with the object it stands for, so every sign these
+// tests read had to be written through Objects first. Individuals, because
+// nothing here cares which kind the object is.
+const individual = (title: string) =>
+  ({ kind: "individual", title: SignTitle.make(title) }) as const;
 
 // Every block here commits, so they run on the real clock. The service polls
 // the store until the leader has the event, and under the TestClock that poll
@@ -45,26 +54,28 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
           prefix: "entel-test-",
         });
 
-        const workspaceId = yield* runAgainst(dir, ({ signs, workspaces }) =>
-          Effect.gen(function* () {
-            const workspace = yield* workspaces.create(
-              WorkspaceName.make("atlas"),
-            );
-            const created = yield* signs.create(
-              workspace.id,
-              SignTitle.make("Ship"),
-            );
+        const workspaceId = yield* runAgainst(
+          dir,
+          ({ objects, signs, workspaces }) =>
+            Effect.gen(function* () {
+              const workspace = yield* workspaces.create(
+                WorkspaceName.make("atlas"),
+              );
+              const created = yield* objects.create(
+                workspace.id,
+                individual("Ship"),
+              );
 
-            assert.deepStrictEqual(
-              (yield* signs.list(workspace.id)).map((sign) => ({ ...sign })),
-              [{ ...created }],
-            );
+              assert.deepStrictEqual(
+                (yield* signs.list(workspace.id)).map((sign) => ({ ...sign })),
+                [{ ...created.signs[0] }],
+              );
 
-            return workspace.id;
-          }),
+              return workspace.id;
+            }),
         );
 
-        yield* runAgainst(dir, ({ signs, workspaces }) =>
+        yield* runAgainst(dir, ({ objects, signs, workspaces }) =>
           Effect.gen(function* () {
             assert.deepStrictEqual(
               (yield* workspaces.list()).map((workspace) => workspace.id),
@@ -74,7 +85,7 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
               "Ship",
             ]);
 
-            yield* signs.create(workspaceId, SignTitle.make("Voyage"));
+            yield* objects.create(workspaceId, individual("Voyage"));
           }),
         );
 
@@ -96,13 +107,13 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
           prefix: "entel-test-",
         });
 
-        yield* runAgainst(dir, ({ signs, workspaces }) =>
+        yield* runAgainst(dir, ({ objects, signs, workspaces }) =>
           Effect.gen(function* () {
             const alpha = yield* workspaces.create(WorkspaceName.make("alpha"));
             const beta = yield* workspaces.create(WorkspaceName.make("beta"));
 
-            yield* signs.create(alpha.id, SignTitle.make("Ship"));
-            yield* signs.create(alpha.id, SignTitle.make("Voyage"));
+            yield* objects.create(alpha.id, individual("Ship"));
+            yield* objects.create(alpha.id, individual("Voyage"));
 
             // A workspace store is opened on first use, so beta has no
             // directory yet and its signs cannot have gone anywhere near it.
@@ -139,15 +150,15 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
           prefix: "entel-test-",
         });
 
-        const created = yield* runAgainst(dir, ({ signs, workspaces }) =>
+        const created = yield* runAgainst(dir, ({ objects, workspaces }) =>
           Effect.gen(function* () {
             const lambda = yield* workspaces.create(
               WorkspaceName.make("lambda"),
             );
             const mu = yield* workspaces.create(WorkspaceName.make("mu"));
 
-            yield* signs.create(lambda.id, SignTitle.make("Ship"));
-            yield* signs.create(mu.id, SignTitle.make("Voyage"));
+            yield* objects.create(lambda.id, individual("Ship"));
+            yield* objects.create(mu.id, individual("Voyage"));
 
             return [lambda.id, mu.id];
           }),
@@ -217,14 +228,14 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
 layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
   excludeTestServices: true,
 })("Signs, against one registry and its workspace stores", (it) => {
-  it.effect("create returns only once the event reached the leader", () =>
+  it.effect("a new sign is on the leader before create returns", () =>
     Effect.gen(function* () {
-      const signs = yield* Signs;
+      const objects = yield* Objects;
       const workspaces = yield* Workspaces;
       const workspaceStores = yield* WorkspaceStores;
 
       const workspace = yield* workspaces.create(WorkspaceName.make("gamma"));
-      yield* signs.create(workspace.id, SignTitle.make("Ship"));
+      yield* objects.create(workspace.id, individual("Ship"));
 
       // commit only applies the event to local state. Returning before the
       // leader has it would let a caller read a sign that a crash one moment
@@ -252,11 +263,12 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 
   it.effect("refuses a workspace the registry never issued", () =>
     Effect.gen(function* () {
+      const objects = yield* Objects;
       const signs = yield* Signs;
       const unknown = WorkspaceId.make("does-not-exist");
 
-      const onCreate = yield* signs
-        .create(unknown, SignTitle.make("Ship"))
+      const onCreate = yield* objects
+        .create(unknown, individual("Ship"))
         .pipe(Effect.flip);
       const onList = yield* signs.list(unknown).pipe(Effect.flip);
 
@@ -267,7 +279,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
       // workspace the request named.
       assert.deepStrictEqual(
         [onCreate, onList].map((error) =>
-          error._tag === "WorkspaceNotFound" ? error.workspaceId : error.store,
+          error._tag === "WorkspaceNotFound" ? error.workspaceId : error._tag,
         ),
         [unknown, unknown],
       );
@@ -276,6 +288,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 
   it.effect("creates many signs in one workspace at once", () =>
     Effect.gen(function* () {
+      const objects = yield* Objects;
       const signs = yield* Signs;
       const workspaces = yield* Workspaces;
       const workspace = yield* workspaces.create(WorkspaceName.make("delta"));
@@ -285,13 +298,14 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
       // shared queue of sync updates, so a wait that consumed from it would
       // starve the other nineteen and they would time out as 503s.
       const created = yield* Effect.all(
-        wanted.map((title) =>
-          signs.create(workspace.id, SignTitle.make(title)),
-        ),
+        wanted.map((title) => objects.create(workspace.id, individual(title))),
         { concurrency: "unbounded" },
       );
 
-      assert.deepStrictEqual(titles(created).sort(), [...wanted].sort());
+      assert.deepStrictEqual(
+        titles(created.flatMap((object) => object.signs)).sort(),
+        [...wanted].sort(),
+      );
       assert.deepStrictEqual(
         titles(yield* signs.list(workspace.id)).sort(),
         [...wanted].sort(),
@@ -303,6 +317,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
     "lists every sign across workspaces, workspaces first then signs",
     () =>
       Effect.gen(function* () {
+        const objects = yield* Objects;
         const signs = yield* Signs;
         const workspaces = yield* Workspaces;
 
@@ -314,13 +329,10 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
         // Interleaved on purpose. omicron's and pi's signs are written before
         // nu's second one, so an answer that followed sign creation order
         // alone would put them in the middle.
-        const ship = yield* signs.create(nu.id, SignTitle.make("Ship"));
-        const anchor = yield* signs.create(
-          omicron.id,
-          SignTitle.make("Anchor"),
-        );
-        const compass = yield* signs.create(pi.id, SignTitle.make("Compass"));
-        const voyage = yield* signs.create(nu.id, SignTitle.make("Voyage"));
+        const ship = yield* objects.create(nu.id, individual("Ship"));
+        const anchor = yield* objects.create(omicron.id, individual("Anchor"));
+        const compass = yield* objects.create(pi.id, individual("Compass"));
+        const voyage = yield* objects.create(nu.id, individual("Voyage"));
 
         // The block shares its registry, so the other tests' workspaces are in
         // the answer as well and only these four can be asserted on.
@@ -338,10 +350,10 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
             sign: { ...row.sign },
           })),
           [
-            { workspaceId: nu.id, sign: { ...ship } },
-            { workspaceId: nu.id, sign: { ...voyage } },
-            { workspaceId: omicron.id, sign: { ...anchor } },
-            { workspaceId: pi.id, sign: { ...compass } },
+            { workspaceId: nu.id, sign: { ...ship.signs[0] } },
+            { workspaceId: nu.id, sign: { ...voyage.signs[0] } },
+            { workspaceId: omicron.id, sign: { ...anchor.signs[0] } },
+            { workspaceId: pi.id, sign: { ...compass.signs[0] } },
           ],
         );
       }),
@@ -349,6 +361,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 
   it.effect("keeps concurrent creates in the workspace they name", () =>
     Effect.gen(function* () {
+      const objects = yield* Objects;
       const signs = yield* Signs;
       const workspaces = yield* Workspaces;
       const epsilon = yield* workspaces.create(WorkspaceName.make("epsilon"));
@@ -360,10 +373,10 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
       yield* Effect.all(
         [
           ...wanted("epsilon").map((title) =>
-            signs.create(epsilon.id, SignTitle.make(title)),
+            objects.create(epsilon.id, individual(title)),
           ),
           ...wanted("zeta").map((title) =>
-            signs.create(zeta.id, SignTitle.make(title)),
+            objects.create(zeta.id, individual(title)),
           ),
         ],
         { concurrency: "unbounded" },
@@ -389,6 +402,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 })("Signs, with a workspace store shut down", (it) => {
   it.effect("names the workspace as the store that is unavailable", () =>
     Effect.gen(function* () {
+      const objects = yield* Objects;
       const signs = yield* Signs;
       const workspaces = yield* Workspaces;
       const workspaceStores = yield* WorkspaceStores;
@@ -398,8 +412,8 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 
       yield* store.shutdown();
 
-      const onCreate = yield* signs
-        .create(workspace.id, SignTitle.make("Ship"))
+      const onCreate = yield* objects
+        .create(workspace.id, individual("Ship"))
         .pipe(Effect.flip);
       const onList = yield* signs.list(workspace.id).pipe(Effect.flip);
 
@@ -410,7 +424,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
       // not at the one store entel owns itself.
       assert.deepStrictEqual(
         [onCreate, onList].map((error) =>
-          error._tag === "StoreUnavailable" ? error.store : error.workspaceId,
+          error._tag === "StoreUnavailable" ? error.store : error._tag,
         ),
         [workspace.id, workspace.id],
       );
@@ -431,6 +445,7 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
 })("Signs, reading across workspaces with a store shut down", (it) => {
   it.effect("names the workspace whose store is gone", () =>
     Effect.gen(function* () {
+      const objects = yield* Objects;
       const signs = yield* Signs;
       const workspaces = yield* Workspaces;
       const workspaceStores = yield* WorkspaceStores;
@@ -438,8 +453,8 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
       const rho = yield* workspaces.create(WorkspaceName.make("rho"));
       const sigma = yield* workspaces.create(WorkspaceName.make("sigma"));
 
-      yield* signs.create(rho.id, SignTitle.make("Ship"));
-      yield* signs.create(sigma.id, SignTitle.make("Voyage"));
+      yield* objects.create(rho.id, individual("Ship"));
+      yield* objects.create(sigma.id, individual("Voyage"));
 
       const { store } = yield* workspaceStores.open(sigma.id);
       yield* store.shutdown();
