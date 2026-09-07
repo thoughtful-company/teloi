@@ -10,7 +10,7 @@ import { WorkspacesHandlers } from "./Workspaces.ts";
 // Still needs an HttpServer and the services the handlers use. main.ts binds
 // a real port and the real stores, tests use layerTest and a temp data dir.
 export const HttpLive = HttpRouter.serve(
-  HttpApiBuilder.layer(Api).pipe(
+  HttpApiBuilder.layer(Api, { openapiPath: "/openapi.json" }).pipe(
     Layer.provide(
       Layer.mergeAll(
         SystemHandlers,

@@ -4,6 +4,7 @@ import { Effect, Layer } from "effect";
 import {
   HttpBody,
   HttpClient,
+  HttpClientRequest,
   HttpClientResponse,
   HttpServer,
 } from "effect/unstable/http";
@@ -608,6 +609,62 @@ layer(
       assert.strictEqual(error.objectId, ship.id);
       assert.deepStrictEqual([...error.expected], ["set", "tupleSet"]);
       assert.strictEqual(error.actual, "individual");
+    }),
+  );
+
+  // Effect v4 decodes with onExcessProperty "ignore", and HttpApiBuilder gives
+  // no place to change it, so a key the payload schema does not declare is
+  // dropped and the request succeeds. The agent guide tells a reader that a
+  // misspelled key is a silent omission rather than an error, and this is the
+  // test that keeps that sentence true, or fails loudly on an rc bump that
+  // changes it.
+  it.effect("drops a payload key the schema does not declare", () =>
+    Effect.gen(function* () {
+      const workspace = yield* openWorkspace("omicron");
+
+      const response = yield* createObject(workspace.id, {
+        kind: "set",
+        title: "Fleet",
+        elements: ["anything"],
+      });
+
+      assert.strictEqual(response.status, 201);
+
+      const created =
+        yield* HttpClientResponse.schemaBodyJson(ModelObject)(response);
+
+      // Membership is stated on its own endpoint, so a set named with elements
+      // is created empty and the caller is not told the key went nowhere.
+      assert.deepStrictEqual([...created.elements], []);
+    }),
+  );
+
+  // The guide tells an agent it may post JSON without a content type. That is
+  // the framework's default and nothing else pins it, so an rc bump could turn
+  // it into a 415 while every other test kept passing.
+  it.effect("reads a body with no content type as JSON", () =>
+    Effect.gen(function* () {
+      const workspace = yield* openWorkspace("pi");
+
+      // The header is written into the request by setBody, from the body's own
+      // content type, so it can only be taken off again afterwards.
+      const request = HttpClientRequest.post(
+        `/workspaces/${workspace.id}/objects`,
+      ).pipe(
+        HttpClientRequest.bodyText(
+          JSON.stringify({ kind: "individual", title: "Ship" }),
+        ),
+        HttpClientRequest.removeHeader("content-type"),
+      );
+
+      const response = yield* HttpClient.execute(request);
+
+      assert.strictEqual(response.status, 201);
+
+      const created =
+        yield* HttpClientResponse.schemaBodyJson(ModelObject)(response);
+
+      assert.strictEqual(created.signs[0]?.title, "Ship");
     }),
   );
 
