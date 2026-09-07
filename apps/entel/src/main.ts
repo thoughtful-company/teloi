@@ -3,8 +3,10 @@ import { Config, Effect, Layer } from "effect";
 import { createServer } from "node:http";
 import { LoggingLive, reportFailure } from "./Logging.ts";
 import { HttpLive } from "./server/Http.ts";
+import { ServicesLive } from "./services/Services.ts";
 
 const ServerLive = HttpLive.pipe(
+  Layer.provide(ServicesLive),
   Layer.provide(
     NodeHttpServer.layerConfig(createServer, {
       // Loopback by default. Nothing in entel is authenticated yet, so a

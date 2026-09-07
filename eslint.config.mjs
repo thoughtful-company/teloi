@@ -25,6 +25,8 @@ export default [
     },
   },
   {
-    ignores: ["dist/**"],
+    // Build output. apps/electron/out is esbuild's, it trips no-undef and would
+    // otherwise change the warning count with every rebuild.
+    ignores: ["dist/**", "apps/electron/out/**"],
   },
 ];

@@ -28,7 +28,7 @@ Commands named after a key are named after the key (Left, Backspace). Commands n
 
 Components consume semantic color tokens (surface-*, text-*, border-*), never raw palette values. Themes live in src/themes/, contract in themes/ivory.css.
 
-@effect/platform-node stays in devDependencies although nothing here imports it. It pins LiveStore 0.3.1's peer to the v3 line; without it pnpm hoists apps/entel's v4 copy over it and the unit tests fail on import. It leaves with THC-145, the Effect v4 migration.
+@effect/platform-node and @effect/opentelemetry stay in devDependencies although nothing here imports them. LiveStore 0.3.1 peers on both without this package declaring them, and pnpm fills an undeclared peer with whatever version the workspace has, which is apps/entel's Effect v4 copy. The unit tests then fail on import. Both leave with THC-145, the Effect v4 migration.
 
 ## Tests
 

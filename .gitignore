@@ -155,3 +155,7 @@ WIP.md
 # Local-only session handoff notes (kept out of the committed tree)
 /handoff.md
 /docs/handoff/
+
+# entel keeps its LiveStore files here unless ENTEL_DATA_DIR says otherwise,
+# whatever the working directory
+/apps/entel/data/

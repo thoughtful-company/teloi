@@ -4,6 +4,8 @@ import { Effect, Layer } from "effect";
 import { HttpClient, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { Api } from "../../api/Api.ts";
+import { ServicesLive } from "../../services/Services.ts";
+import { TempDataDir } from "../../test/DataDir.ts";
 import { HttpLive } from "../Http.ts";
 import { SystemHandlers } from "../System.ts";
 
@@ -32,16 +34,21 @@ layer(Layer.mergeAll(SystemHandlers, HttpServer.layerServices))(
 
 // `NodeHttpServer.layerTest` binds an ephemeral port and provides an HttpClient
 // already pointed at it, so this exercises the real Node wiring end to end.
-layer(HttpLive.pipe(Layer.provideMerge(NodeHttpServer.layerTest)))(
-  "health, over a socket",
-  (it) => {
-    it.effect("serves GET /health", () =>
-      Effect.gen(function* () {
-        const response = yield* HttpClient.get("/health");
+// HttpLive carries every handler, so the registry comes along even though
+// /health never touches it.
+layer(
+  HttpLive.pipe(
+    Layer.provide(ServicesLive),
+    Layer.provide(TempDataDir),
+    Layer.provideMerge(NodeHttpServer.layerTest),
+  ),
+)("health, over a socket", (it) => {
+  it.effect("serves GET /health", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.get("/health");
 
-        assert.strictEqual(response.status, 200);
-        assert.deepStrictEqual(yield* response.json, { status: "ok" });
-      }),
-    );
-  },
-);
+      assert.strictEqual(response.status, 200);
+      assert.deepStrictEqual(yield* response.json, { status: "ok" });
+    }),
+  );
+});
