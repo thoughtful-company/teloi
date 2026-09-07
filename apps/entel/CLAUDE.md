@@ -44,4 +44,5 @@ A `layer(...)` block whose tests commit to the store passes `{ excludeTestServic
 
 ## Where things are described
 
+- docs/api-for-agents.md, how to model through the HTTP API, for an agent that has nothing else: the two levels, a worked example with real answers, every error.
 - docs/architecture.md, how the package is put together: the api and server split, why HttpApi, request flow, the model inside a workspace, config, logging, entry point.
