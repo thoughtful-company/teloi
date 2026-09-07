@@ -23,6 +23,7 @@ import { WorkspaceStores } from "../../services/WorkspaceStores.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
 import { HttpLive } from "../Http.ts";
 import { ObjectsHandlers } from "../Objects.ts";
+import { RequestSchemaLive } from "../RequestSchema.ts";
 import { SignsHandlers } from "../Signs.ts";
 import { WorkspacesHandlers } from "../Workspaces.ts";
 
@@ -37,6 +38,9 @@ const makeClient = HttpApiTest.groups(Api, ["workspaces", "objects", "signs"]);
 // workspaces and each one works in a workspace it created itself.
 const TestLayer = Layer.mergeAll(
   Layer.mergeAll(WorkspacesHandlers, ObjectsHandlers, SignsHandlers).pipe(
+    // Declared on the api, so every handler group requires it, and so does
+    // HttpApiTest.groups for the groups this block does not build.
+    Layer.provideMerge(RequestSchemaLive),
     Layer.provide(ServicesLive),
     Layer.provide(TempDataDir),
   ),
