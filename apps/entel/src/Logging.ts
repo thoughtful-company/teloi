@@ -36,7 +36,7 @@ export const reportFailure = <E>(cause: Cause.Cause<E>) =>
         Effect.andThen(Effect.sync(() => markReported(Cause.squash(cause)))),
       );
 
-// ================================ Internal ==================================
+// ================================ Internal ===================================
 
 const markReported = (error: unknown) => {
   if (typeof error === "object" && error !== null) {
