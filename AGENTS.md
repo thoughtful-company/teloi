@@ -88,6 +88,16 @@ On naming. Major things are named with Greek words, one word per thing. Teloi, E
 
 On the journal of dissatisfactions. It lives outside every repo, and my personal CLAUDE.md points to it.
 
+On where this goes, added 2026-09-07.
+
+Teloi starts as a modeler, but a model with an event log under it can also be run. I want to define rules in Teloi, so that objects come into being from other objects, and then let the world run forward. Fork it at any point, run the branches, compare them. So a model of a domain becomes a simulator of that domain, and a question like "what would have happened if" is answered by replaying the log with one event changed.
+
+Out of that a few things can grow. A virtual world with characters played by agents, where the world has laws and a history and the agents live inside both. A company that is run from its model, where every piece of work is an object, a system or an agent claims it, and every decision keeps its reasons and its alternatives. A life modelled in a workspace, where a change in the model sets real work in motion, because an event can name a real thing and an adapter can carry it out. In all of these Teloi is the one place where people and agents share the same picture of what exists and what is being done about it, and the systems around it do the processing.
+
+The model lives on two levels. The semantic level is signs, notes, blocks and descriptions, the things people and agents write. The ontological level is the objects those signs refer to, with their extents in space and time. Simulation happens on the ontological level, text lives on the semantic level, and rules are the bridge between them. A rule is itself an object, with a sign and a note like anything else, so the world can carry its own laws inside itself.
+
+The ontology stays BORO and extensional. Inference grows beside it, as queries over the grounding relations and as rules written in code. For the work part, tasks, actors and methods, I intend to lean on Levenchuk's praxeology, because it fits 4D.
+
 ---
 
 That closes the questions. What follows is what I carried over from the old AGENTS.md of this repo, rewritten. The old file was mostly about the web app's editor, and that part now lives in apps/web/CLAUDE.md, in the docs folder, and in two skills.
