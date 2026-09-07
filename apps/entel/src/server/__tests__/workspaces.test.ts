@@ -9,11 +9,8 @@ import {
 } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { Api } from "../../api/Api.ts";
-import {
-  RegistryUnavailable,
-  Workspace,
-  WorkspaceName,
-} from "../../api/Workspaces.ts";
+import { StoreUnavailable } from "../../api/Errors.ts";
+import { Workspace, WorkspaceName } from "../../api/Workspaces.ts";
 import { Registry } from "../../services/Registry.ts";
 import { ServicesLive } from "../../services/Services.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
@@ -174,9 +171,10 @@ layer(
       // Decoded with the contract's error schema, so a 503 from anything other
       // than the declared failure would not pass.
       const error =
-        yield* HttpClientResponse.schemaBodyJson(RegistryUnavailable)(created);
+        yield* HttpClientResponse.schemaBodyJson(StoreUnavailable)(created);
 
-      assert.strictEqual(error._tag, "RegistryUnavailable");
+      assert.strictEqual(error._tag, "StoreUnavailable");
+      assert.strictEqual(error.store, "registry");
     }),
   );
 });

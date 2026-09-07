@@ -22,7 +22,11 @@ src/api is the contract and never imports from src/server. The CLI will import t
 
 Every endpoint is declared in an HttpApiGroup under src/api and implemented with HttpApiBuilder.group under src/server. No hand-written HttpRouter routes.
 
-Handlers hold no state and no logic beyond decoding a request into a service call. Services live in src/services as Context.Service classes with a Live layer, composed once in src/services/Services.ts. State goes through LiveStore, on the 0.5 dev line because that is the one that peers on Effect v4. Every change of state is an event committed to a store, never a direct table write. Errors a caller can receive are Schema.TaggedError classes declared in src/api next to the endpoints that answer with them.
+Handlers hold no state and no logic beyond decoding a request into a service call. Services live in src/services as Context.Service classes with a Live layer, composed once in src/services/Services.ts. State goes through LiveStore, on the 0.5 dev line because that is the one that peers on Effect v4. Every change of state is an event committed to a store, never a direct table write. Errors a caller can receive are Schema.TaggedError classes declared in src/api. An error about one group's endpoints lives in that group's file. An error about a resource that other groups answer with lives in the resource's file, so WorkspaceNotFound is in Workspaces.ts although only the signs endpoints raise it today. An error every store can raise lives in src/api/Errors.ts.
+
+Every store call goes through the StoreCalls bundle from src/services/StoreCalls.ts, never through store.commit or store.query directly, so the wait for persistence and the StoreUnavailable translation happen in one place. A service that touches a workspace's data gets that bundle from WorkspaceStores.open and never builds a store itself.
+
+A workspace id from a request is a directory name under ENTEL_DATA_DIR once it reaches the adapter. Only WorkspaceStores may hand an id to LiveStore, and only after the registry confirmed it.
 
 Config comes from the environment through Effect Config, keys prefixed `ENTEL_`. Never read process.env directly.
 
@@ -32,7 +36,7 @@ The cleanup rule from the root docs/testing.md applies, nothing else in that fil
 
 Handlers are tested in memory through HttpApiTest.groups, which runs the real request pipeline against the handler layers without a socket. A socket block through NodeHttpServer.layerTest exists for what the typed client cannot produce, a payload its own schema rejects or the status code of a response. `src/server/__tests__/health.test.ts` has the one that pins the Node wiring itself.
 
-Tests run against the real services and a real store. src/test/DataDir.ts points ENTEL_DATA_DIR at a temp directory scoped to the layer, so each `layer(...)` block gets its own store and loses it on teardown. A store persists across restarts, so a `layer(...)` block shares one store between its tests and no test may assume the registry starts empty.
+Tests run against the real services and real stores. src/test/DataDir.ts points ENTEL_DATA_DIR at a temp directory scoped to the layer, so each `layer(...)` block gets its own stores and loses them on teardown. Stores persist across restarts, so a `layer(...)` block shares its stores between its tests and no test may assume the registry or a workspace starts empty.
 
 A `layer(...)` block whose tests commit to the store passes `{ excludeTestServices: true }`. The service polls the store on the real clock until the leader has the event, and under @effect/vitest's TestClock that poll never ticks.
 
