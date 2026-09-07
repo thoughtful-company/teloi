@@ -132,6 +132,46 @@ layer(NodeFileSystem.layer, { excludeTestServices: true })(
       }),
     );
 
+    it.effect("reads every workspace's signs after a restart", () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const dir = yield* fs.makeTempDirectoryScoped({
+          prefix: "entel-test-",
+        });
+
+        const created = yield* runAgainst(dir, ({ signs, workspaces }) =>
+          Effect.gen(function* () {
+            const lambda = yield* workspaces.create(
+              WorkspaceName.make("lambda"),
+            );
+            const mu = yield* workspaces.create(WorkspaceName.make("mu"));
+
+            yield* signs.create(lambda.id, SignTitle.make("Ship"));
+            yield* signs.create(mu.id, SignTitle.make("Voyage"));
+
+            return [lambda.id, mu.id];
+          }),
+        );
+
+        yield* runAgainst(dir, ({ signs }) =>
+          Effect.gen(function* () {
+            // The first call of the run, so no workspace store has been opened
+            // yet. Reading across workspaces has to open them itself, or it
+            // answers for the ones a caller happened to touch before.
+            const rows = yield* signs.listAll();
+
+            assert.deepStrictEqual(
+              rows.map((row) => [row.workspaceId, row.sign.title]),
+              [
+                [created[0], "Ship"],
+                [created[1], "Voyage"],
+              ],
+            );
+          }),
+        );
+      }),
+    );
+
     it.effect("boots a store again after a failed first open", () =>
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -259,6 +299,54 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
     }),
   );
 
+  it.effect(
+    "lists every sign across workspaces, workspaces first then signs",
+    () =>
+      Effect.gen(function* () {
+        const signs = yield* Signs;
+        const workspaces = yield* Workspaces;
+
+        const nu = yield* workspaces.create(WorkspaceName.make("nu"));
+        const xi = yield* workspaces.create(WorkspaceName.make("xi"));
+        const omicron = yield* workspaces.create(WorkspaceName.make("omicron"));
+        const pi = yield* workspaces.create(WorkspaceName.make("pi"));
+
+        // Interleaved on purpose. omicron's and pi's signs are written before
+        // nu's second one, so an answer that followed sign creation order
+        // alone would put them in the middle.
+        const ship = yield* signs.create(nu.id, SignTitle.make("Ship"));
+        const anchor = yield* signs.create(
+          omicron.id,
+          SignTitle.make("Anchor"),
+        );
+        const compass = yield* signs.create(pi.id, SignTitle.make("Compass"));
+        const voyage = yield* signs.create(nu.id, SignTitle.make("Voyage"));
+
+        // The block shares its registry, so the other tests' workspaces are in
+        // the answer as well and only these four can be asserted on.
+        const mine = new Set<string>([nu.id, xi.id, omicron.id, pi.id]);
+        const rows = (yield* signs.listAll()).filter((row) =>
+          mine.has(row.workspaceId),
+        );
+
+        // WorkspaceSign and Sign are classes, and deepStrictEqual compares
+        // prototypes too. xi has no row at all in the expected answer, rather
+        // than an empty one or a failure.
+        assert.deepStrictEqual(
+          rows.map((row) => ({
+            workspaceId: row.workspaceId,
+            sign: { ...row.sign },
+          })),
+          [
+            { workspaceId: nu.id, sign: { ...ship } },
+            { workspaceId: nu.id, sign: { ...voyage } },
+            { workspaceId: omicron.id, sign: { ...anchor } },
+            { workspaceId: pi.id, sign: { ...compass } },
+          ],
+        );
+      }),
+  );
+
   it.effect("keeps concurrent creates in the workspace they name", () =>
     Effect.gen(function* () {
       const signs = yield* Signs;
@@ -335,6 +423,36 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
   );
 });
 
+// Its own block, and its only test, for the same reason as the one above: it
+// shuts a workspace store down, and RcMap hands that dead store to every later
+// call against this layer.
+layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
+  excludeTestServices: true,
+})("Signs, reading across workspaces with a store shut down", (it) => {
+  it.effect("names the workspace whose store is gone", () =>
+    Effect.gen(function* () {
+      const signs = yield* Signs;
+      const workspaces = yield* Workspaces;
+      const workspaceStores = yield* WorkspaceStores;
+
+      const rho = yield* workspaces.create(WorkspaceName.make("rho"));
+      const sigma = yield* workspaces.create(WorkspaceName.make("sigma"));
+
+      yield* signs.create(rho.id, SignTitle.make("Ship"));
+      yield* signs.create(sigma.id, SignTitle.make("Voyage"));
+
+      const { store } = yield* workspaceStores.open(sigma.id);
+      yield* store.shutdown();
+
+      const failed = yield* signs.listAll().pipe(Effect.flip);
+
+      // A list with a hole in it would read as a workspace with no signs, so
+      // the read fails whole and points at the store that could not answer.
+      assert.strictEqual(failed.store, sigma.id);
+    }),
+  );
+});
+
 // Its own block, its only test, because it shuts the registry down and every
 // later call against this layer would fail for that reason rather than its own.
 layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
@@ -359,6 +477,12 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
         onList._tag === "StoreUnavailable" ? onList.store : onList.workspaceId,
         "registry",
       );
+
+      // The read across workspaces starts from the registry too, and this is
+      // the one way it fails without a workspace to name.
+      const onListAll = yield* signs.listAll().pipe(Effect.flip);
+
+      assert.strictEqual(onListAll.store, "registry");
     }),
   );
 });

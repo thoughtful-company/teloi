@@ -1,7 +1,7 @@
 import { createStore } from "@livestore/livestore";
 import { Context, Duration, Effect, Layer, RcMap } from "effect";
 import { StoreUnavailable } from "../api/Errors.ts";
-import { type WorkspaceId, WorkspaceNotFound } from "../api/Workspaces.ts";
+import { WorkspaceId, WorkspaceNotFound } from "../api/Workspaces.ts";
 import { registryCalls, workspaces } from "./Registry.ts";
 import { StoreAdapter, storeOptions, TracerLive } from "./StoreAdapter.ts";
 import {
@@ -25,8 +25,20 @@ export class WorkspaceStores extends Context.Service<
     readonly open: (
       workspaceId: WorkspaceId,
     ) => Effect.Effect<WorkspaceStore, WorkspaceNotFound | StoreUnavailable>;
+    // Every workspace the registry knows, in registry order, each with its
+    // store open. The one path for a read that spans workspaces, so the
+    // registry is asked once and no id needs a second check.
+    readonly openAll: () => Effect.Effect<
+      ReadonlyArray<OpenedWorkspace>,
+      StoreUnavailable
+    >;
   }
 >()("entel/WorkspaceStores") {}
+
+export interface OpenedWorkspace {
+  readonly workspaceId: WorkspaceId;
+  readonly workspace: WorkspaceStore;
+}
 
 export const WorkspaceStoresLive = Layer.effect(
   WorkspaceStores,
@@ -46,8 +58,8 @@ export const WorkspaceStoresLive = Layer.effect(
     // once per boot, so it can never remove a later, healthy entry the way an
     // invalidate from each waiter could. It relies on a waiter still holding
     // the entry: with none left, invalidate would close the entry scope from
-    // inside the very fiber that runs in it and hang. open keeps that promise
-    // by making its get uninterruptible.
+    // inside the very fiber that runs in it and hang. acquire keeps that
+    // promise for open and openAll by making the get uninterruptible.
     const stores: RcMap.RcMap<WorkspaceId, WorkspaceStore, StoreUnavailable> =
       yield* RcMap.make({
         idleTimeToLive: Duration.infinity,
@@ -70,6 +82,22 @@ export const WorkspaceStoresLive = Layer.effect(
           ),
       });
 
+    // Only for ids the registry has confirmed. The get is scoped to the call,
+    // so it holds no reference once it returns. Holding it under the layer
+    // scope instead would add one finalizer there per request for the life of
+    // the process. The bundle stays valid after release only because the idle
+    // time is infinite and there is no capacity; if either is ever set, this
+    // has to hold the reference for the caller's scope instead.
+    //
+    // Uninterruptible so that a request dropped mid-boot still holds the
+    // entry until the boot ends, which the lookup's own invalidate needs. A
+    // boot is bounded, so the interrupt is delayed, not lost.
+    const acquire = (workspaceId: WorkspaceId) =>
+      RcMap.get(stores, workspaceId).pipe(
+        Effect.scoped,
+        Effect.uninterruptible,
+      );
+
     const open = Effect.fn("WorkspaceStores.open")(function* (
       workspaceId: WorkspaceId,
     ) {
@@ -84,22 +112,29 @@ export const WorkspaceStoresLive = Layer.effect(
       if (known.length === 0) {
         return yield* new WorkspaceNotFound({ workspaceId });
       }
-      // The get is scoped to the call, so it holds no reference once it
-      // returns. Holding it under the layer scope instead would add one
-      // finalizer there per request for the life of the process. The bundle
-      // stays valid after release only because the idle time is infinite and
-      // there is no capacity; if either is ever set, open has to hold the
-      // reference for the caller's scope instead.
-      //
-      // Uninterruptible so that a request dropped mid-boot still holds the
-      // entry until the boot ends, which the lookup's own invalidate needs. A
-      // boot is bounded, so the interrupt is delayed, not lost.
-      return yield* RcMap.get(stores, workspaceId).pipe(
-        Effect.scoped,
-        Effect.uninterruptible,
+      return yield* acquire(workspaceId);
+    });
+
+    const openAll = Effect.fn("WorkspaceStores.openAll")(function* () {
+      const known = yield* registry.run("query", () =>
+        registry.store.query(workspaces.select("id").orderBy("seq", "asc")),
+      );
+      // Boots run concurrently and forEach keeps input order, so the answer
+      // is in registry order without a sort. One failed boot fails the whole
+      // call; the others are interrupted once their boot ends.
+      return yield* Effect.forEach(
+        known,
+        (id) => {
+          const workspaceId = WorkspaceId.make(id);
+          return Effect.map(acquire(workspaceId), (workspace) => ({
+            workspaceId,
+            workspace,
+          }));
+        },
+        { concurrency: "unbounded" },
       );
     });
 
-    return WorkspaceStores.of({ open });
+    return WorkspaceStores.of({ open, openAll });
   }),
 );

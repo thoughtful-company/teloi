@@ -1,6 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import {
   HttpBody,
   HttpClient,
@@ -10,7 +10,7 @@ import {
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { Api } from "../../api/Api.ts";
 import { StoreUnavailable } from "../../api/Errors.ts";
-import { Sign, SignTitle } from "../../api/Signs.ts";
+import { Sign, SignTitle, WorkspaceSign } from "../../api/Signs.ts";
 import {
   Workspace,
   WorkspaceId,
@@ -85,6 +85,45 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
       assert.deepStrictEqual(
         listed.map((sign) => ({ ...sign })),
         [{ ...ship }, { ...voyage }],
+      );
+    }),
+  );
+
+  it.effect("listAll answers rows tagged with their workspace", () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient;
+      const first = yield* client.workspaces.create({
+        payload: { name: WorkspaceName.make("gamma") },
+      });
+      const second = yield* client.workspaces.create({
+        payload: { name: WorkspaceName.make("delta") },
+      });
+
+      const ship = yield* client.signs.create({
+        params: { workspaceId: first.id },
+        payload: { title: SignTitle.make("Ship") },
+      });
+      const voyage = yield* client.signs.create({
+        params: { workspaceId: second.id },
+        payload: { title: SignTitle.make("Voyage") },
+      });
+
+      // The block shares its registry, so the other tests' workspaces come
+      // back too and only these two can be asserted on.
+      const mine = new Set<string>([first.id, second.id]);
+      const rows = (yield* client.signs.listAll()).filter((row) =>
+        mine.has(row.workspaceId),
+      );
+
+      assert.deepStrictEqual(
+        rows.map((row) => ({
+          workspaceId: row.workspaceId,
+          sign: { ...row.sign },
+        })),
+        [
+          { workspaceId: first.id, sign: { ...ship } },
+          { workspaceId: second.id, sign: { ...voyage } },
+        ],
       );
     }),
   );
@@ -193,6 +232,35 @@ layer(
     }),
   );
 
+  it.effect("listAll answers 200 over the socket", () =>
+    Effect.gen(function* () {
+      const workspace = yield* openWorkspace("epsilon");
+      const created = yield* HttpClient.post(
+        `/workspaces/${workspace.id}/signs`,
+        { body: HttpBody.jsonUnsafe({ title: "Atlas" }) },
+      );
+      const sign = yield* HttpClientResponse.schemaBodyJson(Sign)(created);
+
+      const response = yield* HttpClient.get("/signs");
+
+      assert.strictEqual(response.status, 200);
+
+      // Decoded with the contract schema, so this pins the wire shape of the
+      // pair. The block shares a registry, so only the row this test wrote
+      // can be asserted on.
+      const rows = yield* HttpClientResponse.schemaBodyJson(
+        Schema.Array(WorkspaceSign),
+      )(response);
+
+      assert.deepStrictEqual(
+        rows
+          .filter((row) => row.workspaceId === workspace.id)
+          .map((row) => ({ ...row.sign })),
+        [{ ...sign }],
+      );
+    }),
+  );
+
   it.effect("answers 404 for a workspace that is not there", () =>
     Effect.gen(function* () {
       const created = yield* HttpClient.post(
@@ -252,6 +320,17 @@ layer(
         yield* HttpClientResponse.schemaBodyJson(StoreUnavailable)(created);
 
       assert.strictEqual(error.store, workspace.id);
+
+      // The read across workspaces reaches the same dead store and fails
+      // whole, over the wire as at the service, naming the workspace.
+      const listedAll = yield* HttpClient.get("/signs");
+
+      assert.strictEqual(listedAll.status, 503);
+
+      const onListAll =
+        yield* HttpClientResponse.schemaBodyJson(StoreUnavailable)(listedAll);
+
+      assert.strictEqual(onListAll.store, workspace.id);
     }),
   );
 });
