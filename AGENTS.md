@@ -94,7 +94,7 @@ That closes the questions. What follows is what I carried over from the old AGEN
 
 ## Working rules
 
-Work is tracked in Linear, in the Teloi workspace. Issues go there, not to GitHub. The Linear MCP is registered in .mcp.json at the repo root, so it is available only inside this folder.
+Work is tracked in Linear, in the Teloi workspace. Issues are written there, never on GitHub directly. Linear's GitHub Issues Sync mirrors every issue into thoughtful-company/teloi, so the repo holds a log of everything. The sync is two-way, so never close, edit or comment on a mirrored GitHub issue, do it in Linear. GitHub carries code, branches and pull requests. Name the branch after the issue's git branch name in Linear, feature/thc-147 for THC-147, so the pull request attaches to the issue on its own. CodeRabbit reviews pull requests, but it skips automatic reviews while the repo has fewer than ten stars, so after opening a PR post the comment `@coderabbitai review` and read the result before merging. The Linear MCP is registered in .mcp.json at the repo root, so it is available only inside this folder.
 
 Branch before every feature. Never commit to main. Never mix unrelated work into one branch.
 
