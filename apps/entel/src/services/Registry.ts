@@ -1,13 +1,9 @@
-// The package index pulls in the Node SDK and its optional peers. Only the
-// tracer service is needed here.
-import * as OtelTracer from "@effect/opentelemetry/OtelTracer";
-import { makeAdapter } from "@livestore/adapter-node";
 import { Events, makeSchema, State } from "@livestore/livestore";
 import { Store } from "@livestore/livestore/effect";
-import { trace } from "@opentelemetry/api";
-import { Config, Effect, Layer, Schema } from "effect";
-import { resolve } from "node:path";
+import { Effect, Layer, Schema } from "effect";
 import { WorkspaceName } from "../api/Workspaces.ts";
+import { StoreAdapter, storeOptions, TracerLive } from "./StoreAdapter.ts";
+import { makeStoreCalls, type StoreCalls } from "./StoreCalls.ts";
 
 export const workspaces = State.SQLite.table({
   name: "workspaces",
@@ -40,40 +36,34 @@ export const schema = makeSchema({
   events,
 });
 
-// The registry is the one store entel owns itself. Workspaces get their own
-// stores later; this one only knows which of them exist.
+// The registry is the one store entel owns itself. It only knows which
+// workspaces exist; each workspace has a store of its own, see
+// WorkspaceStores.ts.
 export class Registry extends Store.Tag(schema, "registry") {}
 
 // Spelled out because the inferred type names @livestore/common, which entel
 // does not depend on directly, and tsc refuses to emit that.
 export const RegistryLive: Layer.Layer<
   Layer.Success<RegistryLayer>,
-  Layer.Error<RegistryLayer> | Config.ConfigError
+  Layer.Error<RegistryLayer>,
+  StoreAdapter
 > = Layer.unwrap(
   Effect.gen(function* () {
-    const dataDir = yield* Config.string("ENTEL_DATA_DIR").pipe(
-      Config.withDefault(defaultDataDir),
-    );
-    return Registry.layer({
-      adapter: makeAdapter({ storage: { type: "fs", baseDirectory: dataDir } }),
-      // Devtools would start a Vite server. batchUpdates exists for UI
-      // frameworks that coalesce renders; the server has nothing to coalesce.
-      disableDevtools: true,
-      batchUpdates: (run) => run(),
-    }).pipe(
-      // LiveStore spans go to whatever tracer provider is registered globally.
-      // None is, so this is the API's no-op tracer until entel exports traces.
-      Layer.provide(
-        Layer.succeed(OtelTracer.OtelTracer, trace.getTracer("entel")),
-      ),
+    const { adapter } = yield* StoreAdapter;
+    return Registry.layer({ adapter, ...storeOptions }).pipe(
+      Layer.provide(TracerLive),
     );
   }),
 );
 
+// The registry's calls, bound once here so every reader of the registry
+// reports it under the same name and goes through the same commit path.
+export const registryCalls: Effect.Effect<
+  StoreCalls<typeof schema>,
+  never,
+  Layer.Success<typeof RegistryLive>
+> = Effect.map(Registry, ({ store }) => makeStoreCalls("registry", store));
+
 // ================================ Internal ===================================
 
 type RegistryLayer = ReturnType<typeof Registry.layer>;
-
-// apps/entel/data, whatever the working directory is, so `node
-// apps/entel/src/main.ts` from the repo root and `pnpm dev:entel` agree.
-const defaultDataDir = resolve(import.meta.dirname, "../../data");

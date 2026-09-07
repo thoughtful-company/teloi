@@ -2,24 +2,17 @@ import { NodeFileSystem } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { Context, Effect, FileSystem, Layer } from "effect";
 import { WorkspaceName } from "../../api/Workspaces.ts";
-import { configLayerFor, TempDataDir } from "../../test/DataDir.ts";
+import { TempDataDir } from "../../test/DataDir.ts";
+import { runAgainst as runServicesAgainst } from "../../test/Services.ts";
 import { Registry } from "../Registry.ts";
 import { ServicesLive } from "../Services.ts";
 import { Workspaces } from "../Workspaces.ts";
 
-// One run of the service against a data directory. Building and releasing the
-// layer per run opens and closes the store, so the next run has to read what
-// the previous one wrote rather than answer from memory.
 const runAgainst = <A, E, R>(
   dir: string,
   use: (workspaces: typeof Workspaces.Service) => Effect.Effect<A, E, R>,
 ) =>
-  Effect.scoped(
-    Effect.flatMap(
-      Layer.build(ServicesLive.pipe(Layer.provide(configLayerFor(dir)))),
-      (context) => use(Context.get(context, Workspaces)),
-    ),
-  );
+  runServicesAgainst(dir, (services) => use(Context.get(services, Workspaces)));
 
 // Every block here creates workspaces, so they run on the real clock. The
 // service polls the store until the leader has the event, and under the
@@ -159,8 +152,14 @@ layer(ServicesLive.pipe(Layer.provide(TempDataDir)), {
         .create(WorkspaceName.make("delta"))
         .pipe(Effect.flip);
 
-      assert.strictEqual(onList._tag, "RegistryUnavailable");
-      assert.strictEqual(onCreate._tag, "RegistryUnavailable");
+      assert.strictEqual(onList._tag, "StoreUnavailable");
+      assert.strictEqual(onCreate._tag, "StoreUnavailable");
+      // The store field is what the rename from RegistryUnavailable exists to
+      // carry, so the registry's own name gets pinned here.
+      assert.deepStrictEqual(
+        [onList.store, onCreate.store],
+        ["registry", "registry"],
+      );
     }),
   );
 });
