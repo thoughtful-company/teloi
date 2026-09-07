@@ -1,10 +1,10 @@
 import { nanoid } from "@livestore/livestore";
 import { Context, Effect, Layer } from "effect";
 import { StoreUnavailable } from "../api/Errors.ts";
-import { Sign, SignId, SignTitle } from "../api/Signs.ts";
+import { Sign, SignId, SignTitle, WorkspaceSign } from "../api/Signs.ts";
 import type { WorkspaceId, WorkspaceNotFound } from "../api/Workspaces.ts";
 import { events, signs } from "./WorkspaceSchema.ts";
-import { WorkspaceStores } from "./WorkspaceStores.ts";
+import { type WorkspaceStore, WorkspaceStores } from "./WorkspaceStores.ts";
 
 export class Signs extends Context.Service<
   Signs,
@@ -18,6 +18,10 @@ export class Signs extends Context.Service<
     ) => Effect.Effect<
       ReadonlyArray<Sign>,
       WorkspaceNotFound | StoreUnavailable
+    >;
+    readonly listAll: () => Effect.Effect<
+      ReadonlyArray<WorkspaceSign>,
+      StoreUnavailable
     >;
   }
 >()("entel/Signs") {}
@@ -46,20 +50,45 @@ export const SignsLive = Layer.effect(
 
     const list = Effect.fn("Signs.list")(function* (workspaceId: WorkspaceId) {
       const workspace = yield* workspaceStores.open(workspaceId);
-      const rows = yield* workspace.run("query", () =>
-        workspace.store.query(
-          signs.select("id", "title").orderBy("seq", "asc"),
-        ),
+      return yield* signsIn(workspace);
+    });
+
+    // No SQL spans two stores, so this reads every workspace's store and
+    // concatenates in memory. openAll answers in registry order and the
+    // per-workspace query in sign order, so the result is stable without a
+    // sort. The first read after a restart boots every store and pays for it
+    // once.
+    const listAll = Effect.fn("Signs.listAll")(function* () {
+      const opened = yield* workspaceStores.openAll();
+      const perWorkspace = yield* Effect.forEach(
+        opened,
+        ({ workspaceId, workspace }) =>
+          Effect.map(signsIn(workspace), (rows) =>
+            rows.map((sign) => new WorkspaceSign({ workspaceId, sign })),
+          ),
       );
-      return rows.map(
+      return perWorkspace.flat();
+    });
+
+    return Signs.of({ create, list, listAll });
+  }),
+);
+
+// ================================ Internal ===================================
+
+const signsIn = (
+  workspace: WorkspaceStore,
+): Effect.Effect<ReadonlyArray<Sign>, StoreUnavailable> =>
+  Effect.map(
+    workspace.run("query", () =>
+      workspace.store.query(signs.select("id", "title").orderBy("seq", "asc")),
+    ),
+    (rows) =>
+      rows.map(
         (row) =>
           new Sign({
             id: SignId.make(row.id),
             title: SignTitle.make(row.title),
           }),
-      );
-    });
-
-    return Signs.of({ create, list });
-  }),
-);
+      ),
+  );
