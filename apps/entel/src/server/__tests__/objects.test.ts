@@ -27,8 +27,10 @@ import {
 import { ServicesLive } from "../../services/Services.ts";
 import { WorkspaceStores } from "../../services/WorkspaceStores.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
+import { issuePaths, rejection } from "../../test/Rejection.ts";
 import { HttpLive } from "../Http.ts";
 import { ObjectsHandlers } from "../Objects.ts";
+import { RequestSchemaLive } from "../RequestSchema.ts";
 import { SignsHandlers } from "../Signs.ts";
 import { WorkspacesHandlers } from "../Workspaces.ts";
 
@@ -43,6 +45,10 @@ const makeClient = HttpApiTest.groups(Api, ["workspaces", "objects", "signs"]);
 // workspaces and each one works in a workspace it created itself.
 const TestLayer = Layer.mergeAll(
   Layer.mergeAll(WorkspacesHandlers, ObjectsHandlers, SignsHandlers).pipe(
+    // Declared on the api, so every handler group requires it. provideMerge
+    // rather than provide, because HttpApiTest.groups builds routes for the
+    // groups this block leaves out and needs the middleware in context too.
+    Layer.provideMerge(RequestSchemaLive),
     Layer.provide(ServicesLive),
     Layer.provide(TempDataDir),
   ),
@@ -415,6 +421,12 @@ layer(
       );
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      // The field that broke the rule is named, so a client can point at it.
+      assert.deepInclude(issuePaths(rejected), ["title"]);
     }),
   );
 
@@ -458,6 +470,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), ["title"]);
     }),
   );
 
@@ -471,6 +488,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), ["title"]);
     }),
   );
 
@@ -486,6 +508,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), ["title"]);
     }),
   );
 
@@ -507,6 +534,15 @@ layer(
 
       assert.strictEqual(missing.status, 400);
       assert.strictEqual(empty.status, 400);
+
+      // A union rejects as a whole, so the leaves it reports are the
+      // formatter's business; that it reports any at all is not.
+      for (const response of [missing, empty]) {
+        const rejected = yield* rejection(response);
+
+        assert.strictEqual(rejected.part, "Payload");
+        assert.isNotEmpty(rejected.issues);
+      }
     }),
   );
 
@@ -530,6 +566,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.isNotEmpty(rejected.issues);
     }),
   );
 
@@ -543,6 +584,33 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.isNotEmpty(rejected.issues);
+    }),
+  );
+
+  // A body that is not JSON fails in the framework's parser, before any
+  // payload schema runs, so none of the schema tests above reach this path.
+  // The guide promises the same shape here, with an empty path because nothing
+  // parsed far enough to name a field.
+  it.effect("answers 400 with an empty path for a body that is not JSON", () =>
+    Effect.gen(function* () {
+      const workspace = yield* openWorkspace("rho");
+
+      const response = yield* HttpClient.post(
+        `/workspaces/${workspace.id}/objects`,
+        { body: HttpBody.text("{not json", "application/json") },
+      );
+
+      assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), []);
     }),
   );
 

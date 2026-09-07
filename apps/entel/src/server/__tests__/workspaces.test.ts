@@ -14,7 +14,9 @@ import { Workspace, WorkspaceName } from "../../api/Workspaces.ts";
 import { Registry } from "../../services/Registry.ts";
 import { ServicesLive } from "../../services/Services.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
+import { issuePaths, rejection } from "../../test/Rejection.ts";
 import { HttpLive } from "../Http.ts";
+import { RequestSchemaLive } from "../RequestSchema.ts";
 import { WorkspacesHandlers } from "../Workspaces.ts";
 
 // The typed client routes, encodes and decodes exactly as a real server does,
@@ -26,6 +28,9 @@ const makeClient = HttpApiTest.groups(Api, ["workspaces"]);
 // registry starts empty.
 const TestLayer = Layer.mergeAll(
   WorkspacesHandlers.pipe(
+    // Declared on the api, so every handler group requires it, and so does
+    // HttpApiTest.groups for the groups this block does not build.
+    Layer.provideMerge(RequestSchemaLive),
     Layer.provide(ServicesLive),
     Layer.provide(TempDataDir),
   ),
@@ -116,6 +121,12 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      // The field that broke the rule is named, so a client can point at it.
+      assert.deepInclude(issuePaths(rejected), ["name"]);
     }),
   );
 
@@ -126,6 +137,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), ["name"]);
     }),
   );
 
@@ -138,6 +154,11 @@ layer(
       });
 
       assert.strictEqual(response.status, 400);
+
+      const rejected = yield* rejection(response);
+
+      assert.strictEqual(rejected.part, "Payload");
+      assert.deepInclude(issuePaths(rejected), ["name"]);
     }),
   );
 });

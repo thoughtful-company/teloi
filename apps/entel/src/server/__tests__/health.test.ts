@@ -11,6 +11,7 @@ import { Api } from "../../api/Api.ts";
 import { ServicesLive } from "../../services/Services.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
 import { HttpLive } from "../Http.ts";
+import { RequestSchemaLive } from "../RequestSchema.ts";
 import { SystemHandlers } from "../System.ts";
 
 // The typed client routes, encodes and decodes exactly as a real server does,
@@ -34,7 +35,19 @@ const CreateObjectMember = Schema.Struct({
   required: Schema.Array(Schema.String),
 });
 
+// The 400's entry, as far as the test reads it. A declared error is emitted as
+// a reference into the document's components rather than inline.
+const RejectionResponse = Schema.Struct({
+  content: Schema.Struct({
+    "application/json": Schema.Struct({
+      schema: Schema.Struct({ $ref: Schema.String }),
+    }),
+  }),
+});
+
 // The one path the test reads, and only down to the payload's own schema.
+// Responses stay unknown values, so the statuses can be read without pinning
+// what each of the others carries.
 const CreateObjectsPath = Schema.Struct({
   post: Schema.Struct({
     requestBody: Schema.Struct({
@@ -44,27 +57,30 @@ const CreateObjectsPath = Schema.Struct({
         }),
       }),
     }),
+    responses: Schema.Record(Schema.String, Schema.Unknown),
   }),
 });
 
 // `HttpServer.layerServices` supplies the platform services (HttpPlatform,
 // Path, FileSystem, Etag) that the HTTP pipeline resolves while building routes.
-layer(Layer.mergeAll(SystemHandlers, HttpServer.layerServices))(
-  "health, in memory",
-  (it) => {
-    it.effect("reports ok through the typed client", () =>
-      Effect.gen(function* () {
-        const client = yield* makeClient;
+layer(
+  Layer.mergeAll(
+    SystemHandlers.pipe(Layer.provideMerge(RequestSchemaLive)),
+    HttpServer.layerServices,
+  ),
+)("health, in memory", (it) => {
+  it.effect("reports ok through the typed client", () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient;
 
-        // `system` is a top-level group, so its endpoints sit on the client root.
-        const health = yield* client.health();
+      // `system` is a top-level group, so its endpoints sit on the client root.
+      const health = yield* client.health();
 
-        // Health is a class, and deepStrictEqual compares prototypes too.
-        assert.deepStrictEqual({ ...health }, { status: "ok" });
-      }),
-    );
-  },
-);
+      // Health is a class, and deepStrictEqual compares prototypes too.
+      assert.deepStrictEqual({ ...health }, { status: "ok" });
+    }),
+  );
+});
 
 // `NodeHttpServer.layerTest` binds an ephemeral port and provides an HttpClient
 // already pointed at it, so this exercises the real Node wiring end to end.
@@ -143,6 +159,23 @@ layer(
       assert.deepStrictEqual(tuple?.properties.kind.enum, ["tuple"]);
       assert.isTrue(tuple?.required.includes("places"));
       assert.strictEqual(tuple?.properties.places["minItems"], 1);
+
+      // The 400 used to be the one status the document said nothing about, so
+      // an agent reading it to learn the errors could not know a rejected
+      // request answers with a body at all. That promise of a body is the
+      // whole reason the error is declared, so the reference to its schema is
+      // read too and not just the status key.
+      assert.include(Object.keys(created.post.responses), "400");
+
+      const rejection = yield* Schema.decodeUnknownEffect(RejectionResponse)(
+        created.post.responses["400"],
+      );
+
+      assert.isTrue(
+        rejection.content["application/json"].schema.$ref.endsWith(
+          "RequestRejectedEncoded",
+        ),
+      );
     }),
   );
 });
