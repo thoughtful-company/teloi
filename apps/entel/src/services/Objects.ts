@@ -234,30 +234,45 @@ const requireOne = (
         : Effect.succeed(row),
   );
 
-// Fails on the first id, in the order given, that is not an object here. The
-// query binds each distinct id once; a tuple may name one object in several
-// places and should not pay a parameter per place.
+// Fails on the first id, in the order given, that is not an object here. Each
+// id in an IN clause is one bound parameter and SQLite refuses a statement
+// past its limit, so distinct ids are looked up in bounded batches. A tuple
+// that large is not expected, but the payload does not cap places, and a
+// 503 for a valid request would be the wrong answer.
 const requireAll = (
   workspace: WorkspaceStore,
   workspaceId: WorkspaceId,
   ids: ReadonlyArray<ObjectId>,
 ): Effect.Effect<void, ObjectNotFound | StoreUnavailable> =>
-  ids.length === 0
-    ? Effect.void
-    : Effect.flatMap(
-        workspace.run("query", () =>
-          workspace.store.query(
-            objects.select("id").where("id", "IN", [...new Set(ids)]),
-          ),
-        ),
-        (found) => {
-          const known = new Set<string>(found);
-          const missing = ids.find((id) => !known.has(id));
-          return missing === undefined
-            ? Effect.void
-            : new ObjectNotFound({ workspaceId, objectId: missing });
-        },
-      );
+  Effect.flatMap(
+    Effect.forEach(batches([...new Set(ids)], parametersPerQuery), (batch) =>
+      workspace.run("query", () =>
+        workspace.store.query(objects.select("id").where("id", "IN", batch)),
+      ),
+    ),
+    (found) => {
+      const known = new Set<string>(found.flat());
+      const missing = ids.find((id) => !known.has(id));
+      return missing === undefined
+        ? Effect.void
+        : new ObjectNotFound({ workspaceId, objectId: missing });
+    },
+  );
+
+// SQLite's default limit on bound parameters is 32766. Half of it leaves room
+// for whatever else a statement binds.
+const parametersPerQuery = 16000;
+
+const batches = <A>(
+  items: ReadonlyArray<A>,
+  size: number,
+): ReadonlyArray<ReadonlyArray<A>> => {
+  const out: Array<ReadonlyArray<A>> = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+};
 
 interface Relations {
   readonly signsBy: ReadonlyMap<string, ReadonlyArray<SignRow>>;
