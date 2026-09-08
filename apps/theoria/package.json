@@ -1,0 +1,36 @@
+{
+  "name": "@teloi/theoria",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Theoria, the read-only view of a workspace model",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "PolyForm-Shield-1.0.0",
+  "dependencies": {
+    "@solidjs/router": "^1.0.0",
+    "@teloi/entel": "workspace:*",
+    "effect": "4.0.0-rc.112",
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.87.2",
+    "@effect/vitest": "4.0.0-rc.112",
+    "@solidjs/testing-library": "^0.8.10",
+    "@tailwindcss/vite": "^4.1.7",
+    "@types/node": "^24.3.1",
+    "jsdom": "^27.0.0",
+    "tailwindcss": "^4.1.8",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.6",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

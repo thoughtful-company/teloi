@@ -132,11 +132,11 @@ Keep this file current. Add what the code can't tell you, and nothing the code a
 
 ## Naming
 
-Major things get a Greek word, one word per thing. Teloi is the product. Entelecheia, short entel, is the server that runs workspaces. Khora is a node in the web app.
+Major things get a Greek word, one word per thing. Teloi is the product. Entelecheia, short entel, is the server that runs workspaces. Theoria is the read-only view of a workspace model. Khora is a node in the web app.
 
 ## Stack
 
-TypeScript throughout. Effect for services, layers, errors and schemas. LiveStore for structure and the event log. Automerge for text content. SolidJS with Tailwind v4 for the web app. Vitest, with Playwright for browser tests. The same stack applies to entel, with one difference. entel is on Effect v4 and the web app is still on Effect v3. The two majors live side by side in the monorepo, each package resolves its own. pnpm runs with node-linker=isolated, its default, for that reason. Under the hoisted linker one copy of effect wins the root node_modules, and adding a v4 package to entel flipped that copy to v4 and broke every web unit test on import. Isolated mode still has one gap. LiveStore 0.3.1 in apps/web peers on @effect/platform-node and @effect/opentelemetry without apps/web declaring them, and pnpm fills an undeclared peer with whatever version the workspace has, which is entel's v4. So apps/web lists both at their v3 lines as devDependencies although nothing in it imports them. The web app moves to v4 when LiveStore's v4 line is stable, tracked in Linear as THC-145, and the pins go with it.
+TypeScript throughout. Effect for services, layers, errors and schemas. LiveStore for structure and the event log. Automerge for text content. SolidJS with Tailwind v4 for the web app. Vitest, with Playwright for browser tests. The same stack applies to entel and theoria, with one difference. entel and theoria are on Effect v4 and the web app is still on Effect v3. The two majors live side by side in the monorepo, each package resolves its own. pnpm runs with node-linker=isolated, its default, for that reason. Under the hoisted linker one copy of effect wins the root node_modules, and adding a v4 package to entel flipped that copy to v4 and broke every web unit test on import. Isolated mode still has one gap. LiveStore 0.3.1 in apps/web peers on @effect/platform-node and @effect/opentelemetry without apps/web declaring them, and pnpm fills an undeclared peer with whatever version the workspace has, which is entel's v4. So apps/web lists both at their v3 lines as devDependencies although nothing in it imports them. The web app moves to v4 when LiveStore's v4 line is stable, tracked in Linear as THC-145, and the pins go with it.
 
 ## Layout
 
@@ -145,6 +145,7 @@ A pnpm monorepo.
 - apps/web, the SolidJS web app, package @teloi/web. It has its own CLAUDE.md.
 - apps/electron, the desktop shell around the web app.
 - apps/entel, the server, package @teloi/entel. It has its own CLAUDE.md.
+- apps/theoria, the read-only view of a workspace model, package @teloi/theoria. It has its own CLAUDE.md.
 - packages/typescript-config, shared TypeScript config.
 - The CLI does not exist yet.
 

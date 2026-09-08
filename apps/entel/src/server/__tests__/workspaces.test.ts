@@ -1,4 +1,3 @@
-import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import {
@@ -15,7 +14,7 @@ import { Registry } from "../../services/Registry.ts";
 import { ServicesLive } from "../../services/Services.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
 import { issuePaths, rejection } from "../../test/Rejection.ts";
-import { HttpLive } from "../Http.ts";
+import { EntelTest } from "../../test/Server.ts";
 import { RequestSchemaLive } from "../RequestSchema.ts";
 import { WorkspacesHandlers } from "../Workspaces.ts";
 
@@ -88,14 +87,12 @@ layer(TestLayer, { excludeTestServices: true })(
 // against the same contract schema and so can never send a bad one. This is the
 // only place the server's own decoding, and the status it answers with, is seen
 // the way a foreign client sees it.
-layer(
-  HttpLive.pipe(
-    Layer.provide(ServicesLive),
-    Layer.provide(TempDataDir),
-    Layer.provideMerge(NodeHttpServer.layerTest),
-  ),
-  { excludeTestServices: true },
-)("workspaces, over a socket", (it) => {
+// Both socket blocks below, each call building its own server and temp
+// directory. excludeTestServices because the commit path polls on the real
+// clock, see CLAUDE.md.
+const overSocket = layer(EntelTest, { excludeTestServices: true });
+
+overSocket("workspaces, over a socket", (it) => {
   it.effect("create answers 201 over the socket", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.post("/workspaces", {
@@ -165,16 +162,9 @@ layer(
 
 // Its own block, its own temp directory and its only test, because it shuts the
 // store down and every later request against this layer would fail for that
-// reason rather than its own. `provideMerge` keeps Registry visible so the test
-// can reach the store the server is holding, and not a second one.
-layer(
-  HttpLive.pipe(
-    Layer.provideMerge(ServicesLive),
-    Layer.provide(TempDataDir),
-    Layer.provideMerge(NodeHttpServer.layerTest),
-  ),
-  { excludeTestServices: true },
-)("workspaces, with the store shut down", (it) => {
+// reason rather than its own. EntelTest keeps Registry visible so the test can
+// reach the store the server is holding, and not a second one.
+overSocket("workspaces, with the store shut down", (it) => {
   it.effect("answers 503 once the registry is gone", () =>
     Effect.gen(function* () {
       const { store } = yield* Registry;

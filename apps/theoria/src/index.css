@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@theme inline {
+  --color-surface-app: var(--surface-app);
+  --color-surface-card: var(--surface-card);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-placeholder: var(--text-placeholder);
+  --color-border-subtle: var(--border-subtle);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-kind-individual: var(--kind-individual);
+  --color-kind-set: var(--kind-set);
+  --color-kind-tuple: var(--kind-tuple);
+  --color-kind-tuple-set: var(--kind-tuple-set);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-surface-app text-text-primary;
+  }
+}

@@ -4,6 +4,10 @@
   "private": true,
   "description": "Entelecheia, the server that runs Teloi workspaces",
   "type": "module",
+  "exports": {
+    "./api": "./src/api/index.ts",
+    "./testing": "./src/test/Server.ts"
+  },
   "scripts": {
     "dev": "node --watch src/main.ts",
     "start": "node src/main.ts",
