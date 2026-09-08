@@ -8,6 +8,7 @@
     "dev:web": "pnpm -F @teloi/web dev",
     "dev:electron": "pnpm -F @teloi/electron dev",
     "dev:entel": "pnpm -F @teloi/entel dev",
+    "dev:theoria": "pnpm -F @teloi/theoria dev",
     "typecheck": "pnpm -r typecheck"
   },
   "lint-staged": {

@@ -1,4 +1,3 @@
-import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
 import {
@@ -8,9 +7,7 @@ import {
 } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { Api } from "../../api/Api.ts";
-import { ServicesLive } from "../../services/Services.ts";
-import { TempDataDir } from "../../test/DataDir.ts";
-import { HttpLive } from "../Http.ts";
+import { EntelTest } from "../../test/Server.ts";
 import { RequestSchemaLive } from "../RequestSchema.ts";
 import { SystemHandlers } from "../System.ts";
 
@@ -82,18 +79,12 @@ layer(
   );
 });
 
-// `NodeHttpServer.layerTest` binds an ephemeral port and provides an HttpClient
-// already pointed at it, so this exercises the real Node wiring end to end.
-// HttpLive carries every handler, so the registry comes along even though
-// nothing in this block touches it. What the block covers is the server
-// itself, the routes it answers on before any workspace exists.
-layer(
-  HttpLive.pipe(
-    Layer.provide(ServicesLive),
-    Layer.provide(TempDataDir),
-    Layer.provideMerge(NodeHttpServer.layerTest),
-  ),
-)("server, over a socket", (it) => {
+// EntelTest binds an ephemeral port and provides an HttpClient already pointed
+// at it, so this exercises the real Node wiring end to end. It carries every
+// handler, so the registry comes along even though nothing in this block
+// touches it. What the block covers is the server itself, the routes it
+// answers on before any workspace exists.
+layer(EntelTest)("server, over a socket", (it) => {
   it.effect("serves GET /health", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get("/health");

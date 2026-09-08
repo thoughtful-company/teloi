@@ -25,8 +25,10 @@ export default [
     },
   },
   {
-    // Build output. apps/electron/out is esbuild's, it trips no-undef and would
-    // otherwise change the warning count with every rebuild.
-    ignores: ["dist/**", "apps/electron/out/**"],
+    // Build output. Every package's dist, since vite build writes one per app
+    // and a root-relative "dist/**" covers only the root. apps/electron/out is
+    // esbuild's, it trips no-undef and would otherwise change the warning
+    // count with every rebuild.
+    ignores: ["**/dist/**", "apps/electron/out/**"],
   },
 ];

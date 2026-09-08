@@ -1,4 +1,3 @@
-import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
 import {
@@ -21,7 +20,7 @@ import {
 import { ServicesLive } from "../../services/Services.ts";
 import { WorkspaceStores } from "../../services/WorkspaceStores.ts";
 import { TempDataDir } from "../../test/DataDir.ts";
-import { HttpLive } from "../Http.ts";
+import { EntelTest } from "../../test/Server.ts";
 import { ObjectsHandlers } from "../Objects.ts";
 import { RequestSchemaLive } from "../RequestSchema.ts";
 import { SignsHandlers } from "../Signs.ts";
@@ -150,14 +149,12 @@ layer(TestLayer, { excludeTestServices: true })("signs, in memory", (it) => {
 // against the same contract schema and so can never send a bad one. This is the
 // only place the server's own decoding, and the status it answers with, is seen
 // the way a foreign client sees it.
-layer(
-  HttpLive.pipe(
-    Layer.provide(ServicesLive),
-    Layer.provide(TempDataDir),
-    Layer.provideMerge(NodeHttpServer.layerTest),
-  ),
-  { excludeTestServices: true },
-)("signs, over a socket", (it) => {
+// Both socket blocks below, each call building its own server and temp
+// directory. excludeTestServices because the commit path polls on the real
+// clock, see CLAUDE.md.
+const overSocket = layer(EntelTest, { excludeTestServices: true });
+
+overSocket("signs, over a socket", (it) => {
   const openWorkspace = (name: string) =>
     Effect.gen(function* () {
       const response = yield* HttpClient.post("/workspaces", {
@@ -216,16 +213,9 @@ layer(
 });
 
 // Its own block, its own temp directory and its only test, because it shuts a
-// workspace store down. `provideMerge` keeps WorkspaceStores visible so the
-// test can reach the store the server is holding, and not a second one.
-layer(
-  HttpLive.pipe(
-    Layer.provideMerge(ServicesLive),
-    Layer.provide(TempDataDir),
-    Layer.provideMerge(NodeHttpServer.layerTest),
-  ),
-  { excludeTestServices: true },
-)("signs, with the workspace store shut down", (it) => {
+// workspace store down. EntelTest keeps WorkspaceStores visible so the test
+// can reach the store the server is holding, and not a second one.
+overSocket("signs, with the workspace store shut down", (it) => {
   it.effect("answers 503 naming the workspace once its store is gone", () =>
     Effect.gen(function* () {
       const workspaceStores = yield* WorkspaceStores;

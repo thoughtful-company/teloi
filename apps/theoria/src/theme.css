@@ -1,0 +1,56 @@
+/*
+  Catppuccin, Latte by day and Mocha by night, following the system theme.
+  Upstream palette: https://catppuccin.com/palette, hex kept verbatim so the
+  values stay auditable against upstream. The palette is the one apps/web
+  uses, copied and not imported, because that package is on another Effect
+  major and this one must not depend on it. The semantic tokens below are
+  Theoria's own, fewer and mapped for one column of cards on a plain page.
+  The raw --ctp-* names are private to this file; the app consumes the
+  semantic tokens through Tailwind.
+*/
+
+:root {
+  --ctp-base: #eff1f5;
+  --ctp-mantle: #e6e9ef;
+  --ctp-surface0: #ccd0da;
+  --ctp-overlay0: #9ca0b0;
+  --ctp-subtext0: #6c6f85;
+  --ctp-subtext1: #5c5f77;
+  --ctp-text: #4c4f69;
+  --ctp-blue: #1e66f5;
+  --ctp-red: #d20f39;
+  --ctp-green: #40a02b;
+  --ctp-yellow: #df8e1d;
+  --ctp-mauve: #8839ef;
+
+  --surface-app: var(--ctp-base);
+  --surface-card: var(--ctp-mantle);
+  --text-primary: var(--ctp-text);
+  --text-secondary: var(--ctp-subtext1);
+  --text-tertiary: var(--ctp-subtext0);
+  --text-placeholder: var(--ctp-overlay0);
+  --border-subtle: var(--ctp-surface0);
+  --accent: var(--ctp-blue);
+  --danger: var(--ctp-red);
+  --kind-individual: var(--ctp-green);
+  --kind-set: var(--ctp-blue);
+  --kind-tuple: var(--ctp-mauve);
+  --kind-tuple-set: var(--ctp-yellow);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ctp-base: #1e1e2e;
+    --ctp-mantle: #181825;
+    --ctp-surface0: #313244;
+    --ctp-overlay0: #6c7086;
+    --ctp-subtext0: #a6adc8;
+    --ctp-subtext1: #bac2de;
+    --ctp-text: #cdd6f4;
+    --ctp-blue: #89b4fa;
+    --ctp-red: #f38ba8;
+    --ctp-green: #a6e3a1;
+    --ctp-yellow: #f9e2af;
+    --ctp-mauve: #cba6f7;
+  }
+}

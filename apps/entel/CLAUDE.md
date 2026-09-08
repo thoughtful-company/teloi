@@ -18,7 +18,7 @@ Effect v4. This package is on effect 4.0.0-rc, the web app is on effect 3. Do no
 
 Relative imports carry the .ts extension. Node runs the sources directly and does not resolve extensionless imports.
 
-src/api is the contract and never imports from src/server. The CLI will import the contract to derive a typed client, so nothing server-side may leak into it.
+src/api is the contract and never imports from src/server. Other packages import it as `@teloi/entel/api`, the entry that src/api/index.ts re-exports, to derive a typed client, so nothing server-side may leak into it. A schema or error a client needs has to be exported from that index.
 
 Every endpoint is declared in an HttpApiGroup under src/api and implemented with HttpApiBuilder.group under src/server. No hand-written HttpRouter routes.
 
@@ -37,6 +37,8 @@ Config comes from the environment through Effect Config, keys prefixed `ENTEL_`.
 The cleanup rule from the root docs/testing.md applies, nothing else in that file does. Tests live next to the code in `__tests__` folders, named `*.test.ts`.
 
 Handlers are tested in memory through HttpApiTest.groups, which runs the real request pipeline against the handler layers without a socket. A socket block through NodeHttpServer.layerTest exists for what the typed client cannot produce, a payload its own schema rejects or the status code of a response. `src/server/__tests__/health.test.ts` has the one that pins the Node wiring itself.
+
+`EntelTest` in src/test/Server.ts is the whole server on an ephemeral port with a temp data directory and an HttpClient pointed at it. The socket blocks here build on it, and it is the package's second entry, `@teloi/entel/testing`, so another package's tests can start entel with one import.
 
 Tests run against the real services and real stores. src/test/DataDir.ts points ENTEL_DATA_DIR at a temp directory scoped to the layer, so each `layer(...)` block gets its own stores and loses them on teardown. Stores persist across restarts, so a `layer(...)` block shares its stores between its tests and no test may assume the registry or a workspace starts empty.
 
